@@ -139,7 +139,12 @@ export default function App() {
         toast.success(`Welcome back, ${user.name}!`);
         return true;
       }
-      toast.error('Invalid credentials');
+      // Only show error if this is actually a login attempt with credentials
+      if (email && password) {
+        toast.error('Invalid credentials', {
+          description: 'Please check your email and password and try again.'
+        });
+      }
       return false;
     } catch (err) {
       console.error('Login error:', err);

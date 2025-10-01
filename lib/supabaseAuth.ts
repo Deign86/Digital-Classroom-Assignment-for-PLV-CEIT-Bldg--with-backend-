@@ -237,6 +237,31 @@ export const authService = {
   },
 
   /**
+   * Check if an email exists in the system
+   * @param email - User's email address
+   * @returns Object with exists boolean and error if any
+   */
+  async checkEmailExists(email: string): Promise<{ exists: boolean; error: string | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking email:', error);
+        return { exists: false, error: error.message };
+      }
+
+      return { exists: !!data, error: null };
+    } catch (err) {
+      console.error('Email check error:', err);
+      return { exists: false, error: 'Failed to check email' };
+    }
+  },
+
+  /**
    * Request password reset email
    * @param email - User's email address
    */

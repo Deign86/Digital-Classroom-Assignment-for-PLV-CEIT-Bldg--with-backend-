@@ -32,9 +32,36 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
+      // First, check if the email exists in our system
+      const { exists, error: checkError } = await authService.checkEmailExists(email);
+      
+      if (checkError) {
+        toast.error('Unable to verify email', {
+          description: 'Please check your connection and try again.'
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!exists) {
+        toast.error('Email not found', {
+          description: 'This email is not registered in our system. Please check your email or contact admin.'
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Email exists, proceed with password reset
       const { error } = await authService.requestPasswordReset(email);
       
       if (error) {
