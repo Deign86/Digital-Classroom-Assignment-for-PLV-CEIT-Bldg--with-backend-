@@ -13,7 +13,7 @@ import type { BookingRequest } from '../App';
 interface RequestApprovalProps {
   requests: BookingRequest[];
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
-  checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
+  checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
 
 export default function RequestApproval({ requests, onRequestApproval, checkConflicts }: RequestApprovalProps) {
@@ -83,7 +83,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-4">
                 {pendingRequests.map((request) => (
                   <RequestCard
                     key={request.id}
@@ -110,7 +110,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-4">
                 {approvedRequests.map((request) => (
                   <RequestCard
                     key={request.id}
@@ -137,7 +137,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-4">
                 {rejectedRequests.map((request) => (
                   <RequestCard
                     key={request.id}
@@ -218,7 +218,7 @@ function RequestCard({
   request: BookingRequest;
   onApprove: () => void;
   onReject: () => void;
-  checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
+  checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
   status: 'pending' | 'approved' | 'rejected';
 }) {
   const [hasConflict, setHasConflict] = useState(false);
@@ -226,7 +226,15 @@ function RequestCard({
   React.useEffect(() => {
     const checkForConflicts = async () => {
       try {
-        const result = checkConflicts(request.classroomId, request.date, request.startTime, request.endTime);
+        // Pass the current request ID to exclude it from conflict checking
+        const result = checkConflicts(
+          request.classroomId, 
+          request.date, 
+          request.startTime, 
+          request.endTime, 
+          false, // don't check past time
+          request.id // exclude this request from conflict check
+        );
         if (result instanceof Promise) {
           const conflict = await result;
           setHasConflict(conflict);
