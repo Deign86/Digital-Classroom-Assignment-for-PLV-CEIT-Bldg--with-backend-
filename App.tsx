@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import LoginForm from './components/LoginForm';
 import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
+import PasswordResetPage from './components/PasswordResetPage';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from './components/ui/sonner';
@@ -15,6 +16,7 @@ import {
   bookingRequestService,
   scheduleService
 } from './lib/supabaseService';
+import { authService } from './lib/supabaseAuth';
 
 // Types
 export interface User {
@@ -23,7 +25,7 @@ export interface User {
   name: string;
   role: 'admin' | 'faculty';
   department?: string;
-  password: string;
+  // Password removed - now managed securely by Supabase Auth
 }
 
 export interface SignupRequest {
@@ -84,6 +86,7 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -129,10 +132,10 @@ export default function App() {
 
   const handleLogin = useCallback(async (email: string, password: string) => {
     try {
-      const user = await userService.login(email, password);
+      const user = await authService.signIn(email, password);
       if (user) {
         setCurrentUser(user);
-        localStorage.setItem('plv_classroom_user', JSON.stringify(user));
+        // Don't store in localStorage - Supabase handles session management
         toast.success(`Welcome back, ${user.name}!`);
         return true;
       }
@@ -145,7 +148,7 @@ export default function App() {
     }
   }, []);
 
-  const handleSignup = useCallback(async (email: string, name: string, department: string, password: string) => {
+  const handleSignup = useCallback(async (email: string, name: string, department: string) => {
     try {
       const existingUser = await userService.getByEmail(email);
       const existingRequest = await signupRequestService.getByEmail(email);
@@ -160,16 +163,20 @@ export default function App() {
         return false;
       }
 
+      // No password needed - admin will set it upon approval
       const newRequest = await signupRequestService.create({
         email,
         name,
         department,
-        password,
+        password: '', // Empty - not used anymore, admin sets password on approval
         status: 'pending'
       });
 
       setSignupRequests(prev => [...prev, newRequest]);
-      toast.success('Signup request submitted!');
+      toast.success('Signup request submitted!', {
+        description: 'Your request has been sent to the administrator for review. You will be contacted once your account is approved.',
+        duration: 6000
+      });
       return true;
     } catch (err) {
       console.error('Signup error:', err);
@@ -178,11 +185,38 @@ export default function App() {
     }
   }, []);
 
-  const handleLogout = useCallback(() => {
-    setCurrentUser(null);
-    localStorage.removeItem('plv_classroom_user');
-    toast.success('Logged out successfully');
-  }, []);
+  const handleLogout = useCallback(async () => {
+    try {
+      console.log('🔴 Logout clicked - user:', currentUser?.email);
+      
+      // Sign out from Supabase Auth
+      await authService.signOut();
+      console.log('✅ Supabase signOut complete');
+      
+      // Manually clear user state (auth listener will also trigger, but this ensures immediate UI update)
+      setCurrentUser(null);
+      
+      // Clear all cached data
+      setClassrooms([]);
+      setBookingRequests([]);
+      setSignupRequests([]);
+      setSchedules([]);
+      setUsers([]);
+      
+      console.log('✅ User state cleared');
+      toast.success('Logged out successfully');
+    } catch (err) {
+      console.error('❌ Logout error:', err);
+      // Force logout even if auth service fails
+      setCurrentUser(null);
+      setClassrooms([]);
+      setBookingRequests([]);
+      setSignupRequests([]);
+      setSchedules([]);
+      setUsers([]);
+      toast.error('Logged out (with errors). Please refresh if needed.');
+    }
+  }, [currentUser]);
 
   const handleClassroomUpdate = useCallback(async (updatedClassrooms: Classroom[]) => {
     setClassrooms(updatedClassrooms);
@@ -218,27 +252,30 @@ export default function App() {
   }, []);
 
   const handleBookingRequest = useCallback(async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => {
-    // Check if the booking time is in the past
-    if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
-      toast.error('Cannot request time slots that have already passed');
-      return;
-    }
-
-    // Check for conflicts without past time validation (we already checked above)
-    const hasConflict = await checkConflicts(
-      request.classroomId,
-      request.date,
-      request.startTime,
-      request.endTime,
-      false
-    );
-
-    if (hasConflict) {
-      toast.error('Classroom conflict detected - time slot already booked');
-      return;
-    }
-
     try {
+      // Check if the booking time is in the past
+      if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
+        toast.error('Cannot request time slots that have already passed');
+        return;
+      }
+
+      // Check for conflicts with confirmed schedules and approved/pending requests
+      // Note: There's still a potential race condition here (time between check and create)
+      // In a production system, implement database-level unique constraints or use transactions
+      const hasConflict = await checkConflicts(
+        request.classroomId,
+        request.date,
+        request.startTime,
+        request.endTime,
+        false
+      );
+
+      if (hasConflict) {
+        toast.error('Classroom conflict detected - time slot already booked or has pending request');
+        return;
+      }
+
+      // Submit the booking request
       const newRequest = await bookingRequestService.create({
         ...request,
         status: 'pending'
@@ -248,7 +285,13 @@ export default function App() {
       toast.success('Classroom request submitted!');
     } catch (err) {
       console.error('Booking request error:', err);
-      toast.error('Failed to submit booking request');
+      // Check if it's a duplicate/conflict error from the database
+      const errorMessage = err instanceof Error ? err.message : '';
+      if (errorMessage.includes('conflict') || errorMessage.includes('duplicate')) {
+        toast.error('Request failed: time slot was just booked by another user');
+      } else {
+        toast.error('Failed to submit booking request. Please try again.');
+      }
     }
   }, [checkConflicts]);
 
@@ -265,6 +308,30 @@ export default function App() {
       if (request.status !== 'pending') {
         toast.error('Request has already been processed');
         return;
+      }
+
+      // If approving, verify there are no conflicts with already approved/confirmed bookings
+      if (approved) {
+        // Check if the booking time has already passed
+        if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
+          toast.error('Cannot approve: booking time has already passed');
+          return;
+        }
+
+        // Check for conflicts with existing confirmed schedules and approved requests
+        const hasConflict = await checkConflicts(
+          request.classroomId,
+          request.date,
+          request.startTime,
+          request.endTime,
+          false, // Don't check past time again (already checked above)
+          requestId // Exclude this request from conflict check
+        );
+
+        if (hasConflict) {
+          toast.error('Cannot approve: conflicts with existing confirmed booking. Please reject this request.');
+          return;
+        }
       }
 
       // Update the booking request status
@@ -301,7 +368,7 @@ export default function App() {
     }
   }, [bookingRequests]);
 
-  const handleSignupApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string) => {
+  const handleSignupApproval = useCallback(async (requestId: string, approved: boolean, password?: string, feedback?: string) => {
     try {
       const request = signupRequests.find(r => r.id === requestId);
       if (!request) {
@@ -309,32 +376,74 @@ export default function App() {
         return;
       }
 
-      const updatedRequest = await signupRequestService.update(requestId, {
-        status: approved ? 'approved' : 'rejected',
-        adminFeedback: feedback
-      });
-
-      setSignupRequests(prev =>
-        prev.map(req => req.id === requestId ? updatedRequest : req)
-      );
-
       if (approved) {
+        // Validate password is provided
+        if (!password || password.length < 8) {
+          toast.error('A valid password (min 8 characters) is required to approve the request');
+          return;
+        }
+
+        // Create the user account with the admin-provided password
         const newUser = await userService.create({
           email: request.email,
           name: request.name,
           role: 'faculty',
           department: request.department,
-          password: request.password
+          password: password // Admin-provided temporary password
         });
         
+        // Update the signup request status
+        const updatedRequest = await signupRequestService.update(requestId, {
+          status: 'approved',
+          adminFeedback: feedback || 'Account approved'
+        });
+
+        setSignupRequests(prev =>
+          prev.map(req => req.id === requestId ? updatedRequest : req)
+        );
+        
         setUsers(prev => [...prev, newUser]);
-        toast.success(`Faculty account approved for ${request.name}!`);
+        
+        // Account created successfully
+        toast.success(`Faculty account approved for ${request.name}!`, {
+          description: `Account has been created and is ready to use. Please share the credentials below with the user.`,
+          duration: 10000
+        });
+        
+        // Show the temporary password for admin to share
+        toast.info(`Login Credentials - Please Share These`, {
+          description: `Email: ${request.email}\nTemporary Password: ${password}\n\nPlease share these credentials with the user via email, phone, or in person.`,
+          duration: 20000
+        });
       } else {
-        toast.success(`Signup request rejected for ${request.name}.`);
+        // Rejection requires feedback
+        if (!feedback || !feedback.trim()) {
+          toast.error('Feedback is required when rejecting a request');
+          return;
+        }
+
+        // Just update the status to rejected
+        const updatedRequest = await signupRequestService.update(requestId, {
+          status: 'rejected',
+          adminFeedback: feedback
+        });
+
+        setSignupRequests(prev =>
+          prev.map(req => req.id === requestId ? updatedRequest : req)
+        );
+        
+        toast.success(`Signup request rejected for ${request.name}.`, {
+          description: 'Rejection notification will be sent to the applicant.',
+          duration: 5000
+        });
       }
     } catch (err) {
       console.error('Signup approval error:', err);
-      toast.error('Failed to process signup request');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      toast.error('Failed to process signup request', {
+        description: errorMessage,
+        duration: 5000
+      });
     }
   }, [signupRequests]);
 
@@ -386,34 +495,103 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Load all data from Supabase
-        await loadAllData();
-
-        // Check for stored user session
-        const storedUser = localStorage.getItem('plv_classroom_user');
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            // Verify user still exists in database
-            const dbUser = await userService.getById(parsedUser.id);
-            if (dbUser) {
-              setCurrentUser(dbUser);
-            } else {
-              localStorage.removeItem('plv_classroom_user');
-            }
-          } catch (parseError) {
-            console.warn('Failed to parse stored user data:', parseError);
-            localStorage.removeItem('plv_classroom_user');
-          }
+        console.log('🚀 Initializing app...');
+        
+        // Check if Supabase environment variables are configured
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+          console.error('❌ Missing Supabase environment variables');
+          setError('Missing Supabase configuration. Please create a .env file with your Supabase credentials.');
+          setIsLoading(false);
+          return;
         }
+
+        // Check for auth errors in URL hash (expired reset links, etc.)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const errorCode = hashParams.get('error');
+        const errorDescription = hashParams.get('error_description');
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+        
+        // Check if this is a password recovery flow
+        if (type === 'recovery' && accessToken) {
+          console.log('🔑 Password recovery flow detected');
+          setIsPasswordRecovery(true);
+          setIsLoading(false);
+          return; // Don't load data yet, show password reset page
+        }
+        
+        if (errorCode) {
+          console.error('⚠️ Auth error from URL:', errorCode, errorDescription);
+          
+          // Show user-friendly error message
+          if (errorDescription?.includes('expired') || errorCode === 'access_denied') {
+            toast.error('Link Expired', {
+              description: 'This password reset link has expired. Please request a new one.',
+              duration: 8000
+            });
+          } else {
+            toast.error('Authentication Error', {
+              description: errorDescription || 'An authentication error occurred. Please try again.',
+              duration: 8000
+            });
+          }
+          
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Load all data from Supabase
+        console.log('📊 Loading data...');
+        await loadAllData();
+        console.log('✅ Data loaded');
+
+        // Check for active Supabase Auth session
+        console.log('🔐 Checking for active session...');
+        const user = await authService.getCurrentUser();
+        if (user) {
+          console.log('✅ User session found:', user.email);
+          setCurrentUser(user);
+        } else {
+          console.log('ℹ️ No active session');
+        }
+        
+        console.log('✅ App initialized successfully');
       } catch (err) {
-        console.error('Failed to initialize app:', err);
-        setError('Failed to connect to database. Please check your Supabase configuration.');
+        console.error('❌ Failed to initialize app:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Failed to connect to database: ${errorMessage}. Please check your Supabase configuration.`);
+      } finally {
+        // ALWAYS set loading to false, no matter what happens
+        console.log('✅ Setting isLoading to false');
+        setIsLoading(false);
       }
     };
 
     initializeApp();
   }, [loadAllData]);
+
+  // Separate effect for auth state listener to ensure proper cleanup
+  useEffect(() => {
+    // Listen for auth state changes (login, logout, token refresh)
+    const { data: { subscription } } = authService.onAuthStateChange(
+      (user) => {
+        setCurrentUser(user);
+      },
+      (error) => {
+        // Handle auth errors (expired links, invalid tokens)
+        console.error('Auth error:', error);
+        toast.error('Authentication Error', {
+          description: error,
+          duration: 8000
+        });
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Show error state if initialization failed
   if (error) {
@@ -447,6 +625,28 @@ export default function App() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show password reset page if user is in recovery flow
+  if (isPasswordRecovery) {
+    return (
+      <>
+        <PasswordResetPage
+          onSuccess={() => {
+            setIsPasswordRecovery(false);
+            toast.success('You can now log in with your new password');
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+          onCancel={() => {
+            setIsPasswordRecovery(false);
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+        />
+        <Toaster />
+      </>
     );
   }
 

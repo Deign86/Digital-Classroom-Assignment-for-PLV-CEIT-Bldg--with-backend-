@@ -735,3 +735,23 @@ html {
   width: var(--rdp-cell-size);
   height: var(--rdp-cell-size);
 }
+
+/* Toast/Sonner Customization - Make description text more visible */
+[data-sonner-toast] [data-description] {
+  color: rgb(55, 65, 81) !important; /* gray-700 - much darker and more readable */
+  opacity: 1 !important;
+  font-weight: 500 !important; /* medium weight for better visibility */
+}
+
+.dark [data-sonner-toast] [data-description] {
+  color: rgb(209, 213, 219) !important; /* gray-300 - lighter for dark mode */
+}
+
+/* Make success toast descriptions even more visible */
+[data-sonner-toast][data-type="success"] [data-description] {
+  color: rgb(21, 128, 61) !important; /* green-700 - matches success theme */
+}
+
+.dark [data-sonner-toast][data-type="success"] [data-description] {
+  color: rgb(134, 239, 172) !important; /* green-300 - for dark mode */
+}

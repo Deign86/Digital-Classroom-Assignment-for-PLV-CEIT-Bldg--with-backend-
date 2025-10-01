@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Building2,
   FileText,
-  UserPlus
+  UserPlus,
+  UserCog
 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
 import ClassroomManagement from './ClassroomManagement';
@@ -24,6 +25,7 @@ import RequestApproval from './RequestApproval';
 import SignupApproval from './SignupApproval';
 import ScheduleViewer from './ScheduleViewer';
 import AdminReports from './AdminReports';
+import ProfileSettings from './ProfileSettings';
 import type { User, Classroom, BookingRequest, SignupRequest, Schedule } from '../App';
 
 interface AdminDashboardProps {
@@ -35,7 +37,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
   onClassroomUpdate: (classrooms: Classroom[]) => void;
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
-  onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  onSignupApproval: (requestId: string, approved: boolean, password?: string, feedback?: string) => void;
   onCancelSchedule: (scheduleId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
@@ -108,7 +110,7 @@ export default function AdminDashboard({
       <div className="p-4 sm:p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Layout */}
-          <TabsList className="hidden lg:grid w-full grid-cols-6 mx-auto max-w-full gap-1 p-1">
+          <TabsList className="hidden lg:grid w-full grid-cols-7 mx-auto max-w-full gap-1 p-1">
             <TabsTrigger value="overview" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
               <BarChart3 className="h-4 w-4 flex-shrink-0" />
               <span>Overview</span>
@@ -142,6 +144,10 @@ export default function AdminDashboard({
             <TabsTrigger value="reports" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
               <FileText className="h-4 w-4 flex-shrink-0" />
               <span>Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
+              <UserCog className="h-4 w-4 flex-shrink-0" />
+              <span>Settings</span>
             </TabsTrigger>
           </TabsList>
           
@@ -181,6 +187,10 @@ export default function AdminDashboard({
               <TabsTrigger value="reports" className="mobile-tab-item flex items-center space-x-2">
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 <span>Reports</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="mobile-tab-item flex items-center space-x-2">
+                <UserCog className="h-4 w-4 flex-shrink-0" />
+                <span>Settings</span>
               </TabsTrigger>
             </TabsList>
             <div className="tab-scroll-indicator"></div>
@@ -407,6 +417,12 @@ export default function AdminDashboard({
                 schedules={schedules}
                 signupRequests={signupRequests}
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="animate-in">
+              <ProfileSettings user={user} />
             </div>
           </TabsContent>
         </Tabs>

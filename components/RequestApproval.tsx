@@ -225,12 +225,18 @@ function RequestCard({
 
   React.useEffect(() => {
     const checkForConflicts = async () => {
-      const result = checkConflicts(request.classroomId, request.date, request.startTime, request.endTime);
-      if (result instanceof Promise) {
-        const conflict = await result;
-        setHasConflict(conflict);
-      } else {
-        setHasConflict(result);
+      try {
+        const result = checkConflicts(request.classroomId, request.date, request.startTime, request.endTime);
+        if (result instanceof Promise) {
+          const conflict = await result;
+          setHasConflict(conflict);
+        } else {
+          setHasConflict(result);
+        }
+      } catch (error) {
+        console.error('Error checking conflicts:', error);
+        // In case of error, assume there might be a conflict to be safe
+        setHasConflict(true);
       }
     };
 

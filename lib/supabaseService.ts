@@ -2,25 +2,45 @@ import { supabase } from './supabaseClient';
 import type { User, Classroom, BookingRequest, Schedule, SignupRequest } from '../App';
 
 // ============================================
-// USER OPERATIONS
+// USER OPERATIONS (Now uses profiles table with Supabase Auth)
 // ============================================
 
 export const userService = {
-  // Get all users
+  // Get all users from profiles
   async getAll(): Promise<User[]> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+      if (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+      }
+      
+      // Filter out any invalid users (missing required fields)
+      const validUsers = (data || []).filter(user => {
+        const isValid = user.id && user.email && user.name && user.role;
+        if (!isValid) {
+          console.warn('Invalid user found in database:', user);
+        }
+        return isValid;
+      });
+      
+      console.log(`Loaded ${validUsers.length} valid users from database`);
+      return validUsers;
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      // Return empty array instead of throwing to allow app to continue
+      return [];
+    }
   },
 
   // Get user by email
   async getByEmail(email: string): Promise<User | null> {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('email', email)
       .single();
@@ -32,7 +52,7 @@ export const userService = {
   // Get user by ID
   async getById(id: string): Promise<User | null> {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', id)
       .single();
@@ -41,22 +61,34 @@ export const userService = {
     return data;
   },
 
-  // Create new user
-  async create(user: Omit<User, 'id'>): Promise<User> {
-    const { data, error } = await supabase
-      .from('users')
-      .insert([user])
-      .select()
-      .single();
+  // Note: Login is now handled by authService.signIn() in supabaseAuth.ts
+  // Note: Signup is now handled by authService.signUp() in supabaseAuth.ts
 
-    if (error) throw error;
-    return data;
+  // Create new user (used when admin approves signup request)
+  async create(user: Omit<User, 'id'> & { password: string }): Promise<User> {
+    // Import authService dynamically to avoid circular dependency
+    const { authService } = await import('./supabaseAuth');
+    
+    // Use admin API to create user with auto-confirmed email
+    const { user: newUser, error } = await authService.createUserAsAdmin(
+      user.email,
+      user.password,
+      user.name,
+      user.role,
+      user.department
+    );
+
+    if (error || !newUser) {
+      throw new Error(error || 'Failed to create user');
+    }
+
+    return newUser;
   },
 
-  // Update user
+  // Update user profile
   async update(id: string, updates: Partial<User>): Promise<User> {
     const { data, error } = await supabase
-      .from('users')
+      .from('profiles')
       .update(updates)
       .eq('id', id)
       .select()
@@ -66,28 +98,15 @@ export const userService = {
     return data;
   },
 
-  // Delete user
+  // Delete user (cascade deletes auth.users entry)
   async delete(id: string): Promise<void> {
     const { error } = await supabase
-      .from('users')
+      .from('profiles')
       .delete()
       .eq('id', id);
 
     if (error) throw error;
   },
-
-  // Login (verify credentials)
-  async login(email: string, password: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('password', password)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  }
 };
 
 // ============================================
@@ -97,23 +116,34 @@ export const userService = {
 export const classroomService = {
   // Get all classrooms
   async getAll(): Promise<Classroom[]> {
-    const { data, error } = await supabase
-      .from('classrooms')
-      .select('*')
-      .order('name', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('classrooms')
+        .select('*')
+        .order('name', { ascending: true });
 
-    if (error) throw error;
-    
-    // Transform data to match Classroom interface
-    return (data || []).map((room: any) => ({
-      id: room.id,
-      name: room.name,
-      capacity: room.capacity,
-      equipment: room.equipment,
-      building: room.building,
-      floor: room.floor,
-      isAvailable: room.is_available
-    }));
+      if (error) {
+        console.error('Error fetching classrooms:', error);
+        throw error;
+      }
+      
+      // Transform data to match Classroom interface
+      const classrooms = (data || []).map((room: any) => ({
+        id: room.id,
+        name: room.name,
+        capacity: room.capacity,
+        equipment: room.equipment,
+        building: room.building,
+        floor: room.floor,
+        isAvailable: room.is_available
+      }));
+      
+      console.log(`Loaded ${classrooms.length} classrooms from database`);
+      return classrooms;
+    } catch (err) {
+      console.error('Failed to load classrooms:', err);
+      return [];
+    }
   },
 
   // Get classroom by ID
@@ -214,23 +244,34 @@ export const classroomService = {
 export const signupRequestService = {
   // Get all signup requests
   async getAll(): Promise<SignupRequest[]> {
-    const { data, error } = await supabase
-      .from('signup_requests')
-      .select('*')
-      .order('request_date', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('signup_requests')
+        .select('*')
+        .order('request_date', { ascending: false });
 
-    if (error) throw error;
+      if (error) {
+        console.error('Error fetching signup requests:', error);
+        throw error;
+      }
 
-    return (data || []).map((req: any) => ({
-      id: req.id,
-      email: req.email,
-      name: req.name,
-      department: req.department,
-      password: req.password,
-      requestDate: req.request_date,
-      status: req.status as 'pending' | 'approved' | 'rejected',
-      adminFeedback: req.admin_feedback
-    }));
+      const requests = (data || []).map((req: any) => ({
+        id: req.id,
+        email: req.email,
+        name: req.name,
+        department: req.department,
+        password: req.password,
+        requestDate: req.request_date,
+        status: req.status as 'pending' | 'approved' | 'rejected',
+        adminFeedback: req.admin_feedback
+      }));
+      
+      console.log(`Loaded ${requests.length} signup requests from database`);
+      return requests;
+    } catch (err) {
+      console.error('Failed to load signup requests:', err);
+      return [];
+    }
   },
 
   // Get signup request by email
@@ -324,27 +365,38 @@ export const signupRequestService = {
 export const bookingRequestService = {
   // Get all booking requests
   async getAll(): Promise<BookingRequest[]> {
-    const { data, error } = await supabase
-      .from('booking_requests')
-      .select('*')
-      .order('request_date', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('booking_requests')
+        .select('*')
+        .order('request_date', { ascending: false });
 
-    if (error) throw error;
+      if (error) {
+        console.error('Error fetching booking requests:', error);
+        throw error;
+      }
 
-    return (data || []).map((req: any) => ({
-      id: req.id,
-      facultyId: req.faculty_id,
-      facultyName: req.faculty_name,
-      classroomId: req.classroom_id,
-      classroomName: req.classroom_name,
-      date: req.date,
-      startTime: req.start_time,
-      endTime: req.end_time,
-      purpose: req.purpose,
-      status: req.status as 'pending' | 'approved' | 'rejected',
-      requestDate: req.request_date,
-      adminFeedback: req.admin_feedback
-    }));
+      const requests = (data || []).map((req: any) => ({
+        id: req.id,
+        facultyId: req.faculty_id,
+        facultyName: req.faculty_name,
+        classroomId: req.classroom_id,
+        classroomName: req.classroom_name,
+        date: req.date,
+        startTime: req.start_time,
+        endTime: req.end_time,
+        purpose: req.purpose,
+        status: req.status as 'pending' | 'approved' | 'rejected',
+        requestDate: req.request_date,
+        adminFeedback: req.admin_feedback
+      }));
+      
+      console.log(`Loaded ${requests.length} booking requests from database`);
+      return requests;
+    } catch (err) {
+      console.error('Failed to load booking requests:', err);
+      return [];
+    }
   },
 
   // Get booking requests by faculty ID
@@ -462,13 +514,14 @@ export const bookingRequestService = {
 
     if (schedError) throw schedError;
 
-    // Check approved requests (not pending ones, as we want to allow multiple pending requests for the same time)
+    // Check both approved AND pending requests to prevent double-booking
+    // This ensures that even during the approval process, conflicts are detected
     let requestQuery = supabase
       .from('booking_requests')
       .select('*')
       .eq('classroom_id', classroomId)
       .eq('date', date)
-      .eq('status', 'approved');
+      .in('status', ['pending', 'approved']);
 
     if (excludeRequestId) {
       requestQuery = requestQuery.neq('id', excludeRequestId);
@@ -478,8 +531,11 @@ export const bookingRequestService = {
     if (reqError) throw reqError;
 
     // Check for time overlaps
-    // Two time ranges overlap if one starts before the other ends
+    // Two time ranges overlap if one starts before the other ends (not at the exact same time)
+    // This allows back-to-back bookings (e.g., 9:00-10:00 and 10:00-11:00 don't conflict)
     const hasTimeConflict = (bookingStartTime: string, bookingEndTime: string) => {
+      // True overlap: intervals intersect if start1 < end2 AND end1 > start2
+      // Using < and > (not <= or >=) allows bookings to end/start at the same time
       return startTime < bookingEndTime && endTime > bookingStartTime;
     };
 
@@ -502,25 +558,36 @@ export const bookingRequestService = {
 export const scheduleService = {
   // Get all schedules
   async getAll(): Promise<Schedule[]> {
-    const { data, error } = await supabase
-      .from('schedules')
-      .select('*')
-      .order('date', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .order('date', { ascending: false });
 
-    if (error) throw error;
+      if (error) {
+        console.error('Error fetching schedules:', error);
+        throw error;
+      }
 
-    return (data || []).map((schedule: any) => ({
-      id: schedule.id,
-      classroomId: schedule.classroom_id,
-      classroomName: schedule.classroom_name,
-      facultyId: schedule.faculty_id,
-      facultyName: schedule.faculty_name,
-      date: schedule.date,
-      startTime: schedule.start_time,
-      endTime: schedule.end_time,
-      purpose: schedule.purpose,
-      status: schedule.status as 'confirmed' | 'cancelled'
-    }));
+      const schedules = (data || []).map((schedule: any) => ({
+        id: schedule.id,
+        classroomId: schedule.classroom_id,
+        classroomName: schedule.classroom_name,
+        facultyId: schedule.faculty_id,
+        facultyName: schedule.faculty_name,
+        date: schedule.date,
+        startTime: schedule.start_time,
+        endTime: schedule.end_time,
+        purpose: schedule.purpose,
+        status: schedule.status as 'confirmed' | 'cancelled'
+      }));
+      
+      console.log(`Loaded ${schedules.length} schedules from database`);
+      return schedules;
+    } catch (err) {
+      console.error('Failed to load schedules:', err);
+      return [];
+    }
   },
 
   // Get schedules by faculty ID
