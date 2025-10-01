@@ -110,8 +110,8 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full overflow-hidden">
-          <TabsTrigger value="login" className="rounded-lg">Faculty Sign In</TabsTrigger>
-          <TabsTrigger value="signup" className="rounded-lg">Faculty Request</TabsTrigger>
+          <TabsTrigger value="login">Faculty Sign In</TabsTrigger>
+          <TabsTrigger value="signup">Faculty Request</TabsTrigger>
         </TabsList>
       
         <TabsContent value="login" className="space-y-8 mt-8">
