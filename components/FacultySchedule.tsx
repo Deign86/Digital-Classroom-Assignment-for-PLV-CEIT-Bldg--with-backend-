@@ -65,12 +65,16 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
 
   const ScheduleCard = ({ schedule }: { schedule: Schedule }) => {
     const canCancel = () => {
+      if (schedule.status !== 'confirmed') return false;
+      
       // Combine date and start time to get the actual booking start datetime
-      const scheduleDateTime = new Date(`${schedule.date}T${schedule.startTime}:00`);
+      const scheduleDateTime = new Date(`${schedule.date}T${schedule.startTime}`);
       const now = new Date();
       const timeDiff = scheduleDateTime.getTime() - now.getTime();
       const hoursDiff = timeDiff / (1000 * 3600);
-      return hoursDiff > 2 && schedule.status === 'confirmed'; // Can cancel if more than 2 hours away
+      
+      // Can cancel if more than 2 hours away and booking is confirmed
+      return hoursDiff > 2;
     };
 
     return (
@@ -91,9 +95,8 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
                 {canCancel() && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <X className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
