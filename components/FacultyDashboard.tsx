@@ -15,12 +15,14 @@ import {
   AlertTriangle,
   GraduationCap,
   X,
-  BookOpen
+  BookOpen,
+  Settings
 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
 import RoomBooking from './RoomBooking';
 import RoomSearch from './RoomSearch';
 import FacultySchedule from './FacultySchedule';
+import ProfileSettings from './ProfileSettings';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
 interface FacultyDashboardProps {
@@ -155,6 +157,10 @@ export default function FacultyDashboard({
               <Calendar className="h-4 w-4 mr-2" />
               My Schedule
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex-1 px-4 py-2">
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </TabsTrigger>
           </TabsList>
           
           {/* Mobile Horizontal Scrollable Tabs */}
@@ -175,6 +181,10 @@ export default function FacultyDashboard({
               <TabsTrigger value="schedule" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
                 <Calendar className="h-4 w-4 flex-shrink-0" />
                 <span>My Schedule</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                <span>Settings</span>
               </TabsTrigger>
             </TabsList>
             <div className="tab-scroll-indicator"></div>
@@ -435,6 +445,12 @@ export default function FacultyDashboard({
                 bookingRequests={bookingRequests}
                 onCancelSchedule={onCancelSchedule}
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="animate-in">
+              <ProfileSettings user={user} />
             </div>
           </TabsContent>
         </Tabs>

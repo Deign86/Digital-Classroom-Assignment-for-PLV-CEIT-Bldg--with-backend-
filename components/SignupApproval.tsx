@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { 
@@ -13,32 +14,110 @@ import {
   Mail, 
   Building,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Lock,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
 import type { SignupRequest } from '../App';
 
 interface SignupApprovalProps {
   signupRequests?: SignupRequest[];
-  onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  onSignupApproval: (requestId: string, approved: boolean, password?: string, feedback?: string) => void;
 }
 
 export default function SignupApproval({ signupRequests = [], onSignupApproval }: SignupApprovalProps) {
   const [feedback, setFeedback] = useState<{ [key: string]: string }>({});
+  const [passwords, setPasswords] = useState<{ [key: string]: string }>({});
+  const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
+  const [copiedPassword, setCopiedPassword] = useState<{ [key: string]: boolean }>({});
 
   const pendingRequests = signupRequests.filter(request => request.status === 'pending');
   const processedRequests = signupRequests.filter(request => request.status !== 'pending');
 
-  const handleApproval = (requestId: string, approved: boolean) => {
-    const feedbackText = feedback[requestId] || '';
+  const generateRandomPassword = () => {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
     
-    // Require feedback when rejecting
-    if (!approved && !feedbackText.trim()) {
-      toast.error('Please provide a reason for rejecting this request.');
+    // Ensure at least one of each type
+    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // Uppercase
+    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // Lowercase
+    password += '0123456789'[Math.floor(Math.random() * 10)]; // Number
+    password += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // Special
+    
+    // Fill the rest
+    for (let i = password.length; i < length; i++) {
+      password += charset[Math.floor(Math.random() * charset.length)];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  const handleGeneratePassword = (requestId: string) => {
+    const newPassword = generateRandomPassword();
+    setPasswords(prev => ({ ...prev, [requestId]: newPassword }));
+    toast.success('Password generated! Make sure to copy it before approving.');
+  };
+
+  const togglePasswordVisibility = (requestId: string) => {
+    setShowPasswords(prev => ({ ...prev, [requestId]: !prev[requestId] }));
+  };
+
+  const copyToClipboard = async (requestId: string) => {
+    const password = passwords[requestId];
+    if (!password) {
+      toast.error('No password to copy');
       return;
     }
     
-    onSignupApproval(requestId, approved, feedbackText);
+    try {
+      await navigator.clipboard.writeText(password);
+      setCopiedPassword(prev => ({ ...prev, [requestId]: true }));
+      toast.success('Password copied to clipboard!', {
+        description: 'You can now share it with the user securely.'
+      });
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedPassword(prev => ({ ...prev, [requestId]: false }));
+      }, 2000);
+    } catch (err) {
+      toast.error('Failed to copy password to clipboard');
+    }
+  };
+
+  const handleApproval = (requestId: string, approved: boolean) => {
+    const feedbackText = feedback[requestId] || '';
+    const password = passwords[requestId] || '';
+    
+    if (approved) {
+      // Require password when approving
+      if (!password.trim()) {
+        toast.error('Please generate or enter a temporary password for the new user.');
+        return;
+      }
+      
+      if (password.length < 8) {
+        toast.error('Password must be at least 8 characters long.');
+        return;
+      }
+    } else {
+      // Require feedback when rejecting
+      if (!feedbackText.trim()) {
+        toast.error('Please provide a reason for rejecting this request.');
+        return;
+      }
+    }
+    
+    onSignupApproval(requestId, approved, password, feedbackText);
     setFeedback(prev => ({ ...prev, [requestId]: '' }));
+    setPasswords(prev => ({ ...prev, [requestId]: '' }));
+    setShowPasswords(prev => ({ ...prev, [requestId]: false }));
   };
 
   const getStatusBadge = (status: 'pending' | 'approved' | 'rejected') => {
@@ -101,18 +180,69 @@ export default function SignupApproval({ signupRequests = [], onSignupApproval }
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Password Input Section */}
+                  <div className="space-y-2 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <Label htmlFor={`password-${request.id}`} className="text-blue-900 font-semibold">
+                      Set Temporary Password
+                    </Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          id={`password-${request.id}`}
+                          type={showPasswords[request.id] ? 'text' : 'password'}
+                          placeholder="Enter or generate password"
+                          value={passwords[request.id] || ''}
+                          onChange={(e) => setPasswords(prev => ({ ...prev, [request.id]: e.target.value }))}
+                          className="pl-10 pr-20"
+                        />
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility(request.id)}
+                            className="text-gray-400 hover:text-gray-600"
+                            title={showPasswords[request.id] ? "Hide password" : "Show password"}
+                          >
+                            {showPasswords[request.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(request.id)}
+                            className="text-gray-400 hover:text-gray-600"
+                            title="Copy to clipboard"
+                            disabled={!passwords[request.id]}
+                          >
+                            {copiedPassword[request.id] ? 
+                              <Check className="h-4 w-4 text-green-600" /> : 
+                              <Copy className="h-4 w-4" />
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => handleGeneratePassword(request.id)}
+                        variant="outline"
+                        className="border-blue-300 hover:bg-blue-100"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Generate
+                      </Button>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      <strong>Important:</strong> Copy this password before approving. You must share it with the user securely (email, phone, or in person).
+                    </p>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor={`feedback-${request.id}`}>Admin Feedback</Label>
+                    <Label htmlFor={`feedback-${request.id}`}>Admin Feedback (Optional)</Label>
                     <Textarea
                       id={`feedback-${request.id}`}
-                      placeholder="Add comments for approval or provide reason for rejection (required when rejecting)..."
+                      placeholder="Add comments or notes for this approval..."
                       value={feedback[request.id] || ''}
                       onChange={(e) => setFeedback(prev => ({ ...prev, [request.id]: e.target.value }))}
-                      rows={3}
+                      rows={2}
                     />
-                    <p className="text-xs text-gray-500">
-                      <strong>Note:</strong> Feedback is required when rejecting requests and will be sent via email to the applicant.
-                    </p>
                   </div>
 
                   <div className="flex space-x-2">
@@ -121,7 +251,7 @@ export default function SignupApproval({ signupRequests = [], onSignupApproval }
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Account
+                      Approve & Send Email
                     </Button>
                     <Button
                       onClick={() => handleApproval(request.id, false)}
@@ -129,7 +259,7 @@ export default function SignupApproval({ signupRequests = [], onSignupApproval }
                       className="flex-1"
                     >
                       <XCircle className="h-4 w-4 mr-2" />
-                      Reject Request
+                      Reject
                     </Button>
                   </div>
                 </CardContent>

@@ -124,21 +124,18 @@ export function isPastBookingTime(date: string, time: string): boolean {
   if (!date || !time) return false;
   
   const now = new Date();
-  const bookingDate = new Date(date);
   
-  // If booking date is before today, it's definitely in the past
-  if (bookingDate.toDateString() !== now.toDateString()) {
-    return bookingDate < now;
-  }
-  
-  // If booking is for today, check the time
+  // Parse the date string and create a date object in local timezone
+  // This prevents timezone offset issues when comparing dates
+  const [year, month, day] = date.split('-').map(Number);
   const time24 = convertTo24Hour(time);
   const [hours, minutes] = time24.split(':').map(Number);
   
-  const bookingDateTime = new Date(bookingDate);
-  bookingDateTime.setHours(hours, minutes, 0, 0);
+  // Create booking datetime in local timezone
+  const bookingDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
   
   // Add a small buffer (5 minutes) to account for processing time
+  // This prevents booking requests for times that are about to pass
   const currentTimeWithBuffer = new Date(now.getTime() + 5 * 60 * 1000);
   
   return bookingDateTime <= currentTimeWithBuffer;
