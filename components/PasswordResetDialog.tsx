@@ -42,23 +42,26 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
     setIsLoading(true);
     
     try {
-      // Simplified for local storage - just show a message
       const result = await authService.resetPassword(email);
       
       if (!result.success) {
-        toast.error('Password reset not available', {
-          description: result.message
+        toast.error('Unable to send reset email', {
+          description: result.message,
+          duration: 5000
         });
       } else {
         setEmailSent(true);
-        toast.info('Password Reset (Local Mode)', {
-          description: 'In local mode, password reset is simplified. Please contact your administrator.',
-          duration: 6000
+        toast.success('Password reset email sent!', {
+          description: 'Please check your inbox for the reset link.',
+          duration: 5000
         });
       }
     } catch (err) {
       console.error('Password reset error:', err);
-      toast.error('An error occurred. Please try again.');
+      toast.error('An error occurred', {
+        description: 'Please try again or contact your administrator.',
+        duration: 5000
+      });
     } finally {
       setIsLoading(false);
     }

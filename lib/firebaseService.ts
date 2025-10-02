@@ -566,9 +566,33 @@ export const authService = {
     const auth = getFirebaseAuth();
 
     try {
+      // First, verify the email exists in our system
+      const userRecord = await fetchUserDocByEmail(email);
+      
+      if (!userRecord) {
+        // Return a generic message for security (don't reveal if email exists or not)
+        return { 
+          success: false, 
+          message: 'If this email is registered in our system, you will receive a password reset link shortly.' 
+        };
+      }
+
+      // Check if the user account is approved
+      if (userRecord.record.status !== 'approved') {
+        return { 
+          success: false, 
+          message: 'This account is not yet approved. Please contact the administrator.' 
+        };
+      }
+
+      // Email exists and user is approved, send the reset email
       await sendPasswordResetEmail(auth, email);
-      return { success: true, message: 'Password reset email sent. Please check your inbox.' };
+      return { 
+        success: true, 
+        message: 'Password reset email sent successfully. Please check your inbox.' 
+      };
     } catch (error) {
+      console.error('Password reset error:', error);
       const message = mapAuthErrorToMessage(error as { code?: string });
       return { success: false, message };
     }
