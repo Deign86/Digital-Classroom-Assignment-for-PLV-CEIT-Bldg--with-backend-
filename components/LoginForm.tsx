@@ -21,15 +21,6 @@ interface LoginFormProps {
   users: User[];
 }
 
-// Demo account information for development/testing
-// These are the DEFAULT passwords set during initial setup
-// Users may have changed their passwords, which won't be reflected here
-// TODO: Remove this in production
-const DEMO_ACCOUNT_INFO: Record<string, { password: string; label: string }> = {
-  'admin@plv.edu.ph': { password: 'admin123456', label: 'Default: admin123456' },
-  'faculty@plv.edu.ph': { password: 'faculty123', label: 'Default: faculty123' },
-};
-
 export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -320,77 +311,6 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
           </form>
         </TabsContent>
       </Tabs>
-
-      {/* Demo Credentials */}
-      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-blue-900 text-sm flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            Quick Access Demo Accounts
-          </CardTitle>
-          <CardDescription className="text-blue-700/70 text-xs">
-            Click to auto-fill login credentials
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {users
-            .sort((a, b) => {
-              // Admin first, then faculty alphabetically
-              if (a.role === 'admin' && b.role === 'faculty') return -1;
-              if (a.role === 'faculty' && b.role === 'admin') return 1;
-              return a.name.localeCompare(b.name);
-            })
-            .map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => {
-                  setEmail(user.email);
-                  // Auto-fill with default password if available
-                  const accountInfo = DEMO_ACCOUNT_INFO[user.email];
-                  if (accountInfo) {
-                    setPassword(accountInfo.password);
-                    toast.info('Demo credentials filled', {
-                      description: 'Password may have been changed if user reset it',
-                      duration: 3000
-                    });
-                  } else {
-                    toast.info('Enter password manually', {
-                      description: 'This account does not have default credentials',
-                      duration: 3000
-                    });
-                  }
-                }}
-                className="w-full text-left p-3 bg-white/70 hover:bg-white/90 rounded-xl border border-blue-200/50 hover:border-blue-300 transition-all duration-200 group"
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium text-blue-900 text-sm">
-                        {user.role === 'admin' ? 'Admin Account' : 'Faculty Account'}
-                      </p>
-                      <p className="text-blue-700/80 text-xs mt-0.5">
-                        {user.name}
-                        {user.department && user.role === 'faculty' && ` (${user.department})`}
-                      </p>
-                    </div>
-                    <div className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                  {DEMO_ACCOUNT_INFO[user.email] && (
-                    <div className="flex items-center gap-1.5 text-xs text-blue-600/70">
-                      <Lock className="h-3 w-3" />
-                      <span>{DEMO_ACCOUNT_INFO[user.email].label}</span>
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
-        </CardContent>
-      </Card>
     </div>
   );
 }
