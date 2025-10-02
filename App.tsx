@@ -17,6 +17,7 @@ import {
   scheduleService
 } from './lib/supabaseService';
 import { authService } from './lib/supabaseAuth';
+import { supabase } from './lib/supabaseClient';
 
 // Types
 export interface User {
@@ -388,16 +389,22 @@ export default function App() {
           return;
         }
 
-        // Create the user account with the admin-provided password
-        const newUser = await userService.create({
-          email: request.email,
-          name: request.name,
-          role: 'faculty',
-          department: request.department,
-          password: password // Admin-provided temporary password
-        });
+        // Approve the signup request and create user account via Edge Function
+        const { user: newUser, error } = await authService.approveSignupRequest(
+          requestId,
+          password,
+          feedback || 'Account approved'
+        );
         
-        // Update the signup request status
+        if (error || !newUser) {
+          toast.error('Failed to approve signup request', {
+            description: error || 'Unknown error occurred',
+            duration: 5000
+          });
+          return;
+        }
+        
+        // Update the signup request status locally
         const updatedRequest = await signupRequestService.update(requestId, {
           status: 'approved',
           adminFeedback: feedback || 'Account approved'
@@ -520,6 +527,31 @@ export default function App() {
         // Check if this is a password recovery flow
         if (type === 'recovery' && accessToken) {
           console.log('🔑 Password recovery flow detected');
+          
+          // Exchange the recovery token for a session
+          const refreshToken = hashParams.get('refresh_token');
+          if (refreshToken) {
+            console.log('🔄 Setting session from recovery tokens...');
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            
+            if (sessionError) {
+              console.error('❌ Failed to set recovery session:', sessionError);
+              toast.error('Invalid Recovery Link', {
+                description: 'This password reset link is invalid or expired. Please request a new one.',
+                duration: 8000
+              });
+              // Clean up URL
+              window.history.replaceState({}, document.title, window.location.pathname);
+              setIsLoading(false);
+              return;
+            }
+            
+            console.log('✅ Recovery session established');
+          }
+          
           setIsPasswordRecovery(true);
           setIsLoading(false);
           return; // Don't load data yet, show password reset page
@@ -545,20 +577,21 @@ export default function App() {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
 
+        // Check for active Supabase Auth session and validate it
+        console.log('� Checking for active session...');
+        const user = await authService.getCurrentUser();
+        
+        if (user) {
+          console.log('✅ Valid user session found:', user.email);
+          setCurrentUser(user);
+        } else {
+          console.log('ℹ️ No valid session found');
+        }
+
         // Load all data from Supabase
         console.log('📊 Loading data...');
         await loadAllData();
         console.log('✅ Data loaded');
-
-        // Check for active Supabase Auth session
-        console.log('🔐 Checking for active session...');
-        const user = await authService.getCurrentUser();
-        if (user) {
-          console.log('✅ User session found:', user.email);
-          setCurrentUser(user);
-        } else {
-          console.log('ℹ️ No active session');
-        }
         
         console.log('✅ App initialized successfully');
       } catch (err) {
@@ -580,7 +613,15 @@ export default function App() {
     // Listen for auth state changes (login, logout, token refresh)
     const { data: { subscription } } = authService.onAuthStateChange(
       (user) => {
-        setCurrentUser(user);
+        console.log('👤 Auth state changed, new user:', user?.email || 'none');
+        // Only update if user actually changed to prevent loops
+        setCurrentUser(prevUser => {
+          if (prevUser?.id === user?.id) {
+            console.log('ℹ️ Same user, skipping update');
+            return prevUser;
+          }
+          return user;
+        });
       },
       (error) => {
         // Handle auth errors (expired links, invalid tokens)
