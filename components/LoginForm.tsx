@@ -12,7 +12,12 @@ import PasswordResetDialog from './PasswordResetDialog';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => boolean | Promise<boolean>;
-  onSignup: (email: string, name: string, department: string) => boolean | Promise<boolean>;
+  onSignup: (
+    email: string,
+    name: string,
+    department: string,
+    password: string
+  ) => boolean | Promise<boolean>;
   users: User[];
 }
 
@@ -32,7 +37,9 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     email: '',
     firstName: '',
     lastName: '',
-    department: ''
+    department: '',
+    password: '',
+    confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
@@ -77,11 +84,27 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
       return;
     }
 
+    if (!signupData.password) {
+      toast.error('Please create a password');
+      return;
+    }
+
+    if (signupData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (signupData.password !== signupData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
     const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
     const success = await onSignup(
       signupData.email,
       fullName,
-      signupData.department
+      signupData.department,
+      signupData.password
     );
     
     if (success) {
@@ -89,7 +112,9 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
         email: '',
         firstName: '',
         lastName: '',
-        department: ''
+        department: '',
+        password: '',
+        confirmPassword: ''
       });
       // Automatically switch to login tab after successful signup
       setTimeout(() => {
@@ -238,15 +263,48 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-password">Create Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    placeholder="Enter a strong password"
+                    value={signupData.password}
+                    onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
+                    className="pl-10 h-12 rounded-xl"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Minimum 8 characters. Mix letters, numbers, and symbols for a stronger password.
+                </p>
+              </div>
 
-              {/* Info message about password */}
+              <div className="space-y-2">
+                <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="signup-confirm-password"
+                    type="password"
+                    placeholder="Re-enter your password"
+                    value={signupData.confirmPassword}
+                    onChange={(e) => setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="pl-10 h-12 rounded-xl"
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <Lock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-900">Password Setup</p>
+                    <p className="text-sm font-medium text-blue-900">Account Review</p>
                     <p className="text-xs text-blue-700">
-                      Your password will be set by the administrator upon approval. You will receive it via email along with your approval notification.
+                      You can sign in with this password once the administrator approves your request. If the request is rejected, the account will remain inactive.
                     </p>
                   </div>
                 </div>

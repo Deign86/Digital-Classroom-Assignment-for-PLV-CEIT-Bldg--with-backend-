@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Lock, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { authService } from '../lib/localStorageService';
+import { authService } from '../lib/firebaseService';
 
 interface PasswordResetPageProps {
   onSuccess: () => void;

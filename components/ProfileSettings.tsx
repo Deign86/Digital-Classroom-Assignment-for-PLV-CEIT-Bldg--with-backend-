@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
-import { authService } from '../lib/localStorageService';
+import { authService } from '../lib/firebaseService';
 
 interface ProfileSettingsProps {
   user: User;

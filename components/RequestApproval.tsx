@@ -51,8 +51,8 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
     <div className="space-y-6">
       <div className="flex flex-col space-y-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Booking Request Management</h2>
-          <p className="text-gray-600 mt-1">Review and manage classroom booking requests</p>
+          <h2 className="text-2xl font-bold tracking-tight">Classroom Reservation Management</h2>
+          <p className="text-gray-600 mt-1">Review and manage classroom reservation requests</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -78,7 +78,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                   <Clock className="h-16 w-16 text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Requests</h3>
                   <p className="text-gray-500 text-center max-w-md">
-                    All caught up! There are no pending booking requests at the moment.
+                    All caught up! There are no pending reservations at the moment.
                   </p>
                 </CardContent>
               </Card>
@@ -105,7 +105,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                   <CheckCircle className="h-16 w-16 text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Approved Requests</h3>
                   <p className="text-gray-500 text-center max-w-md">
-                    No booking requests have been approved yet.
+                    No reservations have been approved yet.
                   </p>
                 </CardContent>
               </Card>
@@ -132,7 +132,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                   <XCircle className="h-16 w-16 text-gray-300 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rejected Requests</h3>
                   <p className="text-gray-500 text-center max-w-md">
-                    No booking requests have been rejected.
+                    No reservations have been rejected.
                   </p>
                 </CardContent>
               </Card>
@@ -158,12 +158,12 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'approve' ? 'Approve' : 'Reject'} Booking Request
+              {actionType === 'approve' ? 'Approve' : 'Reject'} Reservation
             </DialogTitle>
             <DialogDescription>
               {actionType === 'approve' 
-                ? 'Approve this classroom booking request. You can provide feedback to the faculty member.'
-                : 'Reject this classroom booking request. Please provide a reason for rejection.'}
+                ? 'Approve this classroom reservation. You can provide feedback to the faculty member.'
+                : 'Reject this classroom reservation. Please provide a reason for rejection.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

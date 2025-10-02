@@ -15,7 +15,7 @@ import {
   signupRequestService,
   bookingRequestService,
   scheduleService
-} from './lib/localStorageService';
+} from './lib/firebaseService';
 
 // Types
 export interface User {
@@ -24,18 +24,19 @@ export interface User {
   name: string;
   role: 'admin' | 'faculty';
   department?: string;
-  password?: string; // Stored securely (hashed/encrypted) in production; in local mode it's stored directly
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface SignupRequest {
   id: string;
+  userId: string;
   email: string;
   name: string;
   department: string;
-  password: string;
   requestDate: string;
   status: 'pending' | 'approved' | 'rejected';
   adminFeedback?: string;
+  resolvedAt?: string;
 }
 
 export interface Classroom {
@@ -84,6 +85,7 @@ export default function App() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // All hooks must be at the top level - move memoized data here
@@ -133,6 +135,8 @@ export default function App() {
       const user = await authService.signIn(email, password);
       if (user) {
         setCurrentUser(user);
+        // Load all data after successful login
+        await loadAllData();
         toast.success(`Welcome back, ${user.name}!`);
         return true;
       }
@@ -145,46 +149,152 @@ export default function App() {
       return false;
     } catch (err) {
       console.error('Login error:', err);
-      toast.error('Login failed');
-      return false;
-    }
-  }, []);
-
-  const handleSignup = useCallback(async (email: string, name: string, department: string) => {
-    try {
-      const existingUser = await userService.getByEmail(email);
-      const existingRequest = await signupRequestService.getByEmail(email);
       
-      if (existingUser) {
-        toast.error('Email already registered');
-        return false;
+      // Check for specific status errors (pending/rejected accounts)
+      if (err instanceof Error && 'status' in err) {
+        const status = (err as { status: SignupRequest['status'] }).status;
+        if (status === 'pending') {
+          toast.info('Awaiting approval', {
+            description: 'Your account is pending administrator approval. Watch your email for updates.',
+            duration: 6000,
+          });
+          return false;
+        } else if (status === 'rejected') {
+          toast.error('Account rejected', {
+            description: 'Please contact the administrator for assistance.',
+            duration: 6000,
+          });
+          return false;
+        }
       }
       
-      if (existingRequest) {
-        toast.error('Request already pending');
-        return false;
+      // Handle Firebase auth errors
+      let message = 'Please check your email and password and try again.';
+      if (err && typeof err === 'object' && 'code' in err) {
+        const code = (err as { code?: string }).code;
+        switch (code) {
+          case 'auth/invalid-email':
+            message = 'Invalid email address format.';
+            break;
+          case 'auth/user-not-found':
+            message = 'No account found with this email address.';
+            break;
+          case 'auth/wrong-password':
+            message = 'Incorrect password. Please try again.';
+            break;
+          case 'auth/too-many-requests':
+            message = 'Too many failed login attempts. Please try again later.';
+            break;
+          case 'auth/user-disabled':
+            message = 'This account has been disabled.';
+            break;
+          case 'permission-denied':
+            message = 'Permission denied. Please contact administrator.';
+            break;
+          default:
+            // Show the actual Firebase error message if available
+            if ('message' in err && typeof err.message === 'string') {
+              message = err.message;
+            } else {
+              message = `Authentication error: ${code}`;
+            }
+        }
+      } else if (err instanceof Error && err.message) {
+        message = err.message;
       }
-
-      // Create signup request (password will be set by admin upon approval)
-      const newRequest = await signupRequestService.create({
-        email,
-        name,
-        department,
-        password: '', // Placeholder - admin sets this on approval
-      });
-
-      setSignupRequests(prev => [...prev, newRequest]);
-      toast.success('Signup request submitted!', {
-        description: 'Your request has been sent to the administrator for review. You will be contacted once your account is approved.',
-        duration: 6000
-      });
-      return true;
-    } catch (err) {
-      console.error('Signup error:', err);
-      toast.error('Signup failed');
+      
+      toast.error('Login failed', { description: message, duration: 6000 });
       return false;
     }
-  }, []);
+  }, [loadAllData]);
+
+  const handleSignup = useCallback(
+    async (email: string, name: string, department: string, password: string) => {
+      try {
+        // Check for duplicate requests (optional - don't fail signup if this fails)
+        try {
+          const pendingRequest = await signupRequestService.getByEmail(email);
+          if (pendingRequest) {
+            toast.error('Request already pending', {
+              description: 'Please wait for an administrator to review your existing request.',
+            });
+            return false;
+          }
+        } catch (checkError) {
+          console.warn('Could not check for existing requests:', checkError);
+          // Continue with signup anyway
+        }
+
+        const { request } = await authService.registerFaculty(email, password, name, department);
+
+        setSignupRequests((prev) => {
+          const withoutDuplicate = prev.filter((existing) => existing.id !== request.id);
+          return [request, ...withoutDuplicate];
+        });
+
+        // Try to load user data (optional - don't fail signup if this fails)
+        try {
+          const maybeUser = await userService.getByEmail(email);
+          if (maybeUser) {
+            setUsers((prev) => {
+              const others = prev.filter((user) => user.id !== maybeUser.id);
+              return [...others, maybeUser];
+            });
+          }
+        } catch (userError) {
+          console.warn('Could not load user data:', userError);
+          // Continue anyway - the signup was successful
+        }
+
+        toast.success('Signup request submitted!', {
+          description:
+            'Your account has been created with pending status. An administrator will approve your access shortly.',
+          duration: 6000,
+        });
+        return true;
+      } catch (err) {
+        console.error('Signup error:', err);
+        let message = 'Unable to submit signup request.';
+        
+        if (err && typeof err === 'object') {
+          // Check for Firebase error code first
+          if ('code' in err) {
+            const code = (err as { code?: string }).code;
+            switch (code) {
+              case 'auth/email-already-in-use':
+                message = 'This email already has an account. Try signing in or resetting your password.';
+                break;
+              case 'auth/weak-password':
+                message = 'Password should be at least 6 characters and hard to guess.';
+                break;
+              case 'auth/password-does-not-meet-requirements':
+                message = 'Password must contain uppercase letter, lowercase letter, number, and special character.';
+                break;
+              case 'permission-denied':
+                message = 'Permission denied. Please check Firebase security rules.';
+                break;
+              default:
+                // If we have a message property, use it
+                if ('message' in err && typeof err.message === 'string') {
+                  message = err.message;
+                } else {
+                  message = `Firebase error: ${code}`;
+                }
+            }
+          } else if ('message' in err && typeof err.message === 'string') {
+            // Use the error message directly if available
+            message = err.message;
+          }
+        } else if (err instanceof Error && err.message) {
+          message = err.message;
+        }
+
+        toast.error('Signup failed', { description: message, duration: 8000 });
+        return false;
+      }
+    },
+    []
+  );
 
   const handleLogout = useCallback(async () => {
     try {
@@ -329,10 +439,16 @@ export default function App() {
       }
 
       // Update the booking request status
-      const updatedRequest = await bookingRequestService.update(requestId, {
-        status: approved ? 'approved' : 'rejected',
-        adminFeedback: feedback
-      });
+      const updateData: { status: 'approved' | 'rejected'; adminFeedback?: string } = {
+        status: approved ? 'approved' : 'rejected'
+      };
+      
+      // Only include adminFeedback if it's provided
+      if (feedback && feedback.trim()) {
+        updateData.adminFeedback = feedback.trim();
+      }
+      
+      const updatedRequest = await bookingRequestService.update(requestId, updateData);
 
       setBookingRequests(prev =>
         prev.map(req => req.id === requestId ? updatedRequest : req)
@@ -362,85 +478,97 @@ export default function App() {
     }
   }, [bookingRequests]);
 
-  const handleSignupApproval = useCallback(async (requestId: string, approved: boolean, password?: string, feedback?: string) => {
-    try {
-      const request = signupRequests.find(r => r.id === requestId);
-      if (!request) {
-        toast.error('Request not found');
-        return;
-      }
-
-      if (approved) {
-        // Validate password is provided
-        if (!password || password.length < 8) {
-          toast.error('A valid password (min 8 characters) is required to approve the request');
+  const handleSignupApproval = useCallback(
+    async (requestId: string, approved: boolean, feedback?: string) => {
+      try {
+        const request = signupRequests.find((r) => r.id === requestId);
+        if (!request) {
+          toast.error('Request not found');
           return;
         }
 
-        // Create new user account
-        const newUser = await userService.create({
-          email: request.email,
-          name: request.name,
-          role: 'faculty',
-          department: request.department,
-          password,
-        });
-        
-        // Update the signup request status
-        const updatedRequest = await signupRequestService.update(requestId, {
-          status: 'approved',
-          adminFeedback: feedback || 'Account approved',
-          password: password, // Store password for reference (in production, this should be hashed)
-        });
-
-        setSignupRequests(prev =>
-          prev.map(req => req.id === requestId ? updatedRequest : req)
-        );
-        
-        setUsers(prev => [...prev, newUser]);
-        
-        // Account created successfully
-        toast.success(`Faculty account approved for ${request.name}!`, {
-          description: `Account has been created and is ready to use. Please share the credentials with the user.`,
-          duration: 10000
-        });
-        
-        // Show the credentials for admin to share
-        toast.info(`Login Credentials - Please Share These`, {
-          description: `Email: ${request.email}\nPassword: ${password}\n\nPlease share these credentials with the user.`,
-          duration: 20000
-        });
-      } else {
-        // Rejection requires feedback
-        if (!feedback || !feedback.trim()) {
-          toast.error('Feedback is required when rejecting a request');
+        if (request.status !== 'pending') {
+          toast.error('Request has already been processed');
           return;
         }
 
-        // Just update the status to rejected
-        const updatedRequest = await signupRequestService.update(requestId, {
-          status: 'rejected',
-          adminFeedback: feedback
-        });
+        const resolvedAt = new Date().toISOString();
 
-        setSignupRequests(prev =>
-          prev.map(req => req.id === requestId ? updatedRequest : req)
-        );
-        
-        toast.success(`Signup request rejected for ${request.name}.`, {
-          description: 'Rejection notification will be sent to the applicant.',
-          duration: 5000
+        if (approved) {
+          const updatedRequest = await signupRequestService.update(requestId, {
+            status: 'approved',
+            adminFeedback: feedback || 'Account approved',
+            resolvedAt,
+          });
+
+          const updatedUser = await userService.updateStatus(request.userId, 'approved', {
+            name: request.name,
+            department: request.department,
+            role: 'faculty',
+          });
+
+          setSignupRequests((prev) =>
+            prev.map((entry) => (entry.id === requestId ? updatedRequest : entry))
+          );
+
+          setUsers((prev) => {
+            const existingIndex = prev.findIndex((user) => user.id === updatedUser.id);
+            if (existingIndex === -1) {
+              return [...prev, updatedUser];
+            }
+            const copy = [...prev];
+            copy[existingIndex] = updatedUser;
+            return copy;
+          });
+
+          toast.success(`Faculty account approved for ${request.name}!`, {
+            description: 'They can now sign in with the password they created during signup.',
+            duration: 8000,
+          });
+        } else {
+          if (!feedback || !feedback.trim()) {
+            toast.error('Feedback is required when rejecting a request');
+            return;
+          }
+
+          const updatedRequest = await signupRequestService.update(requestId, {
+            status: 'rejected',
+            adminFeedback: feedback,
+            resolvedAt,
+          });
+
+          const updatedUser = await userService.updateStatus(request.userId, 'rejected');
+
+          setSignupRequests((prev) =>
+            prev.map((entry) => (entry.id === requestId ? updatedRequest : entry))
+          );
+
+          setUsers((prev) => {
+            const existingIndex = prev.findIndex((user) => user.id === updatedUser.id);
+            if (existingIndex === -1) {
+              return [...prev, updatedUser];
+            }
+            const copy = [...prev];
+            copy[existingIndex] = updatedUser;
+            return copy;
+          });
+
+          toast.success(`Signup request rejected for ${request.name}.`, {
+            description: 'The applicant will not be able to sign in until a new request is approved.',
+            duration: 6000,
+          });
+        }
+      } catch (err) {
+        console.error('Signup approval error:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        toast.error('Failed to process signup request', {
+          description: errorMessage,
+          duration: 5000,
         });
       }
-    } catch (err) {
-      console.error('Signup approval error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      toast.error('Failed to process signup request', {
-        description: errorMessage,
-        duration: 5000
-      });
-    }
-  }, [signupRequests]);
+    },
+    [signupRequests]
+  );
 
   const handleCancelSchedule = useCallback(async (scheduleId: string) => {
     try {
@@ -497,14 +625,14 @@ export default function App() {
         if (user) {
           console.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
+          
+          // Only load data if user is authenticated
+          console.log('📊 Loading data...');
+          await loadAllData();
+          console.log('✅ Data loaded');
         } else {
           console.log('ℹ️ No valid session found');
         }
-
-        // Load all data from local storage
-        console.log('📊 Loading data...');
-        await loadAllData();
-        console.log('✅ Data loaded');
         
         console.log('✅ App initialized successfully');
       } catch (err) {
@@ -512,8 +640,9 @@ export default function App() {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(`Failed to load application data: ${errorMessage}. Please refresh the page.`);
       } finally {
-        // ALWAYS set loading to false, no matter what happens
+        // Mark that auth has been checked and stop loading
         console.log('✅ Setting isLoading to false');
+        setIsAuthChecked(true);
         setIsLoading(false);
       }
     };
@@ -525,14 +654,24 @@ export default function App() {
   useEffect(() => {
     // Listen for auth state changes (login, logout, token refresh)
     const { data: { subscription } } = authService.onAuthStateChange(
-      (user) => {
+      async (user) => {
         console.log('👤 Auth state changed, new user:', user?.email || 'none');
+        
         // Only update if user actually changed to prevent loops
         setCurrentUser(prevUser => {
           if (prevUser?.id === user?.id) {
             console.log('ℹ️ Same user, skipping update');
             return prevUser;
           }
+          
+          // If a new user logged in and we have no data yet, load it
+          if (user && !prevUser) {
+            console.log('📊 New user detected, loading data...');
+            loadAllData().catch(err => {
+              console.error('Failed to load data after auth change:', err);
+            });
+          }
+          
           return user;
         });
       },
@@ -573,8 +712,9 @@ export default function App() {
     );
   }
 
-  // Show loading state during initialization with timeout fallback
-  if (isLoading) {
+  // Show loading state during initialization - only show this if auth hasn't been checked yet
+  // This prevents the flash of login page while checking auth state
+  if (!isAuthChecked || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -587,6 +727,7 @@ export default function App() {
     );
   }
 
+  // Only show login page after auth has been checked and confirmed there's no user
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col">
