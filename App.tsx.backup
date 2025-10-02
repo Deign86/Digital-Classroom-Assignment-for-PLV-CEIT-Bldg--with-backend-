@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import LoginForm from './components/LoginForm';
 import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
+import PasswordResetPage from './components/PasswordResetPage';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Toaster } from './components/ui/sonner';
@@ -24,7 +25,7 @@ export interface User {
   name: string;
   role: 'admin' | 'faculty';
   department?: string;
-  password?: string; // Stored securely (hashed/encrypted) in production; in local mode it's stored directly
+  // Password removed - now managed securely by Supabase Auth
 }
 
 export interface SignupRequest {
@@ -85,6 +86,7 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -97,7 +99,7 @@ export default function App() {
     return bookingRequests.filter(r => r.facultyId === currentUser.id);
   }, [bookingRequests, currentUser]);
 
-  // Load all data from local storage
+  // Load all data from Supabase
   const loadAllData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -133,6 +135,7 @@ export default function App() {
       const user = await authService.signIn(email, password);
       if (user) {
         setCurrentUser(user);
+        // Don't store in localStorage - Supabase handles session management
         toast.success(`Welcome back, ${user.name}!`);
         return true;
       }
@@ -190,7 +193,11 @@ export default function App() {
     try {
       console.log('🔴 Logout clicked - user:', currentUser?.email);
       
+      // Sign out from Supabase Auth
       await authService.signOut();
+      console.log('✅ Supabase signOut complete');
+      
+      // Manually clear user state (auth listener will also trigger, but this ensures immediate UI update)
       setCurrentUser(null);
       
       // Clear all cached data
@@ -383,7 +390,6 @@ export default function App() {
           name: request.name,
           role: 'faculty',
           department: request.department,
-          password,
         });
         
         // Update the signup request status
@@ -491,7 +497,77 @@ export default function App() {
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing app...');
+        
+        // Check if Supabase environment variables are configured
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+          console.error('❌ Missing Supabase environment variables');
+          setError('Missing Supabase configuration. Please create a .env file with your Supabase credentials.');
+          setIsLoading(false);
+          return;
+        }
 
+        // Check for auth errors in URL hash (expired reset links, etc.)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const errorCode = hashParams.get('error');
+        const errorDescription = hashParams.get('error_description');
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+        
+        // Check if this is a password recovery flow
+        if (type === 'recovery' && accessToken) {
+          console.log('🔑 Password recovery flow detected');
+          
+          // Exchange the recovery token for a session
+          const refreshToken = hashParams.get('refresh_token');
+          if (refreshToken) {
+            console.log('🔄 Setting session from recovery tokens...');
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            
+            if (sessionError) {
+              console.error('❌ Failed to set recovery session:', sessionError);
+              toast.error('Invalid Recovery Link', {
+                description: 'This password reset link is invalid or expired. Please request a new one.',
+                duration: 8000
+              });
+              // Clean up URL
+              window.history.replaceState({}, document.title, window.location.pathname);
+              setIsLoading(false);
+              return;
+            }
+            
+            console.log('✅ Recovery session established');
+          }
+          
+          setIsPasswordRecovery(true);
+          setIsLoading(false);
+          return; // Don't load data yet, show password reset page
+        }
+        
+        if (errorCode) {
+          console.error('⚠️ Auth error from URL:', errorCode, errorDescription);
+          
+          // Show user-friendly error message
+          if (errorDescription?.includes('expired') || errorCode === 'access_denied') {
+            toast.error('Link Expired', {
+              description: 'This password reset link has expired. Please request a new one.',
+              duration: 8000
+            });
+          } else {
+            toast.error('Authentication Error', {
+              description: errorDescription || 'An authentication error occurred. Please try again.',
+              duration: 8000
+            });
+          }
+          
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Check for active Supabase Auth session and validate it
+        console.log('� Checking for active session...');
         const user = await authService.getCurrentUser();
         
         if (user) {
@@ -501,7 +577,7 @@ export default function App() {
           console.log('ℹ️ No valid session found');
         }
 
-        // Load all data from local storage
+        // Load all data from Supabase
         console.log('📊 Loading data...');
         await loadAllData();
         console.log('✅ Data loaded');
@@ -510,7 +586,7 @@ export default function App() {
       } catch (err) {
         console.error('❌ Failed to initialize app:', err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError(`Failed to load application data: ${errorMessage}. Please refresh the page.`);
+        setError(`Failed to connect to database: ${errorMessage}. Please check your Supabase configuration.`);
       } finally {
         // ALWAYS set loading to false, no matter what happens
         console.log('✅ Setting isLoading to false');
@@ -587,6 +663,8 @@ export default function App() {
     );
   }
 
+  // Password recovery is simplified for local storage - handled in LoginForm
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col">
@@ -616,13 +694,11 @@ export default function App() {
     );
   }
 
-  const activeUser = currentUser!;
-
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex-1">
-          {activeUser.role === 'admin' ? (
+          {currentUser.role === 'admin' ? (
             <AdminDashboard {...adminDashboardProps} />
           ) : (
             <FacultyDashboard {...facultyDashboardProps} />

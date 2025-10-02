@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
-import { authService } from '../lib/supabaseAuth';
+import { authService } from '../lib/localStorageService';
 
 interface ProfileSettingsProps {
   user: User;
@@ -61,11 +61,11 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     setIsChangingPassword(true);
 
     try {
-      const { error } = await authService.updatePassword(passwordData.newPassword);
+      const result = await authService.updatePassword(passwordData.newPassword);
 
-      if (error) {
+      if (!result.success) {
         toast.error('Failed to update password', {
-          description: error
+          description: result.message
         });
       } else {
         toast.success('Password updated successfully!', {
@@ -91,11 +91,11 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
 
   const handleRequestPasswordReset = async () => {
     try {
-      const { error } = await authService.requestPasswordReset(user.email);
-      
-      if (error) {
+      const result = await authService.resetPassword(user.email);
+
+      if (!result.success) {
         toast.error('Failed to send reset email', {
-          description: error
+          description: result.message
         });
       } else {
         toast.success('Password reset email sent!', {

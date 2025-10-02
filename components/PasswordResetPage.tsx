@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Lock, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { authService } from '../lib/supabaseAuth';
+import { authService } from '../lib/localStorageService';
 
 interface PasswordResetPageProps {
   onSuccess: () => void;
@@ -95,37 +95,27 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
 
     try {
       console.log('🔑 Starting password update...');
-      const { error } = await authService.updatePassword(newPassword);
+      const result = await authService.updatePassword(newPassword);
 
-      if (error) {
-        console.error('❌ Password update failed:', error);
+      if (!result.success) {
+        console.error('❌ Password update failed:', result.message);
         setIsLoading(false);
-        
-        if (error.includes('timed out') || error.includes('timeout')) {
-          toast.error('Request Timed Out', {
-            description: 'The password reset took too long. Please check your internet connection and try again.',
-            duration: 8000
-          });
-        } else if (error.includes('expired') || error.includes('invalid')) {
-          toast.error('Link Expired', {
-            description: 'This password reset link has expired. Please request a new one.',
-            duration: 8000
-          });
-          setIsValidLink(false);
-        } else {
-          toast.error('Failed to reset password', { description: error });
-        }
-      } else {
-        console.log('✅ Password update successful');
-        // Success - wait a moment for the auth state to update, then call onSuccess
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setIsLoading(false);
-        toast.success('Password reset successful!', {
-          description: 'You can now log in with your new password.',
-          duration: 6000
+        toast.error('Failed to reset password', {
+          description: result.message,
+          duration: 8000
         });
-        onSuccess();
+        return;
       }
+
+      console.log('✅ Password update successful');
+      // Success - wait a moment for the auth state to update, then call onSuccess
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setIsLoading(false);
+      toast.success('Password reset successful!', {
+        description: 'You can now log in with your new password.',
+        duration: 6000
+      });
+      onSuccess();
     } catch (err) {
       console.error('❌ Password reset error:', err);
       setIsLoading(false);

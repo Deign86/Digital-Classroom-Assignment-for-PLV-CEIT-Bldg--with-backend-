@@ -12,7 +12,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { authService } from '../lib/supabaseAuth';
+import { authService } from '../lib/localStorageService';
 
 interface PasswordResetDialogProps {
   children: React.ReactNode;
@@ -42,36 +42,17 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
     setIsLoading(true);
     
     try {
-      // First, check if the email exists in our system
-      const { exists, error: checkError } = await authService.checkEmailExists(email);
+      // Simplified for local storage - just show a message
+      const result = await authService.resetPassword(email);
       
-      if (checkError) {
-        toast.error('Unable to verify email', {
-          description: 'Please check your connection and try again.'
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      if (!exists) {
-        toast.error('Email not found', {
-          description: 'This email is not registered in our system. Please check your email or contact admin.'
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Email exists, proceed with password reset
-      const { error } = await authService.requestPasswordReset(email);
-      
-      if (error) {
-        toast.error('Failed to send reset email', {
-          description: error
+      if (!result.success) {
+        toast.error('Password reset not available', {
+          description: result.message
         });
       } else {
         setEmailSent(true);
-        toast.success('Password reset email sent!', {
-          description: 'Check your inbox for instructions to reset your password.',
+        toast.info('Password Reset (Local Mode)', {
+          description: 'In local mode, password reset is simplified. Please contact your administrator.',
           duration: 6000
         });
       }

@@ -22,8 +22,7 @@ interface LoginFormProps {
 // TODO: Remove this in production
 const DEMO_ACCOUNT_INFO: Record<string, { password: string; label: string }> = {
   'admin@plv.edu.ph': { password: 'admin123456', label: 'Default: admin123456' },
-  'faculty1@plv.edu.ph': { password: 'faculty123', label: 'Default: faculty123' },
-  'faculty2@plv.edu.ph': { password: 'faculty123', label: 'Default: faculty123' },
+  'faculty@plv.edu.ph': { password: 'faculty123', label: 'Default: faculty123' },
 };
 
 export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) {

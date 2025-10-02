@@ -1,152 +1,301 @@
-# PLV CEIT Digital Classroom Assignment Program
+# Digital Classroom Assignment System (Local Edition)# PLV CEIT Digital Classroom Assignment Program
 
-A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features full backend integration with Supabase for real-time data persistence, user authentication, and multi-user support.
 
-## 🎯 Overview
 
-This application provides a streamlined solution for managing classroom assignments and bookings at PLV CEIT. It features role-based access control with separate dashboards for administrators and faculty members, real-time conflict detection, comprehensive reporting capabilities, and secure authentication powered by Supabase.
+A classroom booking and management experience for Pamantasan ng Lungsod ng Valenzuela – CEIT that now runs entirely in the browser using `localStorage`. This build is perfect for demonstrations, rapid UI iteration, or as a starting point before wiring up a real backend.A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features full backend integration with Supabase for real-time data persistence, user authentication, and multi-user support.
 
-## ✨ Key Features
 
-### For Administrators (Registrar)
-- **Classroom Management**: Add, edit, and manage classroom inventory with real-time database updates
+
+---## 🎯 Overview
+
+
+
+## ✨ HighlightsThis application provides a streamlined solution for managing classroom assignments and bookings at PLV CEIT. It features role-based access control with separate dashboards for administrators and faculty members, real-time conflict detection, comprehensive reporting capabilities, and secure authentication powered by Supabase.
+
+
+
+- **Local-first experience** – all data lives in the browser, with sensible seed data for instant demos.## ✨ Key Features
+
+- **Role-aware dashboards** – rich admin tooling plus a focused faculty view.
+
+- **Conflict-aware scheduling** – prevents double-bookings with the same validation logic used in the original backend.### For Administrators (Registrar)
+
+- **Polished UI toolkit** – built with React 19, TypeScript, Tailwind CSS 4, Radix UI, Framer Motion, and Sonner toasts.- **Classroom Management**: Add, edit, and manage classroom inventory with real-time database updates
+
 - **Request Approval**: Review and approve/reject booking and signup requests with admin feedback
-- **Conflict Detection**: Automatic detection of scheduling conflicts across all bookings
+
+---- **Conflict Detection**: Automatic detection of scheduling conflicts across all bookings
+
 - **Comprehensive Reports**: Generate utilization and booking reports with filtering
-- **User Management**: Approve new faculty signup requests and manage user accounts
+
+## 🧱 Technology Stack- **User Management**: Approve new faculty signup requests and manage user accounts
+
 - **Profile Management**: Update profile information and change password securely
 
-### For Faculty
-- **User Registration**: Self-service signup with admin approval workflow
-- **Room Booking**: Request classrooms with date and time selection
-- **Availability Search**: Search for available classrooms by date, time, and equipment
-- **Schedule Viewing**: View personal and all classroom schedules in real-time
-- **Request Tracking**: Monitor status of booking requests with admin feedback
-- **Profile Settings**: Update personal information and manage account settings
+| Layer        | Tools |
+
+|--------------|-------|### For Faculty
+
+| Framework    | React 19 + TypeScript |- **User Registration**: Self-service signup with admin approval workflow
+
+| Build Tool   | Vite 7 |- **Room Booking**: Request classrooms with date and time selection
+
+| Styling      | Tailwind CSS 4 + CSS Modules |- **Availability Search**: Search for available classrooms by date, time, and equipment
+
+| UI Library   | Radix UI primitives, Shadcn-inspired components |- **Schedule Viewing**: View personal and all classroom schedules in real-time
+
+| Animation    | Framer Motion |- **Request Tracking**: Monitor status of booking requests with admin feedback
+
+| Notifications| Sonner |- **Profile Settings**: Update personal information and manage account settings
+
 - **Password Reset**: Secure password reset via email
 
+> _No external database or authentication service is required in this edition._
+
 ### Authentication & Security
-- **Supabase Auth**: Secure authentication with email/password
+
+---- **Supabase Auth**: Secure authentication with email/password
+
 - **Password Reset**: Email-based password recovery
-- **Row-Level Security (RLS)**: Database-level access control
+
+## 🚀 Getting Started- **Row-Level Security (RLS)**: Database-level access control
+
 - **Anonymous Signup**: Public access for new faculty registration
-- **Auto-confirmed Emails**: Admin-approved users are auto-verified
 
-## 🏗️ Technical Stack
+1. **Install prerequisites**- **Auto-confirmed Emails**: Admin-approved users are auto-verified
 
-### Frontend
-- **Framework**: React 19 with TypeScript
-- **Styling**: Tailwind CSS v4 with Apple-style design system
-- **UI Components**: Shadcn/ui component library (Radix UI primitives)
+   - Node.js 18 or newer
+
+   - npm 9+ (ships with Node)## 🏗️ Technical Stack
+
+
+
+2. **Install dependencies**### Frontend
+
+   ```bash- **Framework**: React 19 with TypeScript
+
+   npm install- **Styling**: Tailwind CSS v4 with Apple-style design system
+
+   ```- **UI Components**: Shadcn/ui component library (Radix UI primitives)
+
 - **Icons**: Lucide React
-- **Toast Notifications**: Sonner
-- **Date Handling**: date-fns
-- **Animations**: Framer Motion
-- **Forms**: React Hook Form
+
+3. **Start the development server**- **Toast Notifications**: Sonner
+
+   ```bash- **Date Handling**: date-fns
+
+   npm run dev- **Animations**: Framer Motion
+
+   ```- **Forms**: React Hook Form
+
 - **Build Tool**: Vite 7
-- **State Management**: React Hooks (useState, useEffect, useMemo, useCallback)
 
-### Backend
+4. Visit [http://localhost:5173](http://localhost:5173) and sign in with one of the default accounts below.- **State Management**: React Hooks (useState, useEffect, useMemo, useCallback)
+
+
+
+---### Backend
+
 - **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
+
+## 🔐 Default Accounts- **Authentication**: Supabase Auth
+
 - **Real-time**: Supabase Realtime subscriptions
-- **Storage**: Supabase for secure data persistence
-- **API**: Supabase auto-generated REST API
 
-## 📁 Project Structure
+| Role   | Email                | Password      |- **Storage**: Supabase for secure data persistence
 
-```
+|--------|----------------------|---------------|- **API**: Supabase auto-generated REST API
+
+| Admin  | `admin@plv.edu.ph`   | `admin123456` |
+
+| Faculty| `faculty@plv.edu.ph` | `faculty123`  |## 📁 Project Structure
+
+
+
+You can create additional faculty accounts through the signup request flow. Approved accounts receive the password you set during approval.```
+
 ├── App.tsx                          # Main application entry point with Supabase integration
-├── main.tsx                         # React entry point
+
+---├── main.tsx                         # React entry point
+
 ├── index.html                       # HTML template
-├── vite.config.ts                   # Vite configuration
+
+## 📦 Data & Persistence├── vite.config.ts                   # Vite configuration
+
 ├── tsconfig.json                    # TypeScript configuration
-├── package.json                     # Dependencies and scripts
-├── .env.example                     # Environment variables template
-├── components/
-│   ├── AdminDashboard.tsx          # Admin dashboard container
-│   ├── AdminReports.tsx            # Reporting functionality
+
+- All records (users, classrooms, requests, schedules) are saved inside browser `localStorage` with keys that begin with `classroom_`.├── package.json                     # Dependencies and scripts
+
+- The first load seeds:├── .env.example                     # Environment variables template
+
+  - 1 admin + 1 faculty account├── components/
+
+  - 3 sample classrooms (Room 101, Room 102, Lab 201)│   ├── AdminDashboard.tsx          # Admin dashboard container
+
+- Data persists per browser profile. Open a private window to start with a clean slate.│   ├── AdminReports.tsx            # Reporting functionality
+
 │   ├── ClassroomManagement.tsx     # Classroom CRUD operations
-│   ├── ErrorBoundary.tsx           # Error handling wrapper
+
+### Resetting Everything│   ├── ErrorBoundary.tsx           # Error handling wrapper
+
 │   ├── FacultyDashboard.tsx        # Faculty dashboard container
-│   ├── FacultySchedule.tsx         # Faculty schedule viewer
+
+Use whichever method you prefer:│   ├── FacultySchedule.tsx         # Faculty schedule viewer
+
 │   ├── Footer.tsx                  # Application footer
-│   ├── LoginForm.tsx               # Authentication form
-│   ├── PasswordResetDialog.tsx     # Password reset modal
-│   ├── PasswordResetPage.tsx       # Password reset page
-│   ├── ProfileSettings.tsx         # User profile management
-│   ├── RequestApproval.tsx         # Booking request approval
-│   ├── RoomBooking.tsx             # Room booking form
-│   ├── RoomSearch.tsx              # Availability search
+
+- **In-app utility** – open DevTools console and run:│   ├── LoginForm.tsx               # Authentication form
+
+  ```ts│   ├── PasswordResetDialog.tsx     # Password reset modal
+
+  import { clearAllData } from './lib/localStorageService';│   ├── PasswordResetPage.tsx       # Password reset page
+
+  clearAllData();│   ├── ProfileSettings.tsx         # User profile management
+
+  ```│   ├── RequestApproval.tsx         # Booking request approval
+
+- **Browser tools** – DevTools → Application/Storage tab → Clear localStorage.│   ├── RoomBooking.tsx             # Room booking form
+
+- **Manual tweak** – remove specific `classroom_*` keys to keep selected data.│   ├── RoomSearch.tsx              # Availability search
+
 │   ├── ScheduleViewer.tsx          # Schedule display
-│   ├── SignupApproval.tsx          # Faculty signup approval
+
+The app will reseed default data on the next reload if no records are present.│   ├── SignupApproval.tsx          # Faculty signup approval
+
 │   ├── animations/
-│   │   └── AppleMotion.tsx         # Animation utilities
+
+---│   │   └── AppleMotion.tsx         # Animation utilities
+
 │   ├── figma/
-│   │   └── ImageWithFallback.tsx   # Image component with fallback
+
+## 🧩 Code Map│   │   └── ImageWithFallback.tsx   # Image component with fallback
+
 │   └── ui/                         # Shadcn UI components (40+ components)
-├── database/
-│   ├── COMPLETE_SETUP.sql          # Complete database setup script
-│   ├── schema.sql                  # Database schema
-│   ├── schema_supabase_auth.sql    # Auth schema setup
-│   ├── supabase_auth_setup.sql     # Auth configuration
-│   ├── fix_rls_anonymous_access.sql # RLS fixes
-│   └── reset_auth_setup.sql        # Reset script
-├── hooks/
-│   └── useScrollTrigger.ts         # Scroll-based animations
-├── lib/
-│   ├── supabaseClient.ts           # Supabase client configuration
-│   ├── supabaseAuth.ts             # Authentication service
+
+```├── database/
+
+├── App.tsx                     # Root component and state orchestration│   ├── COMPLETE_SETUP.sql          # Complete database setup script
+
+├── components/                 # Dashboards, dialogs, and UI building blocks│   ├── schema.sql                  # Database schema
+
+│   ├── AdminDashboard.tsx      # Administrative workspace│   ├── schema_supabase_auth.sql    # Auth schema setup
+
+│   ├── FacultyDashboard.tsx    # Faculty scheduling portal│   ├── supabase_auth_setup.sql     # Auth configuration
+
+│   ├── LoginForm.tsx           # Auth entry point (local handlers)│   ├── fix_rls_anonymous_access.sql # RLS fixes
+
+│   └── ...                     # Supporting components│   └── reset_auth_setup.sql        # Reset script
+
+├── lib/localStorageService.ts  # Central data layer & auth/session helpers├── hooks/
+
+├── utils/                      # Time utilities and animation helpers│   └── useScrollTrigger.ts         # Scroll-based animations
+
+├── styles/globals.css          # Global Tailwind + custom styles├── lib/
+
+└── vite.config.ts              # Vite configuration│   ├── supabaseClient.ts           # Supabase client configuration
+
+```│   ├── supabaseAuth.ts             # Authentication service
+
 │   └── supabaseService.ts          # Database service functions
-├── utils/
+
+Key service contracts exposed from `lib/localStorageService.ts`:├── utils/
+
 │   ├── animation.ts                # Animation helpers
-│   └── timeUtils.ts                # Time formatting utilities
-├── styles/
-│   └── globals.css                 # Global styles and design tokens
-└── guidelines/
-    └── Guidelines.md               # Development guidelines
-```
 
-## 🚀 Getting Started (Run Locally)
+- `authService` – sign in/out, password updates, auth listeners│   └── timeUtils.ts                # Time formatting utilities
 
-### Prerequisites
+- `userService` – CRUD for admin/faculty records├── styles/
+
+- `classroomService` – classroom inventory management│   └── globals.css                 # Global styles and design tokens
+
+- `bookingRequestService` – booking lifecycle + conflict checks└── guidelines/
+
+- `scheduleService` – confirmed schedules and cancellation flow    └── Guidelines.md               # Development guidelines
+
+- `signupRequestService` – faculty onboarding workflow```
+
+
+
+When you are ready to connect a real backend, implement these same contracts against your API and swap the import in `App.tsx`.## 🚀 Getting Started (Run Locally)
+
+
+
+---### Prerequisites
+
 - **Node.js** 18 or higher ([Download here](https://nodejs.org/))
-- **npm** (comes with Node.js) or **yarn** package manager
+
+## 🧪 Smoke Test Checklist- **npm** (comes with Node.js) or **yarn** package manager
+
 - **Supabase Account** ([Sign up free](https://supabase.com/))
-- **Git** (optional, for cloning)
 
----
+After installing:- **Git** (optional, for cloning)
 
-### Step 1: Clone or Download the Repository
 
-#### Option A: Clone with Git
+
+- [ ] Sign in as admin and inspect the dashboard widgets---
+
+- [ ] Approve a pending signup request and share the generated password
+
+- [ ] Submit a classroom booking as faculty, then approve it as admin### Step 1: Clone or Download the Repository
+
+- [ ] Attempt to double-book a room at the same time (should be blocked)
+
+- [ ] Cancel a existing schedule and confirm availability updates instantly#### Option A: Clone with Git
+
 ```bash
-git clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
-cd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"
-```
 
-#### Option B: Download ZIP
-1. Download the ZIP file from GitHub
-2. Extract to your desired location
+---git clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
+
+cd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"
+
+## 🛠️ Customisation Tips```
+
+
+
+- **Change seed data:** edit `initializeDefaultData()` inside `localStorageService.ts`.#### Option B: Download ZIP
+
+- **Add new fields:** update the shared TypeScript interfaces in `App.tsx` and extend the form components accordingly.1. Download the ZIP file from GitHub
+
+- **Persist to files:** export/import helpers are included (`exportAllData`, `importAllData`) for moving data between browsers.2. Extract to your desired location
+
 3. Open terminal/command prompt in the extracted folder
 
 ---
 
-### Step 2: Install Dependencies
-
-```bash
-npm install
-```
-
-This will install all required packages including:
-- React, TypeScript, and Vite
-- Supabase client libraries
-- UI components (Radix UI, Shadcn)
-- Utilities (date-fns, Framer Motion, etc.)
-
 ---
 
-### Step 3: Set Up Supabase Backend
+## 🔭 Roadmap Ideas
+
+### Step 2: Install Dependencies
+
+- Wire the services to a REST, GraphQL, or Supabase backend
+
+- Introduce role-based routing with React Router```bash
+
+- Add automated tests (unit + component) using Vitest and Testing Librarynpm install
+
+- Replace local password storage with hashed credentials or OAuth```
+
+
+
+---This will install all required packages including:
+
+- React, TypeScript, and Vite
+
+## 📄 License- Supabase client libraries
+
+- UI components (Radix UI, Shadcn)
+
+Released under the ISC License. Feel free to adapt and extend for your institution.- Utilities (date-fns, Framer Motion, etc.)
+
+
+
+------
+
+
+
+_Removed Supabase dependencies and edge functions in October 2025. This README describes the streamlined local-storage edition._### Step 3: Set Up Supabase Backend
+
 
 #### 3.1 Create a Supabase Project
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
