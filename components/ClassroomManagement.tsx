@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { classroomService } from '../lib/firebaseService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -38,6 +39,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     floor: '1',
     isAvailable: true
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
 
   const resetForm = () => {
     setFormData({
@@ -50,42 +53,46 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.name || !formData.capacity || !formData.building) {
       toast.error('Please fill in all required fields');
       return;
     }
-
     const equipmentArray = formData.equipment
       .split(',')
       .map(eq => eq.trim())
       .filter(eq => eq.length > 0);
-
-    const classroomData: Classroom = {
-      id: editingClassroom?.id || Date.now().toString(),
-      name: formData.name,
-      capacity: parseInt(formData.capacity),
-      equipment: equipmentArray,
-      building: formData.building,
-      floor: parseInt(formData.floor),
-      isAvailable: formData.isAvailable
-    };
-
-    let updatedClassrooms;
-    if (editingClassroom) {
-      updatedClassrooms = classrooms.map(c => c.id === editingClassroom.id ? classroomData : c);
-      toast.success('Classroom updated successfully');
-    } else {
-      updatedClassrooms = [...classrooms, classroomData];
-      toast.success('Classroom added successfully');
+    try {
+      if (editingClassroom) {
+        await classroomService.update(editingClassroom.id, {
+          name: formData.name,
+          capacity: parseInt(formData.capacity),
+          equipment: equipmentArray,
+          building: formData.building,
+          floor: parseInt(formData.floor),
+          isAvailable: formData.isAvailable
+        });
+        toast.success('Classroom updated successfully');
+      } else {
+        await classroomService.create({
+          name: formData.name,
+          capacity: parseInt(formData.capacity),
+          equipment: equipmentArray,
+          building: formData.building,
+          floor: parseInt(formData.floor),
+          isAvailable: formData.isAvailable
+        });
+        toast.success('Classroom added successfully');
+      }
+      const updatedClassrooms = await classroomService.getAll();
+      onClassroomUpdate(updatedClassrooms);
+      resetForm();
+      setIsAddDialogOpen(false);
+      setEditingClassroom(null);
+    } catch (err) {
+      toast.error('Error saving classroom');
     }
-
-    onClassroomUpdate(updatedClassrooms);
-    resetForm();
-    setIsAddDialogOpen(false);
-    setEditingClassroom(null);
   };
 
   const handleEdit = (classroom: Classroom) => {
@@ -101,20 +108,34 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (classroomId: string) => {
-    if (confirm('Are you sure you want to delete this classroom?')) {
-      const updatedClassrooms = classrooms.filter(c => c.id !== classroomId);
-      onClassroomUpdate(updatedClassrooms);
-      toast.success('Classroom deleted successfully');
-    }
+  const handleDeleteClick = (classroom: Classroom) => {
+    setClassroomToDelete(classroom);
+    setDeleteDialogOpen(true);
   };
 
-  const handleAvailabilityToggle = (classroomId: string, isAvailable: boolean) => {
-    const updatedClassrooms = classrooms.map(c => 
-      c.id === classroomId ? { ...c, isAvailable } : c
-    );
-    onClassroomUpdate(updatedClassrooms);
-    toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
+  const handleDeleteConfirm = async () => {
+    if (!classroomToDelete) return;
+    try {
+      await classroomService.delete(classroomToDelete.id);
+      const updatedClassrooms = await classroomService.getAll();
+      onClassroomUpdate(updatedClassrooms);
+      toast.success('Classroom deleted successfully');
+    } catch (err) {
+      toast.error('Error deleting classroom');
+    }
+    setDeleteDialogOpen(false);
+    setClassroomToDelete(null);
+  };
+
+  const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
+    try {
+      await classroomService.update(classroomId, { isAvailable });
+      const updatedClassrooms = await classroomService.getAll();
+      onClassroomUpdate(updatedClassrooms);
+      toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
+    } catch (err) {
+      toast.error('Error updating availability');
+    }
   };
 
   const closeDialog = () => {
@@ -314,7 +335,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(classroom.id)}
+                            onClick={() => handleDeleteClick(classroom)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -334,6 +355,25 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           )}
         </CardContent>
       </Card>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Classroom</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <b>{classroomToDelete?.name}</b>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setClassroomToDelete(null); }}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

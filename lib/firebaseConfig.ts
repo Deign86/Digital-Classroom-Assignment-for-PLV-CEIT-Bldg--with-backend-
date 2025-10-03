@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
 
 const REQUIRED_ENV_VARS = [
   'VITE_FIREBASE_API_KEY',
@@ -58,6 +59,7 @@ const createFirebaseApp = (): FirebaseApp => {
 
 let appInstance: FirebaseApp | null = null;
 let firestoreInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
 
 export const getFirebaseApp = (): FirebaseApp => {
   if (!appInstance) {
@@ -72,4 +74,19 @@ export const getFirebaseDb = (): Firestore => {
     firestoreInstance = getFirestore(app);
   }
   return firestoreInstance;
+};
+
+export const getFirebaseAuth = async (): Promise<Auth> => {
+  if (!authInstance) {
+    const app = getFirebaseApp();
+    authInstance = getAuth(app);
+    
+    // Set auth persistence to LOCAL (survives browser restarts)
+    try {
+      await setPersistence(authInstance, browserLocalPersistence);
+    } catch (error) {
+      console.warn('Failed to set auth persistence:', error);
+    }
+  }
+  return authInstance;
 };

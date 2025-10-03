@@ -28,7 +28,7 @@ import {
   type User as FirebaseAuthUser,
 } from 'firebase/auth';
 import type { BookingRequest, Classroom, Schedule, SignupRequest, User } from '../App';
-import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
+import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
 
 const db = () => getFirebaseDb();
 
@@ -402,6 +402,20 @@ const ensureAuthStateListener = () => {
     }
 
     try {
+      // Ensure we have a valid token
+      try {
+        await firebaseUser.getIdToken(true);
+      } catch (tokenError) {
+        console.error('Token refresh failed in auth listener:', tokenError);
+        currentUserCache = null;
+        notifyAuthListeners(null);
+        if (authStateReadyResolve) {
+          authStateReadyResolve();
+          authStateReadyResolve = null;
+        }
+        return;
+      }
+      
       const record = await ensureUserRecordFromAuth(firebaseUser);
       const user = toUser(firebaseUser.uid, record);
 
@@ -517,6 +531,14 @@ export const authService = {
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = credential.user;
+      
+      // Force token refresh to ensure we have a valid token
+      try {
+        await firebaseUser.getIdToken(true);
+      } catch (tokenError) {
+        console.warn('Failed to refresh token on sign in:', tokenError);
+      }
+      
       const record = await ensureUserRecordFromAuth(firebaseUser);
       const user = toUser(firebaseUser.uid, record);
 
@@ -661,6 +683,18 @@ export const authService = {
     }
 
     try {
+      // Refresh the token to ensure it's valid
+      try {
+        await firebaseUser.getIdToken(true);
+      } catch (tokenError) {
+        console.warn('Failed to refresh token:', tokenError);
+        // If token refresh fails, user might need to re-authenticate
+        await firebaseSignOut(auth);
+        currentUserCache = null;
+        notifyAuthListeners(null);
+        return null;
+      }
+      
       const record = await ensureUserRecordFromAuth(firebaseUser);
       const user = toUser(firebaseUser.uid, record);
 
@@ -675,6 +709,10 @@ export const authService = {
       return user;
     } catch (error) {
       console.error('Failed to fetch current user:', error);
+      // Clear auth state on error
+      await firebaseSignOut(auth).catch(() => undefined);
+      currentUserCache = null;
+      notifyAuthListeners(null);
       return null;
     }
   },

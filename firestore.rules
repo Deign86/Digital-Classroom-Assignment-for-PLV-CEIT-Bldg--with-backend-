@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+    function isFaculty() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+    function isApprovedUser() {
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    // Users collection
+    match /users/{userId} {
+      // Admins and faculty can read any user document; users can read their own
+      allow read: if isAdmin() || isFaculty() || isOwner(userId);
+      // Only the user themselves can create their initial document during signup
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Admins can update any user, users can update their own profile (limited fields)
+      allow update: if isAdmin() || 
+                      (isOwner(userId) && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'email', 'emailLower'])));
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    // Signup requests collection
+    match /signupRequests/{requestId} {
+      // Admins can read all signup requests
+      allow read: if isAdmin();
+      // Authenticated users can create signup requests with their own UID
+      allow create: if isSignedIn() && request.auth.uid == requestId;
+      // Only admins can update (approve/reject) signup requests
+      allow update: if isAdmin();
+      // Only admins can delete signup requests
+      allow delete: if isAdmin();
+    }
+    // Classrooms collection
+    match /classrooms/{classroomId} {
+      // Anyone can read classrooms (for viewing availability)
+      allow read: if true;
+      // Only admins can create, update, or delete classrooms
+      allow create, update, delete: if isAdmin();
+    }
+    // Booking requests collection
+    match /bookingRequests/{requestId} {
+      // Admins can read all. Faculty can read their own requests and query by facultyId.
+      allow read: if isAdmin() ||
+        (isFaculty() && (
+          resource.data.facultyId == request.auth.uid ||
+          (request.query != null && request.query.where('facultyId', '==', request.auth.uid))
+        ));
+      // Faculty can create booking requests for themselves
+      allow create: if isFaculty() && request.resource.data.facultyId == request.auth.uid;
+      // Admins can update booking requests (approve/reject)
+      // Faculty can update their own pending requests
+      allow update: if isAdmin() || 
+                      (isFaculty() && 
+                       resource.data.facultyId == request.auth.uid && 
+                       resource.data.status == 'pending');
+      // Faculty can delete their own pending requests, admins can delete any
+      allow delete: if isAdmin() || 
+                      (isFaculty() && 
+                       resource.data.facultyId == request.auth.uid && 
+                       resource.data.status == 'pending');
+    }
+    // Schedules collection (approved bookings)
+    match /schedules/{scheduleId} {
+      // Anyone can read schedules (for viewing classroom availability)
+      allow read: if true;
+      // Only admins can create schedules (when approving bookings)
+      allow create: if isAdmin();
+      // Admins can update, faculty can update their own schedules
+      allow update: if isAdmin() || (isFaculty() && resource.data.facultyId == request.auth.uid);
+      // Admins can delete any schedule, faculty can delete their own
+      allow delete: if isAdmin() || (isFaculty() && resource.data.facultyId == request.auth.uid);
+    }
+  }
+}
