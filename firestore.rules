@@ -42,8 +42,8 @@ service cloud.firestore {
     match /signupRequests/{requestId} {
       // Admins can read all signup requests
       allow read: if isAdmin();
-      // Authenticated users can create signup requests with their own UID
-      allow create: if isSignedIn() && request.auth.uid == requestId;
+      // Allow authenticated users to create/write signup requests with their own UID
+      allow create, write: if isSignedIn() && request.auth.uid == requestId;
       // Only admins can update (approve/reject) signup requests
       allow update: if isAdmin();
       // Only admins can delete signup requests
