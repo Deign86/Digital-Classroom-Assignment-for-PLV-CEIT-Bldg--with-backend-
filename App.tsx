@@ -6,17 +6,19 @@ import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
+import RouteProtection, { RouteProtectionUtils } from './components/RouteProtection';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
-import {
-  authService,
-  userService,
-  classroomService,
-  signupRequestService,
+import { authService, userService } from './lib/firebaseService';
+import { 
+  classroomService, 
+  signupRequestService, 
   bookingRequestService,
   scheduleService
-} from './lib/firebaseService';
+} from './lib/secureFirebaseService';
+import { useURLRouteProtection } from './utils/urlRouteGuard';
+import { ErrorMessageHandler } from './utils/errorMessages';
 
 // Types
 export interface User {
@@ -87,6 +89,9 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  // URL-based route protection (temporarily disabled to fix refresh loop)
+  // useURLRouteProtection(currentUser);
   const [error, setError] = useState<string | null>(null);
 
   // All hooks must be at the top level - move memoized data here
@@ -101,21 +106,29 @@ export default function App() {
   }, [bookingRequests, currentUser]);
 
   // Load all data from local storage
-  const loadAllData = useCallback(async () => {
+  const loadAllData = useCallback(async (user?: User | null) => {
     try {
       setIsLoading(true);
+      // Use passed user or current user from state
+      const userForAuth = user !== undefined ? user : currentUser;
+      console.log('📊 LoadAllData - User for auth:', userForAuth?.email, 'Role:', userForAuth?.role, 'Status:', userForAuth?.status);
+      const signupRequestsPromise =
+        userForAuth?.role === 'admin'
+          ? signupRequestService.getAll(userForAuth)
+          : Promise.resolve([]);
+
       const [
         usersData,
         classroomsData,
         signupRequestsData,
         bookingRequestsData,
-        schedulesData
+        schedulesData,
       ] = await Promise.all([
         userService.getAll(),
-        classroomService.getAll(),
-        signupRequestService.getAll(),
-        bookingRequestService.getAll(),
-        scheduleService.getAll()
+        classroomService.getAll(userForAuth),
+        signupRequestsPromise,
+        bookingRequestService.getAll(userForAuth),
+        scheduleService.getAll(userForAuth),
       ]);
 
       setUsers(usersData);
@@ -125,7 +138,12 @@ export default function App() {
       setSchedules(schedulesData);
     } catch (err) {
       console.error('Error loading data:', err);
-      toast.error('Failed to load data from database');
+      
+      const errorMessage = ErrorMessageHandler.formatForToast(err);
+      toast.error(errorMessage.title, {
+        description: errorMessage.description,
+        duration: errorMessage.duration
+      });
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +163,7 @@ export default function App() {
         });
         
         // Load all data after successful login
-        await loadAllData();
+        await loadAllData(user);
         
         return true;
       }
@@ -215,24 +233,12 @@ export default function App() {
       toast.error('Login failed', { description: message, duration: 6000 });
       return false;
     }
-  }, [loadAllData]);
+  }, []);
 
   const handleSignup = useCallback(
     async (email: string, name: string, department: string, password: string) => {
       try {
-        // Check for duplicate requests (optional - don't fail signup if this fails)
-        try {
-          const pendingRequest = await signupRequestService.getByEmail(email);
-          if (pendingRequest) {
-            toast.error('Request already pending', {
-              description: 'Please wait for an administrator to review your existing request.',
-            });
-            return false;
-          }
-        } catch (checkError) {
-          console.warn('Could not check for existing requests:', checkError);
-          // Continue with signup anyway
-        }
+        // Duplicate checks are handled by the secure service
 
         const { request } = await authService.registerFaculty(email, password, name, department);
 
@@ -353,7 +359,7 @@ export default function App() {
     }
 
     try {
-      return await bookingRequestService.checkConflicts(
+      return await scheduleService.checkConflicts(
         classroomId,
         date,
         startTime,
@@ -392,7 +398,7 @@ export default function App() {
       }
 
       // Submit the booking request
-      const newRequest = await bookingRequestService.create(request);
+      const newRequest = await bookingRequestService.create(currentUser, request);
       
       setBookingRequests(prev => [...prev, newRequest]);
       toast.success('Classroom request submitted!');
@@ -457,7 +463,7 @@ export default function App() {
         updateData.adminFeedback = feedback.trim();
       }
       
-      const updatedRequest = await bookingRequestService.update(requestId, updateData);
+      const updatedRequest = await bookingRequestService.update(currentUser, requestId, updateData);
 
       setBookingRequests(prev =>
         prev.map(req => req.id === requestId ? updatedRequest : req)
@@ -465,7 +471,7 @@ export default function App() {
       
       // Create schedule only if approved
       if (approved) {
-        const newSchedule = await scheduleService.create({
+        const newSchedule = await scheduleService.create(currentUser, {
           classroomId: request.classroomId,
           classroomName: request.classroomName,
           facultyId: request.facultyId,
@@ -504,11 +510,7 @@ export default function App() {
         const resolvedAt = new Date().toISOString();
 
         if (approved) {
-          const updatedRequest = await signupRequestService.update(requestId, {
-            status: 'approved',
-            adminFeedback: feedback || 'Account approved',
-            resolvedAt,
-          });
+          const updatedRequest = await signupRequestService.approve(currentUser, requestId, feedback);
 
           const updatedUser = await userService.updateStatus(request.userId, 'approved', {
             name: request.name,
@@ -540,11 +542,7 @@ export default function App() {
             return;
           }
 
-          const updatedRequest = await signupRequestService.update(requestId, {
-            status: 'rejected',
-            adminFeedback: feedback,
-            resolvedAt,
-          });
+          const updatedRequest = await signupRequestService.reject(currentUser, requestId, feedback);
 
           const updatedUser = await userService.updateStatus(request.userId, 'rejected');
 
@@ -581,7 +579,7 @@ export default function App() {
 
   const handleCancelSchedule = useCallback(async (scheduleId: string) => {
     try {
-      const updatedSchedule = await scheduleService.update(scheduleId, {
+      const updatedSchedule = await scheduleService.update(currentUser, scheduleId, {
         status: 'cancelled'
       });
       
@@ -637,7 +635,7 @@ export default function App() {
           
           // Only load data if user is authenticated
           console.log('📊 Loading data...');
-          await loadAllData();
+          await loadAllData(user);
           console.log('✅ Data loaded');
         } else {
           console.log('ℹ️ No valid session found');
@@ -657,7 +655,7 @@ export default function App() {
     };
 
     initializeApp();
-  }, [loadAllData]);
+  }, []);
 
   // Separate effect for auth state listener to ensure proper cleanup
   useEffect(() => {
@@ -673,14 +671,7 @@ export default function App() {
             return prevUser;
           }
           
-          // If a new user logged in and we have no data yet, load it
-          if (user && !prevUser) {
-            console.log('📊 New user detected, loading data...');
-            loadAllData().catch(err => {
-              console.error('Failed to load data after auth change:', err);
-            });
-          }
-          
+          console.log('✅ User changed, updating state');
           return user;
         });
       },
@@ -776,9 +767,13 @@ export default function App() {
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex-1">
           {activeUser.role === 'admin' ? (
-            <AdminDashboard {...adminDashboardProps} />
+            <RouteProtection user={activeUser} requiredRole="admin">
+              <AdminDashboard {...adminDashboardProps} />
+            </RouteProtection>
           ) : (
-            <FacultyDashboard {...facultyDashboardProps} />
+            <RouteProtection user={activeUser} requiredRole="faculty">
+              <FacultyDashboard {...facultyDashboardProps} />
+            </RouteProtection>
           )}
         </div>
         <Footer />
