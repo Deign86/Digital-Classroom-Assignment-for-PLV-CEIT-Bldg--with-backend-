@@ -135,9 +135,17 @@ export default function App() {
       const user = await authService.signIn(email, password);
       if (user) {
         setCurrentUser(user);
+        
+        // Show welcome message immediately based on user role
+        const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
+        toast.success(`${greeting}, ${user.name}!`, {
+          description: `You're logged in as ${user.role === 'admin' ? 'Administrator' : 'Faculty'}`,
+          duration: 4000,
+        });
+        
         // Load all data after successful login
         await loadAllData();
-        toast.success(`Welcome back, ${user.name}!`);
+        
         return true;
       }
       // Only show error if this is actually a login attempt with credentials

@@ -39,6 +39,12 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Don't attempt login if fields are empty
+    if (!email.trim() || !password.trim()) {
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -130,7 +136,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
         </TabsList>
       
         <TabsContent value="login" className="space-y-8 mt-8">
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8" noValidate>
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
@@ -186,7 +192,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
         </TabsContent>
 
         <TabsContent value="signup" className="space-y-8 mt-8">
-          <form onSubmit={handleSignup} className="space-y-8">
+          <form onSubmit={handleSignup} className="space-y-8" noValidate>
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

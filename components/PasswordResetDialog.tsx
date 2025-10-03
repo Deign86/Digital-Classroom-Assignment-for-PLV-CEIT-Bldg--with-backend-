@@ -67,17 +67,24 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
     }
   };
 
-  const handleClose = () => {
-    setIsOpen(false);
-    // Reset state after dialog closes
-    setTimeout(() => {
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    
+    if (open) {
+      // Reset state when dialog opens to ensure fresh start
       setEmail('');
       setEmailSent(false);
-    }, 200);
+      setIsLoading(false);
+    } else {
+      // Also reset when closing for good measure
+      setEmail('');
+      setEmailSent(false);
+      setIsLoading(false);
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
@@ -93,7 +100,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
         </DialogHeader>
 
         {!emailSent ? (
-          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          <form onSubmit={handleSubmit} className="space-y-6 pt-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="reset-email">Email Address</Label>
               <div className="relative">
@@ -105,8 +112,8 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
-                  required
                   disabled={isLoading}
+                  autoComplete="email"
                 />
               </div>
               <p className="text-xs text-gray-500">
@@ -118,7 +125,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleClose}
+                onClick={() => setIsOpen(false)}
                 className="flex-1"
                 disabled={isLoading}
               >
@@ -154,7 +161,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
             </div>
 
             <Button 
-              onClick={handleClose}
+              onClick={() => setIsOpen(false)}
               className="w-full"
             >
               Close

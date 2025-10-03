@@ -566,35 +566,61 @@ export const authService = {
     const auth = getFirebaseAuth();
 
     try {
-      // First, verify the email exists in our system
-      const userRecord = await fetchUserDocByEmail(email);
-      
-      if (!userRecord) {
-        // Return a generic message for security (don't reveal if email exists or not)
+      // Validate email format first
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
         return { 
           success: false, 
-          message: 'If this email is registered in our system, you will receive a password reset link shortly.' 
+          message: 'Please enter a valid email address.' 
         };
       }
 
-      // Check if the user account is approved
-      if (userRecord.record.status !== 'approved') {
-        return { 
-          success: false, 
-          message: 'This account is not yet approved. Please contact the administrator.' 
-        };
-      }
-
-      // Email exists and user is approved, send the reset email
+      // Note: Firebase Authentication will send password reset emails to any email address
+      // as a security feature (to prevent email enumeration attacks).
+      // This means even non-existent emails will receive a message saying "no account found".
+      // We cannot prevent this behavior without a backend/Cloud Function.
       await sendPasswordResetEmail(auth, email);
+      
       return { 
         success: true, 
-        message: 'Password reset email sent successfully. Please check your inbox.' 
+        message: 'Password reset instructions sent. If an account exists with this email, you will receive a link shortly.' 
       };
     } catch (error) {
       console.error('Password reset error:', error);
-      const message = mapAuthErrorToMessage(error as { code?: string });
-      return { success: false, message };
+      
+      // Handle specific Firebase errors
+      if (error && typeof error === 'object' && 'code' in error) {
+        const code = (error as { code?: string }).code;
+        
+        switch (code) {
+          case 'auth/invalid-email':
+            return { 
+              success: false, 
+              message: 'Please enter a valid email address.' 
+            };
+          case 'auth/too-many-requests':
+            return { 
+              success: false, 
+              message: 'Too many reset attempts. Please try again later.' 
+            };
+          case 'auth/missing-email':
+            return { 
+              success: false, 
+              message: 'Please enter an email address.' 
+            };
+          default:
+            // For any other error, show a generic message
+            return { 
+              success: false, 
+              message: 'Unable to process request. Please try again or contact support.' 
+            };
+        }
+      }
+      
+      return { 
+        success: false, 
+        message: 'An unexpected error occurred. Please try again.' 
+      };
     }
   },
 
