@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { GraduationCap, Building2, Lock, Mail, User as UserIcon } from 'lucide-react';
+import { GraduationCap, Building2, Lock, Mail, User as UserIcon, Shield, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
+import { useSecureAuthentication, getPasswordStrengthData, getRateLimitStatus } from '../utils/secureAuthentication';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => boolean | Promise<boolean>;
@@ -34,6 +35,30 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
   });
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Initialize secure authentication
+  const {
+    performSecureLogin,
+    performSecureSignup,
+    checkPasswordStrength,
+    isRateLimited,
+    rateLimitInfo,
+    loginAttempts
+  } = useSecureAuthentication({
+    name: `${signupData.firstName} ${signupData.lastName}`,
+    email: signupData.email,
+    department: signupData.department
+  });
+  
+  // Get password strength for signup
+  const passwordStrength = getPasswordStrengthData(signupData.password, {
+    name: `${signupData.firstName} ${signupData.lastName}`,
+    email: signupData.email
+  });
+  
+  // Get rate limit status
+  const rateLimitStatus = getRateLimitStatus(rateLimitInfo);
 
   const departments = ['Civil Engineering', 'Information Technology'];
 
@@ -42,13 +67,23 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     
     // Don't attempt login if fields are empty
     if (!email.trim() || !password.trim()) {
+      toast.error('Please enter both email and password');
+      return;
+    }
+    
+    // Check if rate limited
+    if (isRateLimited) {
+      toast.error('Too many login attempts', {
+        description: 'Account is temporarily locked. Please wait before trying again.',
+        duration: 5000
+      });
       return;
     }
     
     setIsLoading(true);
     
     try {
-      const success = await onLogin(email, password);
+      const success = await performSecureLogin(email, password, onLogin);
       if (!success) {
         setPassword('');
       }
@@ -60,63 +95,37 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate all fields are filled
-    if (!signupData.firstName.trim()) {
-      toast.error('First name is required');
-      return;
-    }
-
-    if (!signupData.lastName.trim()) {
-      toast.error('Last name is required');
-      return;
-    }
-
-    if (!signupData.email.trim()) {
-      toast.error('Email is required');
-      return;
-    }
-
-    if (!signupData.department) {
-      toast.error('Please select a department');
-      return;
-    }
-
-    if (!signupData.password) {
-      toast.error('Please create a password');
-      return;
-    }
-
-    if (signupData.password.length < 8) {
-      toast.error('Password must be at least 8 characters long');
-      return;
-    }
-
-    if (signupData.password !== signupData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
+    // Use secure signup which includes comprehensive validation
     const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
-    const success = await onSignup(
-      signupData.email,
-      fullName,
-      signupData.department,
-      signupData.password
-    );
     
-    if (success) {
-      setSignupData({
-        email: '',
-        firstName: '',
-        lastName: '',
-        department: '',
-        password: '',
-        confirmPassword: ''
-      });
-      // Automatically switch to login tab after successful signup
-      setTimeout(() => {
-        setActiveTab('login');
-      }, 1500); // Small delay to let user see the success message
+    setIsLoading(true);
+    
+    try {
+      const success = await performSecureSignup(
+        signupData.email,
+        fullName,
+        signupData.department,
+        signupData.password,
+        signupData.confirmPassword,
+        onSignup
+      );
+      
+      if (success) {
+        setSignupData({
+          email: '',
+          firstName: '',
+          lastName: '',
+          department: '',
+          password: '',
+          confirmPassword: ''
+        });
+        // Automatically switch to login tab after successful signup
+        setTimeout(() => {
+          setActiveTab('login');
+        }, 1500); // Small delay to let user see the success message
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -136,6 +145,28 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
         </TabsList>
       
         <TabsContent value="login" className="space-y-8 mt-8">
+          {/* Rate Limit Status */}
+          {rateLimitStatus && (
+            <div className={`rounded-lg p-3 border ${
+              rateLimitStatus.level === 'error' 
+                ? 'bg-red-50 border-red-200' 
+                : 'bg-amber-50 border-amber-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                {rateLimitStatus.level === 'error' ? (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                )}
+                <span className={`text-sm font-medium ${
+                  rateLimitStatus.level === 'error' ? 'text-red-800' : 'text-amber-800'
+                }`}>
+                  {rateLimitStatus.message}
+                </span>
+              </div>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit} className="space-y-8" noValidate>
             <div className="space-y-6">
               <div className="space-y-2">
@@ -274,8 +305,65 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                     required
                   />
                 </div>
+                
+                {/* Password Strength Indicator */}
+                {signupData.password && (
+                  <div className="mt-2 space-y-2">
+                    {/* Strength Bar */}
+                    <div className="flex space-x-1">
+                      {[...Array(6)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                            i < passwordStrength.strengthPercentage / 16.67
+                              ? 'bg-current'
+                              : 'bg-gray-200'
+                          }`}
+                          style={{
+                            color: passwordStrength.strengthColor
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Strength Text */}
+                    <div className="flex justify-between items-center text-sm">
+                      <span style={{ color: passwordStrength.strengthColor }} className="font-medium">
+                        {passwordStrength.strengthText}
+                      </span>
+                      <span className="text-gray-500 text-xs">
+                        Est. crack time: {passwordStrength.estimatedCrackTime}
+                      </span>
+                    </div>
+
+                    {/* Feedback */}
+                    {passwordStrength.feedback.length > 0 && (
+                      <ul className="text-xs text-green-600 space-y-1">
+                        {passwordStrength.feedback.slice(0, 3).map((item, i) => (
+                          <li key={i} className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Errors */}
+                    {passwordStrength.errors.length > 0 && (
+                      <ul className="text-xs text-red-600 space-y-1">
+                        {passwordStrength.errors.slice(0, 3).map((error, i) => (
+                          <li key={i} className="flex items-center gap-1">
+                            <XCircle className="h-3 w-3" />
+                            <span>{error}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                
                 <p className="text-xs text-gray-500">
-                  Minimum 8 characters. Mix letters, numbers, and symbols for a stronger password.
+                  Create a strong password with letters, numbers, and symbols for better security.
                 </p>
               </div>
 
