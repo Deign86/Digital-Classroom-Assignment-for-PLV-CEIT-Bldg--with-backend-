@@ -376,6 +376,7 @@ export default function AdminDashboard({
               <ClassroomManagement
                 classrooms={classrooms}
                 onClassroomUpdate={onClassroomUpdate}
+                user={user}
               />
             </div>
           </TabsContent>
@@ -412,6 +413,7 @@ export default function AdminDashboard({
           <TabsContent value="reports">
             <div className="animate-in">
               <AdminReports
+                user={user}
                 classrooms={classrooms}
                 bookingRequests={bookingRequests}
                 schedules={schedules}

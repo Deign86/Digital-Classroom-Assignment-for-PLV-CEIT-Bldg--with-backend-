@@ -1,13 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download } from 'lucide-react';
+import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download, Shield } from 'lucide-react';
 import { Button } from './ui/button';
-import type { Classroom, Schedule, BookingRequest, SignupRequest } from '../App';
+import { toast } from 'sonner';
+import { AccessControl, Permission } from '../utils/accessControl';
+import { ErrorLogger, SecureError } from '../utils/errorHandling';
+import type { Classroom, Schedule, BookingRequest, SignupRequest, User } from '../App';
 
 interface AdminReportsProps {
+  user: User | null;
   classrooms: Classroom[];
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
@@ -16,8 +20,39 @@ interface AdminReportsProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
-export default function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }: AdminReportsProps) {
+export default function AdminReports({ user, classrooms, schedules, bookingRequests, signupRequests }: AdminReportsProps) {
   const [reportPeriod, setReportPeriod] = useState<'week' | 'month' | 'semester'>('month');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Check permissions on component mount
+  useEffect(() => {
+    try {
+      AccessControl.validateReportsAccess(user);
+    } catch (error) {
+      if (error instanceof SecureError) {
+        toast.error('Access Denied', {
+          description: error.userMessage
+        });
+      }
+    }
+  }, [user]);
+
+  // Check if user has access to reports
+  if (!AccessControl.hasPermission(user, Permission.VIEW_REPORTS)) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="text-gray-400 mb-2">
+              <Shield className="h-16 w-16 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Access Restricted</h3>
+            <p className="text-gray-600">You don't have permission to view reports and analytics.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Calculate date range based on period
   const getDateRange = () => {
@@ -160,26 +195,57 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
     }));
   }, [filteredSchedules, classrooms]);
 
-  const handleExportReport = () => {
-    const reportData = {
-      period: reportPeriod,
-      dateRange: `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
-      statistics: stats,
-      classroomUtilization,
-      requestStatusData,
-      weeklyTrend,
-      buildingUsage,
-      generatedAt: new Date().toISOString()
-    };
+  const handleExportReport = async () => {
+    try {
+      // Validate permissions for report generation
+      AccessControl.requirePermission(user, Permission.GENERATE_REPORTS);
+      setIsGenerating(true);
 
-    const dataStr = JSON.stringify(reportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `classroom-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+      const reportData = {
+        period: reportPeriod,
+        dateRange: `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
+        statistics: stats,
+        classroomUtilization,
+        requestStatusData,
+        weeklyTrend,
+        buildingUsage,
+        generatedAt: new Date().toISOString(),
+        generatedBy: {
+          userId: user?.id,
+          userName: user?.name,
+          userRole: user?.role
+        }
+      };
+
+      const dataStr = JSON.stringify(reportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `classroom-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('Report Generated', {
+        description: 'Report has been downloaded successfully'
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, 'Export report');
+      
+      if (error instanceof SecureError) {
+        toast.error('Export Failed', {
+          description: error.userMessage
+        });
+      } else {
+        toast.error('Export Failed', {
+          description: 'Unable to generate report. Please try again.'
+        });
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -203,9 +269,9 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
                   <SelectItem value="semester">Last 4 Months</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={handleExportReport}>
+              <Button variant="outline" size="sm" onClick={handleExportReport} disabled={isGenerating}>
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                {isGenerating ? 'Generating...' : 'Export'}
               </Button>
             </div>
           </div>

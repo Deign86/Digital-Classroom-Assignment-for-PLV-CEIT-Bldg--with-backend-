@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { classroomService } from '../lib/firebaseService';
+import { classroomService as secureClassroomService } from '../lib/secureFirebaseService';
+import { validateForm, sanitizeInput } from '../utils/validation';
+import { ErrorLogger, SecureError } from '../utils/errorHandling';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,13 +12,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch';
-import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Classroom } from '../App';
+import type { Classroom, User } from '../App';
 
 interface ClassroomManagementProps {
   classrooms: Classroom[];
   onClassroomUpdate: (classrooms: Classroom[]) => void;
+  user: User | null;
 }
 
 const equipmentIcons: { [key: string]: React.ReactNode } = {
@@ -28,7 +31,7 @@ const equipmentIcons: { [key: string]: React.ReactNode } = {
   'TV': <Monitor className="h-4 w-4" />,
 };
 
-export default function ClassroomManagement({ classrooms, onClassroomUpdate }: ClassroomManagementProps) {
+export default function ClassroomManagement({ classrooms, onClassroomUpdate, user }: ClassroomManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingClassroom, setEditingClassroom] = useState<Classroom | null>(null);
   const [formData, setFormData] = useState({
@@ -39,6 +42,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     floor: '1',
     isAvailable: true
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
 
@@ -51,47 +56,75 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       floor: '1',
       isAvailable: true
     });
+    setFormErrors({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.capacity || !formData.building) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    const equipmentArray = formData.equipment
-      .split(',')
-      .map(eq => eq.trim())
-      .filter(eq => eq.length > 0);
+    setIsSubmitting(true);
+    setFormErrors({});
+
     try {
-      if (editingClassroom) {
-        await classroomService.update(editingClassroom.id, {
-          name: formData.name,
-          capacity: parseInt(formData.capacity),
-          equipment: equipmentArray,
-          building: formData.building,
-          floor: parseInt(formData.floor),
-          isAvailable: formData.isAvailable
-        });
-        toast.success('Classroom updated successfully');
-      } else {
-        await classroomService.create({
-          name: formData.name,
-          capacity: parseInt(formData.capacity),
-          equipment: equipmentArray,
-          building: formData.building,
-          floor: parseInt(formData.floor),
-          isAvailable: formData.isAvailable
-        });
-        toast.success('Classroom added successfully');
+      // Client-side validation
+      const validation = validateForm.classroom({
+        name: formData.name,
+        capacity: formData.capacity,
+        building: formData.building,
+        floor: formData.floor,
+        equipment: formData.equipment,
+      });
+
+      if (!validation.isValid) {
+        setFormErrors(validation.errors);
+        setIsSubmitting(false);
+        return;
       }
-      const updatedClassrooms = await classroomService.getAll();
+
+      // Sanitize input
+      const sanitizedData = {
+        name: sanitizeInput.name(formData.name),
+        capacity: parseInt(sanitizeInput.number(formData.capacity), 10),
+        equipment: formData.equipment
+          .split(',')
+          .map(eq => sanitizeInput.equipment(eq.trim()))
+          .filter(eq => eq.length > 0),
+        building: sanitizeInput.name(formData.building),
+        floor: parseInt(sanitizeInput.number(formData.floor), 10),
+        isAvailable: Boolean(formData.isAvailable)
+      };
+
+      if (editingClassroom) {
+        await secureClassroomService.update(user, editingClassroom.id, sanitizedData);
+        toast.success('Classroom updated successfully', {
+          description: `${sanitizedData.name} has been updated`
+        });
+      } else {
+        await secureClassroomService.create(user, sanitizedData);
+        toast.success('Classroom added successfully', {
+          description: `${sanitizedData.name} is now available for booking`
+        });
+      }
+
+      // Refresh classroom list
+      const updatedClassrooms = await secureClassroomService.getAll(user);
       onClassroomUpdate(updatedClassrooms);
       resetForm();
       setIsAddDialogOpen(false);
       setEditingClassroom(null);
-    } catch (err) {
-      toast.error('Error saving classroom');
+    } catch (error) {
+      ErrorLogger.logError(error as Error, 'Classroom management');
+      
+      if (error instanceof SecureError) {
+        toast.error('Validation Error', {
+          description: error.userMessage
+        });
+      } else {
+        toast.error('Operation Failed', {
+          description: 'Unable to save classroom. Please try again.'
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,26 +148,50 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
   const handleDeleteConfirm = async () => {
     if (!classroomToDelete) return;
+    
     try {
-      await classroomService.delete(classroomToDelete.id);
-      const updatedClassrooms = await classroomService.getAll();
+      await secureClassroomService.delete(user, classroomToDelete.id);
+      const updatedClassrooms = await secureClassroomService.getAll(user);
       onClassroomUpdate(updatedClassrooms);
-      toast.success('Classroom deleted successfully');
-    } catch (err) {
-      toast.error('Error deleting classroom');
+      toast.success('Classroom deleted successfully', {
+        description: `${classroomToDelete.name} has been removed from the system`
+      });
+    } catch (error) {
+      ErrorLogger.logError(error as Error, 'Delete classroom');
+      
+      if (error instanceof SecureError) {
+        toast.error('Delete Failed', {
+          description: error.userMessage
+        });
+      } else {
+        toast.error('Operation Failed', {
+          description: 'Unable to delete classroom. Please try again.'
+        });
+      }
     }
+    
     setDeleteDialogOpen(false);
     setClassroomToDelete(null);
   };
 
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
     try {
-      await classroomService.update(classroomId, { isAvailable });
-      const updatedClassrooms = await classroomService.getAll();
+      await secureClassroomService.update(user, classroomId, { isAvailable });
+      const updatedClassrooms = await secureClassroomService.getAll(user);
       onClassroomUpdate(updatedClassrooms);
       toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
-    } catch (err) {
-      toast.error('Error updating availability');
+    } catch (error) {
+      ErrorLogger.logError(error as Error, 'Update classroom availability');
+      
+      if (error instanceof SecureError) {
+        toast.error('Update Failed', {
+          description: error.userMessage
+        });
+      } else {
+        toast.error('Operation Failed', {
+          description: 'Unable to update classroom availability.'
+        });
+      }
     }
   };
 
@@ -180,8 +237,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       placeholder="e.g., CEIT-101"
                       value={formData.name}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      className={formErrors.name ? 'border-red-500' : ''}
                       required
                     />
+                    {formErrors.name && (
+                      <div className="flex items-center text-red-600 text-sm">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        {formErrors.name}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -192,15 +256,23 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         type="number"
                         placeholder="50"
                         min="1"
+                        max="9999"
                         value={formData.capacity}
                         onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
+                        className={formErrors.capacity ? 'border-red-500' : ''}
                         required
                       />
+                      {formErrors.capacity && (
+                        <div className="flex items-center text-red-600 text-sm">
+                          <AlertTriangle className="h-4 w-4 mr-1" />
+                          {formErrors.capacity}
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="floor">Floor *</Label>
                       <Select value={formData.floor} onValueChange={(value: string) => setFormData(prev => ({ ...prev, floor: value }))}>
-                        <SelectTrigger>
+                        <SelectTrigger className={formErrors.floor ? 'border-red-500' : ''}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -208,8 +280,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           <SelectItem value="2">2nd Floor</SelectItem>
                           <SelectItem value="3">3rd Floor</SelectItem>
                           <SelectItem value="4">4th Floor</SelectItem>
+                          <SelectItem value="5">5th Floor</SelectItem>
                         </SelectContent>
                       </Select>
+                      {formErrors.floor && (
+                        <div className="flex items-center text-red-600 text-sm">
+                          <AlertTriangle className="h-4 w-4 mr-1" />
+                          {formErrors.floor}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -220,8 +299,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       placeholder="e.g., CEIT Building"
                       value={formData.building}
                       onChange={(e) => setFormData(prev => ({ ...prev, building: e.target.value }))}
+                      className={formErrors.building ? 'border-red-500' : ''}
                       required
                     />
+                    {formErrors.building && (
+                      <div className="flex items-center text-red-600 text-sm">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        {formErrors.building}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -231,8 +317,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       placeholder="e.g., Projector, Whiteboard, AC (separate with commas)"
                       value={formData.equipment}
                       onChange={(e) => setFormData(prev => ({ ...prev, equipment: e.target.value }))}
+                      className={formErrors.equipment ? 'border-red-500' : ''}
                       rows={3}
                     />
+                    {formErrors.equipment && (
+                      <div className="flex items-center text-red-600 text-sm">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        {formErrors.equipment}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -240,16 +333,20 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       id="available"
                       checked={formData.isAvailable}
                       onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, isAvailable: checked }))}
+                      disabled={isSubmitting}
                     />
                     <Label htmlFor="available">Available for booking</Label>
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
-                    <Button type="button" variant="outline" onClick={closeDialog}>
+                    <Button type="button" variant="outline" onClick={closeDialog} disabled={isSubmitting}>
                       Cancel
                     </Button>
-                    <Button type="submit">
-                      {editingClassroom ? 'Update Classroom' : 'Add Classroom'}
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting 
+                        ? (editingClassroom ? 'Updating...' : 'Adding...') 
+                        : (editingClassroom ? 'Update Classroom' : 'Add Classroom')
+                      }
                     </Button>
                   </div>
                 </form>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -6,10 +6,13 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle, Shield } from 'lucide-react';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 import { generateTimeSlots, convertTo24Hour, convertTo12Hour, getValidEndTimes, isPastBookingTime, isValidSchoolTime, isReasonableBookingDuration } from '../utils/timeUtils';
+import { validateForm, sanitizeInput } from '../utils/validation';
+import { AccessControl, Permission } from '../utils/accessControl';
+import { ErrorLogger, SecureError } from '../utils/errorHandling';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
 interface RoomBookingProps {
@@ -47,7 +50,39 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     endTime: '',
     purpose: ''
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflicts, setConflicts] = useState<string[]>([]);
+
+  // Check permissions
+  useEffect(() => {
+    try {
+      AccessControl.validateBookingAccess(user, 'create');
+    } catch (error) {
+      if (error instanceof SecureError) {
+        toast.error('Access Denied', {
+          description: error.userMessage
+        });
+      }
+    }
+  }, [user]);
+
+  // Check if user has permission to create bookings
+  if (!AccessControl.hasPermission(user, Permission.CREATE_BOOKINGS)) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="text-gray-400 mb-2">
+              <Shield className="h-16 w-16 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Access Restricted</h3>
+            <p className="text-gray-600">You don't have permission to create booking requests.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   const [pendingConflicts, setPendingConflicts] = useState<string[]>([]);
 
   const availableClassrooms = classrooms.filter(c => c.isAvailable);
@@ -116,73 +151,123 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     }
   }, [formData, schedules, bookingRequests]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setFormErrors({});
 
-    // Validation
-    if (!formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()) {
-      toast.error('Please fill in all required fields');
-      return;
+    try {
+      // Validate access permissions
+      AccessControl.validateBookingAccess(user, 'create');
+
+      // Client-side form validation
+      const validation = validateForm.bookingRequest({
+        classroomId: formData.classroomId,
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        purpose: formData.purpose,
+      });
+
+      if (!validation.isValid) {
+        setFormErrors(validation.errors);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Additional business logic validations
+      if (!isValidTimeRange(formData.startTime, formData.endTime)) {
+        setFormErrors({ time: 'End time must be after start time (same day booking only)' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!isValidSchoolTime(formData.startTime) || !isValidSchoolTime(formData.endTime)) {
+        setFormErrors({ time: 'Times must be within school hours (7:00 AM - 8:00 PM)' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
+        setFormErrors({ time: 'Booking duration must be between 30 minutes and 8 hours' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check if booking time is in the past
+      if (isPastBookingTime(formData.date, formData.startTime)) {
+        setFormErrors({ date: 'Cannot book time slots that have already passed' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (conflicts.length > 0) {
+        setFormErrors({ conflicts: 'Cannot submit request due to confirmed booking conflicts' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (pendingConflicts.length > 0) {
+        setFormErrors({ conflicts: 'Cannot submit request due to pending booking conflicts' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
+      if (!selectedClassroom) {
+        setFormErrors({ classroomId: 'Selected classroom not found' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!selectedClassroom.isAvailable) {
+        setFormErrors({ classroomId: 'Selected classroom is not available for booking' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Sanitize input data
+      const sanitizedRequest: Omit<BookingRequest, 'id' | 'requestDate' | 'status'> = {
+        facultyId: user.id,
+        facultyName: sanitizeInput.name(user.name),
+        classroomId: formData.classroomId, // Already validated
+        classroomName: sanitizeInput.name(selectedClassroom.name),
+        date: formData.date, // Already validated
+        startTime: convertTo24Hour(formData.startTime),
+        endTime: convertTo24Hour(formData.endTime),
+        purpose: sanitizeInput.description(formData.purpose)
+      };
+
+      onBookingRequest(sanitizedRequest);
+
+      // Reset form on success
+      setFormData({
+        classroomId: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        purpose: ''
+      });
+      
+      toast.success('Booking Request Submitted', {
+        description: `Your request for ${selectedClassroom.name} has been submitted for approval`
+      });
+
+    } catch (error) {
+      ErrorLogger.logError(error as Error, 'Room booking submission');
+      
+      if (error instanceof SecureError) {
+        toast.error('Submission Failed', {
+          description: error.userMessage
+        });
+      } else {
+        toast.error('Submission Failed', {
+          description: 'Unable to submit booking request. Please try again.'
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (!isValidTimeRange(formData.startTime, formData.endTime)) {
-      toast.error('End time must be after start time (same day booking only)');
-      return;
-    }
-
-    if (!isValidSchoolTime(formData.startTime) || !isValidSchoolTime(formData.endTime)) {
-      toast.error('Times must be within school hours (7:00 AM - 8:00 PM)');
-      return;
-    }
-
-    if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
-      toast.error('Booking duration must be between 30 minutes and 8 hours');
-      return;
-    }
-
-    // Check if booking time is in the past
-    if (isPastBookingTime(formData.date, formData.startTime)) {
-      toast.error('Cannot book time slots that have already passed');
-      return;
-    }
-
-    if (conflicts.length > 0) {
-      toast.error('Cannot submit request due to confirmed booking conflicts');
-      return;
-    }
-
-    if (pendingConflicts.length > 0) {
-      toast.error('Cannot submit request due to pending booking conflicts');
-      return;
-    }
-
-    const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
-    if (!selectedClassroom) {
-      toast.error('Selected classroom not found');
-      return;
-    }
-
-    const request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'> = {
-      facultyId: user.id,
-      facultyName: user.name,
-      classroomId: formData.classroomId,
-      classroomName: selectedClassroom.name,
-      date: formData.date,
-      startTime: convertTo24Hour(formData.startTime),
-      endTime: convertTo24Hour(formData.endTime),
-      purpose: formData.purpose
-    };
-
-    onBookingRequest(request);
-
-    // Reset form
-    setFormData({
-      classroomId: '',
-      date: '',
-      startTime: '',
-      endTime: '',
-      purpose: ''
-    });
   };
 
   const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
@@ -637,10 +722,40 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   value={formData.purpose}
                   onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
                   rows={3}
-                  className="transition-all duration-200 focus:scale-105"
+                  className={`transition-all duration-200 focus:scale-105 ${formErrors.purpose ? 'border-red-500' : ''}`}
                   required
                 />
+                {formErrors.purpose && (
+                  <div className="flex items-center text-red-600 text-sm">
+                    <AlertTriangle className="h-4 w-4 mr-1" />
+                    {formErrors.purpose}
+                  </div>
+                )}
               </motion.div>
+
+              {/* Form Errors Summary */}
+              {Object.keys(formErrors).length > 0 && (
+                <motion.div 
+                  className="p-4 bg-red-50 border border-red-200 rounded-md"
+                  variants={itemVariants}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                >
+                  <div className="flex">
+                    <AlertTriangle className="h-5 w-5 text-red-400 mr-2 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-medium text-red-800 mb-1">
+                        Please correct the following errors:
+                      </h3>
+                      <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                        {Object.values(formErrors).map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Submission Summary */}
               <AnimatePresence>
@@ -675,11 +790,11 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 >
                   <Button 
                     type="submit" 
-                    disabled={conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()}
+                    disabled={isSubmitting || conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim() || Object.keys(formErrors).length > 0}
                     className="w-full sm:w-auto transition-all duration-200 disabled:opacity-50"
                   >
                     <CalendarIcon className="h-4 w-4 mr-2" />
-                    Submit Booking Request
+                    {isSubmitting ? 'Submitting...' : 'Submit Booking Request'}
                   </Button>
                 </motion.div>
               </div>
