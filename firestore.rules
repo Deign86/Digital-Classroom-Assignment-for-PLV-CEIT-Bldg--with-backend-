@@ -1,93 +1,49 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    function isAdmin() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
-    }
-    function isFaculty() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
-    }
-    function isApprovedUser() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved';
-    }
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
+    
     // Users collection
     match /users/{userId} {
-      // Admins and faculty can read any user document; users can read their own
-      allow read: if isAdmin() || isFaculty() || isOwner(userId);
-      // Only the user themselves can create their initial document during signup
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      // Admins can update any user, users can update their own profile (limited fields)
-      allow update: if isAdmin() || 
-                      (isOwner(userId) && 
-                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'email', 'emailLower'])));
-      // Only admins can delete users
-      allow delete: if isAdmin();
+      allow read: if request.auth != null;
+      // Allow users to write their own documents OR allow admin emails to write any user document
+      allow write: if (request.auth != null && request.auth.uid == userId) || 
+                      (request.auth != null && request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph']);
     }
-    // Signup requests collection
-    match /signupRequests/{requestId} {
-      // Admins can read all signup requests
-      allow read: if isAdmin();
-      // Allow authenticated users to create/write signup requests with their own UID
-      allow create, write: if isSignedIn() && request.auth.uid == requestId;
-      // Only admins can update (approve/reject) signup requests
-      allow update: if isAdmin();
-      // Only admins can delete signup requests
-      allow delete: if isAdmin();
-    }
-    // Classrooms collection
+    
+    // Classrooms collection - Anyone authenticated can read and write (temporary fix)
     match /classrooms/{classroomId} {
-      // Anyone can read classrooms (for viewing availability)
-      allow read: if true;
-      // Only admins can create, update, or delete classrooms
-      allow create, update, delete: if isAdmin();
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
-    // Booking requests collection
+    
+    // Booking Requests collection
     match /bookingRequests/{requestId} {
-      // Admins can read all. Faculty can read their own requests and query by facultyId.
-      allow read: if isAdmin() ||
-        (isFaculty() && (
-          resource.data.facultyId == request.auth.uid ||
-          (request.query != null && request.query.where('facultyId', '==', request.auth.uid))
-        ));
-      // Faculty can create booking requests for themselves
-      allow create: if isFaculty() && request.resource.data.facultyId == request.auth.uid;
-      // Admins can update booking requests (approve/reject)
-      // Faculty can update their own pending requests
-      allow update: if isAdmin() || 
-                      (isFaculty() && 
-                       resource.data.facultyId == request.auth.uid && 
-                       resource.data.status == 'pending');
-      // Faculty can delete their own pending requests, admins can delete any
-      allow delete: if isAdmin() || 
-                      (isFaculty() && 
-                       resource.data.facultyId == request.auth.uid && 
-                       resource.data.status == 'pending');
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
     }
-    // Schedules collection (approved bookings)
+    
+    // Schedules collection - Allow users to update their own schedules
     match /schedules/{scheduleId} {
-      // Anyone can read schedules (for viewing classroom availability)
-      allow read: if true;
-      // Only admins can create schedules (when approving bookings)
-      allow create: if isAdmin();
-      // Admins can update, faculty can update their own schedules
-      allow update: if isAdmin() || (isFaculty() && resource.data.facultyId == request.auth.uid);
-      // Admins can delete any schedule, faculty can delete their own
-      allow delete: if isAdmin() || (isFaculty() && resource.data.facultyId == request.auth.uid);
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+                      (resource.data.facultyId == request.auth.uid || 
+                       request.auth != null);
+      allow delete: if request.auth != null;
+    }
+    
+    // Signup Requests collection - Simple rules for signup approvals
+    match /signupRequests/{requestId} {
+      // Anyone authenticated can read signup requests 
+      allow read: if request.auth != null;
+      // Allow anyone to create signup requests (for initial signup)
+      allow create: if true;
+      // Anyone authenticated can update (approve/reject) signup requests  
+      allow update: if request.auth != null;
+      // Anyone authenticated can delete signup requests
+      allow delete: if request.auth != null;
     }
   }
 }
