@@ -1,0 +1,17 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "git": {
+    "deploymentEnabled": {
+      "main": false,
+      "vercel-deployment": true
+    }
+  },
+  "github": {
+    "enabled": true,
+    "autoAlias": true
+  }
+}
