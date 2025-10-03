@@ -904,83 +904,8 @@ export const classroomService = {
     const ref = doc(database, COLLECTIONS.CLASSROOMS, id);
     await deleteDoc(ref);
   },
-};
 
-// ============================================
-// BOOKING REQUEST SERVICE
-// ============================================
-
-const timesOverlap = (
-  startA: string,
-  endA: string,
-  startB: string,
-  endB: string
-) =>
-  (startA >= startB && startA < endB) ||
-  (endA > startB && endA <= endB) ||
-  (startA <= startB && endA >= endB);
-
-export const bookingRequestService = {
-  async getAll(): Promise<BookingRequest[]> {
-    const database = getDb();
-    const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
-    const q = query(ref, orderBy('requestDate', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnapshot) => {
-      const data = docSnapshot.data() as FirestoreBookingRequestRecord;
-      return toBookingRequest(docSnapshot.id, data);
-    });
-  },
-
-  async getById(id: string): Promise<BookingRequest | null> {
-    const database = getDb();
-    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
-    const snapshot = await getDoc(ref);
-    if (!snapshot.exists()) {
-      return null;
-    }
-    const data = snapshot.data() as FirestoreBookingRequestRecord;
-    return toBookingRequest(snapshot.id, data);
-  },
-
-  async create(
-    request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>
-  ): Promise<BookingRequest> {
-    const database = getDb();
-    const record: FirestoreBookingRequestRecord = {
-      ...request,
-      status: 'pending',
-      requestDate: nowIso(),
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
-    const ref = await addDoc(collection(database, COLLECTIONS.BOOKING_REQUESTS), record);
-    return toBookingRequest(ref.id, record);
-  },
-
-  async update(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest> {
-    const database = getDb();
-    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
-    const updatePayload: Partial<FirestoreBookingRequestRecord> = {
-      ...updates,
-      updatedAt: nowIso(),
-    };
-    await updateDoc(ref, updatePayload as Record<string, unknown>);
-    const snapshot = await getDoc(ref);
-    if (!snapshot.exists()) {
-      throw new Error('Booking request not found');
-    }
-    const data = snapshot.data() as FirestoreBookingRequestRecord;
-    return toBookingRequest(snapshot.id, data);
-  },
-
-  async delete(id: string): Promise<void> {
-    const database = getDb();
-    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
-    await deleteDoc(ref);
-  },
-
-  async checkConflicts(
+  async checkConflict(
     classroomId: string,
     date: string,
     startTime: string,
@@ -1103,21 +1028,22 @@ export const scheduleService = {
     excludeId?: string
   ): Promise<boolean> {
     const database = getDb();
-    const ref = collection(database, COLLECTIONS.SCHEDULES);
-    const snapshot = await getDocs(
-      query(ref, where('classroomId', '==', classroomId), where('date', '==', date))
+    const schedulesRef = collection(database, COLLECTIONS.SCHEDULES);
+    const q = query(
+      schedulesRef,
+      where('classroomId', '==', classroomId),
+      where('date', '==', date)
     );
-
-    return snapshot.docs.some((docSnapshot) => {
-      if (excludeId && docSnapshot.id === excludeId) {
-        return false;
+    const snapshot = await getDocs(q);
+    
+    for (const doc of snapshot.docs) {
+      if (doc.id === excludeId) continue;
+      const schedule = doc.data() as FirestoreScheduleRecord;
+      if (timesOverlap(startTime, endTime, schedule.startTime, schedule.endTime)) {
+        return true;
       }
-      const data = docSnapshot.data() as FirestoreScheduleRecord;
-      if (data.status === 'cancelled') {
-        return false;
-      }
-      return timesOverlap(startTime, endTime, data.startTime, data.endTime);
-    });
+    }
+    return false;
   },
 };
 
@@ -1230,4 +1156,112 @@ export const importAllData = (): never => {
   throw new Error(
     'importAllData is not available with the Firebase backend. Use Firestore import tools instead.'
   );
+};
+
+const timesOverlap = (
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string
+): boolean => {
+  const startAIso = new Date(startA).toISOString();
+  const endAIso = new Date(endA).toISOString();
+  const startBIso = new Date(startB).toISOString();
+  const endBIso = new Date(endB).toISOString();
+
+  return (
+    (startAIso >= startBIso && startAIso < endBIso) ||
+    (endAIso > startBIso && endAIso <= endBIso) ||
+    (startAIso <= startBIso && endAIso >= endBIso)
+  );
+};
+
+export const bookingRequestService = {
+  async getAll(): Promise<BookingRequest[]> {
+    const database = getDb();
+    const requestsRef = collection(database, COLLECTIONS.BOOKING_REQUESTS);
+    const q = query(requestsRef, orderBy('requestDate', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data() as FirestoreBookingRequestRecord;
+      return toBookingRequest(docSnapshot.id, data);
+    });
+  },
+
+  async getById(id: string): Promise<BookingRequest | null> {
+    const database = getDb();
+    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) {
+      return null;
+    }
+    const data = snapshot.data() as FirestoreBookingRequestRecord;
+    return toBookingRequest(snapshot.id, data);
+  },
+
+  async create(request: Omit<BookingRequest, 'id'>): Promise<BookingRequest> {
+    const database = getDb();
+    const record: FirestoreBookingRequestRecord = {
+      ...request,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    const ref = await addDoc(collection(database, COLLECTIONS.BOOKING_REQUESTS), record);
+    return toBookingRequest(ref.id, record);
+  },
+
+  async update(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest> {
+    const database = getDb();
+    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
+    const updatePayload: Partial<FirestoreBookingRequestRecord> = {
+      ...updates,
+      updatedAt: nowIso(),
+    };
+    await updateDoc(ref, updatePayload as Record<string, unknown>);
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) {
+      throw new Error('Booking request not found');
+    }
+    const data = snapshot.data() as FirestoreBookingRequestRecord;
+    return toBookingRequest(snapshot.id, data);
+  },
+
+  async delete(id: string): Promise<void> {
+    const database = getDb();
+    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
+    await deleteDoc(ref);
+  },
+
+  async getConflicts(
+    classroomId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeRequestId?: string
+  ): Promise<BookingRequest[]> {
+    const database = getDb();
+    const requestsRef = collection(database, COLLECTIONS.BOOKING_REQUESTS);
+    const q = query(
+      requestsRef,
+      where('classroomId', '==', classroomId),
+      where('date', '==', date)
+    );
+    const snapshot = await getDocs(q);
+    const conflicts: BookingRequest[] = [];
+
+    for (const doc of snapshot.docs) {
+      if (excludeRequestId && doc.id === excludeRequestId) {
+        continue;
+      }
+      const request = doc.data() as FirestoreBookingRequestRecord;
+      if (request.status === 'rejected') {
+        continue;
+      }
+      if (timesOverlap(startTime, endTime, request.startTime, request.endTime)) {
+        conflicts.push(toBookingRequest(doc.id, request));
+      }
+    }
+
+    return conflicts;
+  },
 };

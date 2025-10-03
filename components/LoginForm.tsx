@@ -12,13 +12,13 @@ import PasswordResetDialog from './PasswordResetDialog';
 import { useSecureAuthentication, getPasswordStrengthData, getRateLimitStatus } from '../utils/secureAuthentication';
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => boolean | Promise<boolean>;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onSignup: (
     email: string,
     name: string,
     department: string,
     password: string
-  ) => boolean | Promise<boolean>;
+  ) => Promise<boolean>;
   users: User[];
 }
 
@@ -48,7 +48,6 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
   } = useSecureAuthentication({
     name: `${signupData.firstName} ${signupData.lastName}`,
     email: signupData.email,
-    department: signupData.department
   });
   
   // Get password strength for signup

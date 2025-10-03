@@ -327,6 +327,8 @@ export const secureBookingRequestService = {
         ...sanitizedData,
         facultyId: user!.id,
         facultyName: user!.name,
+        requestDate: new Date().toISOString(),
+        status: 'pending' as const,
       };
 
       return await baseBookingRequestService.create(fullRequestData);
@@ -573,9 +575,120 @@ export const secureSignupRequestService = {
   },
 };
 
+// Secure Schedule Service
+export const secureScheduleService = {
+  /**
+   * Get all schedules with authorization
+   */
+  async getAll(user: User | null): Promise<Schedule[]> {
+    try {
+      AccessControl.requireApprovedUser(user);
+      // In a real-world scenario, you might filter schedules based on user role
+      return await baseScheduleService.getAll();
+    } catch (error) {
+      throw ErrorHandler.handleDatabaseError(error, 'get schedules');
+    }
+  },
+
+  /**
+   * Create schedule with validation and authorization
+   */
+  async create(user: User | null, scheduleData: Omit<Schedule, 'id'>): Promise<Schedule> {
+    try {
+      // Only admins should be able to create schedules directly (e.g., from approved requests)
+      AccessControl.validateScheduleAccess(user, 'create');
+
+      // Data is assumed to be validated at the booking request stage, but we sanitize it again
+      const sanitizedData: Omit<Schedule, 'id'> = {
+        ...scheduleData,
+        classroomName: sanitizeInput.name(scheduleData.classroomName),
+        facultyName: sanitizeInput.name(scheduleData.facultyName),
+        purpose: sanitizeInput.description(scheduleData.purpose),
+        status: 'confirmed', // Schedules are always confirmed
+      };
+
+      return await baseScheduleService.create(sanitizedData);
+    } catch (error) {
+      if (error instanceof SecureError) throw error;
+      throw ErrorHandler.handleDatabaseError(error, 'create schedule');
+    }
+  },
+
+  /**
+   * Delete schedule with authorization
+   */
+  async delete(user: User | null, id: string): Promise<void> {
+    try {
+      AccessControl.validateScheduleAccess(user, 'delete');
+
+      if (!id || typeof id !== 'string' || id.trim().length === 0) {
+        throw new SecureError(ErrorType.VALIDATION, 'Invalid schedule ID', undefined, 400);
+      }
+
+      const schedule = await baseScheduleService.getById(id);
+      if (!schedule) {
+        throw ErrorHandler.handle404Error('Schedule');
+      }
+
+      await baseScheduleService.delete(id);
+    } catch (error) {
+      if (error instanceof SecureError) throw error;
+      throw ErrorHandler.handleDatabaseError(error, 'delete schedule');
+    }
+  },
+
+  async checkConflicts(
+    user: User | null,
+    classroomId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeRequestId?: string
+  ): Promise<boolean> {
+    try {
+      AccessControl.requireApprovedUser(user);
+      return await baseScheduleService.checkConflict(classroomId, date, startTime, endTime, excludeRequestId);
+    } catch (error) {
+      throw ErrorHandler.handleDatabaseError(error, 'check schedule conflicts');
+    }
+  },
+
+  async update(
+    user: User | null,
+    id: string,
+    updates: Partial<Schedule>
+  ): Promise<Schedule> {
+    try {
+      AccessControl.validateScheduleAccess(user, 'update');
+
+      if (!id || typeof id !== 'string' || id.trim().length === 0) {
+        throw new SecureError(ErrorType.VALIDATION, 'Invalid schedule ID', undefined, 400);
+      }
+
+      const schedule = await baseScheduleService.getById(id);
+      if (!schedule) {
+        throw ErrorHandler.handle404Error('Schedule');
+      }
+
+      // Sanitize updates
+      const sanitizedUpdates: Partial<Schedule> = {};
+      if (updates.purpose) {
+        sanitizedUpdates.purpose = sanitizeInput.description(updates.purpose);
+      }
+      // Add other updatable fields here with sanitization
+
+      return await baseScheduleService.update(id, { ...updates, ...sanitizedUpdates });
+    } catch (error) {
+      if (error instanceof SecureError) throw error;
+      throw ErrorHandler.handleDatabaseError(error, 'update schedule');
+    }
+  }
+};
+
 // Export secure services
 export {
   secureClassroomService as classroomService,
   secureBookingRequestService as bookingRequestService,
   secureSignupRequestService as signupRequestService,
+  secureScheduleService as scheduleService,
 };

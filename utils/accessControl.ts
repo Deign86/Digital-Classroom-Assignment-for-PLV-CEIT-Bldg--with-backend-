@@ -300,6 +300,34 @@ export class AccessControl {
   }
 
   /**
+   * Validate user can perform action on schedule
+   */
+  static validateScheduleAccess(
+    user: User | null, 
+    action: 'create' | 'view' | 'update' | 'delete'
+  ): void {
+    this.requireApprovedUser(user);
+
+    switch (action) {
+      case 'create':
+        this.requirePermission(user, Permission.CREATE_SCHEDULES);
+        break;
+      
+      case 'view':
+        this.requirePermission(user, Permission.VIEW_ALL_SCHEDULES);
+        break;
+      
+      case 'update':
+        this.requirePermission(user, Permission.UPDATE_SCHEDULES);
+        break;
+      
+      case 'delete':
+        this.requirePermission(user, Permission.DELETE_SCHEDULES);
+        break;
+    }
+  }
+
+  /**
    * Validate user can perform action on signup request
    */
   static validateSignupAccess(

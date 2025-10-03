@@ -22,19 +22,18 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
   } = usePasswordValidation(userInfo);
 
   // Check rate limits for login attempts
-  const checkLoginRateLimit = useCallback((): boolean => {
+  const checkLoginRateLimit = useCallback((email: string): boolean => {
     try {
-      const rateLimitResult = RateLimiter.checkRateLimit('LOGIN_ATTEMPTS');
-      
-      if (!rateLimitResult.allowed) {
+      const rateLimitResult = RateLimiter.checkRateLimit('LOGIN_ATTEMPTS', email);      if (!rateLimitResult.allowed) {
         setIsRateLimited(true);
+        const remaining = rateLimitResult.resetTime ? rateLimitResult.resetTime.getTime() - Date.now() : 0;
         setRateLimitInfo({
-          remainingTime: rateLimitResult.resetTime! - Date.now(),
+          remainingTime: remaining,
           attemptsRemaining: 0
         });
         
         toast.error('Too many login attempts', {
-          description: `Please try again in ${Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000 / 60)} minutes`,
+          description: `Please try again in ${Math.ceil(remaining / 1000 / 60)} minutes`,
           duration: 10000
         });
         
@@ -55,13 +54,14 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
   }, []);
 
   // Check rate limits for password reset
-  const checkPasswordResetRateLimit = useCallback((): boolean => {
+  const checkPasswordResetRateLimit = useCallback((email: string): boolean => {
     try {
-      const rateLimitResult = RateLimiter.checkRateLimit('PASSWORD_RESET');
+      const rateLimitResult = RateLimiter.checkRateLimit('PASSWORD_RESET', email);
       
       if (!rateLimitResult.allowed) {
+        const remaining = rateLimitResult.resetTime ? rateLimitResult.resetTime.getTime() - Date.now() : 0;
         toast.error('Too many password reset attempts', {
-          description: `Please try again in ${Math.ceil((rateLimitResult.resetTime! - Date.now()) / 1000 / 60)} minutes`,
+          description: `Please try again in ${Math.ceil(remaining / 1000 / 60)} minutes`,
           duration: 10000
         });
         
@@ -83,7 +83,7 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
   ): Promise<boolean> => {
     try {
       // Check rate limits first
-      if (!checkLoginRateLimit()) {
+      if (!checkLoginRateLimit(email)) {
         return false;
       }
 
@@ -104,7 +104,7 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
       }
 
       // Record the attempt before trying login
-      RateLimiter.recordAttempt('LOGIN_ATTEMPTS');
+      RateLimiter.recordAttempt('LOGIN_ATTEMPTS', sanitizedEmail);
       setLoginAttempts(prev => prev + 1);
 
       // Attempt login
@@ -117,11 +117,12 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
         setRateLimitInfo(null);
       } else {
         // Update rate limit info after failed attempt
-        const updatedRateLimit = RateLimiter.checkRateLimit('LOGIN_ATTEMPTS');
+        const updatedRateLimit = RateLimiter.checkRateLimit('LOGIN_ATTEMPTS', sanitizedEmail);
         if (!updatedRateLimit.allowed) {
           setIsRateLimited(true);
+          const remaining = updatedRateLimit.resetTime ? updatedRateLimit.resetTime.getTime() - Date.now() : 0;
           setRateLimitInfo({
-            remainingTime: updatedRateLimit.resetTime! - Date.now(),
+            remainingTime: remaining,
             attemptsRemaining: 0
           });
         } else {
@@ -150,7 +151,7 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
   ): Promise<{ success: boolean; message?: string }> => {
     try {
       // Check rate limits first
-      if (!checkPasswordResetRateLimit()) {
+      if (!checkPasswordResetRateLimit(email)) {
         return {
           success: false,
           message: 'Too many password reset attempts. Please try again later.'
@@ -176,7 +177,7 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
       }
 
       // Record the attempt
-      RateLimiter.recordAttempt('PASSWORD_RESET');
+      RateLimiter.recordAttempt('PASSWORD_RESET', sanitizedEmail);
 
       // Perform reset
       const result = await originalResetFunction(sanitizedEmail);
@@ -239,7 +240,7 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
       }
 
       // Check signup rate limiting (prevent spam signups)
-      const signupRateLimit = RateLimiter.checkRateLimit('SIGNUP_ATTEMPTS');
+      const signupRateLimit = RateLimiter.checkRateLimit('SIGNUP_REQUEST', sanitizedEmail);
       if (!signupRateLimit.allowed) {
         toast.error('Too many signup attempts', {
           description: 'Please try again later',
@@ -249,7 +250,7 @@ export function useSecureAuthentication(userInfo?: { name?: string; email?: stri
       }
 
       // Record signup attempt
-      RateLimiter.recordAttempt('SIGNUP_ATTEMPTS');
+      RateLimiter.recordAttempt('SIGNUP_REQUEST', sanitizedEmail);
 
       // Attempt signup
       const success = await originalSignupFunction(sanitizedEmail, sanitizedName, sanitizedDepartment, password);

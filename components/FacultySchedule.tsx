@@ -67,13 +67,15 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
     const canCancel = () => {
       if (schedule.status !== 'confirmed') return false;
       
-      // Combine date and start time to get the actual booking start datetime
       const scheduleDateTime = new Date(`${schedule.date}T${schedule.startTime}`);
       const now = new Date();
+      
+      // Allow cancellation if the booking is in the future
+      if (scheduleDateTime <= now) return false;
+
       const timeDiff = scheduleDateTime.getTime() - now.getTime();
       const hoursDiff = timeDiff / (1000 * 3600);
       
-      // Can cancel if more than 2 hours away and booking is confirmed
       return hoursDiff > 2;
     };
 

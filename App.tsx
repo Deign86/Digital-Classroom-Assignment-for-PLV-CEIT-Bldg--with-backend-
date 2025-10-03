@@ -360,6 +360,7 @@ export default function App() {
 
     try {
       return await scheduleService.checkConflicts(
+        currentUser,
         classroomId,
         date,
         startTime,
@@ -371,10 +372,16 @@ export default function App() {
       toast.error('Failed to check for conflicts');
       return true; // Return true to be safe
     }
-  }, []);
+  }, [currentUser]);
 
   const handleBookingRequest = useCallback(async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => {
     try {
+      // Check if user is logged in
+      if (!currentUser) {
+        toast.error('Please log in to make a booking request');
+        return;
+      }
+
       // Check if the booking time is in the past
       if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
         toast.error('Cannot request time slots that have already passed');
@@ -412,10 +419,16 @@ export default function App() {
         toast.error('Failed to submit booking request. Please try again.');
       }
     }
-  }, [checkConflicts]);
+  }, [checkConflicts, currentUser]);
 
   const handleRequestApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string) => {
     try {
+      // Check if user is logged in
+      if (!currentUser) {
+        toast.error('Please log in to approve requests');
+        return;
+      }
+
       // Find the request first
       const request = bookingRequests.find(req => req.id === requestId);
       if (!request) {
@@ -496,6 +509,11 @@ export default function App() {
   const handleSignupApproval = useCallback(
     async (requestId: string, approved: boolean, feedback?: string) => {
       try {
+        // Check if user is logged in
+        if (!currentUser) {
+          toast.error('Please log in to approve signup requests');
+          return;
+        }
         const request = signupRequests.find((r) => r.id === requestId);
         if (!request) {
           toast.error('Request not found');
@@ -577,6 +595,8 @@ export default function App() {
     [signupRequests]
   );
 
+
+
   const handleCancelSchedule = useCallback(async (scheduleId: string) => {
     try {
       const updatedSchedule = await scheduleService.update(currentUser, scheduleId, {
@@ -592,7 +612,7 @@ export default function App() {
       console.error('Cancel schedule error:', err);
       toast.error('Failed to cancel booking');
     }
-  }, []);
+  }, [currentUser]);
 
   // Create dashboard props objects to prevent prop drilling and improve performance
   const adminDashboardProps = useMemo(() => ({

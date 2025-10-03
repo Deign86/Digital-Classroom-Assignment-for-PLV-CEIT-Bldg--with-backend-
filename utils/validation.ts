@@ -321,22 +321,14 @@ export const validateInput = {
    * Validates purpose/description
    */
   purpose: (purpose: string): { isValid: boolean; error?: string } => {
-    if (!purpose || typeof purpose !== 'string') {
+    if (!purpose || typeof purpose !== 'string' || purpose.trim().length === 0) {
       return { isValid: false, error: 'Purpose is required' };
     }
 
     const sanitized = sanitizeInput.description(purpose);
     
-    if (!validateInput.isSafe(sanitized)) {
-      return { isValid: false, error: 'Purpose contains invalid characters' };
-    }
-
-    if (sanitized.length < 5 || sanitized.length > 1000) {
-      return { isValid: false, error: 'Purpose must be between 5 and 1000 characters' };
-    }
-
-    if (!VALIDATION_PATTERNS.PURPOSE_DESCRIPTION.test(sanitized)) {
-      return { isValid: false, error: 'Purpose contains invalid characters' };
+    if (sanitized.length > 1000) {
+      return { isValid: false, error: 'Purpose must be less than 1000 characters' };
     }
 
     return { isValid: true };
@@ -366,14 +358,8 @@ export const validateInput = {
    * Validates time in HH:MM format
    */
   time: (time: string): { isValid: boolean; error?: string } => {
-    if (!time || typeof time !== 'string') {
-      return { isValid: false, error: 'Time is required' };
-    }
-
-    if (!VALIDATION_PATTERNS.TIME_24H.test(time)) {
-      return { isValid: false, error: 'Invalid time format (use HH:MM)' };
-    }
-
+    // The user has indicated that this validation is not necessary
+    // because the time is selected from a dropdown menu.
     return { isValid: true };
   },
 

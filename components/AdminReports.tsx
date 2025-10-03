@@ -3,12 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download, Shield } from 'lucide-react';
+import { TrendingUp, Users, Calendar as CalendarIcon, Clock, Building2, MapPin, Download, Shield, BookOpen } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import { AccessControl, Permission } from '../utils/accessControl';
 import { ErrorLogger, SecureError } from '../utils/errorHandling';
 import type { Classroom, Schedule, BookingRequest, SignupRequest, User } from '../App';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import { format, subDays } from 'date-fns';
+import { cn } from './ui/utils';
 
 interface AdminReportsProps {
   user: User | null;
@@ -21,7 +26,10 @@ interface AdminReportsProps {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export default function AdminReports({ user, classrooms, schedules, bookingRequests, signupRequests }: AdminReportsProps) {
-  const [reportPeriod, setReportPeriod] = useState<'week' | 'month' | 'semester'>('month');
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Check permissions on component mount
@@ -55,37 +63,21 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
   }
 
   // Calculate date range based on period
-  const getDateRange = () => {
-    const today = new Date();
-    const start = new Date();
-    
-    switch (reportPeriod) {
-      case 'week':
-        start.setDate(today.getDate() - 7);
-        break;
-      case 'month':
-        start.setMonth(today.getMonth() - 1);
-        break;
-      case 'semester':
-        start.setMonth(today.getMonth() - 4);
-        break;
-    }
-    
-    return { start, end: today };
-  };
+  const filteredSchedules = useMemo(() => {
+    if (!dateRange.from || !dateRange.to) return [];
+    return schedules.filter(s => {
+      const scheduleDate = new Date(s.date);
+      return scheduleDate >= dateRange.from! && scheduleDate <= dateRange.to! && s.status === 'confirmed';
+    });
+  }, [schedules, dateRange]);
 
-  const { start, end } = getDateRange();
-
-  // Filter data based on date range
-  const filteredSchedules = schedules.filter(s => {
-    const scheduleDate = new Date(s.date);
-    return scheduleDate >= start && scheduleDate <= end && s.status === 'confirmed';
-  });
-
-  const filteredRequests = bookingRequests.filter(r => {
-    const requestDate = new Date(r.requestDate);
-    return requestDate >= start && requestDate <= end;
-  });
+  const filteredRequests = useMemo(() => {
+    if (!dateRange.from || !dateRange.to) return [];
+    return bookingRequests.filter(r => {
+      const requestDate = new Date(r.requestDate);
+      return requestDate >= dateRange.from! && requestDate <= dateRange.to!;
+    });
+  }, [bookingRequests, dateRange]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -150,32 +142,24 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
 
   // Weekly usage trend
   const weeklyTrend = useMemo(() => {
-    const weeks = [];
-    const currentWeek = new Date();
-    
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(currentWeek);
-      weekStart.setDate(currentWeek.getDate() - (i * 7));
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
+    if (!dateRange.from || !dateRange.to) return [];
+    const trendData = [];
+    let currentDate = new Date(dateRange.from);
+    while (currentDate <= dateRange.to) {
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      const daySchedules = filteredSchedules.filter(s => s.date === dateStr);
+      const dayRequests = filteredRequests.filter(r => format(new Date(r.requestDate), 'yyyy-MM-dd') === dateStr);
       
-      const weekSchedules = schedules.filter(s => {
-        const scheduleDate = new Date(s.date);
-        return scheduleDate >= weekStart && scheduleDate <= weekEnd && s.status === 'confirmed';
+      trendData.push({
+        date: format(currentDate, 'MMM dd'),
+        classes: daySchedules.length,
+        requests: dayRequests.length,
       });
-
-      weeks.push({
-        week: `Week ${8-i}`,
-        classes: weekSchedules.length,
-        requests: bookingRequests.filter(r => {
-          const requestDate = new Date(r.requestDate);
-          return requestDate >= weekStart && requestDate <= weekEnd;
-        }).length
-      });
+      
+      currentDate.setDate(currentDate.getDate() + 1);
     }
-    
-    return weeks;
-  }, [schedules, bookingRequests]);
+    return trendData;
+  }, [filteredSchedules, filteredRequests, dateRange]);
 
   // Building usage distribution
   const buildingUsage = useMemo(() => {
@@ -201,9 +185,12 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
       AccessControl.requirePermission(user, Permission.GENERATE_REPORTS);
       setIsGenerating(true);
 
+      if (!dateRange.from || !dateRange.to) {
+        toast.error('Please select a date range');
+        return;
+      }
       const reportData = {
-        period: reportPeriod,
-        dateRange: `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
+        period: `${format(dateRange.from, 'PPP')} - ${format(dateRange.to, 'PPP')}`,
         statistics: stats,
         classroomUtilization,
         requestStatusData,
@@ -222,7 +209,7 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `classroom-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `classroom-report-${format(dateRange.from, 'yyyy-MM-dd')}-${format(dateRange.to, 'yyyy-MM-dd')}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -259,16 +246,35 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
               <CardDescription>Analytics and insights on classroom usage and booking patterns</CardDescription>
             </div>
             <div className="flex items-center space-x-4">
-              <Select value={reportPeriod} onValueChange={(value: 'week' | 'month' | 'semester') => setReportPeriod(value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">Last Week</SelectItem>
-                  <SelectItem value="month">Last Month</SelectItem>
-                  <SelectItem value="semester">Last 4 Months</SelectItem>
-                </SelectContent>
-              </Select>
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[280px] justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from && dateRange.to ? (
+                      `${format(dateRange.from, "LLL dd, y")} - ${format(dateRange.to, "LLL dd, y")}`
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    selectRange={true}
+                    value={dateRange.from && dateRange.to ? [dateRange.from, dateRange.to] : null}
+                    onChange={(value) => {
+                        if (Array.isArray(value) && value.length === 2 && value[0] && value[1]) {
+                            setDateRange({ from: value[0], to: value[1] });
+                        }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
               <Button variant="outline" size="sm" onClick={handleExportReport} disabled={isGenerating}>
                 <Download className="h-4 w-4 mr-2" />
                 {isGenerating ? 'Generating...' : 'Export'}
@@ -287,7 +293,7 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
                 <p className="text-sm font-medium text-gray-600">Total Classes</p>
                 <p className="text-3xl font-bold text-gray-900">{stats.totalClasses}</p>
               </div>
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <BookOpen className="h-8 w-8 text-blue-600" />
             </div>
             <p className="text-sm text-gray-500 mt-2">{Math.round(stats.totalHours)} total hours</p>
           </CardContent>
@@ -395,14 +401,14 @@ export default function AdminReports({ user, classrooms, schedules, bookingReque
         {/* Weekly Trend */}
         <Card>
           <CardHeader>
-            <CardTitle>Weekly Usage Trend</CardTitle>
-            <CardDescription>Classes and requests over time</CardDescription>
+            <CardTitle>Usage Trend</CardTitle>
+            <CardDescription>Classes and requests over the selected period</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={weeklyTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
+                <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
