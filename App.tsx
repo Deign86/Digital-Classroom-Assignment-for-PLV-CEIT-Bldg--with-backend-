@@ -62,9 +62,10 @@ export interface BookingRequest {
   startTime: string;
   endTime: string;
   purpose: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   requestDate: string;
   adminFeedback?: string;
+  cancellationReason?: string;
 }
 
 export interface Schedule {
@@ -408,7 +409,6 @@ export default function App() {
       const newRequest = await bookingRequestService.create(currentUser, request);
       
       setBookingRequests(prev => [...prev, newRequest]);
-      toast.success('Classroom request submitted!');
     } catch (err) {
       console.error('Booking request error:', err);
       // Check if it's a duplicate/conflict error from the database
@@ -597,22 +597,85 @@ export default function App() {
 
 
 
-  const handleCancelSchedule = useCallback(async (scheduleId: string) => {
+  const handleCancelSchedule = useCallback(async (scheduleId: string, cancellationReason: string) => {
     try {
-      const updatedSchedule = await scheduleService.update(currentUser, scheduleId, {
+      let targetSchedule: Schedule | undefined;
+      let relatedRequest: BookingRequest | undefined;
+
+      // Check if this is a request-based cancellation (from RequestApproval component)
+      if (scheduleId.startsWith('request:')) {
+        const parts = scheduleId.split(':');
+        const [, requestId, facultyId, classroomId, date, startTime, endTime] = parts;
+        
+        // Find the request first
+        relatedRequest = bookingRequests.find(req => req.id === requestId);
+        if (!relatedRequest) {
+          toast.error('Booking request not found');
+          return;
+        }
+
+        // Find the corresponding schedule
+        targetSchedule = schedules.find(schedule => 
+          schedule.facultyId === facultyId &&
+          schedule.classroomId === classroomId &&
+          schedule.date === date &&
+          schedule.startTime === startTime &&
+          schedule.endTime === endTime &&
+          schedule.status === 'confirmed'
+        );
+
+        if (!targetSchedule) {
+          toast.error('Corresponding schedule not found');
+          return;
+        }
+      } else {
+        // Direct schedule cancellation (from ScheduleViewer component)
+        targetSchedule = schedules.find(s => s.id === scheduleId);
+        if (!targetSchedule) {
+          toast.error('Schedule not found');
+          return;
+        }
+
+        // Find the corresponding booking request
+        if (targetSchedule) {
+          relatedRequest = bookingRequests.find(req => 
+            req.status === 'approved' &&
+            req.facultyId === targetSchedule!.facultyId &&
+            req.classroomId === targetSchedule!.classroomId &&
+            req.date === targetSchedule!.date &&
+            req.startTime === targetSchedule!.startTime &&
+            req.endTime === targetSchedule!.endTime
+          );
+        }
+      }
+
+      // Update the schedule to cancelled
+      const updatedSchedule = await scheduleService.update(currentUser, targetSchedule.id, {
         status: 'cancelled'
       });
       
       setSchedules(prev =>
-        prev.map(schedule => schedule.id === scheduleId ? updatedSchedule : schedule)
+        prev.map(schedule => schedule.id === targetSchedule.id ? updatedSchedule : schedule)
       );
+
+      // Update the corresponding booking request if found
+      if (relatedRequest) {
+        const updatedRequest = await bookingRequestService.update(currentUser, relatedRequest.id, {
+          status: 'cancelled',
+          cancellationReason: cancellationReason
+        });
+
+        setBookingRequests(prev =>
+          prev.map(req => req.id === relatedRequest.id ? updatedRequest : req)
+        );
+      }
       
-      toast.success('Booking cancelled!');
+      toast.success('Booking cancelled successfully!');
     } catch (err) {
       console.error('Cancel schedule error:', err);
       toast.error('Failed to cancel booking');
     }
-  }, [currentUser]);
+  }, [currentUser, bookingRequests, schedules]);
 
   // Create dashboard props objects to prevent prop drilling and improve performance
   const adminDashboardProps = useMemo(() => ({
@@ -638,9 +701,8 @@ export default function App() {
     allBookingRequests: bookingRequests,
     onLogout: handleLogout,
     onBookingRequest: handleBookingRequest,
-    onCancelSchedule: handleCancelSchedule,
     checkConflicts
-  }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, handleCancelSchedule, checkConflicts]);
+  }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, checkConflicts]);
 
   useEffect(() => {
     const initializeApp = async () => {

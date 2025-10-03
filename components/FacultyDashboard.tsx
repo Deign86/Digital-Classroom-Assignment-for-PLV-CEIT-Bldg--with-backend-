@@ -34,7 +34,6 @@ interface FacultyDashboardProps {
   allBookingRequests: BookingRequest[];
   onLogout: () => void;
   onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => void;
-  onCancelSchedule: (scheduleId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
 
@@ -47,7 +46,6 @@ export default function FacultyDashboard({
   allBookingRequests,
   onLogout,
   onBookingRequest,
-  onCancelSchedule,
   checkConflicts
 }: FacultyDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -98,13 +96,6 @@ export default function FacultyDashboard({
     }
   };
 
-  const canCancel = (schedule: Schedule) => {
-    const now = new Date();
-    const scheduleDateTime = new Date(`${schedule.date}T${schedule.startTime}`);
-    const timeDiff = scheduleDateTime.getTime() - now.getTime();
-    const hoursDiff = timeDiff / (1000 * 3600);
-    return hoursDiff > 2 && schedule.status === 'confirmed';
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -370,41 +361,12 @@ export default function FacultyDashboard({
                                   <Badge variant="default" className="bg-green-100 text-green-800">
                                     Confirmed
                                   </Badge>
-                                  {canCancel(schedule) && (
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button size="sm" variant="outline" className="h-6 w-6 p-0 hover:bg-red-50">
-                                          <X className="h-3 w-3" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Are you sure you want to cancel this booking for {schedule.classroomName} on {formatDate(schedule.date)}?
-                                            This action cannot be undone.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                                          <AlertDialogAction 
-                                            onClick={() => onCancelSchedule(schedule.id)}
-                                            className="bg-red-600 hover:bg-red-700"
-                                          >
-                                            Cancel Booking
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  )}
                                 </div>
                               </div>
                               <p className="text-sm text-gray-500 break-words">{schedule.purpose}</p>
-                              {!canCancel(schedule) && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                  Cannot cancel within 2 hours of class time
-                                </p>
-                              )}
+                              <p className="text-xs text-gray-400 mt-1">
+                                Contact admin to cancel bookings
+                              </p>
                             </div>
                           ))}
                       </div>
@@ -443,7 +405,6 @@ export default function FacultyDashboard({
               <FacultySchedule
                 schedules={schedules}
                 bookingRequests={bookingRequests}
-                onCancelSchedule={onCancelSchedule}
               />
             </div>
           </TabsContent>

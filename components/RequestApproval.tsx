@@ -13,19 +13,26 @@ import type { BookingRequest } from '../App';
 interface RequestApprovalProps {
   requests: BookingRequest[];
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  onCancelSchedule?: (scheduleId: string, cancellationReason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
 
-export default function RequestApproval({ requests, onRequestApproval, checkConflicts }: RequestApprovalProps) {
+export default function RequestApproval({ requests, onRequestApproval, onCancelSchedule, checkConflicts }: RequestApprovalProps) {
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(null);
   const [feedback, setFeedback] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  
+  // Cancellation state
+  const [selectedCancelRequest, setSelectedCancelRequest] = useState<BookingRequest | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [isCancellationDialogOpen, setIsCancellationDialogOpen] = useState(false);
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const approvedRequests = requests.filter(r => r.status === 'approved');
   const rejectedRequests = requests.filter(r => r.status === 'rejected');
+  const cancelledRequests = requests.filter(r => r.status === 'cancelled');
 
   const handleAction = (request: BookingRequest, type: 'approve' | 'reject') => {
     setSelectedRequest(request);
@@ -47,6 +54,25 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
     }
   };
 
+  const handleCancelClick = (request: BookingRequest) => {
+    setSelectedCancelRequest(request);
+    setCancellationReason('');
+    setIsCancellationDialogOpen(true);
+  };
+
+  const handleConfirmCancellation = () => {
+    if (selectedCancelRequest && onCancelSchedule && cancellationReason.trim()) {
+      // Pass the request details to find the corresponding schedule
+      // We'll need to modify the onCancelSchedule to handle this
+      // For now, let's pass a specially formatted ID that includes request details
+      const scheduleIdentifier = `request:${selectedCancelRequest.id}:${selectedCancelRequest.facultyId}:${selectedCancelRequest.classroomId}:${selectedCancelRequest.date}:${selectedCancelRequest.startTime}:${selectedCancelRequest.endTime}`;
+      onCancelSchedule(scheduleIdentifier, cancellationReason.trim());
+      setIsCancellationDialogOpen(false);
+      setSelectedCancelRequest(null);
+      setCancellationReason('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-4">
@@ -56,7 +82,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12">
+          <TabsList className="grid w-full grid-cols-4 h-12">
             <TabsTrigger value="pending" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Pending ({pendingRequests.length})
@@ -68,6 +94,10 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
             <TabsTrigger value="rejected" className="flex items-center gap-2">
               <XCircle className="h-4 w-4" />
               Rejected ({rejectedRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="cancelled" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Cancelled ({cancelledRequests.length})
             </TabsTrigger>
           </TabsList>
 
@@ -90,6 +120,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                     request={request}
                     onApprove={() => handleAction(request, 'approve')}
                     onReject={() => handleAction(request, 'reject')}
+                    onCancel={undefined}
                     checkConflicts={checkConflicts}
                     status="pending"
                   />
@@ -117,6 +148,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                     request={request}
                     onApprove={() => {}}
                     onReject={() => {}}
+                    onCancel={onCancelSchedule ? () => handleCancelClick(request) : undefined}
                     checkConflicts={checkConflicts}
                     status="approved"
                   />
@@ -144,8 +176,37 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                     request={request}
                     onApprove={() => {}}
                     onReject={() => {}}
+                    onCancel={undefined}
                     checkConflicts={checkConflicts}
                     status="rejected"
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="cancelled" className="mt-6">
+            {cancelledRequests.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <AlertTriangle className="h-16 w-16 text-orange-300 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Cancelled Requests</h3>
+                  <p className="text-gray-500 text-center max-w-md">
+                    No approved reservations have been cancelled by admin.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {cancelledRequests.map((request) => (
+                  <RequestCard
+                    key={request.id}
+                    request={request}
+                    onApprove={() => {}}
+                    onReject={() => {}}
+                    onCancel={undefined}
+                    checkConflicts={checkConflicts}
+                    status="cancelled"
                   />
                 ))}
               </div>
@@ -204,6 +265,61 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cancellation Dialog */}
+      <Dialog open={isCancellationDialogOpen} onOpenChange={setIsCancellationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel Approved Booking</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for cancelling this approved booking. The faculty member will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCancelRequest && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm font-medium">{selectedCancelRequest.classroomName}</p>
+                <p className="text-sm text-gray-600">
+                  {selectedCancelRequest.facultyName} • {selectedCancelRequest.date} • {formatTimeRange(convertTo12Hour(selectedCancelRequest.startTime), convertTo12Hour(selectedCancelRequest.endTime))}
+                </p>
+                <p className="text-sm text-gray-500">{selectedCancelRequest.purpose}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="cancellation-reason">Cancellation Reason *</Label>
+                <Textarea
+                  id="cancellation-reason"
+                  placeholder="Please explain why this booking is being cancelled..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCancellationDialogOpen(false);
+                setSelectedCancelRequest(null);
+                setCancellationReason('');
+              }}
+            >
+              Keep Booking
+            </Button>
+            <Button
+              onClick={handleConfirmCancellation}
+              disabled={!cancellationReason.trim()}
+              variant="destructive"
+            >
+              Cancel Booking
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -212,14 +328,16 @@ function RequestCard({
   request, 
   onApprove, 
   onReject,
+  onCancel,
   checkConflicts,
   status 
 }: {
   request: BookingRequest;
   onApprove: () => void;
   onReject: () => void;
+  onCancel?: (request: BookingRequest) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
 }) {
   const [hasConflict, setHasConflict] = useState(false);
 
@@ -333,6 +451,13 @@ function RequestCard({
           </div>
         )}
 
+        {request.cancellationReason && status === 'cancelled' && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <p className="text-xs font-semibold text-orange-900 mb-1">Cancellation Reason:</p>
+            <p className="text-sm text-orange-800">{request.cancellationReason}</p>
+          </div>
+        )}
+
         {status === 'pending' && (
           <div className="flex gap-3 pt-3 border-t">
             <Button 
@@ -350,6 +475,19 @@ function RequestCard({
             >
               <XCircle className="h-4 w-4 mr-2" />
               Reject
+            </Button>
+          </div>
+        )}
+
+        {status === 'approved' && onCancel && (
+          <div className="flex justify-end pt-3 border-t">
+            <Button 
+              onClick={() => onCancel(request)}
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel Booking
             </Button>
           </div>
         )}

@@ -3,7 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots } from '../utils/timeUtils';
 import type { Schedule, Classroom } from '../App';
@@ -11,13 +14,16 @@ import type { Schedule, Classroom } from '../App';
 interface ScheduleViewerProps {
   schedules: Schedule[];
   classrooms: Classroom[];
-  onCancelSchedule?: (scheduleId: string) => void;
+  onCancelSchedule?: (scheduleId: string, cancellationReason: string) => void;
 }
 
 export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule }: ScheduleViewerProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClassroom, setSelectedClassroom] = useState<string>('');
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [isCancellationDialogOpen, setIsCancellationDialogOpen] = useState(false);
 
   // Filter schedules based on selections
   const filteredSchedules = schedules.filter(schedule => {
@@ -87,6 +93,21 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
     });
   };
 
+  const handleCancelClick = (schedule: Schedule) => {
+    setSelectedSchedule(schedule);
+    setCancellationReason('');
+    setIsCancellationDialogOpen(true);
+  };
+
+  const handleConfirmCancellation = () => {
+    if (selectedSchedule && onCancelSchedule && cancellationReason.trim()) {
+      onCancelSchedule(selectedSchedule.id, cancellationReason.trim());
+      setIsCancellationDialogOpen(false);
+      setSelectedSchedule(null);
+      setCancellationReason('');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Controls */}
@@ -152,18 +173,73 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
               classrooms={classrooms}
               timeSlots={timeSlots}
               selectedDate={selectedDate}
-              onCancelSchedule={onCancelSchedule}
+              onCancelClick={handleCancelClick}
             />
           ) : (
             <WeekView
               schedules={filteredSchedules}
               classrooms={classrooms}
               weekDates={getWeekDates(selectedDate)}
-              onCancelSchedule={onCancelSchedule}
+              onCancelSchedule={handleCancelClick}
             />
           )}
         </CardContent>
       </Card>
+
+      {/* Cancellation Dialog */}
+      <Dialog open={isCancellationDialogOpen} onOpenChange={setIsCancellationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel Classroom Booking</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for cancelling this booking. The faculty member will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSchedule && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm font-medium">{selectedSchedule.classroomName}</p>
+                <p className="text-sm text-gray-600">
+                  {selectedSchedule.facultyName} • {selectedSchedule.date} • {formatTimeRange(convertTo12Hour(selectedSchedule.startTime), convertTo12Hour(selectedSchedule.endTime))}
+                </p>
+                <p className="text-sm text-gray-500">{selectedSchedule.purpose}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="cancellation-reason">Cancellation Reason *</Label>
+                <Textarea
+                  id="cancellation-reason"
+                  placeholder="Please explain why this booking is being cancelled..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCancellationDialogOpen(false);
+                setSelectedSchedule(null);
+                setCancellationReason('');
+              }}
+            >
+              Keep Booking
+            </Button>
+            <Button
+              onClick={handleConfirmCancellation}
+              disabled={!cancellationReason.trim()}
+              variant="destructive"
+            >
+              Cancel Booking
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -174,13 +250,13 @@ function DayView({
   classrooms, 
   timeSlots, 
   selectedDate,
-  onCancelSchedule
+  onCancelClick
 }: { 
   schedules: Schedule[];
   classrooms: Classroom[];
   timeSlots: string[];
   selectedDate: string;
-  onCancelSchedule?: (scheduleId: string) => void;
+  onCancelClick?: (schedule: Schedule) => void;
 }) {
   if (schedules.length === 0) {
     return (
@@ -228,29 +304,15 @@ function DayView({
                   <p className="text-gray-700">{schedule.purpose}</p>
                 </div>
                 
-                {onCancelSchedule && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="ml-4 text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to cancel this booking? This action cannot be undone.
-                          The faculty member will need to submit a new request if they need this classroom again.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-red-600 hover:bg-red-700">
-                          Cancel Booking
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                {onCancelClick && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="ml-4 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => onCancelClick(schedule)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -271,7 +333,7 @@ function WeekView({
   schedules: Schedule[];
   classrooms: Classroom[];
   weekDates: string[];
-  onCancelSchedule?: (scheduleId: string) => void;
+  onCancelSchedule?: (schedule: Schedule) => void;
 }) {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -306,31 +368,14 @@ function WeekView({
                         <p className="text-xs text-gray-500 truncate">{schedule.purpose}</p>
                         
                         {onCancelSchedule && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="absolute top-1 right-1 h-5 w-5 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to cancel this booking? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-red-600 hover:bg-red-700">
-                                  Cancel Booking
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="absolute top-1 right-1 h-5 w-5 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => onCancelSchedule(schedule)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                         )}
                       </div>
                     </Card>

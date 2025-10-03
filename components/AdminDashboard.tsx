@@ -38,7 +38,7 @@ interface AdminDashboardProps {
   onClassroomUpdate: (classrooms: Classroom[]) => void;
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
   onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
-  onCancelSchedule: (scheduleId: string) => void;
+  onCancelSchedule: (scheduleId: string, cancellationReason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
 
@@ -326,11 +326,14 @@ export default function AdminDashboard({
                               <Badge 
                                 variant={
                                   request.status === 'pending' ? 'secondary' :
-                                  request.status === 'approved' ? 'default' : 'destructive'
+                                  request.status === 'approved' ? 'default' : 
+                                  request.status === 'cancelled' ? 'outline' : 'destructive'
                                 }
-                                className="flex-shrink-0"
+                                className={`flex-shrink-0 ${
+                                  request.status === 'cancelled' ? 'border-orange-500 text-orange-700 bg-orange-50' : ''
+                                }`}
                               >
-                                {request.status}
+                                {request.status === 'cancelled' ? 'Cancelled' : request.status}
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-600 break-words">{request.classroomName} • {request.date} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
@@ -386,6 +389,7 @@ export default function AdminDashboard({
               <RequestApproval
                 requests={bookingRequests}
                 onRequestApproval={onRequestApproval}
+                onCancelSchedule={onCancelSchedule}
                 checkConflicts={checkConflicts}
               />
             </div>

@@ -3,18 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
 import type { Schedule, BookingRequest } from '../App';
 
 interface FacultyScheduleProps {
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
-  onCancelSchedule: (scheduleId: string) => void;
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, onCancelSchedule }: FacultyScheduleProps) {
+export default function FacultySchedule({ schedules, bookingRequests }: FacultyScheduleProps) {
   const [activeTab, setActiveTab] = useState('upcoming');
 
   // Filter schedules
@@ -64,20 +62,6 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
   };
 
   const ScheduleCard = ({ schedule }: { schedule: Schedule }) => {
-    const canCancel = () => {
-      if (schedule.status !== 'confirmed') return false;
-      
-      const scheduleDateTime = new Date(`${schedule.date}T${schedule.startTime}`);
-      const now = new Date();
-      
-      // Allow cancellation if the booking is in the future
-      if (scheduleDateTime <= now) return false;
-
-      const timeDiff = scheduleDateTime.getTime() - now.getTime();
-      const hoursDiff = timeDiff / (1000 * 3600);
-      
-      return hoursDiff > 2;
-    };
 
     return (
       <Card className={`border-l-4 ${
@@ -94,34 +78,7 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
                 <Badge variant={schedule.status === 'cancelled' ? 'destructive' : 'default'}>
                   {schedule.status === 'cancelled' ? 'Cancelled' : 'Confirmed'}
                 </Badge>
-                {canCancel() && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to cancel your booking for <strong>{schedule.classroomName}</strong> on {formatDate(schedule.date)} from {convertTo12Hour(schedule.startTime)} to {convertTo12Hour(schedule.endTime)}?
-                          <br /><br />
-                          This action cannot be undone. You will need to submit a new request if you want to book this classroom again.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => onCancelSchedule(schedule.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Cancel Booking
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+
               </div>
             </div>
 
@@ -142,9 +99,9 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
               {schedule.status === 'cancelled' && (
                 <p className="text-sm text-red-600 mt-1 italic">This booking has been cancelled</p>
               )}
-              {canCancel() && schedule.status === 'confirmed' && (
+              {schedule.status === 'confirmed' && (
                 <p className="text-xs text-gray-400 mt-1">
-                  You can cancel this booking up to 2 hours before the scheduled time
+                  Contact admin to cancel this booking
                 </p>
               )}
             </div>
@@ -158,7 +115,8 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
     <Card className={`${
       request.status === 'rejected' ? 'border-l-4 border-l-red-500' :
       request.status === 'approved' ? 'border-l-4 border-l-green-500' :
-      'border-l-4 border-l-orange-500'
+      request.status === 'cancelled' ? 'border-l-4 border-l-orange-500' :
+      'border-l-4 border-l-gray-500'
     }`}>
       <CardContent className="p-4">
         <div className="space-y-3">
@@ -170,10 +128,12 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
             <Badge 
               variant={
                 request.status === 'pending' ? 'secondary' :
-                request.status === 'approved' ? 'default' : 'destructive'
+                request.status === 'approved' ? 'default' :
+                request.status === 'cancelled' ? 'outline' : 'destructive'
               }
+              className={request.status === 'cancelled' ? 'border-orange-500 text-orange-700 bg-orange-50' : ''}
             >
-              {request.status}
+              {request.status === 'cancelled' ? 'Cancelled' : request.status}
             </Badge>
           </div>
 
@@ -201,6 +161,16 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
               <div>
                 <p className="text-sm font-medium text-gray-600">Admin Feedback:</p>
                 <p className="text-sm text-gray-800">{request.adminFeedback}</p>
+              </div>
+            </div>
+          )}
+
+          {request.cancellationReason && request.status === 'cancelled' && (
+            <div className="flex items-start space-x-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-orange-700">Booking Cancelled by Admin:</p>
+                <p className="text-sm text-orange-800">{request.cancellationReason}</p>
               </div>
             </div>
           )}
