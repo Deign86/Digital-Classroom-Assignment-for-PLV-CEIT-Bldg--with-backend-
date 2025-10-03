@@ -1,7 +1,7 @@
 import './styles/globals.css';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
+import SpeedInsights from './components/SpeedInsights';
 import LoginForm from './components/LoginForm';
 import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
@@ -791,6 +791,7 @@ export default function App() {
             Refresh Page
           </button>
           <Analytics />
+          <SpeedInsights />
         </div>
       </div>
     );
@@ -807,6 +808,7 @@ export default function App() {
           </div>
           <p className="text-gray-600">Loading...</p>
           <Analytics />
+          <SpeedInsights />
         </div>
       </div>
     );
@@ -863,6 +865,7 @@ export default function App() {
         <Footer />
         <Toaster />
         <Analytics />
+        <SpeedInsights />
       </div>
     </ErrorBoundary>
   );
