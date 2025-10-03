@@ -163,6 +163,13 @@ const notifyAuthListeners = (user: User | null) => {
 
 const nowIso = () => new Date().toISOString();
 
+// Helper function to remove undefined values from update objects
+const removeUndefinedValues = <T>(obj: Partial<T>): Partial<T> => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+};
+
 const sanitizeUserUpdate = (record: Partial<FirestoreUserRecord>): Record<string, unknown> =>
   Object.fromEntries(
     Object.entries(record).filter(([, value]) => value !== undefined)
@@ -886,8 +893,12 @@ export const classroomService = {
   async update(id: string, updates: Partial<Classroom>): Promise<Classroom> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.CLASSROOMS, id);
+    
+    // Filter out undefined values to prevent Firebase errors
+    const cleanedUpdates = removeUndefinedValues(updates);
+    
     const updatePayload: Partial<FirestoreClassroomRecord> = {
-      ...updates,
+      ...cleanedUpdates,
       updatedAt: nowIso(),
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
@@ -961,8 +972,12 @@ export const bookingRequestService = {
   async update(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
+    
+    // Filter out undefined values to prevent Firebase errors
+    const cleanedUpdates = removeUndefinedValues(updates);
+    
     const updatePayload: Partial<FirestoreBookingRequestRecord> = {
-      ...updates,
+      ...cleanedUpdates,
       updatedAt: nowIso(),
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
@@ -1076,8 +1091,12 @@ export const scheduleService = {
   async update(id: string, updates: Partial<Schedule>): Promise<Schedule> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SCHEDULES, id);
+    
+    // Filter out undefined values to prevent Firebase errors
+    const cleanedUpdates = removeUndefinedValues(updates);
+    
     const updatePayload: Partial<FirestoreScheduleRecord> = {
-      ...updates,
+      ...cleanedUpdates,
       updatedAt: nowIso(),
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
@@ -1187,13 +1206,19 @@ export const signupRequestService = {
   async update(id: string, updates: Partial<SignupRequest>): Promise<SignupRequest> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SIGNUP_REQUESTS, id);
+    
+    // Filter out undefined values to prevent Firebase errors
+    const cleanedUpdates = removeUndefinedValues(updates);
+    
     const updatePayload: Partial<FirestoreSignupRequestRecord> = {
-      ...updates,
+      ...cleanedUpdates,
       updatedAt: nowIso(),
     };
-    if (typeof updates.email === 'string') {
-      updatePayload.emailLower = updates.email.toLowerCase();
+    
+    if (typeof cleanedUpdates.email === 'string') {
+      updatePayload.emailLower = cleanedUpdates.email.toLowerCase();
     }
+    
     await updateDoc(ref, updatePayload as Record<string, unknown>);
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) {

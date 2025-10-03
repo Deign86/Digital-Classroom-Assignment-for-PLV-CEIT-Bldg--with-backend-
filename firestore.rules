@@ -4,46 +4,65 @@ service cloud.firestore {
     
     // Users collection
     match /users/{userId} {
-      allow read: if request.auth != null;
-      // Allow users to write their own documents OR allow admin emails to write any user document
+      // Admin emails can read all users, others can read their own profile
+      allow read: if request.auth != null && 
+                    (request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'] ||
+                     request.auth.uid == userId);
+      // Allow users to update their own documents OR allow admin emails to write any user document
       allow write: if (request.auth != null && request.auth.uid == userId) || 
                       (request.auth != null && request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph']);
     }
     
-    // Classrooms collection - Anyone authenticated can read and write (temporary fix)
+    // Classrooms collection - Read for authenticated, write for admin only
     match /classrooms/{classroomId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null && 
+                     request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'];
     }
     
     // Booking Requests collection
     match /bookingRequests/{requestId} {
-      allow read: if request.auth != null;
+      // Admin can read all, users can read their own
+      allow read: if request.auth != null && 
+                    (request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'] ||
+                     resource.data.facultyId == request.auth.uid);
+      // Anyone authenticated can create booking requests
       allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      // Only admin can approve/reject, users can update their own pending requests
+      allow update: if request.auth != null && 
+                      (request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'] ||
+                       (resource.data.facultyId == request.auth.uid && resource.data.status == 'pending'));
+      // Only admin can delete booking requests
+      allow delete: if request.auth != null && 
+                      request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'];
     }
     
-    // Schedules collection - Allow users to update their own schedules
+    // Schedules collection - Users can manage their own schedules, admin can manage all
     match /schedules/{scheduleId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
       allow update: if request.auth != null && 
                       (resource.data.facultyId == request.auth.uid || 
-                       request.auth != null);
-      allow delete: if request.auth != null;
+                       request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph']);
+      allow delete: if request.auth != null && 
+                      (resource.data.facultyId == request.auth.uid || 
+                       request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph']);
     }
     
-    // Signup Requests collection - Simple rules for signup approvals
+    // Signup Requests collection - Restricted admin approval rules
     match /signupRequests/{requestId} {
-      // Anyone authenticated can read signup requests 
-      allow read: if request.auth != null;
+      // Admin emails can read all signup requests, others can read their own
+      allow read: if request.auth != null && 
+                    (request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'] ||
+                     resource.data.userId == request.auth.uid);
       // Allow anyone to create signup requests (for initial signup)
       allow create: if true;
-      // Anyone authenticated can update (approve/reject) signup requests  
-      allow update: if request.auth != null;
-      // Anyone authenticated can delete signup requests
-      allow delete: if request.auth != null;
+      // Only admin emails can update (approve/reject) signup requests  
+      allow update: if request.auth != null && 
+                      request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'];
+      // Only admin emails can delete signup requests
+      allow delete: if request.auth != null && 
+                      request.auth.token.email in ['admin@plv.edu.ph', 'registrar@plv.edu.ph'];
     }
   }
 }
