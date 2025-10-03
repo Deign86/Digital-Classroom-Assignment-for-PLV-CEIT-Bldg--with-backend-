@@ -1,6 +1,7 @@
 import './styles/globals.css';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import LoginForm from './components/LoginForm';
 import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
@@ -836,8 +837,9 @@ export default function App() {
           </div>
         </div>
         <Footer />
-        <Toaster />
-        <Analytics />
+  <Toaster />
+  <Analytics />
+  <SpeedInsights />
       </div>
     );
   }
