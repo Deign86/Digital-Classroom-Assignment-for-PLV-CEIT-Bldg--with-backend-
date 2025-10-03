@@ -1,5 +1,6 @@
 import './styles/globals.css';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
 import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
@@ -715,6 +716,7 @@ export default function App() {
           >
             Refresh Page
           </button>
+          <Analytics />
         </div>
       </div>
     );
@@ -730,6 +732,7 @@ export default function App() {
             <div className="text-white text-lg font-bold">PLV</div>
           </div>
           <p className="text-gray-600">Loading...</p>
+          <Analytics />
         </div>
       </div>
     );
@@ -761,6 +764,7 @@ export default function App() {
         </div>
         <Footer />
         <Toaster />
+        <Analytics />
       </div>
     );
   }
@@ -779,6 +783,7 @@ export default function App() {
         </div>
         <Footer />
         <Toaster />
+        <Analytics />
       </div>
     </ErrorBoundary>
   );
