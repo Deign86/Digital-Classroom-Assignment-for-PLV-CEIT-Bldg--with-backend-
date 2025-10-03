@@ -1,28 +1,28 @@
-# Digital Classroom Assignment System# Digital Classroom Assignment System# Digital Classroom Assignment System# Digital Classroom Assignment System
+﻿# Digital Classroom Assignment System# Digital Classroom Assignment System# Digital Classroom Assignment System# Digital Classroom Assignment System
 
 
 
-> 📌 **Firebase Edition** – This application uses Firebase Authentication and Firestore for all backend services.
+> ðŸ“Œ **Firebase Edition** â€“ This application uses Firebase Authentication and Firestore for all backend services.
 
 
 
-A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features role-based dashboards, real-time conflict detection, comprehensive reporting, and secure Firebase authentication.> 📌 **Firebase Edition** – This application uses Firebase Authentication and Firestore for all backend services.
+A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features role-based dashboards, real-time conflict detection, comprehensive reporting, and secure Firebase authentication.> ðŸ“Œ **Firebase Edition** â€“ This application uses Firebase Authentication and Firestore for all backend services.
 
 
 
-## 📘 Firebase Setup Guide
+## ðŸ“˜ Firebase Setup Guide
 
 
 
-For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md)A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features role-based dashboards, real-time conflict detection, comprehensive reporting, and secure Firebase authentication.> 📌 **Firebase-first edition** – This application uses Firebase Authentication and Firestore for backend services. Follow the setup guide below to get started.> 📌 **Firebase-first edition** – This branch has been migrated to Firebase Authentication and Firestore. The architecture, seed data, and login flows are now powered by Firebase. Use the notes below to get set up quickly.igital Classroom Assignment System
+For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md)A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features role-based dashboards, real-time conflict detection, comprehensive reporting, and secure Firebase authentication.> ðŸ“Œ **Firebase-first edition** â€“ This application uses Firebase Authentication and Firestore for backend services. Follow the setup guide below to get started.> ðŸ“Œ **Firebase-first edition** â€“ This branch has been migrated to Firebase Authentication and Firestore. The architecture, seed data, and login flows are now powered by Firebase. Use the notes below to get set up quickly.igital Classroom Assignment System
 
 
 
-## 🔐 Authentication Overview
+## ðŸ” Authentication Overview
 
 
 
-- Email/password accounts managed by **Firebase Auth**## 📘 Firebase Setup Guide
+- Email/password accounts managed by **Firebase Auth**## ðŸ“˜ Firebase Setup Guide
 
 - Faculty sign up through public request form (status: `pending`)
 
@@ -30,15 +30,15 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 - Configure admin emails via `VITE_FIREBASE_ADMIN_EMAILS` environment variable
 
-- Create initial admin user in Firebase Auth before first runFor detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md)## 📘 Firebase setup guide> 📌 **Firebase-first edition** – This branch has been migrated to Firebase Authentication and Firestore. If you followed an older “localStorage” or “Supabase” guide, please note that the architecture, seed data, and login flows have changed. Use the notes below to get set up quickly.
+- Create initial admin user in Firebase Auth before first runFor detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md)## ðŸ“˜ Firebase setup guide> ðŸ“Œ **Firebase-first edition** â€“ This branch has been migrated to Firebase Authentication and Firestore. If you followed an older â€œlocalStorageâ€ or â€œSupabaseâ€ guide, please note that the architecture, seed data, and login flows have changed. Use the notes below to get set up quickly.
 
 
 
-## 🎯 Features
+## ðŸŽ¯ Features
 
 
 
-### For Administrators (Registrar)## 🔐 Authentication Overview
+### For Administrators (Registrar)## ðŸ” Authentication Overview
 
 
 
@@ -46,7 +46,7 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 - **Request Approval**: Review and approve/reject booking and signup requests
 
-- **Conflict Detection**: Automatic scheduling conflict detection- Email/password accounts managed by **Firebase Auth**For step-by-step instructions on connecting this application to Firebase, see [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md).## 📘 Firebase setup guide
+- **Conflict Detection**: Automatic scheduling conflict detection- Email/password accounts managed by **Firebase Auth**For step-by-step instructions on connecting this application to Firebase, see [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md).## ðŸ“˜ Firebase setup guide
 
 - **Reports**: Generate utilization and booking reports
 
@@ -62,7 +62,7 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 - **Availability Search**: Search available classrooms by date, time, equipment
 
-- **Schedule Viewing**: View personal and all classroom schedules- Create initial admin user in Firebase Auth before first run## 🔐 Authentication OverviewFor step-by-step instructions on wiring this build to the Firebase dashboard, see [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md).
+- **Schedule Viewing**: View personal and all classroom schedules- Create initial admin user in Firebase Auth before first run## ðŸ” Authentication OverviewFor step-by-step instructions on wiring this build to the Firebase dashboard, see [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md).
 
 - **Request Tracking**: Monitor booking request status
 
@@ -70,7 +70,7 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 
 
-## 🏗️ Technology Stack## 🎯 Features
+## ðŸ—ï¸ Technology Stack## ðŸŽ¯ Features
 
 
 
@@ -78,7 +78,7 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 - React 19 + TypeScript
 
-- Vite 7### For Administrators (Registrar)- Email/Password accounts are created and managed by **Firebase Auth**.## 🔐 Authentication quick facts
+- Vite 7### For Administrators (Registrar)- Email/Password accounts are created and managed by **Firebase Auth**.## ðŸ” Authentication quick facts
 
 - Tailwind CSS 4
 
@@ -102,79 +102,79 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 - Real-time listeners
 
-- Firebase SDK- **User Management**: Approve faculty signups and manage accounts- Configure comma-separated admin emails via `VITE_FIREBASE_ADMIN_EMAILS` so that those accounts automatically get the `admin` role on first login.- Faculty sign up through the public request form. Their `status` remains `pending` until an administrator approves them in the “Signups” tab.
+- Firebase SDK- **User Management**: Approve faculty signups and manage accounts- Configure comma-separated admin emails via `VITE_FIREBASE_ADMIN_EMAILS` so that those accounts automatically get the `admin` role on first login.- Faculty sign up through the public request form. Their `status` remains `pending` until an administrator approves them in the â€œSignupsâ€ tab.
 
 
 
-## 📁 Project Structure
+## ðŸ“ Project Structure
 
 
 
-```### For Faculty- There are **no default seeded passwords**. Create your initial admin user directly in Firebase Auth before running the app.- Admin approval flips the user’s Firebase/Firestore status to `approved`; rejected users can’t sign in.
+```### For Faculty- There are **no default seeded passwords**. Create your initial admin user directly in Firebase Auth before running the app.- Admin approval flips the userâ€™s Firebase/Firestore status to `approved`; rejected users canâ€™t sign in.
 
-├── App.tsx                          # Main application with Firebase integration
+â”œâ”€â”€ App.tsx                          # Main application with Firebase integration
 
-├── main.tsx                         # React entry point
+â”œâ”€â”€ main.tsx                         # React entry point
 
-├── index.html                       # HTML template
+â”œâ”€â”€ index.html                       # HTML template
 
-├── vite.config.ts                   # Vite configuration- **Room Booking**: Request classrooms with date and time selection- Configure comma-separated admin emails via `VITE_FIREBASE_ADMIN_EMAILS` so that those accounts automatically get the `admin` role on first login.
+â”œâ”€â”€ vite.config.ts                   # Vite configuration- **Room Booking**: Request classrooms with date and time selection- Configure comma-separated admin emails via `VITE_FIREBASE_ADMIN_EMAILS` so that those accounts automatically get the `admin` role on first login.
 
-├── package.json                     # Dependencies
+â”œâ”€â”€ package.json                     # Dependencies
 
-├── .env.example                     # Environment variables template- **Availability Search**: Search available classrooms by date, time, equipment
+â”œâ”€â”€ .env.example                     # Environment variables template- **Availability Search**: Search available classrooms by date, time, equipment
 
-├── components/
+â”œâ”€â”€ components/
 
-│   ├── AdminDashboard.tsx          # Admin dashboard- **Schedule Viewing**: View personal and all classroom schedules---- There are **no default seeded passwords**. Create your initial admin user directly in Firebase Auth (or invite one) before running the app.
+â”‚   â”œâ”€â”€ AdminDashboard.tsx          # Admin dashboard- **Schedule Viewing**: View personal and all classroom schedules---- There are **no default seeded passwords**. Create your initial admin user directly in Firebase Auth (or invite one) before running the app.
 
-│   ├── AdminReports.tsx            # Reporting
+â”‚   â”œâ”€â”€ AdminReports.tsx            # Reporting
 
-│   ├── ClassroomManagement.tsx     # Classroom CRUD- **Request Tracking**: Monitor booking request status
+â”‚   â”œâ”€â”€ ClassroomManagement.tsx     # Classroom CRUD- **Request Tracking**: Monitor booking request status
 
-│   ├── FacultyDashboard.tsx        # Faculty dashboard
+â”‚   â”œâ”€â”€ FacultyDashboard.tsx        # Faculty dashboard
 
-│   ├── LoginForm.tsx               # Authentication- **Profile Settings**: Update personal information and account settings
+â”‚   â”œâ”€â”€ LoginForm.tsx               # Authentication- **Profile Settings**: Update personal information and account settings
 
-│   ├── RoomBooking.tsx             # Booking form
+â”‚   â”œâ”€â”€ RoomBooking.tsx             # Booking form
 
-│   ├── SignupApproval.tsx          # Signup approvals
+â”‚   â”œâ”€â”€ SignupApproval.tsx          # Signup approvals
 
-│   └── ui/                         # UI components
+â”‚   â””â”€â”€ ui/                         # UI components
 
-├── lib/## 🏗️ Technology StackA comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. It features role-based dashboards, real-time conflict detection, comprehensive reporting capabilities, and secure authentication powered by Firebase.---
+â”œâ”€â”€ lib/## ðŸ—ï¸ Technology StackA comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. It features role-based dashboards, real-time conflict detection, comprehensive reporting capabilities, and secure authentication powered by Firebase.---
 
-│   ├── firebaseConfig.ts           # Firebase configuration
+â”‚   â”œâ”€â”€ firebaseConfig.ts           # Firebase configuration
 
-│   └── firebaseService.ts          # Firebase services
+â”‚   â””â”€â”€ firebaseService.ts          # Firebase services
 
-├── hooks/
+â”œâ”€â”€ hooks/
 
-│   └── useScrollTrigger.ts### Frontend
+â”‚   â””â”€â”€ useScrollTrigger.ts### Frontend
 
-├── utils/
+â”œâ”€â”€ utils/
 
-│   ├── animation.ts- React 19 + TypeScript
+â”‚   â”œâ”€â”€ animation.ts- React 19 + TypeScript
 
-│   └── timeUtils.ts
+â”‚   â””â”€â”€ timeUtils.ts
 
-├── styles/- Vite 7## 🎯 OverviewA comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. It features role-based dashboards, real-time conflict detection, comprehensive reporting capabilities, and secure authentication powered by Firebase.
+â”œâ”€â”€ styles/- Vite 7## ðŸŽ¯ OverviewA comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. It features role-based dashboards, real-time conflict detection, comprehensive reporting capabilities, and secure authentication powered by Firebase.
 
-│   └── globals.css
+â”‚   â””â”€â”€ globals.css
 
-└── guidelines/- Tailwind CSS 4
+â””â”€â”€ guidelines/- Tailwind CSS 4
 
-    └── FirebaseDashboardSetup.md   # Detailed Firebase setup
+    â””â”€â”€ FirebaseDashboardSetup.md   # Detailed Firebase setup
 
 ```- Shadcn/ui (Radix UI)
 
 
 
-## 🚀 Getting Started- Framer Motion
+## ðŸš€ Getting Started- Framer Motion
 
 
 
-### Prerequisites- Sonner (toasts)- **Role-aware dashboards** – rich admin tooling plus a focused faculty view.## 🎯 Overview
+### Prerequisites- Sonner (toasts)- **Role-aware dashboards** â€“ rich admin tooling plus a focused faculty view.## ðŸŽ¯ Overview
 
 
 
@@ -182,7 +182,7 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 - npm (comes with Node.js)
 
-- Firebase Account ([Sign up](https://firebase.google.com/))- date-fns- **Conflict-aware scheduling** – prevents double-bookings with automatic validation.
+- Firebase Account ([Sign up](https://firebase.google.com/))- date-fns- **Conflict-aware scheduling** â€“ prevents double-bookings with automatic validation.
 
 
 
@@ -190,307 +190,93 @@ For detailed Firebase setup instructions, see: [`guidelines/FirebaseDashboardSet
 
 
 
-1. **Clone the repository**### Backend- **Polished UI toolkit** – built with React 19, TypeScript, Tailwind CSS 4, Radix UI, Framer Motion, and Sonner toasts.- **Role-aware dashboards** – rich admin tooling plus a focused faculty view.
+1. **Clone the repository**### Backend- **Polished UI toolkit** â€“ built with React 19, TypeScript, Tailwind CSS 4, Radix UI, Framer Motion, and Sonner toasts.- **Role-aware dashboards** â€“ rich admin tooling plus a focused faculty view.
 
 
 
 ```bash- Firebase Authentication
 
-git clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
+# Digital Classroom Assignment System
 
-cd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"- Firebase Firestore
+Firebase edition â€” a web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela (PLV) - College of Engineering and Information Technology.
 
-```
+This project uses React + TypeScript (Vite) for the frontend and Firebase (Auth + Firestore) for backend services.
 
-- Real-time listeners
+## Features
 
-2. **Install dependencies**
+- Role-based dashboards (Admin / Faculty)
+- Classroom CRUD and inventory management
+- Booking requests with admin approval workflow
+- Automatic conflict detection for schedules
+- Real-time updates via Firestore listeners
+- Reports and schedule exports
+- Email/password authentication with Firebase Auth
 
-- Firebase SDK### For Administrators (Registrar)- **Conflict-aware scheduling** – prevents double-bookings with the same validation logic used in the original backend.### For Administrators (Registrar)
+## Tech stack
 
-```bash
+- React 19 + TypeScript
+- Vite 7
+- Tailwind CSS
+- Firebase Auth & Firestore
+- Framer Motion, Shadcn UI / Radix, Sonner toasts
 
-npm install
+## Quickstart
 
-```
+1. Clone the repo:
 
-## 📁 Project Structure
+   git clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
+   cd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"
 
-3. **Set up Firebase**
+2. Install dependencies:
 
+   npm install
 
+3. Create a `.env` file based on `.env.example` and add your Firebase credentials:
 
-   See [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md) for:
+   VITE_FIREBASE_API_KEY=
+   VITE_FIREBASE_AUTH_DOMAIN=
+   VITE_FIREBASE_PROJECT_ID=
+   VITE_FIREBASE_STORAGE_BUCKET=
+   VITE_FIREBASE_MESSAGING_SENDER_ID=
+   VITE_FIREBASE_APP_ID=
+   VITE_FIREBASE_ADMIN_EMAILS=admin@example.com
 
-   - Creating Firebase project```- **Classroom Management**: Add, edit, and manage classroom inventory with real-time database updates- **Polished UI toolkit** – built with React 19, TypeScript, Tailwind CSS 4, Radix UI, Framer Motion, and Sonner toasts.- **Classroom Management**: Add, edit, and manage classroom inventory with real-time database updates
+4. Run the dev server:
 
-   - Configuring authentication
+   npm run dev
 
-   - Setting up Firestore├── App.tsx                          # Main application with Firebase integration
+5. Build for production:
 
-   - Security rules
+   npm run build
 
-   - Environment variables├── main.tsx                         # React entry point- **Request Approval**: Review and approve/reject booking and signup requests with admin feedback
+## Firebase setup
 
+See `guidelines/FirebaseDashboardSetup.md` for step-by-step instructions to create a Firebase project, enable Auth + Firestore, and configure security rules.
 
+## Deployment (Vercel)
 
-4. **Configure environment variables**├── index.html                       # HTML template
+- The project is configured to deploy with Vercel.
+- Add environment variables to your Vercel project (or use the Vercel CLI to sync `.env`) so the build can access Firebase configuration at build/runtime.
 
+## Project layout
 
+- `App.tsx`, `main.tsx` â€” application entry and root component
+- `components/` â€” UI components and pages (Admin, Faculty, Login, etc.)
+- `lib/` â€” Firebase configuration and service wrappers
+- `guidelines/` â€” project docs and Firebase setup instructions
 
-   Create `.env` file with your Firebase credentials:├── vite.config.ts                   # Vite configuration- **Conflict Detection**: Automatic detection of scheduling conflicts across all bookings- **Request Approval**: Review and approve/reject booking and signup requests with admin feedback
+## Troubleshooting
 
+- "Missing Firebase environment variables" â€” verify `.env` locally and that Vercel environment variables are set for Production/Preview.
+- Large bundle warnings during build â€” consider code-splitting or dynamic imports.
 
+## Contributing
 
-```bash├── package.json                     # Dependencies
+Contributions welcome. Open issues or PRs against the `vercel-deployment` branch if you want changes deployed to the preview environment.
 
-VITE_FIREBASE_API_KEY=your_api_key
+---
 
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain├── .env.example                     # Environment variables template- **Comprehensive Reports**: Generate utilization and booking reports with filtering
-
-VITE_FIREBASE_PROJECT_ID=your_project_id
-
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket├── components/
-
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-
-VITE_FIREBASE_APP_ID=your_app_id│   ├── AdminDashboard.tsx          # Admin dashboard- **User Management**: Approve new faculty signup requests and manage user accounts---- **Conflict Detection**: Automatic detection of scheduling conflicts across all bookings
-
-VITE_FIREBASE_ADMIN_EMAILS=admin@plv.edu.ph
-
-```│   ├── AdminReports.tsx            # Reporting
-
-
-
-5. **Run the application**│   ├── ClassroomManagement.tsx     # Classroom CRUD- **Profile Management**: Update profile information and change password securely
-
-
-
-```bash│   ├── FacultyDashboard.tsx        # Faculty dashboard
-
-npm run dev
-
-```│   ├── LoginForm.tsx               # Authentication- **Comprehensive Reports**: Generate utilization and booking reports with filtering
-
-
-
-Visit `http://localhost:5173`│   ├── RoomBooking.tsx             # Booking form
-
-
-
-## 🔧 Build & Deploy│   ├── SignupApproval.tsx          # Signup approvals### For Faculty
-
-
-
-### Build for Production│   └── ui/                         # UI components
-
-
-
-```bash├── lib/## 🧱 Technology Stack- **User Management**: Approve new faculty signup requests and manage user accounts
-
-npm run build
-
-```│   ├── firebaseConfig.ts           # Firebase configuration
-
-
-
-Output in `dist/` folder.│   └── firebaseService.ts          # Firebase services- **User Registration**: Self-service signup with admin approval workflow
-
-
-
-### Preview Build├── hooks/
-
-
-
-```bash│   └── useScrollTrigger.ts- **Room Booking**: Request classrooms with date and time selection- **Profile Management**: Update profile information and change password securely
-
-npm run preview
-
-```├── utils/
-
-
-
-### Deploy to Vercel│   ├── animation.ts- **Availability Search**: Search for available classrooms by date, time, and equipment
-
-
-
-1. Push to GitHub│   └── timeUtils.ts
-
-2. Import project in Vercel
-
-3. Add Firebase environment variables├── styles/- **Schedule Viewing**: View personal and all classroom schedules in real-time| Layer        | Tools |
-
-4. Deploy
-
-│   └── globals.css
-
-### Deploy to Netlify
-
-└── guidelines/- **Request Tracking**: Monitor status of booking requests with admin feedback
-
-1. Build locally: `npm run build`
-
-2. Deploy `dist/` folder to Netlify    └── FirebaseDashboardSetup.md   # Detailed Firebase setup
-
-3. Add environment variables in Site Settings
-
-```- **Profile Settings**: Update personal information and manage account settings|--------------|-------|### For Faculty
-
-## 📊 Database Collections (Firestore)
-
-
-
-### `users`
-
-User profiles and authentication data## 🚀 Getting Started- **Password Reset**: Secure password reset via email
-
-- `email` (string, unique)
-
-- `name` (string)
-
-- `role` (string: 'admin' or 'faculty')
-
-- `department` (string, optional)### Prerequisites| Framework    | React 19 + TypeScript |- **User Registration**: Self-service signup with admin approval workflow
-
-- `status` (string: 'pending' or 'approved')
-
-- `createdAt` (timestamp)
-
-- `updatedAt` (timestamp)
-
-- Node.js 18+ ([Download](https://nodejs.org/))> _Data and authentication are managed with Firebase (Firestore + Auth). Configure credentials in `.env` per the Firebase dashboard guide._
-
-### `classrooms`
-
-Classroom inventory- npm (comes with Node.js)
-
-- `name` (string, unique)
-
-- `capacity` (number)- Firebase Account ([Sign up](https://firebase.google.com/))| Build Tool   | Vite 7 |- **Room Booking**: Request classrooms with date and time selection
-
-- `equipment` (array)
-
-- `building` (string)
-
-- `floor` (number)
-
-- `isAvailable` (boolean)### Installation### Authentication & Security
-
-- `createdAt` (timestamp)
-
-
-
-### `bookingRequests`
-
-Faculty booking requests pending approval1. **Clone the repository**| Styling      | Tailwind CSS 4 + CSS Modules |- **Availability Search**: Search for available classrooms by date, time, and equipment
-
-- `classroomId` (reference)
-
-- `facultyId` (reference)
-
-- `date` (date)
-
-- `startTime` (string)```bash- **Firebase Auth**: Secure authentication with email/password
-
-- `endTime` (string)
-
-- `purpose` (string)git clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
-
-- `status` (string: 'pending', 'approved', 'rejected')
-
-- `adminFeedback` (string, optional)cd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"- **Password Reset**: Email-based password recovery| UI Library   | Radix UI primitives, Shadcn-inspired components |- **Schedule Viewing**: View personal and all classroom schedules in real-time
-
-- `requestDate` (timestamp)
-
-- `reviewedAt` (timestamp, optional)```
-
-
-
-### `schedules`- **Firestore Security Rules**: Database-level access control
-
-Confirmed/approved classroom schedules
-
-- `classroomId` (reference)2. **Install dependencies**
-
-- `facultyId` (reference)
-
-- `date` (date)- **Anonymous Signup**: Public access for new faculty registration| Animation    | Framer Motion |- **Request Tracking**: Monitor status of booking requests with admin feedback
-
-- `startTime` (string)
-
-- `endTime` (string)```bash
-
-- `purpose` (string)
-
-- `createdAt` (timestamp)npm install- **Auto-confirmed Emails**: Admin-approved users are auto-verified
-
-
-
-### `signupRequests````
-
-New faculty registration requests
-
-- `email` (string, unique)| Notifications| Sonner |- **Profile Settings**: Update personal information and manage account settings
-
-- `name` (string)
-
-- `department` (string)3. **Set up Firebase**
-
-- `status` (string: 'pending', 'approved', 'rejected')
-
-- `adminFeedback` (string, optional)## 🏗️ Technical Stack
-
-- `requestDate` (timestamp)
-
-- `reviewedAt` (timestamp, optional)   See [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md) for:
-
-
-
-## 🔐 Security Features   - Creating Firebase project- **Password Reset**: Secure password reset via email
-
-
-
-### Firebase Authentication   - Configuring authentication
-
-- Email/password authentication
-
-- Secure password hashing (handled by Firebase)   - Setting up Firestore### Frontend
-
-- JWT tokens for session management
-
-- Email verification for approved users   - Security rules
-
-- Password reset via email
-
-   - Environment variables> _Data and authentication now live in Firebase (Firestore + Auth). Configure credentials in `.env` per the Firebase dashboard guide._
-
-### Firestore Security Rules
-
-- Users can only access their own data
-
-- Admins have full access to all data
-
-- Anonymous users can submit signup requests4. **Configure environment variables**- **Framework**: React 19 with TypeScript
-
-- Faculty can view classrooms and submit bookings
-
-
-
-### Data Validation
-
-- Client-side validation with React Hook Form   Create `.env` file with your Firebase credentials:- **Styling**: Tailwind CSS v4 with Apple-style design system### Authentication & Security
-
-- Server-side validation via Firestore Security Rules
-
-- Conflict detection for overlapping bookings
-
-- Equipment and time slot validation
-
-```bash- **UI Components**: Shadcn/ui component library (Radix UI primitives)
-
-## 🔧 Configuration
-
-VITE_FIREBASE_API_KEY=your_api_key
+If you want, I can also add a trimmed `README` for preview deployments or update `package.json` scripts. Let me know what else you'd like improved.
 
 ### School Hours
 
@@ -520,13 +306,13 @@ VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket- **Toast Notifications**: Sonne
 
 ```- **Animations**: Framer Motion
 
-## 🎨 Design System
+## ðŸŽ¨ Design System
 
 
 
 The application uses an Apple-inspired design system:
 
-5. **Run the application**- **Forms**: React Hook Form## 🚀 Getting Started- **Row-Level Security (RLS)**: Database-level access control
+5. **Run the application**- **Forms**: React Hook Form## ðŸš€ Getting Started- **Row-Level Security (RLS)**: Database-level access control
 
 ### Typography
 
@@ -558,7 +344,7 @@ Visit `http://localhost:5173`
 
 - **Page transitions**
 
-- **Scroll-triggered effects**## 🔧 Build & Deploy### Backend1. **Install prerequisites**- **Auto-confirmed Emails**: Admin-approved users are auto-verified
+- **Scroll-triggered effects**## ðŸ”§ Build & Deploy### Backend1. **Install prerequisites**- **Auto-confirmed Emails**: Admin-approved users are auto-verified
 
 - **Micro-interactions**
 
@@ -576,85 +362,85 @@ Visit `http://localhost:5173`
 
 ```bash- **Database**: Firebase Firestore   - Node.js 18 or newer
 
-## 🔄 Application Workflows
+## ðŸ”„ Application Workflows
 
 npm run build
 
 ### Faculty Booking Workflow
 
-1. **Login** → Faculty logs in with credentials```- **Authentication**: Firebase Auth
+1. **Login** â†’ Faculty logs in with credentials```- **Authentication**: Firebase Auth
 
-2. **Search** → (Optional) Search for available classrooms
+2. **Search** â†’ (Optional) Search for available classrooms
 
-3. **Book** → Fill in booking form (classroom, date, time, purpose)
+3. **Book** â†’ Fill in booking form (classroom, date, time, purpose)
 
-4. **Submit** → Request sent to admin
+4. **Submit** â†’ Request sent to admin
 
-5. **Wait** → Monitor request statusOutput in `dist/` folder.- **Real-time**: Firestore real-time listeners   - npm 9+ (ships with Node)## 🏗️ Technical Stack
+5. **Wait** â†’ Monitor request statusOutput in `dist/` folder.- **Real-time**: Firestore real-time listeners   - npm 9+ (ships with Node)## ðŸ—ï¸ Technical Stack
 
-6. **Notified** → Receive notification when admin approves/rejects
+6. **Notified** â†’ Receive notification when admin approves/rejects
 
-7. **Confirmed** → Approved booking appears in schedules
+7. **Confirmed** â†’ Approved booking appears in schedules
 
 
 
 ### Admin Approval Workflow### Preview Build- **Storage**: Firestore for secure data persistence
 
-1. **Login** → Admin logs in
+1. **Login** â†’ Admin logs in
 
-2. **Review** → Go to "Approve Requests" tab
+2. **Review** â†’ Go to "Approve Requests" tab
 
-3. **Check Conflicts** → System auto-detects conflicts
+3. **Check Conflicts** â†’ System auto-detects conflicts
 
-4. **Decision** → Approve or reject with optional feedback```bash- **API**: Firebase SDK
+4. **Decision** â†’ Approve or reject with optional feedback```bash- **API**: Firebase SDK
 
-5. **Feedback** → Faculty receives notification
+5. **Feedback** â†’ Faculty receives notification
 
 npm run preview
 
 ### Faculty Signup Workflow
 
-1. **Register** → Click "Sign up as Faculty" on login page```
+1. **Register** â†’ Click "Sign up as Faculty" on login page```
 
-2. **Fill Form** → Provide email, name, department
+2. **Fill Form** â†’ Provide email, name, department
 
-3. **Submit** → Request sent to admin
+3. **Submit** â†’ Request sent to admin
 
-4. **Admin Approves** → Admin reviews in "Signup Approvals"
+4. **Admin Approves** â†’ Admin reviews in "Signup Approvals"
 
-5. **Account Created** → User account created in Firebase Auth### Deploy to Vercel## 📁 Project Structure2. **Install dependencies**### Frontend
+5. **Account Created** â†’ User account created in Firebase Auth### Deploy to Vercel## ðŸ“ Project Structure2. **Install dependencies**### Frontend
 
-6. **Login** → Faculty can now login
+6. **Login** â†’ Faculty can now login
 
 
 
 ### Password Reset Workflow
 
-1. **Forgot Password** → Click "Forgot Password?" on login1. Push to GitHub
+1. **Forgot Password** â†’ Click "Forgot Password?" on login1. Push to GitHub
 
-2. **Enter Email** → Provide registered email
+2. **Enter Email** â†’ Provide registered email
 
-3. **Check Email** → Receive reset link from Firebase2. Import project in Vercel
+3. **Check Email** â†’ Receive reset link from Firebase2. Import project in Vercel
 
-4. **Reset** → Click link and set new password
+4. **Reset** â†’ Click link and set new password
 
-5. **Login** → Login with new credentials3. Add Firebase environment variables```   ```bash- **Framework**: React 19 with TypeScript
-
-
-
-## 🔐 Features Implementation Details4. Deploy
+5. **Login** â†’ Login with new credentials3. Add Firebase environment variables```   ```bash- **Framework**: React 19 with TypeScript
 
 
 
-### Conflict Detection├── App.tsx                          # Main application entry point with Firebase integration
+## ðŸ” Features Implementation Details4. Deploy
+
+
+
+### Conflict Detectionâ”œâ”€â”€ App.tsx                          # Main application entry point with Firebase integration
 
 - Real-time validation against existing schedules
 
-- Checking pending requests to avoid conflicts## 📊 Database Collections (Firestore)
+- Checking pending requests to avoid conflicts## ðŸ“Š Database Collections (Firestore)
 
 - Past time validation (can't book in the past)
 
-- Self-exclusion during approval├── main.tsx                         # React entry point   npm install- **Styling**: Tailwind CSS v4 with Apple-style design system
+- Self-exclusion during approvalâ”œâ”€â”€ main.tsx                         # React entry point   npm install- **Styling**: Tailwind CSS v4 with Apple-style design system
 
 - Time overlap detection
 
@@ -662,7 +448,7 @@ npm run preview
 
 ### Real-time Updates
 
-- Firestore listeners for live data changes- email, name, role, department, status, timestamps├── index.html                       # HTML template
+- Firestore listeners for live data changes- email, name, role, department, status, timestampsâ”œâ”€â”€ index.html                       # HTML template
 
 - Toast notifications for success/error feedback
 
@@ -670,7 +456,7 @@ npm run preview
 
 - Automatic data refresh when records change
 
-### `classrooms`├── vite.config.ts                   # Vite configuration   ```- **UI Components**: Shadcn/ui component library (Radix UI primitives)
+### `classrooms`â”œâ”€â”€ vite.config.ts                   # Vite configuration   ```- **UI Components**: Shadcn/ui component library (Radix UI primitives)
 
 ### Responsive Design
 
@@ -678,7 +464,7 @@ npm run preview
 
 - Tablet optimization
 
-- Desktop layouts├── tsconfig.json                    # TypeScript configuration
+- Desktop layoutsâ”œâ”€â”€ tsconfig.json                    # TypeScript configuration
 
 - Touch-friendly buttons and inputs
 
@@ -686,7 +472,7 @@ npm run preview
 
 
 
-### Form Validation- classroomId, facultyId, date, startTime, endTime, purpose, status, adminFeedback├── package.json                     # Dependencies and scripts- **Icons**: Lucide React
+### Form Validation- classroomId, facultyId, date, startTime, endTime, purpose, status, adminFeedbackâ”œâ”€â”€ package.json                     # Dependencies and scripts- **Icons**: Lucide React
 
 - Required field checks
 
@@ -694,7 +480,7 @@ npm run preview
 
 - Password strength requirements
 
-- Date/time validity### `schedules`├── .env.example                     # Environment variables template
+- Date/time validity### `schedules`â”œâ”€â”€ .env.example                     # Environment variables template
 
 - Capacity limits
 
@@ -702,7 +488,7 @@ npm run preview
 
 
 
-## 📊 Reports & Analytics├── components/3. **Start the development server**- **Toast Notifications**: Sonner
+## ðŸ“Š Reports & Analyticsâ”œâ”€â”€ components/3. **Start the development server**- **Toast Notifications**: Sonner
 
 
 
@@ -710,7 +496,7 @@ npm run preview
 
 - Total bookings per classroom
 
-- Utilization percentage- email, name, department, status, adminFeedback│   ├── AdminDashboard.tsx          # Admin dashboard container
+- Utilization percentage- email, name, department, status, adminFeedbackâ”‚   â”œâ”€â”€ AdminDashboard.tsx          # Admin dashboard container
 
 - Peak usage times
 
@@ -718,7 +504,7 @@ npm run preview
 
 - Filters: Date range, specific classrooms
 
-## 🔐 Security│   ├── AdminReports.tsx            # Reporting functionality   ```bash- **Date Handling**: date-fns
+## ðŸ” Securityâ”‚   â”œâ”€â”€ AdminReports.tsx            # Reporting functionality   ```bash- **Date Handling**: date-fns
 
 ### Faculty Booking Report
 
@@ -726,7 +512,7 @@ npm run preview
 
 - Booking frequency
 
-- Preferred classrooms- **Firebase Auth**: Secure email/password authentication│   ├── ClassroomManagement.tsx     # Classroom CRUD operations
+- Preferred classrooms- **Firebase Auth**: Secure email/password authenticationâ”‚   â”œâ”€â”€ ClassroomManagement.tsx     # Classroom CRUD operations
 
 - Cancellation rate
 
@@ -734,7 +520,7 @@ npm run preview
 
 
 
-### Schedule Overview- **JWT Tokens**: Session management│   ├── ErrorBoundary.tsx           # Error handling wrapper   npm run dev- **Animations**: Framer Motion
+### Schedule Overview- **JWT Tokens**: Session managementâ”‚   â”œâ”€â”€ ErrorBoundary.tsx           # Error handling wrapper   npm run dev- **Animations**: Framer Motion
 
 - Chronological listing
 
@@ -742,23 +528,23 @@ npm run preview
 
 - Time slot information
 
-- Purpose/reason display- **Client-side Validation**: React Hook Form│   ├── FacultyDashboard.tsx        # Faculty dashboard container
+- Purpose/reason display- **Client-side Validation**: React Hook Formâ”‚   â”œâ”€â”€ FacultyDashboard.tsx        # Faculty dashboard container
 
 - Actions: Admin can cancel schedules
 
 - **Conflict Detection**: Prevents double-bookings
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
-│   ├── FacultySchedule.tsx         # Faculty schedule viewer   ```- **Forms**: React Hook Form
+â”‚   â”œâ”€â”€ FacultySchedule.tsx         # Faculty schedule viewer   ```- **Forms**: React Hook Form
 
-### ❌ "Missing Firebase environment variables"
+### âŒ "Missing Firebase environment variables"
 
-**Cause**: `.env` file not created or incorrect values  ## 🎨 Design System
+**Cause**: `.env` file not created or incorrect values  ## ðŸŽ¨ Design System
 
 **Solution**:
 
-1. Create `.env` file in project root│   ├── Footer.tsx                  # Application footer
+1. Create `.env` file in project rootâ”‚   â”œâ”€â”€ Footer.tsx                  # Application footer
 
 2. Copy from `.env.example`
 
@@ -766,15 +552,15 @@ npm run preview
 
 4. Restart dev server (`Ctrl+C` then `npm run dev`)
 
-- **60fps Animations**: Framer Motion│   ├── LoginForm.tsx               # Authentication form- **Build Tool**: Vite 7
+- **60fps Animations**: Framer Motionâ”‚   â”œâ”€â”€ LoginForm.tsx               # Authentication form- **Build Tool**: Vite 7
 
-### ❌ Firebase connection fails
+### âŒ Firebase connection fails
 
 **Cause**: Wrong Firebase configuration  - **Responsive**: Mobile-first approach
 
 **Solution**:
 
-1. Verify credentials in Firebase Console → Project Settings- **Accessible**: Keyboard navigation, screen readers│   ├── PasswordResetDialog.tsx     # Password reset modal
+1. Verify credentials in Firebase Console â†’ Project Settings- **Accessible**: Keyboard navigation, screen readersâ”‚   â”œâ”€â”€ PasswordResetDialog.tsx     # Password reset modal
 
 2. Ensure no extra spaces in `.env` file
 
@@ -782,23 +568,23 @@ npm run preview
 
 
 
-### ❌ Login fails with correct credentials│   ├── PasswordResetPage.tsx       # Password reset page4. Visit [http://localhost:5173](http://localhost:5173) and sign in with one of the default accounts below.- **State Management**: React Hooks (useState, useEffect, useMemo, useCallback)
+### âŒ Login fails with correct credentialsâ”‚   â”œâ”€â”€ PasswordResetPage.tsx       # Password reset page4. Visit [http://localhost:5173](http://localhost:5173) and sign in with one of the default accounts below.- **State Management**: React Hooks (useState, useEffect, useMemo, useCallback)
 
 **Cause**: User doesn't exist in Firebase Auth  
 
-**Solution**:## 🔄 Workflows
+**Solution**:## ðŸ”„ Workflows
 
-1. Check Firebase Console → Authentication → Users
+1. Check Firebase Console â†’ Authentication â†’ Users
 
-2. Create admin user manually if needed│   ├── ProfileSettings.tsx         # User profile management
+2. Create admin user manually if neededâ”‚   â”œâ”€â”€ ProfileSettings.tsx         # User profile management
 
 3. Verify email in `VITE_FIREBASE_ADMIN_EMAILS` for admin access
 
 ### Faculty Booking
 
-### ❌ Signup requests not working
+### âŒ Signup requests not working
 
-**Cause**: Firestore security rules not configured  1. Login → Search rooms → Book → Submit → Wait for approval → Confirmed│   ├── RequestApproval.tsx         # Booking request approval
+**Cause**: Firestore security rules not configured  1. Login â†’ Search rooms â†’ Book â†’ Submit â†’ Wait for approval â†’ Confirmedâ”‚   â”œâ”€â”€ RequestApproval.tsx         # Booking request approval
 
 **Solution**:
 
@@ -806,15 +592,15 @@ npm run preview
 
 2. Verify `signupRequests` collection allows anonymous writes
 
-3. Refer to Firebase setup guide for correct rules### Admin Approval│   ├── RoomBooking.tsx             # Room booking form
+3. Refer to Firebase setup guide for correct rules### Admin Approvalâ”‚   â”œâ”€â”€ RoomBooking.tsx             # Room booking form
 
 
 
-### ❌ Port already in use1. Login → Review requests → Check conflicts → Approve/Reject → Faculty notified
+### âŒ Port already in use1. Login â†’ Review requests â†’ Check conflicts â†’ Approve/Reject â†’ Faculty notified
 
 **Cause**: Another app using port 5173  
 
-**Solution**:│   ├── RoomSearch.tsx              # Availability search---### Backend
+**Solution**:â”‚   â”œâ”€â”€ RoomSearch.tsx              # Availability search---### Backend
 
 - Vite auto-assigns next available port
 
@@ -822,7 +608,7 @@ npm run preview
 
 
 
-## 📚 Documentation1. Register → Fill form → Submit → Admin reviews → Approved → Login│   ├── ScheduleViewer.tsx          # Schedule display
+## ðŸ“š Documentation1. Register â†’ Fill form â†’ Submit â†’ Admin reviews â†’ Approved â†’ Loginâ”‚   â”œâ”€â”€ ScheduleViewer.tsx          # Schedule display
 
 
 
@@ -830,79 +616,79 @@ npm run preview
 
 - [React Documentation](https://react.dev/)
 
-- [Vite Documentation](https://vitejs.dev/)### Password Reset│   ├── SignupApproval.tsx          # Faculty signup approval- **Database**: Supabase (PostgreSQL)
+- [Vite Documentation](https://vitejs.dev/)### Password Resetâ”‚   â”œâ”€â”€ SignupApproval.tsx          # Faculty signup approval- **Database**: Supabase (PostgreSQL)
 
 - [Tailwind CSS](https://tailwindcss.com/)
 
-- [Shadcn UI](https://ui.shadcn.com/)1. Forgot password → Enter email → Check email → Reset → Login
+- [Shadcn UI](https://ui.shadcn.com/)1. Forgot password â†’ Enter email â†’ Check email â†’ Reset â†’ Login
 
 
 
-## 🧪 Testing Checklist│   ├── animations/
+## ðŸ§ª Testing Checklistâ”‚   â”œâ”€â”€ animations/
 
 
 
-### Authentication## 🐛 Troubleshooting
+### Authentication## ðŸ› Troubleshooting
 
-- ✅ Login with valid/invalid credentials
+- âœ… Login with valid/invalid credentials
 
-- ✅ Logout clears session│   │   └── AppleMotion.tsx         # Animation utilities## 🔐 Default Accounts- **Authentication**: Supabase Auth
+- âœ… Logout clears sessionâ”‚   â”‚   â””â”€â”€ AppleMotion.tsx         # Animation utilities## ðŸ” Default Accounts- **Authentication**: Supabase Auth
 
-- ✅ Password reset sends email
+- âœ… Password reset sends email
 
-- ✅ Signup form validation### Missing Firebase environment variables
-
-
-
-### Faculty Features- Create `.env` file from `.env.example`│   ├── figma/
-
-- ✅ Book a classroom
-
-- ✅ Search for available rooms- Add Firebase credentials from Firebase Console
-
-- ✅ View own schedule
-
-- ✅ View all schedules- Restart dev server│   │   └── ImageWithFallback.tsx   # Image component with fallback- **Real-time**: Supabase Realtime subscriptions
-
-- ✅ Update profile
-
-- ✅ Change password
+- âœ… Signup form validation### Missing Firebase environment variables
 
 
 
-### Admin Features### Firebase connection fails│   └── ui/                         # Shadcn UI components (40+ components)
+### Faculty Features- Create `.env` file from `.env.example`â”‚   â”œâ”€â”€ figma/
 
-- ✅ Approve/reject booking requests
+- âœ… Book a classroom
 
-- ✅ Approve/reject signup requests- Verify credentials in Firebase Console → Project Settings
+- âœ… Search for available rooms- Add Firebase credentials from Firebase Console
 
-- ✅ Add new classroom
+- âœ… View own schedule
 
-- ✅ Edit classroom details- Check for extra spaces in `.env`├── hooks/| Role   | Email                | Password      |- **Storage**: Supabase for secure data persistence
+- âœ… View all schedules- Restart dev serverâ”‚   â”‚   â””â”€â”€ ImageWithFallback.tsx   # Image component with fallback- **Real-time**: Supabase Realtime subscriptions
 
-- ✅ Generate reports
+- âœ… Update profile
 
-- ✅ Cancel confirmed schedules- Ensure Firebase project is active
-
-
-
-### Conflict Detection│   └── useScrollTrigger.ts         # Scroll-based animations
-
-- ✅ Cannot book overlapping times
-
-- ✅ Cannot book past dates/times### Login fails
-
-- ✅ Pending requests checked for conflicts
-
-- ✅ Self-conflicts excluded during approval- Check user exists in Firebase Auth├── lib/|--------|----------------------|---------------|- **API**: Supabase auto-generated REST API
+- âœ… Change password
 
 
 
-## 🤝 Contributing- Verify email in `VITE_FIREBASE_ADMIN_EMAILS` for admin access
+### Admin Features### Firebase connection failsâ”‚   â””â”€â”€ ui/                         # Shadcn UI components (40+ components)
+
+- âœ… Approve/reject booking requests
+
+- âœ… Approve/reject signup requests- Verify credentials in Firebase Console â†’ Project Settings
+
+- âœ… Add new classroom
+
+- âœ… Edit classroom details- Check for extra spaces in `.env`â”œâ”€â”€ hooks/| Role   | Email                | Password      |- **Storage**: Supabase for secure data persistence
+
+- âœ… Generate reports
+
+- âœ… Cancel confirmed schedules- Ensure Firebase project is active
 
 
 
-Contributions are welcome! To contribute:│   ├── firebaseConfig.ts           # Firebase configuration
+### Conflict Detectionâ”‚   â””â”€â”€ useScrollTrigger.ts         # Scroll-based animations
+
+- âœ… Cannot book overlapping times
+
+- âœ… Cannot book past dates/times### Login fails
+
+- âœ… Pending requests checked for conflicts
+
+- âœ… Self-conflicts excluded during approval- Check user exists in Firebase Authâ”œâ”€â”€ lib/|--------|----------------------|---------------|- **API**: Supabase auto-generated REST API
+
+
+
+## ðŸ¤ Contributing- Verify email in `VITE_FIREBASE_ADMIN_EMAILS` for admin access
+
+
+
+Contributions are welcome! To contribute:â”‚   â”œâ”€â”€ firebaseConfig.ts           # Firebase configuration
 
 
 
@@ -910,7 +696,7 @@ Contributions are welcome! To contribute:│   ├── firebaseConfig.ts      
 
 2. Create a feature branch
 
-3. Make your changes- Vite auto-assigns next available port│   └── firebaseService.ts          # Firebase service functions| Admin  | `admin@plv.edu.ph`   | `admin123456` |
+3. Make your changes- Vite auto-assigns next available portâ”‚   â””â”€â”€ firebaseService.ts          # Firebase service functions| Admin  | `admin@plv.edu.ph`   | `admin123456` |
 
 4. Test thoroughly
 
@@ -918,15 +704,15 @@ Contributions are welcome! To contribute:│   ├── firebaseConfig.ts      
 
 
 
-## 📄 License├── utils/
+## ðŸ“„ Licenseâ”œâ”€â”€ utils/
 
 
 
-This project is developed for PLV CEIT educational purposes.## 📚 Documentation
+This project is developed for PLV CEIT educational purposes.## ðŸ“š Documentation
 
 
 
-## 👨‍💻 Developer│   ├── animation.ts                # Animation helpers| Faculty| `faculty@plv.edu.ph` | `faculty123`  |## 📁 Project Structure
+## ðŸ‘¨â€ðŸ’» Developerâ”‚   â”œâ”€â”€ animation.ts                # Animation helpers| Faculty| `faculty@plv.edu.ph` | `faculty123`  |## ðŸ“ Project Structure
 
 
 
@@ -934,15 +720,15 @@ This project is developed for PLV CEIT educational purposes.## 📚 Documentatio
 
 **Repository**: [GitHub - Digital Classroom Assignment](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  
 
-**Contact**: Available via GitHub Issues- [React Documentation](https://react.dev/)│   └── timeUtils.ts                # Time formatting utilities
+**Contact**: Available via GitHub Issues- [React Documentation](https://react.dev/)â”‚   â””â”€â”€ timeUtils.ts                # Time formatting utilities
 
 
 
-## 🙏 Acknowledgments- [Vite Documentation](https://vitejs.dev/)
+## ðŸ™ Acknowledgments- [Vite Documentation](https://vitejs.dev/)
 
 
 
-- **PLV CEIT** - For the project requirements and support- [Tailwind CSS](https://tailwindcss.com/)├── styles/
+- **PLV CEIT** - For the project requirements and support- [Tailwind CSS](https://tailwindcss.com/)â”œâ”€â”€ styles/
 
 - **Firebase** - For the excellent backend-as-a-service platform
 
@@ -950,15 +736,15 @@ This project is developed for PLV CEIT educational purposes.## 📚 Documentatio
 
 - **React & Vite** - For the modern development experience
 
-│   └── globals.css                 # Global styles and design tokens
+â”‚   â””â”€â”€ globals.css                 # Global styles and design tokens
 
-## 📞 Support
+## ðŸ“ž Support
 
-## 🧪 Testing Checklist
+## ðŸ§ª Testing Checklist
 
 For issues, questions, or contributions:
 
-- Open an issue on [GitHub](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)└── guidelines/You can create additional faculty accounts through the signup request flow. Approved accounts receive the password you set during approval.```
+- Open an issue on [GitHub](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)â””â”€â”€ guidelines/You can create additional faculty accounts through the signup request flow. Approved accounts receive the password you set during approval.```
 
 - Check existing documentation
 
@@ -966,55 +752,55 @@ For issues, questions, or contributions:
 
 
 
----- ✅ Login with valid/invalid credentials    ├── FirebaseDashboardSetup.md   # Firebase setup guide
+---- âœ… Login with valid/invalid credentials    â”œâ”€â”€ FirebaseDashboardSetup.md   # Firebase setup guide
 
 
 
-**Last Updated**: October 3, 2025  - ✅ Logout
+**Last Updated**: October 3, 2025  - âœ… Logout
 
 **Version**: 2.0.0 (Firebase Edition)
 
-- ✅ Password reset    └── Guidelines.md               # Development guidelines├── App.tsx                          # Main application entry point with Supabase integration
+- âœ… Password reset    â””â”€â”€ Guidelines.md               # Development guidelinesâ”œâ”€â”€ App.tsx                          # Main application entry point with Supabase integration
 
-- ✅ Signup validation
+- âœ… Signup validation
 
 ```
 
 ### Faculty Features
 
-- ✅ Book classroom---├── main.tsx                         # React entry point
+- âœ… Book classroom---â”œâ”€â”€ main.tsx                         # React entry point
 
-- ✅ Search rooms
+- âœ… Search rooms
 
-- ✅ View schedules## 🚀 Getting Started
+- âœ… View schedules## ðŸš€ Getting Started
 
-- ✅ Update profile
+- âœ… Update profile
 
-├── index.html                       # HTML template
+â”œâ”€â”€ index.html                       # HTML template
 
 ### Admin Features
 
-- ✅ Approve/reject requests### Prerequisites
+- âœ… Approve/reject requests### Prerequisites
 
-- ✅ Add/edit classrooms
+- âœ… Add/edit classrooms
 
-- ✅ Generate reports## 📦 Data & Persistence├── vite.config.ts                   # Vite configuration
+- âœ… Generate reports## ðŸ“¦ Data & Persistenceâ”œâ”€â”€ vite.config.ts                   # Vite configuration
 
-- ✅ Cancel schedules
+- âœ… Cancel schedules
 
 - **Node.js** 18 or higher ([Download here](https://nodejs.org/))
 
 ### Conflict Detection
 
-- ✅ Prevent overlapping bookings- **npm** (comes with Node.js) or **yarn** package manager├── tsconfig.json                    # TypeScript configuration
+- âœ… Prevent overlapping bookings- **npm** (comes with Node.js) or **yarn** package managerâ”œâ”€â”€ tsconfig.json                    # TypeScript configuration
 
-- ✅ Validate past dates
+- âœ… Validate past dates
 
-- ✅ Check pending requests- **Firebase Account** ([Sign up free](https://firebase.google.com/))
+- âœ… Check pending requests- **Firebase Account** ([Sign up free](https://firebase.google.com/))
 
 
 
-## 🤝 Contributing- **Git** (optional, for cloning)- All records (users, classrooms, requests, schedules) are saved inside browser `localStorage` with keys that begin with `classroom_`.├── package.json                     # Dependencies and scripts
+## ðŸ¤ Contributing- **Git** (optional, for cloning)- All records (users, classrooms, requests, schedules) are saved inside browser `localStorage` with keys that begin with `classroom_`.â”œâ”€â”€ package.json                     # Dependencies and scripts
 
 
 
@@ -1022,7 +808,7 @@ For issues, questions, or contributions:
 
 2. Create feature branch
 
-3. Make changes---- The first load seeds:├── .env.example                     # Environment variables template
+3. Make changes---- The first load seeds:â”œâ”€â”€ .env.example                     # Environment variables template
 
 4. Test thoroughly
 
@@ -1030,7 +816,7 @@ For issues, questions, or contributions:
 
 
 
-## 📄 License### Step 1: Clone or Download the Repository  - 1 admin + 1 faculty account├── components/
+## ðŸ“„ License### Step 1: Clone or Download the Repository  - 1 admin + 1 faculty accountâ”œâ”€â”€ components/
 
 
 
@@ -1038,7 +824,7 @@ Developed for PLV CEIT educational purposes.
 
 
 
-## 👨‍💻 Developer#### Option A: Clone with Git  - 3 sample classrooms (Room 101, Room 102, Lab 201)│   ├── AdminDashboard.tsx          # Admin dashboard container
+## ðŸ‘¨â€ðŸ’» Developer#### Option A: Clone with Git  - 3 sample classrooms (Room 101, Room 102, Lab 201)â”‚   â”œâ”€â”€ AdminDashboard.tsx          # Admin dashboard container
 
 
 
@@ -1046,15 +832,15 @@ Developed for PLV CEIT educational purposes.
 
 **Repository**: [GitHub](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  
 
-**Contact**: GitHub Issues```bash- Data persists per browser profile. Open a private window to start with a clean slate.│   ├── AdminReports.tsx            # Reporting functionality
+**Contact**: GitHub Issues```bash- Data persists per browser profile. Open a private window to start with a clean slate.â”‚   â”œâ”€â”€ AdminReports.tsx            # Reporting functionality
 
 
 
-## 🙏 Acknowledgmentsgit clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
+## ðŸ™ Acknowledgmentsgit clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
 
 
 
-- **PLV CEIT** - Project requirements and supportcd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"│   ├── ClassroomManagement.tsx     # Classroom CRUD operations
+- **PLV CEIT** - Project requirements and supportcd "Digital Classroom Assignment for PLV CEIT Bldg (with backend)"â”‚   â”œâ”€â”€ ClassroomManagement.tsx     # Classroom CRUD operations
 
 - **Firebase** - Backend platform
 
@@ -1062,15 +848,15 @@ Developed for PLV CEIT educational purposes.
 
 - **React & Vite** - Development framework
 
-### Resetting Everything│   ├── ErrorBoundary.tsx           # Error handling wrapper
+### Resetting Everythingâ”‚   â”œâ”€â”€ ErrorBoundary.tsx           # Error handling wrapper
 
-## 📞 Support
+## ðŸ“ž Support
 
 #### Option B: Download ZIP
 
 - [Open an Issue](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
 
-- Check Firebase Console for errors│   ├── FacultyDashboard.tsx        # Faculty dashboard container
+- Check Firebase Console for errorsâ”‚   â”œâ”€â”€ FacultyDashboard.tsx        # Faculty dashboard container
 
 - Review documentation
 
@@ -1078,154 +864,154 @@ Developed for PLV CEIT educational purposes.
 
 ---
 
-2. Extract to your desired locationUse whichever method you prefer:│   ├── FacultySchedule.tsx         # Faculty schedule viewer
+2. Extract to your desired locationUse whichever method you prefer:â”‚   â”œâ”€â”€ FacultySchedule.tsx         # Faculty schedule viewer
 
 **Last Updated**: October 3, 2025  
 
 **Version**: 2.0.0 (Firebase Edition)3. Open terminal/command prompt in the extracted folder
 
 
-│   ├── Footer.tsx                  # Application footer
+â”‚   â”œâ”€â”€ Footer.tsx                  # Application footer
 
 ---
 
-- **In-app utility** – open DevTools console and run:│   ├── LoginForm.tsx               # Authentication form
+- **In-app utility** â€“ open DevTools console and run:â”‚   â”œâ”€â”€ LoginForm.tsx               # Authentication form
 
 ### Step 2: Install Dependencies
 
-  ```ts│   ├── PasswordResetDialog.tsx     # Password reset modal
+  ```tsâ”‚   â”œâ”€â”€ PasswordResetDialog.tsx     # Password reset modal
 
 ```bash
 
-npm install  import { clearAllData } from './lib/localStorageService';│   ├── PasswordResetPage.tsx       # Password reset page
+npm install  import { clearAllData } from './lib/localStorageService';â”‚   â”œâ”€â”€ PasswordResetPage.tsx       # Password reset page
 
 ```
 
-  clearAllData();│   ├── ProfileSettings.tsx         # User profile management
+  clearAllData();â”‚   â”œâ”€â”€ ProfileSettings.tsx         # User profile management
 
 This will install all required packages including:
 
-- React, TypeScript, and Vite  ```│   ├── RequestApproval.tsx         # Booking request approval
+- React, TypeScript, and Vite  ```â”‚   â”œâ”€â”€ RequestApproval.tsx         # Booking request approval
 
 - Firebase SDK
 
-- UI components (Radix UI, Shadcn)- **Browser tools** – DevTools → Application/Storage tab → Clear localStorage.│   ├── RoomBooking.tsx             # Room booking form
+- UI components (Radix UI, Shadcn)- **Browser tools** â€“ DevTools â†’ Application/Storage tab â†’ Clear localStorage.â”‚   â”œâ”€â”€ RoomBooking.tsx             # Room booking form
 
 - Utilities (date-fns, Framer Motion, etc.)
 
-- **Manual tweak** – remove specific `classroom_*` keys to keep selected data.│   ├── RoomSearch.tsx              # Availability search
+- **Manual tweak** â€“ remove specific `classroom_*` keys to keep selected data.â”‚   â”œâ”€â”€ RoomSearch.tsx              # Availability search
 
 ---
 
-│   ├── ScheduleViewer.tsx          # Schedule display
+â”‚   â”œâ”€â”€ ScheduleViewer.tsx          # Schedule display
 
 ### Step 3: Set Up Firebase Backend
 
-The app will reseed default data on the next reload if no records are present.│   ├── SignupApproval.tsx          # Faculty signup approval
+The app will reseed default data on the next reload if no records are present.â”‚   â”œâ”€â”€ SignupApproval.tsx          # Faculty signup approval
 
 Please refer to the comprehensive Firebase setup guide:
 
-**[`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md)**│   ├── animations/
+**[`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md)**â”‚   â”œâ”€â”€ animations/
 
 
 
-This guide covers:---│   │   └── AppleMotion.tsx         # Animation utilities
+This guide covers:---â”‚   â”‚   â””â”€â”€ AppleMotion.tsx         # Animation utilities
 
 - Creating a Firebase project
 
-- Configuring authentication│   ├── figma/
+- Configuring authenticationâ”‚   â”œâ”€â”€ figma/
 
 - Setting up Firestore database
 
-- Configuring environment variables## 🧩 Code Map│   │   └── ImageWithFallback.tsx   # Image component with fallback
+- Configuring environment variables## ðŸ§© Code Mapâ”‚   â”‚   â””â”€â”€ ImageWithFallback.tsx   # Image component with fallback
 
 - Security rules
 
-│   └── ui/                         # Shadcn UI components (40+ components)
+â”‚   â””â”€â”€ ui/                         # Shadcn UI components (40+ components)
 
 ---
 
-```├── database/
+```â”œâ”€â”€ database/
 
 ### Step 4: Run the Application
 
-├── App.tsx                     # Root component and state orchestration│   ├── COMPLETE_SETUP.sql          # Complete database setup script
+â”œâ”€â”€ App.tsx                     # Root component and state orchestrationâ”‚   â”œâ”€â”€ COMPLETE_SETUP.sql          # Complete database setup script
 
 ```bash
 
-npm run dev├── components/                 # Dashboards, dialogs, and UI building blocks│   ├── schema.sql                  # Database schema
+npm run devâ”œâ”€â”€ components/                 # Dashboards, dialogs, and UI building blocksâ”‚   â”œâ”€â”€ schema.sql                  # Database schema
 
 ```
 
-│   ├── AdminDashboard.tsx      # Administrative workspace│   ├── schema_supabase_auth.sql    # Auth schema setup
+â”‚   â”œâ”€â”€ AdminDashboard.tsx      # Administrative workspaceâ”‚   â”œâ”€â”€ schema_supabase_auth.sql    # Auth schema setup
 
 The app will start at `http://localhost:5173` (or another port if 5173 is busy)
 
-│   ├── FacultyDashboard.tsx    # Faculty scheduling portal│   ├── supabase_auth_setup.sql     # Auth configuration
+â”‚   â”œâ”€â”€ FacultyDashboard.tsx    # Faculty scheduling portalâ”‚   â”œâ”€â”€ supabase_auth_setup.sql     # Auth configuration
 
 ---
 
-│   ├── LoginForm.tsx           # Auth entry point (local handlers)│   ├── fix_rls_anonymous_access.sql # RLS fixes
+â”‚   â”œâ”€â”€ LoginForm.tsx           # Auth entry point (local handlers)â”‚   â”œâ”€â”€ fix_rls_anonymous_access.sql # RLS fixes
 
-### 🎉 You're Ready!
+### ðŸŽ‰ You're Ready!
 
-│   └── ...                     # Supporting components│   └── reset_auth_setup.sql        # Reset script
+â”‚   â””â”€â”€ ...                     # Supporting componentsâ”‚   â””â”€â”€ reset_auth_setup.sql        # Reset script
 
 Your local instance is now running with:
 
-- ✅ Firebase authentication├── lib/localStorageService.ts  # Central data layer & auth/session helpers├── hooks/
+- âœ… Firebase authenticationâ”œâ”€â”€ lib/localStorageService.ts  # Central data layer & auth/session helpersâ”œâ”€â”€ hooks/
 
-- ✅ Firestore database
+- âœ… Firestore database
 
-- ✅ Real-time updates├── utils/                      # Time utilities and animation helpers│   └── useScrollTrigger.ts         # Scroll-based animations
-
-
-
----├── styles/globals.css          # Global Tailwind + custom styles├── lib/
+- âœ… Real-time updatesâ”œâ”€â”€ utils/                      # Time utilities and animation helpersâ”‚   â””â”€â”€ useScrollTrigger.ts         # Scroll-based animations
 
 
 
-## 🔧 Additional Configuration└── vite.config.ts              # Vite configuration│   ├── supabaseClient.ts           # Supabase client configuration
+---â”œâ”€â”€ styles/globals.css          # Global Tailwind + custom stylesâ”œâ”€â”€ lib/
 
 
 
-### Building for Production```│   ├── supabaseAuth.ts             # Authentication service
+## ðŸ”§ Additional Configurationâ””â”€â”€ vite.config.ts              # Vite configurationâ”‚   â”œâ”€â”€ supabaseClient.ts           # Supabase client configuration
 
 
 
-```bash│   └── supabaseService.ts          # Database service functions
+### Building for Production```â”‚   â”œâ”€â”€ supabaseAuth.ts             # Authentication service
+
+
+
+```bashâ”‚   â””â”€â”€ supabaseService.ts          # Database service functions
 
 npm run build
 
-```Key service contracts exposed from `lib/localStorageService.ts`:├── utils/
+```Key service contracts exposed from `lib/localStorageService.ts`:â”œâ”€â”€ utils/
 
 
 
-This creates an optimized production build in the `dist/` folder.│   ├── animation.ts                # Animation helpers
+This creates an optimized production build in the `dist/` folder.â”‚   â”œâ”€â”€ animation.ts                # Animation helpers
 
 
 
-### Preview Production Build- `authService` – sign in/out, password updates, auth listeners│   └── timeUtils.ts                # Time formatting utilities
+### Preview Production Build- `authService` â€“ sign in/out, password updates, auth listenersâ”‚   â””â”€â”€ timeUtils.ts                # Time formatting utilities
 
 
 
-```bash- `userService` – CRUD for admin/faculty records├── styles/
+```bash- `userService` â€“ CRUD for admin/faculty recordsâ”œâ”€â”€ styles/
 
 npm run preview
 
-```- `classroomService` – classroom inventory management│   └── globals.css                 # Global styles and design tokens
+```- `classroomService` â€“ classroom inventory managementâ”‚   â””â”€â”€ globals.css                 # Global styles and design tokens
 
 
 
-### Environment Variables- `bookingRequestService` – booking lifecycle + conflict checks└── guidelines/
+### Environment Variables- `bookingRequestService` â€“ booking lifecycle + conflict checksâ””â”€â”€ guidelines/
 
 
 
-Create a `.env` file in the project root with your Firebase credentials:- `scheduleService` – confirmed schedules and cancellation flow    └── Guidelines.md               # Development guidelines
+Create a `.env` file in the project root with your Firebase credentials:- `scheduleService` â€“ confirmed schedules and cancellation flow    â””â”€â”€ Guidelines.md               # Development guidelines
 
 
 
-```bash- `signupRequestService` – faculty onboarding workflow```
+```bash- `signupRequestService` â€“ faculty onboarding workflow```
 
 # Firebase Configuration
 
@@ -1233,7 +1019,7 @@ VITE_FIREBASE_API_KEY=your_api_key
 
 VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
 
-VITE_FIREBASE_PROJECT_ID=your_project_idWhen you are ready to connect a real backend, implement these same contracts against your API and swap the import in `App.tsx`.## 🚀 Getting Started (Run Locally)
+VITE_FIREBASE_PROJECT_ID=your_project_idWhen you are ready to connect a real backend, implement these same contracts against your API and swap the import in `App.tsx`.## ðŸš€ Getting Started (Run Locally)
 
 VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 
@@ -1247,11 +1033,11 @@ VITE_FIREBASE_ADMIN_EMAILS=admin1@plv.edu.ph,admin2@plv.edu.ph---### Prerequisit
 
 - **Node.js** 18 or higher ([Download here](https://nodejs.org/))
 
-⚠️ **IMPORTANT**: 
+âš ï¸ **IMPORTANT**: 
 
-- Never commit the `.env` file to Git (it's already in `.gitignore`)## 🧪 Smoke Test Checklist- **npm** (comes with Node.js) or **yarn** package manager
+- Never commit the `.env` file to Git (it's already in `.gitignore`)## ðŸ§ª Smoke Test Checklist- **npm** (comes with Node.js) or **yarn** package manager
 
-- Get these values from Firebase Console → Project Settings
+- Get these values from Firebase Console â†’ Project Settings
 
 - **Supabase Account** ([Sign up free](https://supabase.com/))
 
@@ -1259,7 +1045,7 @@ VITE_FIREBASE_ADMIN_EMAILS=admin1@plv.edu.ph,admin2@plv.edu.ph---### Prerequisit
 
 After installing:- **Git** (optional, for cloning)
 
-## 📊 Database Collections
+## ðŸ“Š Database Collections
 
 
 
@@ -1297,7 +1083,7 @@ Classroom inventory---git clone https://github.com/Deign86/Digital-Classroom-Ass
 
 - `equipment` (array)
 
-- `building` (string)## 🛠️ Customisation Tips```
+- `building` (string)## ðŸ› ï¸ Customisation Tips```
 
 - `floor` (number)
 
@@ -1329,7 +1115,7 @@ Faculty booking requests pending approval- **Add new fields:** update the shared
 
 - `requestDate` (timestamp)
 
-- `reviewedAt` (timestamp, optional)## 🔭 Roadmap Ideas
+- `reviewedAt` (timestamp, optional)## ðŸ”­ Roadmap Ideas
 
 
 
@@ -1365,7 +1151,7 @@ New faculty registration requests
 
 - `status` (string: 'pending', 'approved', 'rejected')
 
-- `adminFeedback` (string, optional)## 📄 License- Supabase client libraries
+- `adminFeedback` (string, optional)## ðŸ“„ License- Supabase client libraries
 
 - `requestDate` (timestamp)
 
@@ -1377,7 +1163,7 @@ New faculty registration requests
 
 
 
-## 🔐 Security Features
+## ðŸ” Security Features
 
 
 
@@ -1415,7 +1201,7 @@ New faculty registration requests
 
 - Conflict detection for overlapping bookings#### 3.2 Get Your API Credentials
 
-- Equipment and time slot validation1. In your Supabase project, go to **Settings** → **API**
+- Equipment and time slot validation1. In your Supabase project, go to **Settings** â†’ **API**
 
 2. Copy the following values:
 
@@ -1423,7 +1209,7 @@ New faculty registration requests
 
    - **anon public** key (starts with `eyJ...`)
 
-## 🔧 Configuration   - **service_role** key (starts with `eyJ...`) - Click "Reveal" to see it
+## ðŸ”§ Configuration   - **service_role** key (starts with `eyJ...`) - Click "Reveal" to see it
 
 
 
@@ -1449,7 +1235,7 @@ VITE_SUPABASE_URL=https://xxxxx.supabase.co
 
 - Whiteboard
 
-- Computer⚠️ **IMPORTANT**: 
+- Computerâš ï¸ **IMPORTANT**: 
 
 - Audio System- Never commit the `.env` file to Git (it's already in `.gitignore`)
 
@@ -1461,7 +1247,7 @@ VITE_SUPABASE_URL=https://xxxxx.supabase.co
 
 
 
-## 🎨 Design System### Step 4: Set Up the Database
+## ðŸŽ¨ Design System### Step 4: Set Up the Database
 
 
 
@@ -1539,17 +1325,17 @@ The application uses an Apple-inspired design system featuring:#### 4.1 Run the 
 
 
 
-## 🔄 Application Workflows#### Default Administrator Account
+## ðŸ”„ Application Workflows#### Default Administrator Account
 
 - **Email**: `registrar@plv.edu.ph`
 
 ### Faculty Booking Workflow- **Password**: `admin123`
 
-1. **Login** → Faculty logs in with credentials- **Role**: School Registrar (Admin)
+1. **Login** â†’ Faculty logs in with credentials- **Role**: School Registrar (Admin)
 
-2. **Search** → (Optional) Search for available classrooms by date/time/equipment
+2. **Search** â†’ (Optional) Search for available classrooms by date/time/equipment
 
-3. **Book** → Navigate to "Book Room" and fill in:#### Default Faculty Account
+3. **Book** â†’ Navigate to "Book Room" and fill in:#### Default Faculty Account
 
    - Select classroom- **Email**: `pgalarosa@plv.edu.ph`
 
@@ -1559,61 +1345,61 @@ The application uses an Apple-inspired design system featuring:#### 4.1 Run the 
 
    - Enter purpose/reason- **Department**: Information Technology
 
-4. **Submit** → Request sent to admin for approval
+4. **Submit** â†’ Request sent to admin for approval
 
-5. **Wait** → Monitor request status in "My Schedule"#### Create New Faculty Account
+5. **Wait** â†’ Monitor request status in "My Schedule"#### Create New Faculty Account
 
-6. **Notified** → Receive toast notification when admin approves/rejects1. On login page, click **"Sign up as Faculty"**
+6. **Notified** â†’ Receive toast notification when admin approves/rejects1. On login page, click **"Sign up as Faculty"**
 
-7. **Confirmed** → Approved booking appears in confirmed schedules2. Fill in registration form
+7. **Confirmed** â†’ Approved booking appears in confirmed schedules2. Fill in registration form
 
 3. Wait for admin approval (login as admin to approve)
 
 ### Admin Approval Workflow4. Once approved, login with your credentials
 
-1. **Login** → Admin logs in
+1. **Login** â†’ Admin logs in
 
-2. **Review** → Go to "Approve Requests" tab---
+2. **Review** â†’ Go to "Approve Requests" tab---
 
-3. **Check Conflicts** → System auto-detects scheduling conflicts
+3. **Check Conflicts** â†’ System auto-detects scheduling conflicts
 
-4. **Decision** → For each request:### 🎉 You're Ready!
+4. **Decision** â†’ For each request:### ðŸŽ‰ You're Ready!
 
    - **Approve**: Booking becomes confirmed schedule
 
    - **Reject**: Optionally provide feedback to facultyYour local instance is now running with:
 
-5. **Feedback** → Faculty receives notification with admin's decision- ✅ Full backend database
+5. **Feedback** â†’ Faculty receives notification with admin's decision- âœ… Full backend database
 
-- ✅ User authentication
+- âœ… User authentication
 
-### Faculty Signup Workflow- ✅ Real-time updates
+### Faculty Signup Workflow- âœ… Real-time updates
 
-1. **Register** → Click "Sign up as Faculty" on login page- ✅ Sample data to test with
+1. **Register** â†’ Click "Sign up as Faculty" on login page- âœ… Sample data to test with
 
-2. **Fill Form** → Provide email, name, department
+2. **Fill Form** â†’ Provide email, name, department
 
-3. **Submit** → Request sent to admin---
+3. **Submit** â†’ Request sent to admin---
 
-4. **Admin Approves** → Admin reviews in "Signup Approvals"
+4. **Admin Approves** â†’ Admin reviews in "Signup Approvals"
 
-5. **Account Created** → User account created in Firebase Auth## 🔧 Additional Configuration
+5. **Account Created** â†’ User account created in Firebase Auth## ðŸ”§ Additional Configuration
 
-6. **Login** → Faculty can now login with credentials
+6. **Login** â†’ Faculty can now login with credentials
 
 ### Building for Production
 
 ### Password Reset Workflow
 
-1. **Forgot Password** → Click "Forgot Password?" on login```bash
+1. **Forgot Password** â†’ Click "Forgot Password?" on login```bash
 
-2. **Enter Email** → Provide registered email addressnpm run build
+2. **Enter Email** â†’ Provide registered email addressnpm run build
 
-3. **Check Email** → Receive password reset link from Firebase```
+3. **Check Email** â†’ Receive password reset link from Firebase```
 
-4. **Reset** → Click link and set new password
+4. **Reset** â†’ Click link and set new password
 
-5. **Login** → Login with new credentialsThis creates an optimized production build in the `dist/` folder.
+5. **Login** â†’ Login with new credentialsThis creates an optimized production build in the `dist/` folder.
 
 
 
@@ -1621,7 +1407,7 @@ The application uses an Apple-inspired design system featuring:#### 4.1 Run the 
 
 
 
-## 🔐 Features Implementation Details```bash
+## ðŸ” Features Implementation Details```bash
 
 npm run preview
 
@@ -1637,15 +1423,15 @@ The system prevents double-bookings through:
 
 - **Self-exclusion** during approval (request won't conflict with itself)|----------|---------|---------------|
 
-- **Time overlap detection** (checks if time ranges intersect)| `VITE_SUPABASE_URL` | Your Supabase project URL | Settings → API → Project URL |
+- **Time overlap detection** (checks if time ranges intersect)| `VITE_SUPABASE_URL` | Your Supabase project URL | Settings â†’ API â†’ Project URL |
 
-| `VITE_SUPABASE_ANON_KEY` | Public API key (safe for client) | Settings → API → anon public |
+| `VITE_SUPABASE_ANON_KEY` | Public API key (safe for client) | Settings â†’ API â†’ anon public |
 
-### Real-time Updates| `VITE_SUPABASE_SERVICE_ROLE_KEY` | Admin API key (keep secret!) | Settings → API → service_role (click Reveal) |
+### Real-time Updates| `VITE_SUPABASE_SERVICE_ROLE_KEY` | Admin API key (keep secret!) | Settings â†’ API â†’ service_role (click Reveal) |
 
 - **Firestore listeners** for live data changes
 
-- **Toast notifications** for success/error feedback## � Database Schema
+- **Toast notifications** for success/error feedback## ï¿½ Database Schema
 
 - **Admin feedback** displayed on request status
 
@@ -1689,7 +1475,7 @@ The system prevents double-bookings through:
 
 - `floor` (integer)
 
-## 📊 Reports & Analytics- `is_available` (boolean)
+## ðŸ“Š Reports & Analytics- `is_available` (boolean)
 
 - `created_at` (timestamp)
 
@@ -1761,7 +1547,7 @@ The system prevents double-bookings through:
 
 - `admin_feedback` (text, optional)
 
-## 🐛 Troubleshooting- `request_date` (timestamp)
+## ðŸ› Troubleshooting- `request_date` (timestamp)
 
 - `reviewed_at` (timestamp, optional)
 
@@ -1769,9 +1555,9 @@ The system prevents double-bookings through:
 
 ---
 
-#### ❌ "Missing Firebase environment variables"
+#### âŒ "Missing Firebase environment variables"
 
-**Cause**: `.env` file not created or incorrect values  ## 🔐 Security Features
+**Cause**: `.env` file not created or incorrect values  ## ðŸ” Security Features
 
 **Solution**:
 
@@ -1785,13 +1571,13 @@ The system prevents double-bookings through:
 
 - Anonymous users can submit signup requests
 
-#### ❌ Firebase connection fails- Faculty can view classrooms and submit bookings
+#### âŒ Firebase connection fails- Faculty can view classrooms and submit bookings
 
 **Cause**: Wrong Firebase configuration or keys  
 
 **Solution**:### Authentication
 
-1. Verify credentials in Firebase Console → Project Settings- Email/password authentication via Supabase Auth
+1. Verify credentials in Firebase Console â†’ Project Settings- Email/password authentication via Supabase Auth
 
 2. Ensure no extra spaces in `.env` file- Secure password hashing (handled by Supabase)
 
@@ -1799,13 +1585,13 @@ The system prevents double-bookings through:
 
 - Email verification for approved users
 
-#### ❌ Login fails with correct credentials- Password reset via email
+#### âŒ Login fails with correct credentials- Password reset via email
 
 **Cause**: User doesn't exist in Firebase Auth  
 
 **Solution**:### Data Validation
 
-1. Check Firebase Console → Authentication → Users- Client-side validation with React Hook Form
+1. Check Firebase Console â†’ Authentication â†’ Users- Client-side validation with React Hook Form
 
 2. Create admin user manually if needed- Server-side validation via Supabase RLS
 
@@ -1813,13 +1599,13 @@ The system prevents double-bookings through:
 
 - Equipment and time slot validation
 
-#### ❌ Signup requests not working
+#### âŒ Signup requests not working
 
 **Cause**: Firestore security rules not configured correctly  ---
 
 **Solution**:
 
-1. Check Firestore Security Rules in Firebase Console## 🔧 Configuration
+1. Check Firestore Security Rules in Firebase Console## ðŸ”§ Configuration
 
 2. Verify `signupRequests` collection allows anonymous writes
 
@@ -1827,7 +1613,7 @@ The system prevents double-bookings through:
 
 The system is configured for PLV CEIT operating hours:
 
-#### ❌ Port already in use- **Start**: 7:00 AM
+#### âŒ Port already in use- **Start**: 7:00 AM
 
 **Cause**: Another app using port 5173  - **End**: 8:00 PM
 
@@ -1843,7 +1629,7 @@ The system is configured for PLV CEIT operating hours:
 
 - Projector
 
-## 🚀 Deployment Guide- Whiteboard
+## ðŸš€ Deployment Guide- Whiteboard
 
 - Computer
 
@@ -1865,7 +1651,7 @@ git push origin main- **CEIT-201**: 60 capacity, TV + Projector + AC + Audio
 
 
 
-2. **Connect to Vercel**## 🎨 Design System
+2. **Connect to Vercel**## ðŸŽ¨ Design System
 
    - Go to [Vercel Dashboard](https://vercel.com)
 
@@ -1885,7 +1671,7 @@ git push origin main- **CEIT-201**: 60 capacity, TV + Projector + AC + Audio
 
 3. **Add Environment Variables**
 
-   - In Vercel project settings → Environment Variables### Colors
+   - In Vercel project settings â†’ Environment Variables### Colors
 
    - Add all Firebase variables from your `.env`:- **Primary**: Apple Blue (#007aff)
 
@@ -1911,7 +1697,7 @@ git push origin main- **CEIT-201**: 60 capacity, TV + Projector + AC + Audio
 
    - Wait for build to complete
 
-   - Your app is live! 🎉### Animations
+   - Your app is live! ðŸŽ‰### Animations
 
 - **60fps smooth animations** via Framer Motion
 
@@ -1943,17 +1729,17 @@ npm run build
 
    - Add environment variables in Site Settings
 
-   - Set build command: `npm run build`## 🔄 Application Workflows
+   - Set build command: `npm run build`## ðŸ”„ Application Workflows
 
    - Set publish directory: `dist`
 
 ### Faculty Booking Workflow
 
-### Deploy to Your Own Server1. **Login** → Faculty logs in with credentials
+### Deploy to Your Own Server1. **Login** â†’ Faculty logs in with credentials
 
-2. **Search** → (Optional) Search for available classrooms by date/time/equipment
+2. **Search** â†’ (Optional) Search for available classrooms by date/time/equipment
 
-```bash3. **Book** → Navigate to "Book Room" and fill in:
+```bash3. **Book** â†’ Navigate to "Book Room" and fill in:
 
 # Build the project   - Select classroom
 
@@ -1963,61 +1749,61 @@ npm run build   - Choose date
 
 # Upload the dist/ folder to your server   - Enter purpose/reason
 
-# Configure your web server (nginx/apache) to serve the files4. **Submit** → Request sent to admin for approval
+# Configure your web server (nginx/apache) to serve the files4. **Submit** â†’ Request sent to admin for approval
 
-# Set up environment variables on the server5. **Wait** → Monitor request status in "My Schedule"
+# Set up environment variables on the server5. **Wait** â†’ Monitor request status in "My Schedule"
 
-```6. **Notified** → Receive toast notification when admin approves/rejects
+```6. **Notified** â†’ Receive toast notification when admin approves/rejects
 
-7. **Confirmed** → Approved booking appears in confirmed schedules
+7. **Confirmed** â†’ Approved booking appears in confirmed schedules
 
 ### Important Deployment Notes
 
-- ✅ Firebase keys are safe to expose in frontend (protected by security rules)### Admin Approval Workflow
+- âœ… Firebase keys are safe to expose in frontend (protected by security rules)### Admin Approval Workflow
 
-- 🔒 Firestore Security Rules protect your database1. **Login** → Admin logs in
+- ðŸ”’ Firestore Security Rules protect your database1. **Login** â†’ Admin logs in
 
-- 🌐 Configure authorized domains in Firebase Console → Authentication → Settings2. **Review** → Go to "Approve Requests" tab
+- ðŸŒ Configure authorized domains in Firebase Console â†’ Authentication â†’ Settings2. **Review** â†’ Go to "Approve Requests" tab
 
-3. **Check Conflicts** → System auto-detects scheduling conflicts
+3. **Check Conflicts** â†’ System auto-detects scheduling conflicts
 
----4. **Decision** → For each request:
+---4. **Decision** â†’ For each request:
 
    - **Approve**: Booking becomes confirmed schedule
 
-## 📝 Development Guidelines   - **Reject**: Optionally provide feedback to faculty
+## ðŸ“ Development Guidelines   - **Reject**: Optionally provide feedback to faculty
 
-5. **Feedback** → Faculty receives notification with admin's decision
+5. **Feedback** â†’ Faculty receives notification with admin's decision
 
 ### Code Style
 
 - **TypeScript**: Strict mode enabled### Faculty Signup Workflow
 
-- **Component Structure**: Functional components with hooks1. **Register** → Click "Sign up as Faculty" on login page
+- **Component Structure**: Functional components with hooks1. **Register** â†’ Click "Sign up as Faculty" on login page
 
-- **Props**: Use TypeScript interfaces2. **Fill Form** → Provide email, name, department
+- **Props**: Use TypeScript interfaces2. **Fill Form** â†’ Provide email, name, department
 
-3. **Submit** → Request sent to admin
+3. **Submit** â†’ Request sent to admin
 
-### Git Workflow4. **Admin Approves** → Admin reviews in "Signup Approvals"
+### Git Workflow4. **Admin Approves** â†’ Admin reviews in "Signup Approvals"
 
-```bash5. **Account Created** → User account created in Supabase Auth
+```bash5. **Account Created** â†’ User account created in Supabase Auth
 
-# Create feature branch6. **Login** → Faculty can now login with credentials
+# Create feature branch6. **Login** â†’ Faculty can now login with credentials
 
 git checkout -b feature/your-feature-name
 
 ### Password Reset Workflow
 
-# Make changes and commit1. **Forgot Password** → Click "Forgot Password?" on login
+# Make changes and commit1. **Forgot Password** â†’ Click "Forgot Password?" on login
 
-git add .2. **Enter Email** → Provide registered email address
+git add .2. **Enter Email** â†’ Provide registered email address
 
-git commit -m "Add feature description"3. **Check Email** → Receive password reset link from Supabase
+git commit -m "Add feature description"3. **Check Email** â†’ Receive password reset link from Supabase
 
-4. **Reset** → Click link and set new password
+4. **Reset** â†’ Click link and set new password
 
-# Push to GitHub5. **Login** → Login with new credentials
+# Push to GitHub5. **Login** â†’ Login with new credentials
 
 git push origin feature/your-feature-name
 
@@ -2025,7 +1811,7 @@ git push origin feature/your-feature-name
 
 # Create Pull Request on GitHub
 
-```## 🔐 Features Implementation Details
+```## ðŸ” Features Implementation Details
 
 
 
@@ -2049,7 +1835,7 @@ git push origin feature/your-feature-name
 
 - **Database subscriptions** for live data changes
 
-## 🧪 Testing- **Toast notifications** for success/error feedback
+## ðŸ§ª Testing- **Toast notifications** for success/error feedback
 
 - **Admin feedback** displayed on request status
 
@@ -2059,61 +1845,61 @@ git push origin feature/your-feature-name
 
 #### Authentication### Responsive Design
 
-- ✅ Login with valid credentials- **Mobile-first approach**
+- âœ… Login with valid credentials- **Mobile-first approach**
 
-- ✅ Login fails with invalid credentials- **Tablet optimization**
+- âœ… Login fails with invalid credentials- **Tablet optimization**
 
-- ✅ Logout clears session- **Desktop layouts**
+- âœ… Logout clears session- **Desktop layouts**
 
-- ✅ Password reset sends email- **Touch-friendly** buttons and inputs
+- âœ… Password reset sends email- **Touch-friendly** buttons and inputs
 
-- ✅ Signup form validation- **Collapsible navigation** on mobile
+- âœ… Signup form validation- **Collapsible navigation** on mobile
 
 - **Adaptive card layouts**
 
 #### Faculty Features
 
-- ✅ Book a classroom### Form Validation
+- âœ… Book a classroom### Form Validation
 
-- ✅ Search for available rooms- **Required field checks**
+- âœ… Search for available rooms- **Required field checks**
 
-- ✅ View own schedule- **Email format validation**
+- âœ… View own schedule- **Email format validation**
 
-- ✅ View all schedules- **Password strength requirements**
+- âœ… View all schedules- **Password strength requirements**
 
-- ✅ Update profile- **Date/time validity**
+- âœ… Update profile- **Date/time validity**
 
-- ✅ Change password- **Capacity limits**
+- âœ… Change password- **Capacity limits**
 
 - **Duplicate prevention**
 
 #### Admin Features
 
-- ✅ Approve booking requests---
+- âœ… Approve booking requests---
 
-- ✅ Reject booking requests with feedback
+- âœ… Reject booking requests with feedback
 
-- ✅ Approve signup requests## 📊 Reports & Analytics
+- âœ… Approve signup requests## ðŸ“Š Reports & Analytics
 
-- ✅ Add new classroom
+- âœ… Add new classroom
 
-- ✅ Edit classroom details### Available Reports
+- âœ… Edit classroom details### Available Reports
 
-- ✅ Generate reports
+- âœ… Generate reports
 
-- ✅ Cancel confirmed schedules#### 1. Classroom Utilization Report
+- âœ… Cancel confirmed schedules#### 1. Classroom Utilization Report
 
 - **Purpose**: Analyze classroom usage patterns
 
 #### Conflict Detection- **Metrics**:
 
-- ✅ Cannot book overlapping times  - Total bookings per classroom
+- âœ… Cannot book overlapping times  - Total bookings per classroom
 
-- ✅ Cannot book past dates/times  - Utilization percentage
+- âœ… Cannot book past dates/times  - Utilization percentage
 
-- ✅ Pending requests checked for conflicts  - Peak usage times
+- âœ… Pending requests checked for conflicts  - Peak usage times
 
-- ✅ Self-conflicts excluded during approval  - Equipment usage statistics
+- âœ… Self-conflicts excluded during approval  - Equipment usage statistics
 
 - **Filters**: Date range, specific classrooms
 
@@ -2121,7 +1907,7 @@ git push origin feature/your-feature-name
 
 
 
-## 📚 Additional Resources#### 2. Faculty Booking Report
+## ðŸ“š Additional Resources#### 2. Faculty Booking Report
 
 - **Purpose**: Track individual faculty booking history
 
@@ -2155,7 +1941,7 @@ git push origin feature/your-feature-name
 
   - Purpose/reason display
 
-## 🤝 Contributing- **Filters**: Date, classroom, faculty
+## ðŸ¤ Contributing- **Filters**: Date, classroom, faculty
 
 - **Actions**: Admin can cancel schedules
 
@@ -2165,7 +1951,7 @@ Contributions are welcome! To contribute:
 
 1. Fork the repository
 
-2. Create a feature branch## 🐛 Troubleshooting
+2. Create a feature branch## ðŸ› Troubleshooting
 
 3. Make your changes
 
@@ -2173,13 +1959,13 @@ Contributions are welcome! To contribute:
 
 5. Submit a pull request with clear description
 
-#### ❌ "Missing Supabase environment variables"
+#### âŒ "Missing Supabase environment variables"
 
 ---**Cause**: `.env` file not created or incorrect values  
 
 **Solution**:
 
-## 📄 License1. Create `.env` file in project root
+## ðŸ“„ License1. Create `.env` file in project root
 
 2. Copy from `.env.example`
 
@@ -2189,13 +1975,13 @@ This project is developed for PLV CEIT educational purposes.3. Fill in your actu
 
 ---
 
-#### ❌ Database connection fails
+#### âŒ Database connection fails
 
-## 👨‍💻 Developer**Cause**: Wrong Supabase URL or keys  
+## ðŸ‘¨â€ðŸ’» Developer**Cause**: Wrong Supabase URL or keys  
 
 **Solution**:
 
-**Built by**: Deign  1. Verify credentials in Supabase Dashboard → Settings → API
+**Built by**: Deign  1. Verify credentials in Supabase Dashboard â†’ Settings â†’ API
 
 **Repository**: [GitHub - Digital Classroom Assignment](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  2. Ensure no extra spaces in `.env` file
 
@@ -2203,11 +1989,11 @@ This project is developed for PLV CEIT educational purposes.3. Fill in your actu
 
 
 
----#### ❌ Login fails with correct credentials
+---#### âŒ Login fails with correct credentials
 
 **Cause**: Database not set up or user doesn't exist  
 
-## 🙏 Acknowledgments**Solution**:
+## ðŸ™ Acknowledgments**Solution**:
 
 1. Run `COMPLETE_SETUP.sql` in Supabase SQL Editor
 
@@ -2217,7 +2003,7 @@ This project is developed for PLV CEIT educational purposes.3. Fill in your actu
 
 - **Shadcn** - For the beautiful UI component library
 
-- **React & Vite** - For the modern development experience#### ❌ "Service role key not found" warning
+- **React & Vite** - For the modern development experience#### âŒ "Service role key not found" warning
 
 **Cause**: Missing `VITE_SUPABASE_SERVICE_ROLE_KEY` in `.env`  
 
@@ -2225,7 +2011,7 @@ This project is developed for PLV CEIT educational purposes.3. Fill in your actu
 
 1. Get service_role key from Supabase Dashboard
 
-## 📞 Support2. Add to `.env` file
+## ðŸ“ž Support2. Add to `.env` file
 
 3. Restart dev server
 
@@ -2233,7 +2019,7 @@ For issues, questions, or contributions:4. Required for admin operations like cr
 
 - Open an issue on [GitHub](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
 
-- Check existing documentation#### ❌ Signup requests not working
+- Check existing documentation#### âŒ Signup requests not working
 
 - Review Firebase Console for backend errors**Cause**: RLS policies not configured correctly  
 
@@ -2243,11 +2029,11 @@ For issues, questions, or contributions:4. Required for admin operations like cr
 
 2. Check `signup_requests` table has anonymous INSERT policy
 
-**Last Updated**: October 3, 2025  3. Verify in Supabase → Authentication → Policies
+**Last Updated**: October 3, 2025  3. Verify in Supabase â†’ Authentication â†’ Policies
 
 **Version**: 2.0.0 (Firebase Edition)
 
-#### ❌ Port already in use
+#### âŒ Port already in use
 **Cause**: Another app using port 5173  
 **Solution**:
 - Vite will auto-assign next available port
@@ -2255,7 +2041,7 @@ For issues, questions, or contributions:4. Required for admin operations like cr
 
 ---
 
-## 🚀 Deployment Guide
+## ðŸš€ Deployment Guide
 
 ### Deploy to Vercel (Recommended)
 
@@ -2276,7 +2062,7 @@ git push origin main
      - **Output Directory**: `dist`
 
 3. **Add Environment Variables**
-   - In Vercel project settings → Environment Variables
+   - In Vercel project settings â†’ Environment Variables
    - Add all three variables from your `.env`:
      - `VITE_SUPABASE_URL`
      - `VITE_SUPABASE_ANON_KEY`
@@ -2285,7 +2071,7 @@ git push origin main
 4. **Deploy**
    - Click "Deploy"
    - Wait for build to complete
-   - Your app is live! 🎉
+   - Your app is live! ðŸŽ‰
 
 ### Deploy to Netlify
 
@@ -2316,14 +2102,14 @@ npm run build
 ```
 
 ### Important Deployment Notes
-- ⚠️ **Never expose** `SERVICE_ROLE_KEY` to client
-- ✅ Supabase keys are safe in frontend (Vite builds them in)
-- 🔒 RLS policies protect your database
-- 🌐 Enable CORS in Supabase if needed
+- âš ï¸ **Never expose** `SERVICE_ROLE_KEY` to client
+- âœ… Supabase keys are safe in frontend (Vite builds them in)
+- ðŸ”’ RLS policies protect your database
+- ðŸŒ Enable CORS in Supabase if needed
 
 ---
 
-## 📝 Development Guidelines
+## ðŸ“ Development Guidelines
 
 ### Code Style
 - **TypeScript**: Strict mode enabled
@@ -2363,43 +2149,43 @@ git push origin feature/your-feature-name
 
 ---
 
-## 🧪 Testing
+## ðŸ§ª Testing
 
 ### Manual Testing Checklist
 
 #### Authentication
-- ✅ Login with valid credentials
-- ✅ Login fails with invalid credentials
-- ✅ Logout clears session
-- ✅ Password reset sends email
-- ✅ Signup form validation
+- âœ… Login with valid credentials
+- âœ… Login fails with invalid credentials
+- âœ… Logout clears session
+- âœ… Password reset sends email
+- âœ… Signup form validation
 
 #### Faculty Features
-- ✅ Book a classroom
-- ✅ Search for available rooms
-- ✅ View own schedule
-- ✅ View all schedules
-- ✅ Update profile
-- ✅ Change password
+- âœ… Book a classroom
+- âœ… Search for available rooms
+- âœ… View own schedule
+- âœ… View all schedules
+- âœ… Update profile
+- âœ… Change password
 
 #### Admin Features
-- ✅ Approve booking requests
-- ✅ Reject booking requests with feedback
-- ✅ Approve signup requests
-- ✅ Add new classroom
-- ✅ Edit classroom details
-- ✅ Generate reports
-- ✅ Cancel confirmed schedules
+- âœ… Approve booking requests
+- âœ… Reject booking requests with feedback
+- âœ… Approve signup requests
+- âœ… Add new classroom
+- âœ… Edit classroom details
+- âœ… Generate reports
+- âœ… Cancel confirmed schedules
 
 #### Conflict Detection
-- ✅ Cannot book overlapping times
-- ✅ Cannot book past dates/times
-- ✅ Pending requests checked for conflicts
-- ✅ Self-conflicts excluded during approval
+- âœ… Cannot book overlapping times
+- âœ… Cannot book past dates/times
+- âœ… Pending requests checked for conflicts
+- âœ… Self-conflicts excluded during approval
 
 ---
 
-## 📚 Additional Resources
+## ðŸ“š Additional Resources
 
 ### Documentation
 - [Supabase Documentation](https://supabase.com/docs)
@@ -2415,7 +2201,7 @@ git push origin feature/your-feature-name
 
 ---
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
 Contributions are welcome! To contribute:
 
@@ -2427,13 +2213,13 @@ Contributions are welcome! To contribute:
 
 ---
 
-## 📄 License
+## ðŸ“„ License
 
 This project is developed for PLV CEIT educational purposes.
 
 ---
 
-## 👨‍💻 Developer
+## ðŸ‘¨â€ðŸ’» Developer
 
 **Built by**: Deign  
 **Repository**: [GitHub - Digital Classroom Assignment](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  
@@ -2441,7 +2227,7 @@ This project is developed for PLV CEIT educational purposes.
 
 ---
 
-## 🙏 Acknowledgments
+## ðŸ™ Acknowledgments
 
 - **PLV CEIT** - For the project requirements and support
 - **Supabase** - For the excellent backend-as-a-service platform
@@ -2451,7 +2237,7 @@ This project is developed for PLV CEIT educational purposes.
 
 ---
 
-## 📞 Support
+## ðŸ“ž Support
 
 For issues, questions, or contributions:
 - Open an issue on [GitHub](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
@@ -2462,5 +2248,6 @@ For issues, questions, or contributions:
 
 **Last Updated**: October 2, 2025  
 **Version**: 1.0.0 (Production-ready with Supabase backend)
-#   T r i g g e r   r e d e p l o y   1 0 / 0 3 / 2 0 2 5   1 0 : 1 9 : 4 4  
+#   T r i g g e r   r e d e p l o y   1 0 / 0 3 / 2 0 2 5   1 0 : 1 9 : 4 4 
+ 
  
