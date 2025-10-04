@@ -11,10 +11,9 @@ import type { Schedule, BookingRequest } from '../App';
 interface FacultyScheduleProps {
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
-  onCancelSchedule: (scheduleId: string) => void;
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, onCancelSchedule }: FacultyScheduleProps) {
+export default function FacultySchedule({ schedules, bookingRequests }: FacultyScheduleProps) {
   const [activeTab, setActiveTab] = useState('upcoming');
 
   // Filter schedules
@@ -64,19 +63,6 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
   };
 
   const ScheduleCard = ({ schedule }: { schedule: Schedule }) => {
-    const canCancel = () => {
-      if (schedule.status !== 'confirmed') return false;
-      
-      // Combine date and start time to get the actual booking start datetime
-      const scheduleDateTime = new Date(`${schedule.date}T${schedule.startTime}`);
-      const now = new Date();
-      const timeDiff = scheduleDateTime.getTime() - now.getTime();
-      const hoursDiff = timeDiff / (1000 * 3600);
-      
-      // Can cancel if more than 2 hours away and booking is confirmed
-      return hoursDiff > 2;
-    };
-
     return (
       <Card className={`border-l-4 ${
         schedule.status === 'cancelled' ? 'border-l-red-500 bg-red-50' : 'border-l-blue-500'
@@ -92,34 +78,6 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
                 <Badge variant={schedule.status === 'cancelled' ? 'destructive' : 'default'}>
                   {schedule.status === 'cancelled' ? 'Cancelled' : 'Confirmed'}
                 </Badge>
-                {canCancel() && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to cancel your booking for <strong>{schedule.classroomName}</strong> on {formatDate(schedule.date)} from {convertTo12Hour(schedule.startTime)} to {convertTo12Hour(schedule.endTime)}?
-                          <br /><br />
-                          This action cannot be undone. You will need to submit a new request if you want to book this classroom again.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => onCancelSchedule(schedule.id)}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Cancel Booking
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
               </div>
             </div>
 
@@ -139,11 +97,6 @@ export default function FacultySchedule({ schedules, bookingRequests, onCancelSc
               <p className="text-sm text-gray-500 mt-1">{formatDate(schedule.date)}</p>
               {schedule.status === 'cancelled' && (
                 <p className="text-sm text-red-600 mt-1 italic">This booking has been cancelled</p>
-              )}
-              {canCancel() && schedule.status === 'confirmed' && (
-                <p className="text-xs text-gray-400 mt-1">
-                  You can cancel this booking up to 2 hours before the scheduled time
-                </p>
               )}
             </div>
           </div>
