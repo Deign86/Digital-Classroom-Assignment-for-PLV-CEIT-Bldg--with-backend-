@@ -100,29 +100,51 @@ export default function App() {
     return bookingRequests.filter(r => r.facultyId === currentUser.id);
   }, [bookingRequests, currentUser]);
 
-  // Load all data from local storage
-  const loadAllData = useCallback(async () => {
+  // Load data based on user role and permissions
+  const loadAllData = useCallback(async (user?: User) => {
     try {
       setIsLoading(true);
-      const [
-        usersData,
-        classroomsData,
-        signupRequestsData,
-        bookingRequestsData,
-        schedulesData
-      ] = await Promise.all([
-        userService.getAll(),
-        classroomService.getAll(),
-        signupRequestService.getAll(),
-        bookingRequestService.getAll(),
-        scheduleService.getAll()
-      ]);
+      
+      if (!user || user.role === 'admin') {
+        // Admin users can access all data
+        const [
+          usersData,
+          classroomsData,
+          signupRequestsData,
+          bookingRequestsData,
+          schedulesData
+        ] = await Promise.all([
+          userService.getAll(),
+          classroomService.getAll(),
+          signupRequestService.getAll(),
+          bookingRequestService.getAll(),
+          scheduleService.getAll()
+        ]);
 
-      setUsers(usersData);
-      setClassrooms(classroomsData);
-      setSignupRequests(signupRequestsData);
-      setBookingRequests(bookingRequestsData);
-      setSchedules(schedulesData);
+        setUsers(usersData);
+        setClassrooms(classroomsData);
+        setSignupRequests(signupRequestsData);
+        setBookingRequests(bookingRequestsData);
+        setSchedules(schedulesData);
+      } else {
+        // Faculty users - only load data they have permission to access
+        const [
+          classroomsData,
+          bookingRequestsData,
+          schedulesData
+        ] = await Promise.all([
+          classroomService.getAll(), // All authenticated users can read classrooms
+          bookingRequestService.getAllForFaculty(user.id), // This will be filtered by Firestore rules
+          scheduleService.getAllForFaculty(user.id) // This will be filtered by Firestore rules
+        ]);
+
+        // For faculty, only set the data they can access
+        setUsers([user]); // Faculty can only see their own user data
+        setClassrooms(classroomsData);
+        setSignupRequests([]); // Faculty don't need signup requests data
+        setBookingRequests(bookingRequestsData);
+        setSchedules(schedulesData);
+      }
     } catch (err) {
       console.error('Error loading data:', err);
       toast.error('Failed to load data from database');
@@ -145,7 +167,7 @@ export default function App() {
         });
         
         // Load all data after successful login
-        await loadAllData();
+        await loadAllData(user);
         
         return true;
       }
@@ -581,12 +603,14 @@ export default function App() {
 
   const handleCancelSchedule = useCallback(async (scheduleId: string) => {
     try {
-      const updatedSchedule = await scheduleService.update(scheduleId, {
-        status: 'cancelled'
-      });
+      await scheduleService.cancelApprovedBooking(scheduleId);
       
       setSchedules(prev =>
-        prev.map(schedule => schedule.id === scheduleId ? updatedSchedule : schedule)
+        prev.map(schedule => 
+          schedule.id === scheduleId 
+            ? { ...schedule, status: 'cancelled' as const }
+            : schedule
+        )
       );
       
       toast.success('Booking cancelled!');
@@ -595,6 +619,47 @@ export default function App() {
       toast.error('Failed to cancel booking');
     }
   }, []);
+
+  const handleCancelApprovedBooking = useCallback(async (requestId: string) => {
+    try {
+      // Find the corresponding schedule for this booking request
+      const correspondingSchedule = schedules.find(schedule => 
+        schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
+        schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
+        schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
+        schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
+        schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
+      );
+
+      if (correspondingSchedule) {
+        await scheduleService.cancelApprovedBooking(correspondingSchedule.id);
+        
+        setSchedules(prev =>
+          prev.map(schedule => 
+            schedule.id === correspondingSchedule.id 
+              ? { ...schedule, status: 'cancelled' as const }
+              : schedule
+          )
+        );
+      }
+
+      // Update the booking request status to rejected
+      await bookingRequestService.update(requestId, { status: 'rejected', adminFeedback: 'Booking cancelled by administrator' });
+      
+      setBookingRequests(prev =>
+        prev.map(request => 
+          request.id === requestId 
+            ? { ...request, status: 'rejected' as const, adminFeedback: 'Booking cancelled by administrator' }
+            : request
+        )
+      );
+      
+      toast.success('Approved booking cancelled!');
+    } catch (err) {
+      console.error('Cancel approved booking error:', err);
+      toast.error('Failed to cancel approved booking');
+    }
+  }, [schedules, bookingRequests]);
 
   // Create dashboard props objects to prevent prop drilling and improve performance
   const adminDashboardProps = useMemo(() => ({
@@ -608,8 +673,9 @@ export default function App() {
     onRequestApproval: handleRequestApproval,
     onSignupApproval: handleSignupApproval,
     onCancelSchedule: handleCancelSchedule,
+    onCancelApprovedBooking: handleCancelApprovedBooking,
     checkConflicts
-  }), [currentUser, classrooms, bookingRequests, signupRequests, schedules, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, checkConflicts]);
+  }), [currentUser, classrooms, bookingRequests, signupRequests, schedules, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, checkConflicts]);
 
   const facultyDashboardProps = useMemo(() => ({
     user: currentUser!,
@@ -620,9 +686,8 @@ export default function App() {
     allBookingRequests: bookingRequests,
     onLogout: handleLogout,
     onBookingRequest: handleBookingRequest,
-    onCancelSchedule: handleCancelSchedule,
     checkConflicts
-  }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, handleCancelSchedule, checkConflicts]);
+  }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, checkConflicts]);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -637,7 +702,7 @@ export default function App() {
           
           // Only load data if user is authenticated
           console.log('📊 Loading data...');
-          await loadAllData();
+          await loadAllData(user);
           console.log('✅ Data loaded');
         } else {
           console.log('ℹ️ No valid session found');
@@ -676,7 +741,7 @@ export default function App() {
           // If a new user logged in and we have no data yet, load it
           if (user && !prevUser) {
             console.log('📊 New user detected, loading data...');
-            loadAllData().catch(err => {
+            loadAllData(user).catch(err => {
               console.error('Failed to load data after auth change:', err);
             });
           }
