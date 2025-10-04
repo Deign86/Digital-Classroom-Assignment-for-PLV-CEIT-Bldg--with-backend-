@@ -323,13 +323,33 @@ const ensureUserRecordFromAuth = async (
 
   if (!snapshot.exists()) {
     const isAdmin = overrides.role === 'admin' || isConfiguredAdminEmail(email);
+    
+    // Check if there's an approved signup request for this user
+    let defaultStatus: FirestoreUserRecord['status'] = isAdmin ? 'approved' : 'pending';
+    let defaultDepartment = overrides.department;
+    let defaultName = overrides.name ?? firebaseUser.displayName ?? email;
+    
+    if (!isAdmin && !overrides.status) {
+      try {
+        const signupRequest = await signupRequestService.getById(firebaseUser.uid);
+        if (signupRequest && signupRequest.status === 'approved') {
+          defaultStatus = 'approved';
+          defaultDepartment = defaultDepartment || signupRequest.department;
+          defaultName = overrides.name || signupRequest.name || firebaseUser.displayName || email;
+        }
+      } catch (error) {
+        // If we can't fetch signup request, default to pending
+        console.warn('Could not fetch signup request for user:', firebaseUser.uid, error);
+      }
+    }
+    
     const record: FirestoreUserRecord = {
       email,
       emailLower,
-      name: overrides.name ?? firebaseUser.displayName ?? email,
+      name: defaultName,
       role: overrides.role ?? (isAdmin ? 'admin' : 'faculty'),
-      department: overrides.department,
-      status: overrides.status ?? (isAdmin ? 'approved' : 'pending'),
+      department: defaultDepartment,
+      status: overrides.status ?? defaultStatus,
       photoURL: overrides.photoURL ?? firebaseUser.photoURL ?? undefined,
       lastSignInAt: now,
       createdAt: now,
