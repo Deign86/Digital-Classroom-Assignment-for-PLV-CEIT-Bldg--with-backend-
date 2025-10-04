@@ -10,9 +10,12 @@ import {
   query,
   where,
   orderBy,
+  onSnapshot,
   type DocumentData,
   type DocumentSnapshot,
   type Firestore,
+  type Unsubscribe,
+  type QuerySnapshot,
 } from 'firebase/firestore';
 import {
   getAuth,
@@ -151,6 +154,187 @@ let currentUserCache: User | null = null;
 
 type AuthListener = (user: User | null) => void;
 const authListeners = new Set<AuthListener>();
+
+// Real-time listener types
+type DataListener<T> = (data: T[]) => void;
+type DataErrorCallback = (error: Error) => void;
+
+// Real-time listener management
+const dataListeners = {
+  classrooms: new Set<DataListener<Classroom>>(),
+  bookingRequests: new Set<DataListener<BookingRequest>>(),
+  schedules: new Set<DataListener<Schedule>>(),
+  signupRequests: new Set<DataListener<SignupRequest>>(),
+  users: new Set<DataListener<User>>(),
+};
+
+let activeUnsubscribes: Unsubscribe[] = [];
+
+// Real-time data notification helpers
+const notifyDataListeners = <T>(
+  listenerSet: Set<DataListener<T>>, 
+  data: T[], 
+  errorCallback?: DataErrorCallback
+) => {
+  listenerSet.forEach((listener) => {
+    try {
+      listener(data);
+    } catch (error) {
+      console.error('Data listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+};
+
+// Real-time listener setup functions
+const setupClassroomsListener = (callback: DataListener<Classroom>, errorCallback?: DataErrorCallback) => {
+  const database = getDb();
+  const classroomsRef = collection(database, COLLECTIONS.CLASSROOMS);
+  const q = query(classroomsRef, orderBy('name'));
+  
+  const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    try {
+      const classrooms = snapshot.docs.map((doc) => {
+        const data = doc.data() as FirestoreClassroomRecord;
+        return toClassroom(doc.id, data);
+      });
+      callback(classrooms);
+    } catch (error) {
+      console.error('Classrooms listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, (error) => {
+    console.error('Classrooms listener error:', error);
+    errorCallback?.(error);
+  });
+  
+  activeUnsubscribes.push(unsubscribe);
+  return unsubscribe;
+};
+
+const setupBookingRequestsListener = (
+  callback: DataListener<BookingRequest>, 
+  errorCallback?: DataErrorCallback,
+  facultyId?: string
+) => {
+  const database = getDb();
+  const bookingRequestsRef = collection(database, COLLECTIONS.BOOKING_REQUESTS);
+  
+  let q;
+  if (facultyId) {
+    // Faculty-specific listener
+    q = query(bookingRequestsRef, where('facultyId', '==', facultyId), orderBy('requestDate', 'desc'));
+  } else {
+    // Admin listener (all requests)
+    q = query(bookingRequestsRef, orderBy('requestDate', 'desc'));
+  }
+  
+  const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    try {
+      const requests = snapshot.docs.map((doc) => {
+        const data = doc.data() as FirestoreBookingRequestRecord;
+        return toBookingRequest(doc.id, data);
+      });
+      callback(requests);
+    } catch (error) {
+      console.error('BookingRequests listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, (error) => {
+    console.error('BookingRequests listener error:', error);
+    errorCallback?.(error);
+  });
+  
+  activeUnsubscribes.push(unsubscribe);
+  return unsubscribe;
+};
+
+const setupSchedulesListener = (
+  callback: DataListener<Schedule>, 
+  errorCallback?: DataErrorCallback,
+  facultyId?: string
+) => {
+  const database = getDb();
+  const schedulesRef = collection(database, COLLECTIONS.SCHEDULES);
+  
+  let q;
+  if (facultyId) {
+    // Faculty-specific listener
+    q = query(schedulesRef, where('facultyId', '==', facultyId), orderBy('date'), orderBy('startTime'));
+  } else {
+    // Admin listener (all schedules)
+    q = query(schedulesRef, orderBy('date'), orderBy('startTime'));
+  }
+  
+  const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    try {
+      const schedules = snapshot.docs.map((doc) => {
+        const data = doc.data() as FirestoreScheduleRecord;
+        return toSchedule(doc.id, data);
+      });
+      callback(schedules);
+    } catch (error) {
+      console.error('Schedules listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, (error) => {
+    console.error('Schedules listener error:', error);
+    errorCallback?.(error);
+  });
+  
+  activeUnsubscribes.push(unsubscribe);
+  return unsubscribe;
+};
+
+const setupSignupRequestsListener = (callback: DataListener<SignupRequest>, errorCallback?: DataErrorCallback) => {
+  const database = getDb();
+  const signupRequestsRef = collection(database, COLLECTIONS.SIGNUP_REQUESTS);
+  const q = query(signupRequestsRef, orderBy('requestDate', 'desc'));
+  
+  const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    try {
+      const requests = snapshot.docs.map((doc) => {
+        const data = doc.data() as FirestoreSignupRequestRecord;
+        return toSignupRequest(doc.id, data);
+      });
+      callback(requests);
+    } catch (error) {
+      console.error('SignupRequests listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, (error) => {
+    console.error('SignupRequests listener error:', error);
+    errorCallback?.(error);
+  });
+  
+  activeUnsubscribes.push(unsubscribe);
+  return unsubscribe;
+};
+
+const setupUsersListener = (callback: DataListener<User>, errorCallback?: DataErrorCallback) => {
+  const database = getDb();
+  const usersRef = collection(database, COLLECTIONS.USERS);
+  const q = query(usersRef, orderBy('name'));
+  
+  const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    try {
+      const users = snapshot.docs.map((doc) => {
+        const record = ensureUserData(doc);
+        return toUser(doc.id, record);
+      });
+      callback(users);
+    } catch (error) {
+      console.error('Users listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, (error) => {
+    console.error('Users listener error:', error);
+    errorCallback?.(error);
+  });
+  
+  activeUnsubscribes.push(unsubscribe);
+  return unsubscribe;
+};
 
 const notifyAuthListeners = (user: User | null) => {
   authListeners.forEach((listener) => {
@@ -1305,6 +1489,90 @@ export const signupRequestService = {
 // ============================================
 // UNSUPPORTED LOCAL UTILITIES
 // ============================================
+
+// ============================================
+// REAL-TIME DATA SERVICE
+// ============================================
+
+export const realtimeService = {
+  // Clean up all active listeners
+  cleanup() {
+    console.log('🧹 Cleaning up real-time listeners...');
+    activeUnsubscribes.forEach((unsubscribe) => {
+      try {
+        unsubscribe();
+      } catch (error) {
+        console.error('Error unsubscribing listener:', error);
+      }
+    });
+    activeUnsubscribes = [];
+    
+    // Clear all listener sets
+    Object.values(dataListeners).forEach((listenerSet) => {
+      listenerSet.clear();
+    });
+  },
+
+  // Subscribe to real-time data updates
+  subscribeToData(
+    user: User | null,
+    callbacks: {
+      onClassroomsUpdate: (classrooms: Classroom[]) => void;
+      onBookingRequestsUpdate: (requests: BookingRequest[]) => void;
+      onSchedulesUpdate: (schedules: Schedule[]) => void;
+      onSignupRequestsUpdate?: (requests: SignupRequest[]) => void;
+      onUsersUpdate?: (users: User[]) => void;
+      onError?: (error: Error) => void;
+    }
+  ) {
+    console.log('🔄 Setting up real-time listeners for user:', user?.email);
+    
+    // Clean up any existing listeners first
+    this.cleanup();
+
+    const { 
+      onClassroomsUpdate, 
+      onBookingRequestsUpdate, 
+      onSchedulesUpdate, 
+      onSignupRequestsUpdate, 
+      onUsersUpdate, 
+      onError 
+    } = callbacks;
+
+    try {
+      // Always subscribe to classrooms (all users need this)
+      setupClassroomsListener(onClassroomsUpdate, onError);
+
+      if (user?.role === 'admin') {
+        // Admin gets all data
+        setupBookingRequestsListener(onBookingRequestsUpdate, onError);
+        setupSchedulesListener(onSchedulesUpdate, onError);
+        
+        if (onSignupRequestsUpdate) {
+          setupSignupRequestsListener(onSignupRequestsUpdate, onError);
+        }
+        
+        if (onUsersUpdate) {
+          setupUsersListener(onUsersUpdate, onError);
+        }
+      } else if (user?.role === 'faculty') {
+        // Faculty gets filtered data
+        setupBookingRequestsListener(onBookingRequestsUpdate, onError, user.id);
+        setupSchedulesListener(onSchedulesUpdate, onError, user.id);
+      }
+
+      console.log(`✅ Real-time listeners setup complete for ${user?.role || 'anonymous'} user`);
+    } catch (error) {
+      console.error('❌ Failed to setup real-time listeners:', error);
+      onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  },
+
+  // Get current listener count (for debugging)
+  getListenerCount() {
+    return activeUnsubscribes.length;
+  }
+};
 
 export const clearAllData = (): never => {
   throw new Error(

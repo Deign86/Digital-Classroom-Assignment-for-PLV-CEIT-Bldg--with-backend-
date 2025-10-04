@@ -17,8 +17,17 @@ import {
   classroomService,
   signupRequestService,
   bookingRequestService,
-  scheduleService
+  scheduleService,
+  realtimeService
 } from './lib/firebaseService';
+
+// Expose services to window for debugging in development
+if (import.meta.env.DEV) {
+  (window as any).authService = authService;
+  (window as any).realtimeService = realtimeService;
+  (window as any).classroomService = classroomService;
+  console.log('🛠️ Services exposed to window for debugging');
+}
 
 // Types
 export interface User {
@@ -104,54 +113,66 @@ export default function App() {
     return bookingRequests.filter(r => r.facultyId === currentUser.id);
   }, [bookingRequests, currentUser]);
 
-  // Load data based on user role and permissions
-  const loadAllData = useCallback(async (user?: User) => {
+  // Setup real-time data listeners based on user role and permissions
+  const setupRealtimeListeners = useCallback((user: User | null) => {
+    console.log('🔄 Setting up real-time data listeners...');
+    
+    if (!user) {
+      // Clear data when no user
+      setUsers([]);
+      setClassrooms([]);
+      setSignupRequests([]);
+      setBookingRequests([]);
+      setSchedules([]);
+      realtimeService.cleanup();
+      return;
+    }
+
     try {
       setIsLoading(true);
       
-      if (!user || user.role === 'admin') {
-        // Admin users can access all data
-        const [
-          usersData,
-          classroomsData,
-          signupRequestsData,
-          bookingRequestsData,
-          schedulesData
-        ] = await Promise.all([
-          userService.getAll(),
-          classroomService.getAll(),
-          signupRequestService.getAll(),
-          bookingRequestService.getAll(),
-          scheduleService.getAll()
-        ]);
+      realtimeService.subscribeToData(user, {
+        onClassroomsUpdate: (classrooms) => {
+          console.log('📍 Real-time update: Classrooms', classrooms.length);
+          setClassrooms(classrooms);
+        },
+        
+        onBookingRequestsUpdate: (requests) => {
+          console.log('📋 Real-time update: Booking Requests', requests.length);
+          setBookingRequests(requests);
+        },
+        
+        onSchedulesUpdate: (schedules) => {
+          console.log('📅 Real-time update: Schedules', schedules.length);
+          setSchedules(schedules);
+        },
+        
+        onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
+          console.log('👥 Real-time update: Signup Requests', requests.length);
+          setSignupRequests(requests);
+        } : undefined,
+        
+        onUsersUpdate: user.role === 'admin' ? (users) => {
+          console.log('👤 Real-time update: Users', users.length);
+          setUsers(users);
+        } : undefined,
+        
+        onError: (error) => {
+          console.error('❌ Real-time listener error:', error);
+          toast.error('Real-time sync error. Some data may be outdated.');
+        }
+      });
 
-        setUsers(usersData);
-        setClassrooms(classroomsData);
-        setSignupRequests(signupRequestsData);
-        setBookingRequests(bookingRequestsData);
-        setSchedules(schedulesData);
-      } else {
-        // Faculty users - only load data they have permission to access
-        const [
-          classroomsData,
-          bookingRequestsData,
-          schedulesData
-        ] = await Promise.all([
-          classroomService.getAll(), // All authenticated users can read classrooms
-          bookingRequestService.getAllForFaculty(user.id), // This will be filtered by Firestore rules
-          scheduleService.getAllForFaculty(user.id) // This will be filtered by Firestore rules
-        ]);
-
-        // For faculty, only set the data they can access
-        setUsers([user]); // Faculty can only see their own user data
-        setClassrooms(classroomsData);
-        setSignupRequests([]); // Faculty don't need signup requests data
-        setBookingRequests(bookingRequestsData);
-        setSchedules(schedulesData);
+      // For faculty users, set their own user data
+      if (user.role === 'faculty') {
+        setUsers([user]);
+        setSignupRequests([]);
       }
+      
+      console.log('✅ Real-time listeners setup complete');
     } catch (err) {
-      console.error('Error loading data:', err);
-      toast.error('Failed to load data from database');
+      console.error('❌ Failed to setup real-time listeners:', err);
+      toast.error('Failed to setup real-time data sync');
     } finally {
       setIsLoading(false);
     }
@@ -170,8 +191,8 @@ export default function App() {
           duration: 4000,
         });
         
-        // Load all data after successful login
-        await loadAllData(user);
+        // Setup real-time listeners after successful login
+        setupRealtimeListeners(user);
         
         return true;
       }
@@ -241,7 +262,7 @@ export default function App() {
       toast.error('Login failed', { description: message, duration: 6000 });
       return false;
     }
-  }, [loadAllData]);
+  }, [setupRealtimeListeners]);
 
   const handleSignup = useCallback(
     async (email: string, name: string, department: string, password: string) => {
@@ -338,6 +359,9 @@ export default function App() {
       await authService.signOut();
       setCurrentUser(null);
       
+      // Cleanup real-time listeners
+      realtimeService.cleanup();
+      
       // Clear all cached data
       setClassrooms([]);
       setBookingRequests([]);
@@ -351,6 +375,10 @@ export default function App() {
       console.error('❌ Logout error:', err);
       // Force logout even if auth service fails
       setCurrentUser(null);
+      
+      // Cleanup real-time listeners
+      realtimeService.cleanup();
+      
       setClassrooms([]);
       setBookingRequests([]);
       setSignupRequests([]);
@@ -755,10 +783,10 @@ export default function App() {
           console.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
           
-          // Only load data if user is authenticated
-          console.log('📊 Loading data...');
-          await loadAllData(user);
-          console.log('✅ Data loaded');
+          // Setup real-time listeners if user is authenticated
+          console.log('📊 Setting up real-time listeners...');
+          setupRealtimeListeners(user);
+          console.log('✅ Real-time listeners setup');
         } else {
           console.log('ℹ️ No valid session found');
         }
@@ -777,7 +805,7 @@ export default function App() {
     };
 
     initializeApp();
-  }, [loadAllData]);
+  }, [setupRealtimeListeners]);
 
   // Separate effect for auth state listener to ensure proper cleanup
   useEffect(() => {
@@ -795,10 +823,12 @@ export default function App() {
           
           // If a new user logged in and we have no data yet, load it
           if (user && !prevUser) {
-            console.log('📊 New user detected, loading data...');
-            loadAllData(user).catch(err => {
-              console.error('Failed to load data after auth change:', err);
-            });
+            console.log('📊 New user detected, setting up listeners...');
+            try {
+              setupRealtimeListeners(user);
+            } catch (err) {
+              console.error('Failed to setup listeners after auth change:', err);
+            }
           }
           
           return user;
@@ -814,9 +844,10 @@ export default function App() {
       }
     );
 
-    // Cleanup subscription on unmount
+    // Cleanup subscription and listeners on unmount
     return () => {
       subscription.unsubscribe();
+      realtimeService.cleanup();
     };
   }, []);
 
