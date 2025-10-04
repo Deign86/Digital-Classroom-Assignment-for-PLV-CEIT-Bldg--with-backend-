@@ -6,8 +6,10 @@ import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
+import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import {
   authService,
@@ -88,6 +90,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -355,6 +359,57 @@ export default function App() {
       toast.error('Logged out (with errors). Please refresh if needed.');
     }
   }, [currentUser]);
+
+  // Idle timeout handlers
+  const handleIdleTimeout = useCallback(async () => {
+    console.log('🕒 Session expired due to inactivity');
+    toast.warning('Session expired due to inactivity', {
+      description: 'You have been logged out for security reasons',
+      duration: 5000
+    });
+    
+    try {
+      await authService.signOutDueToIdleTimeout();
+      setCurrentUser(null);
+      setClassrooms([]);
+      setBookingRequests([]);
+      setSignupRequests([]);
+      setSchedules([]);
+      setUsers([]);
+      setShowSessionWarning(false);
+    } catch (err) {
+      console.error('❌ Idle timeout logout error:', err);
+      // Force logout even if service fails
+      setCurrentUser(null);
+      setShowSessionWarning(false);
+    }
+  }, []);
+
+  const handleSessionWarning = useCallback((timeRemaining: number) => {
+    console.log(`⚠️ Session warning - ${Math.ceil(timeRemaining / 1000)}s remaining`);
+    setSessionTimeRemaining(timeRemaining);
+    setShowSessionWarning(true);
+    
+    toast.warning('Session Expiring Soon', {
+      description: `Your session will expire in ${Math.ceil(timeRemaining / 60000)} minutes due to inactivity`,
+      duration: 8000
+    });
+  }, []);
+
+  const handleExtendSession = useCallback(() => {
+    console.log('🔄 Session extended by user');
+    setShowSessionWarning(false);
+    toast.success('Session extended successfully');
+  }, []);
+
+  // Initialize idle timeout hook (30 minutes = 30 * 60 * 1000 ms)
+  const { extendSession } = useIdleTimeout({
+    timeout: 30 * 60 * 1000, // 30 minutes
+    warningTime: 5 * 60 * 1000, // 5 minutes warning
+    onIdle: handleIdleTimeout,
+    onWarning: handleSessionWarning,
+    disabled: !currentUser, // Only track when user is logged in
+  });
 
   const handleClassroomUpdate = useCallback(async (updatedClassrooms: Classroom[]) => {
     setClassrooms(updatedClassrooms);
@@ -847,6 +902,15 @@ export default function App() {
           )}
         </div>
         <Footer />
+        <SessionTimeoutWarning
+          isOpen={showSessionWarning}
+          timeRemaining={sessionTimeRemaining}
+          onExtendSession={() => {
+            extendSession();
+            handleExtendSession();
+          }}
+          onLogout={handleIdleTimeout}
+        />
         <Toaster />
         <Analytics />
       </div>

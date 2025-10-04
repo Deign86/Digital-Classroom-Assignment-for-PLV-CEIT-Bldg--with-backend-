@@ -774,6 +774,14 @@ export const authService = {
       },
     };
   },
+
+  async signOutDueToIdleTimeout(): Promise<void> {
+    console.log('🕒 User session expired due to inactivity - logging out');
+    const auth = getFirebaseAuth();
+    await firebaseSignOut(auth).catch(() => undefined);
+    currentUserCache = null;
+    notifyAuthListeners(null);
+  },
 };
 
 // ============================================
