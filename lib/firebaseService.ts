@@ -26,6 +26,8 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   updatePassword as firebaseUpdatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   updateProfile,
   type Auth,
   type User as FirebaseAuthUser,
@@ -169,6 +171,18 @@ const dataListeners = {
 };
 
 let activeUnsubscribes: Unsubscribe[] = [];
+
+const unsubscribeAllListeners = () => {
+  console.log(`Unsubscribing from ${activeUnsubscribes.length} real-time listeners.`);
+  activeUnsubscribes.forEach((unsubscribe) => {
+    try {
+      unsubscribe();
+    } catch (error) {
+      console.warn('Error during listener unsubscribe:', error);
+    }
+  });
+  activeUnsubscribes = [];
+};
 
 // Real-time data notification helpers
 const notifyDataListeners = <T>(
@@ -607,6 +621,7 @@ const ensureAuthStateListener = () => {
     if (!firebaseUser) {
       currentUserCache = null;
       notifyAuthListeners(null);
+      unsubscribeAllListeners(); // Clean up listeners on sign-out
       // Resolve the ready promise even if no user
       if (authStateReadyResolve) {
         authStateReadyResolve();
@@ -623,6 +638,7 @@ const ensureAuthStateListener = () => {
         console.error('Token refresh failed in auth listener:', tokenError);
         currentUserCache = null;
         notifyAuthListeners(null);
+        unsubscribeAllListeners(); // Clean up listeners on sign-out
         if (authStateReadyResolve) {
           authStateReadyResolve();
           authStateReadyResolve = null;
@@ -636,6 +652,7 @@ const ensureAuthStateListener = () => {
       if (user.status !== 'approved') {
         currentUserCache = null;
         notifyAuthListeners(null);
+        unsubscribeAllListeners(); // Clean up listeners for non-approved users
       } else {
         currentUserCache = user;
         notifyAuthListeners(user);
@@ -644,6 +661,7 @@ const ensureAuthStateListener = () => {
       console.error('Auth state listener error:', error);
       currentUserCache = null;
       notifyAuthListeners(null);
+      unsubscribeAllListeners(); // Clean up listeners on error
     } finally {
       // Resolve the ready promise after first auth check
       if (authStateReadyResolve) {
@@ -760,6 +778,7 @@ export const authService = {
         await firebaseSignOut(auth);
         currentUserCache = null;
         notifyAuthListeners(null);
+        unsubscribeAllListeners();
         throw new AuthStatusError(
           user.status,
           user.status === 'pending'
@@ -796,6 +815,7 @@ export const authService = {
     await firebaseSignOut(auth).catch(() => undefined);
     currentUserCache = null;
     notifyAuthListeners(null);
+    unsubscribeAllListeners();
   },
 
   async resetPassword(email: string): Promise<{ success: boolean; message: string }> {
@@ -860,30 +880,42 @@ export const authService = {
     }
   },
 
-  async updatePassword(newPassword: string): Promise<{ success: boolean; message: string; requiresSignOut?: boolean }> {
+  async updatePassword(
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string; requiresSignOut?: boolean }> {
     const auth = getFirebaseAuth();
     const firebaseUser = auth.currentUser;
 
-    if (!firebaseUser) {
-      return { success: false, message: 'No authenticated user found' };
+    if (!firebaseUser || !firebaseUser.email) {
+      return { success: false, message: 'No authenticated user found or user has no email.' };
     }
 
     try {
+      // Re-authenticate the user first
+      const credential = EmailAuthProvider.credential(firebaseUser.email, currentPassword);
+      await reauthenticateWithCredential(firebaseUser, credential);
+
+      // Now, update the password
       await firebaseUpdatePassword(firebaseUser, newPassword);
       
-      // Password updated successfully - now sign out to invalidate all sessions
-      // This forces the user to log in with their new password
+      // Sign out to invalidate all sessions
       await firebaseSignOut(auth).catch(() => undefined);
       currentUserCache = null;
       notifyAuthListeners(null);
+      unsubscribeAllListeners();
       
       return { 
         success: true, 
-        message: 'Password updated successfully. You will be logged out for security.', 
+        message: 'Password updated successfully. You have been logged out for security.', 
         requiresSignOut: true 
       };
     } catch (error) {
-      const message = mapAuthErrorToMessage(error as { code?: string });
+      const typedError = error as { code?: string };
+      if (typedError.code === 'auth/wrong-password' || typedError.code === 'auth/invalid-credential') {
+        return { success: false, message: 'The current password you entered is incorrect.' };
+      }
+      const message = mapAuthErrorToMessage(typedError);
       return { success: false, message };
     }
   },
@@ -917,6 +949,7 @@ export const authService = {
         await firebaseSignOut(auth);
         currentUserCache = null;
         notifyAuthListeners(null);
+        unsubscribeAllListeners();
         return null;
       }
       
@@ -927,6 +960,7 @@ export const authService = {
         await firebaseSignOut(auth);
         currentUserCache = null;
         notifyAuthListeners(null);
+        unsubscribeAllListeners();
         return null;
       }
 
@@ -938,6 +972,7 @@ export const authService = {
       await firebaseSignOut(auth).catch(() => undefined);
       currentUserCache = null;
       notifyAuthListeners(null);
+      unsubscribeAllListeners();
       return null;
     }
   },
@@ -976,6 +1011,7 @@ export const authService = {
     await firebaseSignOut(auth).catch(() => undefined);
     currentUserCache = null;
     notifyAuthListeners(null);
+    unsubscribeAllListeners();
   },
 };
 

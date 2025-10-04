@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { 
   User as UserIcon, 
   Mail, 
@@ -26,59 +27,88 @@ interface ProfileSettingsProps {
 
 export default function ProfileSettings({ user }: ProfileSettingsProps) {
   const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation
+  const validatePassword = (): string | null => {
     if (passwordData.newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long');
-      return;
+      return 'Password must be at least 8 characters long';
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
+      return 'Passwords do not match';
     }
 
-    // Check password strength
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      return 'New password cannot be the same as the current password.';
+    }
+
     const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
     const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
     const hasNumber = /[0-9]/.test(passwordData.newPassword);
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword);
 
     if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      toast.error('Password must contain uppercase, lowercase, number, and special character');
-      return;
+      return 'Password must contain uppercase, lowercase, number, and special character';
     }
 
+    return null;
+  };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationError = validatePassword();
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+    // Only show the confirmation dialog if validation passes
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmPasswordChange = async () => {
+    setShowConfirmDialog(false);
     setIsChangingPassword(true);
 
+    // Show immediate feedback that the process is starting
+    toast.info('Updating password...', {
+      description: 'Please wait while we securely update your password.',
+      duration: 2000
+    });
+
     try {
-      const result = await authService.updatePassword(passwordData.newPassword);
+      const result = await authService.updatePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword
+      );
 
       if (!result.success) {
         toast.error('Failed to update password', {
           description: result.message
         });
       } else {
-        toast.success('Password updated successfully!', {
-          description: result.message + ' You will be redirected to the login page.',
+        // Show success message
+        toast.success('Password Changed Successfully!', {
+          description: 'For security, you will now be logged out. Please log back in with your new password.',
           duration: 3000
         });
+        
+        // Clear the form
         setPasswordData({
+          currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
         
-        // The user is automatically logged out by the updatePassword method
-        // No need to manually call signOut here as it's already handled
+        // The logout happens automatically in updatePassword method after 1.5s
+        // No need for additional logout call here
       }
     } catch (err) {
       console.error('Password update error:', err);
@@ -87,7 +117,6 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
         description: errorMessage
       });
     } finally {
-      // Ensure loading state is always reset
       setIsChangingPassword(false);
     }
   };
@@ -197,31 +226,50 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handlePasswordChange} className="space-y-6">
+          <form onSubmit={handlePasswordSubmit} className="space-y-6">
             {/* Security Notice Alert */}
-            <Alert className="border-blue-200 bg-blue-50">
-              <Shield className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-sm text-blue-800">
-                <strong>Security Notice:</strong> After changing your password, you will be automatically logged out 
-                from all devices for security purposes. You will need to log back in with your new password.
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Security Notice:</strong> For your protection, changing your password will sign you out of all active sessions on all devices. You will need to sign back in with your new password.
               </AlertDescription>
             </Alert>
 
-            {/* Password Requirements Alert */}
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                <strong>Password Requirements:</strong>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>At least 8 characters long</li>
-                  <li>Contains uppercase and lowercase letters</li>
-                  <li>Contains at least one number</li>
-                  <li>Contains at least one special character (!@#$%^&*)</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
+            {/* Password Requirements */}
+            <div>
+              <p className="text-sm font-medium mb-2">Password Requirements:</p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>At least 8 characters long</li>
+                <li>Contains uppercase and lowercase letters</li>
+                <li>Contains at least one number</li>
+                <li>Contains at least one special character (e.g., !@#$%^&*)</li>
+              </ul>
+            </div>
 
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="current-password"
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    placeholder="Enter your current password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
                 <div className="relative">
@@ -283,11 +331,12 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={isChangingPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+                disabled={isChangingPassword || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
                 className="flex-1"
               >
                 {isChangingPassword ? 'Updating...' : 'Update Password'}
               </Button>
+              
               <Button
                 type="button"
                 variant="outline"
@@ -299,6 +348,41 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
               </Button>
             </div>
           </form>
+
+          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-amber-500" />
+                  Confirm Password Change
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  <div className="space-y-3 text-sm">
+                    <p>
+                      Are you sure you want to change your password? This action will:
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 text-gray-600">
+                      <li>Update your account password immediately</li>
+                      <li>Log you out from all devices and sessions</li>
+                      <li>Require you to log back in with your new password</li>
+                    </ul>
+                    <p className="font-medium text-amber-600">
+                      Make sure you remember your new password before proceeding.
+                    </p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleConfirmPasswordChange}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Yes, Change Password
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>
