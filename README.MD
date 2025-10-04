@@ -4,6 +4,61 @@
 
 A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology. Features role-based dashboards, real-time conflict detection, comprehensive reporting, and secure Firebase authentication.
 
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- Node.js 18+ and npm/yarn/pnpm
+- Firebase project with Authentication and Firestore enabled
+- Git (for cloning)
+
+### 📋 Cloning Instructions
+
+**Clone the stable release branch:**
+```bash
+git clone -b latest-stable-build-v2 https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
+cd "Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-"
+```
+
+**Or clone main repository and switch to stable branch:**
+```bash
+git clone https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-.git
+cd "Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-"
+git checkout latest-stable-build-v2
+```
+
+### 🔧 Installation & Setup
+
+1. **Install Dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
+
+2. **Firebase Configuration**
+   - See [`guidelines/FirebaseDashboardSetup.md`](guidelines/FirebaseDashboardSetup.md) for detailed Firebase setup
+   - Copy your Firebase config to `lib/firebaseConfig.ts`
+
+3. **Run Development Server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
+
+4. **Build for Production**
+   ```bash
+   npm run build
+   # or
+   yarn build
+   # or
+   pnpm build
+   ```
+
 ## 🎯 Features
 
 ### For Administrators (Registrar)
@@ -20,7 +75,25 @@ A comprehensive web-based classroom booking and management system for Pamantasan
 - **Request Tracking**: Monitor booking request status
 - **Profile Settings**: Update personal information and account settings
 
-## 🗂️ Technology Stack
+## � Project Structure
+
+```
+├── components/           # React components
+│   ├── ui/              # Shadcn/ui components
+│   ├── animations/      # Animation components
+│   └── *.tsx           # Feature components
+├── lib/                 # Core libraries
+│   ├── firebaseConfig.ts    # Firebase configuration
+│   └── firebaseService.ts   # Firebase services
+├── hooks/              # Custom React hooks
+├── utils/              # Utility functions
+├── styles/             # Global styles
+├── email-templates/    # Email templates
+├── guidelines/         # Documentation & guides
+└── public/            # Static assets
+```
+
+## �🗂️ Technology Stack
 
 ### Frontend
 - React 19 + TypeScript
@@ -259,6 +332,43 @@ npm run lint         # Run ESLint (if configured)
 **Solution**:
 1. Check Firebase Auth is enabled in console
 2. Verify admin emails are configured
+3. Check Authentication providers are enabled
+
+#### Build/Deployment Issues
+**Cause**: Missing environment variables or incorrect configuration  
+**Solution**:
+1. Verify all environment variables are set
+2. Check Firebase project configuration
+3. Ensure build command is correct: `npm run build`
+
+## 📚 Additional Resources
+
+- [Firebase Setup Guide](guidelines/FirebaseDashboardSetup.md)
+- [Firebase Quick Reference](guidelines/FIREBASE_QUICK_REFERENCE.md)
+- [Troubleshooting Guide](guidelines/FIREBASE_TROUBLESHOOTING.md)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit your changes: `git commit -m 'Add feature'`
+4. Push to the branch: `git push origin feature-name`
+5. Open a Pull Request
+
+## 📄 License
+
+This project is developed for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology.
+
+## 🆘 Support
+
+For issues and questions:
+- Check the [troubleshooting guide](guidelines/FIREBASE_TROUBLESHOOTING.md)
+- Review [Firebase documentation](https://firebase.google.com/docs)
+- Open an issue in this repository
+
+---
+
+**Latest Stable Build**: `v2` - Ready for production deployment
 3. Create initial admin user in Firebase Auth
 
 #### Build Errors
