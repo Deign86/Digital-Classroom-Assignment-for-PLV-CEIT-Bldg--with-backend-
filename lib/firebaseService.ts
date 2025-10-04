@@ -28,6 +28,7 @@ import {
   updatePassword as firebaseUpdatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  confirmPasswordReset as firebaseConfirmPasswordReset,
   updateProfile,
   type Auth,
   type User as FirebaseAuthUser,
@@ -877,6 +878,27 @@ export const authService = {
         success: false, 
         message: 'An unexpected error occurred. Please try again.' 
       };
+    }
+  },
+
+  async confirmPasswordReset(actionCode: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    const auth = getFirebaseAuth();
+    try {
+      await firebaseConfirmPasswordReset(auth, actionCode, newPassword);
+      return { 
+        success: true, 
+        message: 'Password has been reset successfully. You can now log in with your new password.' 
+      };
+    } catch (error) {
+      const typedError = error as { code?: string };
+      let message = 'Failed to reset password. The link may be invalid or expired.';
+      if (typedError.code === 'auth/invalid-action-code') {
+        message = 'The password reset link is invalid or has expired. Please request a new one.';
+      } else if (typedError.code === 'auth/weak-password') {
+        message = 'The new password is too weak. Please choose a stronger password.';
+      }
+      console.error('Confirm password reset error:', error);
+      return { success: false, message };
     }
   },
 

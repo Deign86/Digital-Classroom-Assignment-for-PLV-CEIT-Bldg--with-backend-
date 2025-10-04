@@ -19,22 +19,23 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidLink, setIsValidLink] = useState(true);
+  const [actionCode, setActionCode] = useState<string | null>(null);
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'fair' | 'good' | 'strong'>('weak');
 
   // Check if we have a valid recovery session
   useEffect(() => {
-    const checkSession = async () => {
-      const isAuth = await authService.isAuthenticated();
-      if (!isAuth) {
-        setIsValidLink(false);
-        toast.error('Invalid or Expired Link', {
-          description: 'This password reset link has expired or is invalid. Please request a new one.',
-          duration: 8000
-        });
-      }
-    };
-    
-    checkSession();
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('oobCode');
+
+    if (!code) {
+      setIsValidLink(false);
+      toast.error('Invalid Link', {
+        description: 'No action code found. This link is either invalid or has expired.',
+        duration: 8000,
+      });
+    } else {
+      setActionCode(code);
+    }
   }, []);
 
   // Calculate password strength
@@ -91,29 +92,32 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
       return;
     }
 
+    if (!actionCode) {
+      toast.error('Invalid Link', {
+        description: 'The password reset link is missing a required code.',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      console.log('🔑 Starting password update...');
-      const result = await authService.updatePassword(newPassword);
+      const result = await authService.confirmPasswordReset(actionCode, newPassword);
 
       if (!result.success) {
-        console.error('❌ Password update failed:', result.message);
         setIsLoading(false);
         toast.error('Failed to reset password', {
           description: result.message,
-          duration: 8000
+          duration: 8000,
         });
         return;
       }
 
-      console.log('✅ Password update successful');
-      // Success - wait a moment for the auth state to update, then call onSuccess
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Success
       setIsLoading(false);
       toast.success('Password reset successful!', {
         description: 'You can now log in with your new password.',
-        duration: 6000
+        duration: 6000,
       });
       onSuccess();
     } catch (err) {
