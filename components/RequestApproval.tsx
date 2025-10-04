@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
@@ -13,10 +14,11 @@ import type { BookingRequest } from '../App';
 interface RequestApprovalProps {
   requests: BookingRequest[];
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  onCancelApproved?: (requestId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
 
-export default function RequestApproval({ requests, onRequestApproval, checkConflicts }: RequestApprovalProps) {
+export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts }: RequestApprovalProps) {
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(null);
   const [feedback, setFeedback] = useState('');
@@ -117,6 +119,7 @@ export default function RequestApproval({ requests, onRequestApproval, checkConf
                     request={request}
                     onApprove={() => {}}
                     onReject={() => {}}
+                    onCancelApproved={onCancelApproved}
                     checkConflicts={checkConflicts}
                     status="approved"
                   />
@@ -212,12 +215,14 @@ function RequestCard({
   request, 
   onApprove, 
   onReject,
+  onCancelApproved,
   checkConflicts,
   status 
 }: {
   request: BookingRequest;
   onApprove: () => void;
   onReject: () => void;
+  onCancelApproved?: (requestId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
   status: 'pending' | 'approved' | 'rejected';
 }) {
@@ -351,6 +356,40 @@ function RequestCard({
               <XCircle className="h-4 w-4 mr-2" />
               Reject
             </Button>
+          </div>
+        )}
+        
+        {status === 'approved' && onCancelApproved && (
+          <div className="flex gap-3 pt-3 border-t">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="flex-1 text-gray-600 hover:text-red-600 border-gray-200 hover:border-red-200 hover:bg-gray-50 transition-all duration-200"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Booking
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel Approved Booking</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to cancel this approved booking? This action cannot be undone.
+                    The faculty member will need to submit a new request if they need this classroom again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onCancelApproved(request.id)} 
+                    className="bg-gray-900 hover:bg-red-600 transition-colors duration-200"
+                  >
+                    Cancel Booking
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </CardContent>

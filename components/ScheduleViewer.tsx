@@ -231,8 +231,13 @@ function DayView({
                 {onCancelSchedule && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="ml-4 text-red-600 hover:text-red-700 hover:bg-red-50">
-                        <X className="h-4 w-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="ml-4 text-gray-500 hover:text-red-600 hover:bg-gray-50 border border-gray-200 hover:border-red-200 min-w-[80px] transition-all duration-200"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Cancel</span>
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -245,7 +250,7 @@ function DayView({
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-red-600 hover:bg-red-700">
+                        <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
                           Cancel Booking
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -311,7 +316,7 @@ function WeekView({
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="absolute top-1 right-1 h-5 w-5 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-gray-50 opacity-60 hover:opacity-100 transition-all duration-200 md:opacity-0 md:group-hover:opacity-100"
                               >
                                 <X className="h-3 w-3" />
                               </Button>
@@ -325,7 +330,7 @@ function WeekView({
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-red-600 hover:bg-red-700">
+                                <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
                                   Cancel Booking
                                 </AlertDialogAction>
                               </AlertDialogFooter>

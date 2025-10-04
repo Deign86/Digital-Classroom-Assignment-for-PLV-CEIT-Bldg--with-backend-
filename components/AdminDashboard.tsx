@@ -39,6 +39,7 @@ interface AdminDashboardProps {
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
   onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
   onCancelSchedule: (scheduleId: string) => void;
+  onCancelApprovedBooking?: (requestId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
 
@@ -53,6 +54,7 @@ export default function AdminDashboard({
   onRequestApproval,
   onSignupApproval,
   onCancelSchedule,
+  onCancelApprovedBooking,
   checkConflicts
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -385,6 +387,7 @@ export default function AdminDashboard({
               <RequestApproval
                 requests={bookingRequests}
                 onRequestApproval={onRequestApproval}
+                onCancelApproved={onCancelApprovedBooking}
                 checkConflicts={checkConflicts}
               />
             </div>
