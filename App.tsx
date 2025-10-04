@@ -851,6 +851,33 @@ export default function App() {
     };
   }, []);
 
+  // Expose services after app initialization (for debugging)
+  React.useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as any).authService = authService;
+      (window as any).realtimeService = realtimeService;
+      (window as any).classroomService = classroomService;
+      (window as any).userService = userService;
+      (window as any).bookingRequestService = bookingRequestService;
+      (window as any).scheduleService = scheduleService;
+      (window as any).signupRequestService = signupRequestService;
+      console.log('🛠️ All services exposed to window for debugging');
+      
+      // Also expose a quick test function
+      (window as any).testRealtimeNow = () => {
+        console.log('🧪 Real-time Service Test:');
+        console.log('Listener count:', realtimeService.getListenerCount());
+        console.log('Auth service:', !!authService);
+        console.log('Current user available:', !!currentUser);
+        console.log('Services working:', {
+          auth: !!authService,
+          realtime: !!realtimeService,
+          classroom: !!classroomService
+        });
+      };
+    }
+  }, [currentUser]);
+
   // Show error state if initialization failed
   if (error) {
     return (
