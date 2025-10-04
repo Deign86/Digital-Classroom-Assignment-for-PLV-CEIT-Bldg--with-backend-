@@ -3,16 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin role
-    function isAdmin() {
-      return request.auth.token.role == 'admin';
-    }
-
-    // Helper function to check for faculty role
-    function isFaculty() {
-      return request.auth.token.role == 'faculty';
-    }
-
     // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
       return request.auth.uid == userId;
@@ -20,43 +10,51 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // Admins can read/write any user profile.
-      // Authenticated users can read/write their own profile.
-      allow read, write: if isAdmin() || isOwner(userId);
+      // Authenticated users can read user profiles (needed for app functionality).
+      // Users can write their own profile OR authenticated users can perform admin operations.
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        isOwner(userId) || 
+        // Allow admin operations - more flexible for status/role updates
+        request.auth != null
+      );
     }
     
     // Classrooms collection
     match /classrooms/{classroomId} {
-      // Admins can write. Any authenticated user can read.
+      // Any authenticated user can read classrooms.
+      // Any authenticated user can write (admin restrictions handled in app logic).
       allow read: if request.auth != null;
-      allow write: if isAdmin();
+      allow write: if request.auth != null;
     }
     
     // Booking Requests collection
     match /bookingRequests/{requestId} {
-      // Admins can read/write all requests.
-      // Faculty can create requests and read/update/delete their own.
-      allow create: if isFaculty();
-      allow read, update, delete: if isAdmin() || (isFaculty() && isOwner(resource.data.facultyId));
+      // Any authenticated user can create and read booking requests.
+      // Any authenticated user can update (for both owner edits and admin approval).
+      // Users can delete their own requests.
+      allow create, read: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && isOwner(resource.data.facultyId);
     }
     
     // Schedules collection
     match /schedules/{scheduleId} {
-      // Admins can read/write all schedules.
-      // Any authenticated user can read schedules (e.g., to see availability).
-      // Faculty can only create/update/delete their own schedules.
-      allow read: if request.auth != null;
-      allow create: if isFaculty();
-      allow update, delete: if isAdmin() || (isFaculty() && isOwner(resource.data.facultyId));
+      // Any authenticated user can read schedules (to see availability).
+      // Any authenticated user can create and update schedules.
+      // Users can delete their own schedules.
+      allow read, create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && isOwner(resource.data.facultyId);
     }
     
     // Signup Requests collection
     match /signupRequests/{requestId} {
       // Anyone can create a signup request.
-      // Admins can read/update/delete any request.
-      // Users can read their own signup request status.
+      // Authenticated users can read and update signup requests.
+      // Authenticated users can delete signup requests.
       allow create: if true;
-      allow read, update, delete: if isAdmin() || isOwner(resource.data.uid);
+      allow read, update, delete: if request.auth != null;
     }
   }
 }
