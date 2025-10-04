@@ -42,10 +42,11 @@ const getFirebaseAuth = (): Auth => {
   return authInstance;
 };
 
-const ADMIN_EMAILS = (import.meta.env.VITE_FIREBASE_ADMIN_EMAILS ?? '')
-  .split(',')
-  .map((email: string) => email.trim().toLowerCase())
-  .filter(Boolean);
+// This is no longer needed with role-based security rules.
+// const ADMIN_EMAILS = (import.meta.env.VITE_FIREBASE_ADMIN_EMAILS ?? '')
+//   .split(',')
+//   .map((email: string) => email.trim().toLowerCase())
+//   .filter(Boolean);
 
 const COLLECTIONS = {
   USERS: 'users',
@@ -175,12 +176,13 @@ const sanitizeUserUpdate = (record: Partial<FirestoreUserRecord>): Record<string
     Object.entries(record).filter(([, value]) => value !== undefined)
   ) as Record<string, unknown>;
 
-const isConfiguredAdminEmail = (email?: string | null): boolean => {
-  if (!email) {
-    return false;
-  }
-  return ADMIN_EMAILS.includes(email.toLowerCase());
-};
+// This function is no longer needed with role-based security rules.
+// const isConfiguredAdminEmail = (email?: string | null): boolean => {
+//   if (!email) {
+//     return false;
+//   }
+//   return ADMIN_EMAILS.includes(email.toLowerCase());
+// };
 
 class AuthStatusError extends Error {
   status: 'pending' | 'rejected';
@@ -322,7 +324,7 @@ const ensureUserRecordFromAuth = async (
   const now = nowIso();
 
   if (!snapshot.exists()) {
-    const isAdmin = overrides.role === 'admin' || isConfiguredAdminEmail(email);
+    const isAdmin = overrides.role === 'admin';
     
     // Check if there's an approved signup request for this user
     let defaultStatus: FirestoreUserRecord['status'] = isAdmin ? 'approved' : 'pending';
@@ -364,10 +366,21 @@ const ensureUserRecordFromAuth = async (
 
   const existing = ensureUserData(snapshot);
 
+  // If the user exists, prepare updates.
+  // Preserve existing role and status unless explicitly overridden.
   const updates: Partial<FirestoreUserRecord> = {
+    ...overrides, // Apply explicit overrides first
     lastSignInAt: now,
     updatedAt: now,
   };
+
+  // Ensure role and status are not accidentally cleared
+  if (updates.role === undefined) {
+    updates.role = existing.role;
+  }
+  if (updates.status === undefined) {
+    updates.status = existing.status;
+  }
 
   if (firebaseUser.displayName && firebaseUser.displayName !== existing.name) {
     updates.name = firebaseUser.displayName;
@@ -377,24 +390,14 @@ const ensureUserRecordFromAuth = async (
     updates.photoURL = firebaseUser.photoURL;
   }
 
-  if (overrides.name && overrides.name !== existing.name) {
-    updates.name = overrides.name;
-  }
-
-  if (overrides.department !== undefined && overrides.department !== existing.department) {
-    updates.department = overrides.department;
-  }
-
-  if (overrides.role && overrides.role !== existing.role) {
-    updates.role = overrides.role;
-  }
-
-  if (overrides.status && overrides.status !== existing.status) {
-    updates.status = overrides.status;
-  }
-
   const sanitized = sanitizeUserUpdate(updates);
-  if (Object.keys(sanitized).length > 0) {
+
+  // Only write to Firestore if there are actual changes to avoid unnecessary writes
+  const hasChanges = Object.keys(sanitized).some(
+    key => key !== 'lastSignInAt' && key !== 'updatedAt' && sanitized[key as keyof typeof sanitized] !== existing[key as keyof typeof existing]
+  );
+
+  if (hasChanges || !existing.lastSignInAt) {
     await updateDoc(userRef, sanitized);
     return { ...existing, ...sanitized } as FirestoreUserRecord;
   }
@@ -963,6 +966,17 @@ export const bookingRequestService = {
     });
   },
 
+  async getAllForFaculty(facultyId: string): Promise<BookingRequest[]> {
+    const database = getDb();
+    const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
+    const q = query(ref, where('facultyId', '==', facultyId), orderBy('requestDate', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data() as FirestoreBookingRequestRecord;
+      return toBookingRequest(docSnapshot.id, data);
+    });
+  },
+
   async getById(id: string): Promise<BookingRequest | null> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
@@ -1023,52 +1037,43 @@ export const bookingRequestService = {
     excludeRequestId?: string
   ): Promise<boolean> {
     const database = getDb();
-    const requestsRef = collection(database, COLLECTIONS.BOOKING_REQUESTS);
-    const schedulesRef = collection(database, COLLECTIONS.SCHEDULES);
+    const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
 
-    const [requestsSnapshot, schedulesSnapshot] = await Promise.all([
-      getDocs(
-        query(
-          requestsRef,
-          where('classroomId', '==', classroomId),
-          where('date', '==', date)
-        )
-      ),
-      getDocs(
-        query(
-          schedulesRef,
-          where('classroomId', '==', classroomId),
-          where('date', '==', date)
-        )
-      ),
-    ]);
+    // Query for requests for the same classroom and date
+    const q = query(
+      ref,
+      where('classroomId', '==', classroomId),
+      where('date', '==', date),
+      where('status', 'in', ['pending', 'approved'])
+    );
 
-    const hasRequestConflict = requestsSnapshot.docs.some((docSnapshot) => {
-      if (excludeRequestId && docSnapshot.id === excludeRequestId) {
-        return false;
+    const snapshot = await getDocs(q);
+    const conflictingRequests = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as BookingRequest))
+      .filter(req => req.id !== excludeRequestId);
+
+    for (const req of conflictingRequests) {
+      if (doTimeRangesOverlap(startTime, endTime, req.startTime, req.endTime)) {
+        return true; // Found a conflict
       }
-      const data = docSnapshot.data() as FirestoreBookingRequestRecord;
-      if (data.status === 'rejected') {
-        return false;
-      }
-      return timesOverlap(startTime, endTime, data.startTime, data.endTime);
-    });
-
-    if (hasRequestConflict) {
-      return true;
     }
 
-    const hasScheduleConflict = schedulesSnapshot.docs.some((docSnapshot) => {
-      const data = docSnapshot.data() as FirestoreScheduleRecord;
-      if (data.status === 'cancelled') {
-        return false;
-      }
-      return timesOverlap(startTime, endTime, data.startTime, data.endTime);
-    });
-
-    return hasScheduleConflict;
+    return false; // No conflicts found
   },
 };
+
+function doTimeRangesOverlap(
+  startA: string,
+  endA: string,
+  startB: string,
+  endB: string
+) {
+  return (
+    (startA >= startB && startA < endB) ||
+    (endA > startB && endA <= endB) ||
+    (startA <= startB && endA >= endB)
+  );
+}
 
 // ============================================
 // SCHEDULE SERVICE
@@ -1079,6 +1084,17 @@ export const scheduleService = {
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SCHEDULES);
     const q = query(ref, orderBy('date'), orderBy('startTime'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data() as FirestoreScheduleRecord;
+      return toSchedule(docSnapshot.id, data);
+    });
+  },
+
+  async getAllForFaculty(facultyId: string): Promise<Schedule[]> {
+    const database = getDb();
+    const ref = collection(database, COLLECTIONS.SCHEDULES);
+    const q = query(ref, where('facultyId', '==', facultyId), orderBy('date'), orderBy('startTime'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreScheduleRecord;
@@ -1156,6 +1172,29 @@ export const scheduleService = {
         return false;
       }
       return timesOverlap(startTime, endTime, data.startTime, data.endTime);
+    });
+  },
+
+  async cancelApprovedBooking(scheduleId: string): Promise<void> {
+    // Check if user is admin
+    const user = await authService.getCurrentUser();
+    if (!user || user.role !== 'admin') {
+      throw new Error('Only administrators can cancel approved bookings');
+    }
+
+    const database = getDb();
+    const ref = doc(database, COLLECTIONS.SCHEDULES, scheduleId);
+    
+    // Verify the schedule exists
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) {
+      throw new Error('Schedule not found');
+    }
+
+    // Update the schedule status to cancelled
+    await updateDoc(ref, {
+      status: 'cancelled',
+      updatedAt: nowIso(),
     });
   },
 };
