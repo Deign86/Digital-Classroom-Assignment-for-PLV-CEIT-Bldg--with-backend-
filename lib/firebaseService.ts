@@ -860,7 +860,7 @@ export const authService = {
     }
   },
 
-  async updatePassword(newPassword: string): Promise<{ success: boolean; message: string }> {
+  async updatePassword(newPassword: string): Promise<{ success: boolean; message: string; requiresSignOut?: boolean }> {
     const auth = getFirebaseAuth();
     const firebaseUser = auth.currentUser;
 
@@ -870,7 +870,18 @@ export const authService = {
 
     try {
       await firebaseUpdatePassword(firebaseUser, newPassword);
-      return { success: true, message: 'Password updated successfully' };
+      
+      // Password updated successfully - now sign out to invalidate all sessions
+      // This forces the user to log in with their new password
+      await firebaseSignOut(auth).catch(() => undefined);
+      currentUserCache = null;
+      notifyAuthListeners(null);
+      
+      return { 
+        success: true, 
+        message: 'Password updated successfully. You will be logged out for security.', 
+        requiresSignOut: true 
+      };
     } catch (error) {
       const message = mapAuthErrorToMessage(error as { code?: string });
       return { success: false, message };

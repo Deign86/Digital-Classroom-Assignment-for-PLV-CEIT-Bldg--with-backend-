@@ -69,13 +69,16 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
         });
       } else {
         toast.success('Password updated successfully!', {
-          description: 'Your password has been changed. Use it for your next login.',
-          duration: 5000
+          description: result.message + ' You will be redirected to the login page.',
+          duration: 3000
         });
         setPasswordData({
           newPassword: '',
           confirmPassword: ''
         });
+        
+        // The user is automatically logged out by the updatePassword method
+        // No need to manually call signOut here as it's already handled
       }
     } catch (err) {
       console.error('Password update error:', err);
@@ -195,6 +198,15 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handlePasswordChange} className="space-y-6">
+            {/* Security Notice Alert */}
+            <Alert className="border-blue-200 bg-blue-50">
+              <Shield className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-sm text-blue-800">
+                <strong>Security Notice:</strong> After changing your password, you will be automatically logged out 
+                from all devices for security purposes. You will need to log back in with your new password.
+              </AlertDescription>
+            </Alert>
+
             {/* Password Requirements Alert */}
             <Alert>
               <AlertCircle className="h-4 w-4" />
