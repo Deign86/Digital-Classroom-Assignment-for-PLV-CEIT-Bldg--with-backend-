@@ -9,6 +9,8 @@ import { Badge } from './ui/badge';
 import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
+import Calendar from './ui/calendar';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { generateTimeSlots, convertTo24Hour, convertTo12Hour, getValidEndTimes, isPastBookingTime, isValidSchoolTime, isReasonableBookingDuration } from '../utils/timeUtils';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
@@ -60,6 +62,44 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   })();
+
+  // Helper to format internal ISO (YYYY-MM-DD) to MM/DD/YYYY for display
+  const formatISOToMDY = (iso?: string) => {
+    if (!iso) return '';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const [y, m, d] = parts;
+    return `${m}/${d}/${y}`;
+  };
+
+  // Validate ISO date (YYYY-MM-DD) exists (e.g., no Feb 30, Apr 31)
+  const isValidISODate = (iso?: string) => {
+    if (!iso) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+    const [yStr, mStr, dStr] = iso.split('-');
+    const y = Number(yStr); const m = Number(mStr); const d = Number(dStr);
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
+  };
+
+  const [dateError, setDateError] = React.useState<string | null>(null);
+
+  // Detect small phones (between 320px and 425px) and fall back to native date input
+  const [isSmallPhone, setIsSmallPhone] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 320px) and (max-width: 425px)');
+    const update = () => setIsSmallPhone(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener('change', update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update);
+      else mq.removeListener(update);
+    };
+  }, []);
 
   // Clear end time when start time changes to ensure valid selection
   React.useEffect(() => {
@@ -313,19 +353,74 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               {/* Date Selection */}
               <div className="space-y-2">
                 <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  min={today}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  onKeyDown={(e) => e.preventDefault()}
-                  className="transition-all duration-200 focus:scale-105 cursor-pointer"
-                />
+                {isSmallPhone ? (
+                  <div>
+                    <input
+                      id="date"
+                      type="date"
+                      min={today}
+                      value={formData.date}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setFormData(prev => ({ ...prev, date: '' }));
+                          setDateError(null);
+                          return;
+                        }
+                        if (!isValidISODate(v)) {
+                          setDateError('Invalid date');
+                        } else if (v < today) {
+                          setDateError('Date must be today or later');
+                        } else {
+                          setDateError(null);
+                          setFormData(prev => ({ ...prev, date: v }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-surface border rounded-md"
+                    />
+                    {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
+                  </div>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 bg-surface hover:bg-muted/50 border rounded-md flex items-center justify-between"
+                      >
+                        <span className={`text-sm ${formData.date ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {formData.date ? formatISOToMDY(formData.date) : 'Select a date'}
+                        </span>
+                        <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent>
+                      <div className="-mt-2">
+                        <Calendar
+                          value={formData.date || undefined}
+                          onSelect={(iso) => {
+                            // calendar provides valid ISO or undefined
+                            if (!iso) {
+                              setFormData(prev => ({ ...prev, date: '' }));
+                              setDateError(null);
+                              return;
+                            }
+                            if (!isValidISODate(iso) || iso < today) {
+                              setDateError('Invalid or past date');
+                            } else {
+                              setDateError(null);
+                              setFormData(prev => ({ ...prev, date: iso }));
+                            }
+                          }}
+                          min={today}
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
 
               {/* Time Selection */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Start Time *</Label>
                   <Select value={formData.startTime} onValueChange={(value) => setFormData(prev => ({ ...prev, startTime: value }))}>

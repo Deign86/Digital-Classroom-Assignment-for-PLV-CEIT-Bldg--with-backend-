@@ -6,6 +6,8 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi, Projector, Monitor } from 'lucide-react';
+import Calendar from './ui/calendar';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour } from '../utils/timeUtils';
 import type { Classroom, Schedule, BookingRequest } from '../App';
 
@@ -43,6 +45,40 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   })();
+
+  const formatISOToMDY = (iso?: string) => {
+    if (!iso) return '';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const [y, m, d] = parts;
+    return `${m}/${d}/${y}`;
+  };
+
+  const [isSmallPhone, setIsSmallPhone] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 320px) and (max-width: 425px)');
+    const update = () => setIsSmallPhone(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener('change', update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  const [dateError, setDateError] = React.useState<string | null>(null);
+  const isValidISODate = (iso?: string) => {
+    if (!iso) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+    const [yStr, mStr, dStr] = iso.split('-');
+    const y = Number(yStr); const m = Number(mStr); const d = Number(dStr);
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
+  };
 
   // Check if classroom is available for given time slot
   const isClassroomAvailable = (classroomId: string, date: string, startTime: string, endTime: string): boolean => {
@@ -251,15 +287,62 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="search-date">Date</Label>
-              <Input
-                id="search-date"
-                type="date"
-                min={today}
-                value={searchFilters.date}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, date: e.target.value }))}
-                onKeyDown={(e) => e.preventDefault()}
-                className="cursor-pointer"
-              />
+                {isSmallPhone ? (
+                  <div>
+                    <input
+                      id="search-date"
+                      type="date"
+                      min={today}
+                      value={searchFilters.date}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setSearchFilters(prev => ({ ...prev, date: '' }));
+                          setDateError(null);
+                          return;
+                        }
+                        if (!isValidISODate(v)) {
+                          setDateError('Invalid date');
+                        } else if (v < today) {
+                          setDateError('Date must be today or later');
+                        } else {
+                          setDateError(null);
+                          setSearchFilters(prev => ({ ...prev, date: v }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-surface border rounded-md"
+                    />
+                    {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
+                  </div>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 bg-surface hover:bg-muted/50 border rounded-md flex items-center justify-between"
+                      >
+                        <span className={`text-sm ${searchFilters.date ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {searchFilters.date ? formatISOToMDY(searchFilters.date) : 'Select a date'}
+                        </span>
+                        <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent>
+                      <div className="-mt-2">
+                        <Calendar
+                          value={searchFilters.date || undefined}
+                          onSelect={(iso) => {
+                            if (!iso) { setSearchFilters(prev => ({ ...prev, date: '' })); setDateError(null); return; }
+                            if (!isValidISODate(iso) || iso < today) setDateError('Invalid or past date');
+                            else { setDateError(null); setSearchFilters(prev => ({ ...prev, date: iso })); }
+                          }}
+                          min={today}
+                          className="md:w-[280px]"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-start">Start Time</Label>

@@ -559,6 +559,110 @@
     will-change: transform;
   }
 
+  /* Tiny mobile fixes: constrain popovers/calendars on very small screens (<=320px) */
+  @media (max-width: 320px) {
+    /* Make popover content use the full viewport width minus padding */
+    [data-slot="popover-content"],
+    [data-radix-popover-content],
+    .calendar-popover,
+    [data-radix-popper-content-wrapper] {
+      position: fixed !important;
+      left: 8px !important;
+      right: 8px !important;
+      top: auto !important;
+      bottom: 72px !important; /* leave space for bottom nav / safe area */
+      max-width: calc(100vw - 16px) !important;
+      width: calc(100vw - 16px) !important;
+      max-height: calc(100vh - 160px) !important;
+      overflow: auto !important;
+      border-radius: 8px !important;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25) !important;
+    }
+
+    /* Ensure calendar grid scales down a bit on very small screens */
+    .calendar-popover .rdp {
+      font-size: 13px;
+    }
+  }
+
+/* Scoped calendar tweaks to match app: make selected day square and use app accent */
+.app-calendar .rdp-day {
+  border-radius: 6px; /* slightly rounded square */
+}
+
+.app-calendar .rdp-day_selected {
+  /* enforce filled square for selected day */
+  background: var(--color-primary) !important;
+  color: var(--color-primary-foreground) !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 6px !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 !important;
+}
+
+/* target other DayPicker button variants to ensure no circular ring remains */
+.app-calendar .rdp-button.rdp-day_selected,
+.app-calendar .rdp-day.rdp-day_selected > .rdp-button,
+.app-calendar .rdp-button.rdp-selected,
+.app-calendar .rdp-day.rdp-selected > .rdp-button,
+.app-calendar .rdp-day.rdp-selected {
+  background: var(--color-primary) !important;
+  color: var(--color-primary-foreground) !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 6px !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 !important;
+}
+
+/* Remove any pseudo-element rings and unset DayPicker selection variables */
+.app-calendar .rdp-root {
+  /* make the DayPicker buttons default to square-ish */
+  --rdp-day_button-border-radius: 6px !important;
+  --rdp-selected-border: none !important;
+  --rdp-day_button-border: none !important;
+}
+
+/* Hide pseudo-elements that some DayPicker versions use for inner ring/highlight */
+.app-calendar .rdp-day_button::after,
+.app-calendar .rdp-day_button::before,
+.app-calendar .rdp-day_button > *::after,
+.app-calendar .rdp-day_button > *::before {
+  content: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Extra precaution: hide ring/outlines on selected day button variants */
+.app-calendar .rdp-button.rdp-day_selected:focus,
+.app-calendar .rdp-button.rdp-selected:focus,
+.app-calendar .rdp-day.rdp-selected:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* remove any pseudo-element rings */
+.app-calendar .rdp-day_selected::before,
+.app-calendar .rdp-day_selected::after,
+.app-calendar .rdp-button.rdp-day_selected::before,
+.app-calendar .rdp-button.rdp-day_selected::after {
+  display: none !important;
+  box-shadow: none !important;
+}
+
+.app-calendar .rdp-day:not(.rdp-day_disabled):hover {
+  background: rgba(0,0,0,0.03);
+}
+
+.app-calendar .rdp-caption {
+  color: var(--muted-foreground);
+}
+
   .will-change-opacity {
     will-change: opacity;
   }
