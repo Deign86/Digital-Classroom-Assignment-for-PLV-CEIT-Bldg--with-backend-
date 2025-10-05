@@ -15,10 +15,11 @@ import {
   Calendar,
   MessageSquare,
 } from 'lucide-react';
-import type { SignupRequest } from '../App';
+import type { SignupRequest, SignupHistory } from '../App';
 
 interface SignupApprovalProps {
   signupRequests?: SignupRequest[];
+  signupHistory?: SignupHistory[];
   onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
 }
 
@@ -56,7 +57,7 @@ const formatDate = (dateString: string) =>
     minute: '2-digit',
   });
 
-export default function SignupApproval({ signupRequests = [], onSignupApproval }: SignupApprovalProps) {
+export default function SignupApproval({ signupRequests = [], signupHistory = [], onSignupApproval }: SignupApprovalProps) {
   const [feedback, setFeedback] = useState<Record<string, string>>({});
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,8 +83,38 @@ export default function SignupApproval({ signupRequests = [], onSignupApproval }
       .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime());
   }, [searchTerm, signupRequests, statusFilter]);
 
+  const filteredHistory = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return signupHistory
+      .filter((history) => {
+        if (statusFilter !== 'all' && history.status !== statusFilter) {
+          return false;
+        }
+
+        if (!term) {
+          return true;
+        }
+
+        return [history.name, history.email, history.department]
+          .filter(Boolean)
+          .some((value) => value!.toLowerCase().includes(term));
+      })
+      .sort((a, b) => new Date(b.resolvedAt).getTime() - new Date(a.resolvedAt).getTime());
+  }, [searchTerm, signupHistory, statusFilter]);
+
   const pendingRequests = filteredRequests.filter((request) => request.status === 'pending');
-  const processedRequests = filteredRequests.filter((request) => request.status !== 'pending');
+  const approvedRequests = filteredRequests.filter((request) => request.status === 'approved');
+  
+  // Combine approved requests and history for the processed section
+  const allProcessedItems = [...approvedRequests, ...filteredHistory]
+    .sort((a, b) => {
+      const dateA = 'resolvedAt' in a ? a.resolvedAt : a.requestDate;
+      const dateB = 'resolvedAt' in b ? b.resolvedAt : b.requestDate;
+      return new Date(dateB || 0).getTime() - new Date(dateA || 0).getTime();
+    });
+  
+  const processedRequests = allProcessedItems;
 
   const handleApproval = (requestId: string, approved: boolean) => {
     const feedbackText = (feedback[requestId] ?? '').trim();
@@ -95,6 +126,11 @@ export default function SignupApproval({ signupRequests = [], onSignupApproval }
 
     onSignupApproval(requestId, approved, approved ? feedbackText || undefined : feedbackText);
     setFeedback((prev) => ({ ...prev, [requestId]: '' }));
+  };
+
+  // Helper to check if an item is from history
+  const isHistoryItem = (item: SignupRequest | SignupHistory): item is SignupHistory => {
+    return 'processedBy' in item;
   };
 
   return (
@@ -220,38 +256,48 @@ export default function SignupApproval({ signupRequests = [], onSignupApproval }
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Recent Processed Requests</h3>
           <div className="grid gap-4">
-            {processedRequests.slice(0, 5).map((request) => (
-              <Card key={request.id} className="border-l-4 border-l-gray-300">
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <User className="h-4 w-4 text-gray-600" />
-                        <span className="font-medium">{request.name}</span>
-                      </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span>{request.email}</span>
-                        <span>•</span>
-                        <span>{request.department}</span>
-                      </div>
-                      {request.adminFeedback && (
-                        <div className="flex items-start space-x-2 mt-2">
-                          <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5" />
-                          <span className="text-sm text-gray-600 italic">{request.adminFeedback}</span>
+            {processedRequests.slice(0, 5).map((item) => {
+              const isHistory = isHistoryItem(item);
+              const resolvedDate = isHistory ? item.resolvedAt : item.resolvedAt;
+              
+              return (
+                <Card key={item.id} className="border-l-4 border-l-gray-300">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <User className="h-4 w-4 text-gray-600" />
+                          <span className="font-medium">{item.name}</span>
+                          {isHistory && (
+                            <Badge variant="outline" className="text-xs">
+                              From History
+                            </Badge>
+                          )}
                         </div>
-                      )}
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <span>{item.email}</span>
+                          <span>•</span>
+                          <span>{item.department}</span>
+                        </div>
+                        {item.adminFeedback && (
+                          <div className="flex items-start space-x-2 mt-2">
+                            <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5" />
+                            <span className="text-sm text-gray-600 italic">{item.adminFeedback}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right space-y-2">
+                        {getStatusBadge(item.status)}
+                        <p className="text-xs text-gray-500">{formatDate(item.requestDate)}</p>
+                        {resolvedDate && (
+                          <p className="text-xs text-gray-400">Processed: {formatDate(resolvedDate)}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right space-y-2">
-                      {getStatusBadge(request.status)}
-                      <p className="text-xs text-gray-500">{formatDate(request.requestDate)}</p>
-                      {request.resolvedAt && (
-                        <p className="text-xs text-gray-400">Processed: {formatDate(request.resolvedAt)}</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}

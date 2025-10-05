@@ -33,7 +33,7 @@ import {
   type Auth,
   type User as FirebaseAuthUser,
 } from 'firebase/auth';
-import type { BookingRequest, Classroom, Schedule, SignupRequest, User } from '../App';
+import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory, User } from '../App';
 import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
 
 const db = () => getFirebaseDb();
@@ -60,6 +60,7 @@ const COLLECTIONS = {
   BOOKING_REQUESTS: 'bookingRequests',
   SCHEDULES: 'schedules',
   SIGNUP_REQUESTS: 'signupRequests',
+  SIGNUP_HISTORY: 'signupHistory',
 } as const;
 
 let dbInstance: Firestore | null = null;
@@ -149,6 +150,21 @@ type FirestoreSignupRequestRecord = {
   status: SignupRequest['status'];
   adminFeedback?: string;
   resolvedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type FirestoreSignupHistoryRecord = {
+  uid: string;
+  email: string;
+  emailLower: string;
+  name: string;
+  department: string;
+  requestDate: string;
+  status: 'approved' | 'rejected';
+  adminFeedback: string;
+  resolvedAt: string;
+  processedBy: string;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -496,6 +512,22 @@ const toSignupRequest = (
   status: data.status,
   adminFeedback: data.adminFeedback,
   resolvedAt: data.resolvedAt,
+});
+
+const toSignupHistory = (
+  id: string,
+  data: FirestoreSignupHistoryRecord
+): SignupHistory => ({
+  id,
+  userId: data.uid,
+  email: data.email,
+  name: data.name,
+  department: data.department,
+  requestDate: data.requestDate,
+  status: data.status,
+  adminFeedback: data.adminFeedback,
+  resolvedAt: data.resolvedAt,
+  processedBy: data.processedBy,
 });
 
 // ============================================
@@ -1551,6 +1583,128 @@ export const signupRequestService = {
   async delete(id: string): Promise<void> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SIGNUP_REQUESTS, id);
+    await deleteDoc(ref);
+  },
+
+  // Method to properly reject a signup and clean up everything
+  async rejectAndCleanup(requestId: string, adminUserId: string, feedback: string): Promise<SignupHistory> {
+    const request = await this.getById(requestId);
+    if (!request) {
+      throw new Error('Signup request not found');
+    }
+
+    const resolvedAt = nowIso();
+    
+    // Create history record before cleanup
+    const historyRecord = await signupHistoryService.create({
+      userId: request.userId,
+      email: request.email,
+      name: request.name,
+      department: request.department,
+      requestDate: request.requestDate,
+      status: 'rejected',
+      adminFeedback: feedback,
+      resolvedAt,
+      processedBy: adminUserId,
+    });
+
+    try {
+      // Delete the signup request
+      await this.delete(requestId);
+      
+      // Delete the user record
+      await userService.delete(request.userId);
+      
+      // Try to delete the Firebase Auth account (this might fail if user is logged in elsewhere)
+      try {
+        const auth = getFirebaseAuth();
+        const user = auth.currentUser;
+        if (user && user.uid === request.userId) {
+          await user.delete();
+        }
+      } catch (authError) {
+        console.warn('Could not delete Firebase Auth user (user may be signed in elsewhere):', authError);
+        // This is non-critical - the important cleanup (Firestore records) is done
+      }
+
+      return historyRecord;
+    } catch (error) {
+      // If cleanup fails, we should remove the history record to maintain consistency
+      try {
+        await signupHistoryService.delete(historyRecord.id);
+      } catch (historyDeleteError) {
+        console.error('Failed to clean up history record after failed rejection:', historyDeleteError);
+      }
+      throw error;
+    }
+  },
+};
+
+// ============================================
+// SIGNUP HISTORY SERVICE
+// ============================================
+
+export const signupHistoryService = {
+  async getAll(): Promise<SignupHistory[]> {
+    const database = getDb();
+    const ref = collection(database, COLLECTIONS.SIGNUP_HISTORY);
+    const q = query(ref, orderBy('resolvedAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data() as FirestoreSignupHistoryRecord;
+      return toSignupHistory(docSnapshot.id, data);
+    });
+  },
+
+  async getById(id: string): Promise<SignupHistory | null> {
+    const database = getDb();
+    const ref = doc(database, COLLECTIONS.SIGNUP_HISTORY, id);
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) {
+      return null;
+    }
+    const data = snapshot.data() as FirestoreSignupHistoryRecord;
+    return toSignupHistory(snapshot.id, data);
+  },
+
+  async getByEmail(email: string): Promise<SignupHistory[]> {
+    const emailLower = email.toLowerCase();
+    const database = getDb();
+    const ref = collection(database, COLLECTIONS.SIGNUP_HISTORY);
+    const q = query(ref, where('emailLower', '==', emailLower), orderBy('resolvedAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data() as FirestoreSignupHistoryRecord;
+      return toSignupHistory(docSnapshot.id, data);
+    });
+  },
+
+  async create(
+    history: Omit<SignupHistory, 'id'>
+  ): Promise<SignupHistory> {
+    const database = getDb();
+    const now = nowIso();
+    const record: FirestoreSignupHistoryRecord = {
+      uid: history.userId,
+      email: history.email,
+      emailLower: history.email.toLowerCase(),
+      name: history.name,
+      department: history.department,
+      requestDate: history.requestDate,
+      status: history.status,
+      adminFeedback: history.adminFeedback,
+      resolvedAt: history.resolvedAt,
+      processedBy: history.processedBy,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const ref = await addDoc(collection(database, COLLECTIONS.SIGNUP_HISTORY), record);
+    return toSignupHistory(ref.id, record);
+  },
+
+  async delete(id: string): Promise<void> {
+    const database = getDb();
+    const ref = doc(database, COLLECTIONS.SIGNUP_HISTORY, id);
     await deleteDoc(ref);
   },
 };

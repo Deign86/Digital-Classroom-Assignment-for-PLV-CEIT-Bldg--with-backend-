@@ -26,13 +26,14 @@ import SignupApproval from './SignupApproval';
 import ScheduleViewer from './ScheduleViewer';
 import AdminReports from './AdminReports';
 import ProfileSettings from './ProfileSettings';
-import type { User, Classroom, BookingRequest, SignupRequest, Schedule } from '../App';
+import type { User, Classroom, BookingRequest, SignupRequest, SignupHistory, Schedule } from '../App';
 
 interface AdminDashboardProps {
   user: User;
   classrooms: Classroom[];
   bookingRequests: BookingRequest[];
   signupRequests: SignupRequest[];
+  signupHistory: SignupHistory[];
   schedules: Schedule[];
   onLogout: () => void;
   onClassroomUpdate: (classrooms: Classroom[]) => void;
@@ -48,6 +49,7 @@ export default function AdminDashboard({
   classrooms,
   bookingRequests,
   signupRequests,
+  signupHistory,
   schedules,
   onLogout,
   onClassroomUpdate,
@@ -397,6 +399,7 @@ export default function AdminDashboard({
             <div className="animate-in">
               <SignupApproval
                 signupRequests={signupRequests}
+                signupHistory={signupHistory}
                 onSignupApproval={onSignupApproval}
               />
             </div>

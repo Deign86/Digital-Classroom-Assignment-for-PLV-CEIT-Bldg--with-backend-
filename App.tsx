@@ -16,6 +16,7 @@ import {
   userService,
   classroomService,
   signupRequestService,
+  signupHistoryService,
   bookingRequestService,
   scheduleService,
   realtimeService
@@ -49,6 +50,19 @@ export interface SignupRequest {
   status: 'pending' | 'approved' | 'rejected';
   adminFeedback?: string;
   resolvedAt?: string;
+}
+
+export interface SignupHistory {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  department: string;
+  requestDate: string;
+  status: 'approved' | 'rejected';
+  adminFeedback: string;
+  resolvedAt: string;
+  processedBy: string; // Admin user ID who processed the request
 }
 
 export interface Classroom {
@@ -94,6 +108,7 @@ export default function App() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [signupRequests, setSignupRequests] = useState<SignupRequest[]>([]);
+  const [signupHistory, setSignupHistory] = useState<SignupHistory[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +182,18 @@ export default function App() {
       if (user.role === 'faculty') {
         setUsers([user]);
         setSignupRequests([]);
+        setSignupHistory([]);
+      } else if (user.role === 'admin') {
+        // Load signup history for admins
+        signupHistoryService.getAll()
+          .then((history) => {
+            console.log('📜 Loaded signup history:', history.length);
+            setSignupHistory(history);
+          })
+          .catch((err) => {
+            console.error('❌ Failed to load signup history:', err);
+            // Non-critical error - don't block the app
+          });
       }
       
       console.log('✅ Real-time listeners setup complete');
@@ -645,30 +672,22 @@ export default function App() {
             return;
           }
 
-          const updatedRequest = await signupRequestService.update(requestId, {
-            status: 'rejected',
-            adminFeedback: feedback,
-            resolvedAt,
-          });
+          if (!currentUser) {
+            toast.error('Admin user information not available');
+            return;
+          }
 
-          const updatedUser = await userService.updateStatus(request.userId, 'rejected');
+          // Use the new rejection method that properly cleans up everything
+          await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback);
 
-          setSignupRequests((prev) =>
-            prev.map((entry) => (entry.id === requestId ? updatedRequest : entry))
-          );
+          // Remove the request from the UI
+          setSignupRequests((prev) => prev.filter((entry) => entry.id !== requestId));
 
-          setUsers((prev) => {
-            const existingIndex = prev.findIndex((user) => user.id === updatedUser.id);
-            if (existingIndex === -1) {
-              return [...prev, updatedUser];
-            }
-            const copy = [...prev];
-            copy[existingIndex] = updatedUser;
-            return copy;
-          });
+          // Remove the user from the users list since they've been deleted
+          setUsers((prev) => prev.filter((user) => user.id !== request.userId));
 
           toast.success(`Signup request rejected for ${request.name}.`, {
-            description: 'The applicant will not be able to sign in until a new request is approved.',
+            description: 'The account has been completely removed. They can submit a new signup request.',
             duration: 6000,
           });
         }
@@ -750,6 +769,7 @@ export default function App() {
     classrooms,
     bookingRequests,
     signupRequests,
+    signupHistory,
     schedules,
     onLogout: handleLogout,
     onClassroomUpdate: handleClassroomUpdate,
@@ -758,7 +778,7 @@ export default function App() {
     onCancelSchedule: handleCancelSchedule,
     onCancelApprovedBooking: handleCancelApprovedBooking,
     checkConflicts
-  }), [currentUser, classrooms, bookingRequests, signupRequests, schedules, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, checkConflicts]);
+  }), [currentUser, classrooms, bookingRequests, signupRequests, signupHistory, schedules, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, checkConflicts]);
 
   const facultyDashboardProps = useMemo(() => ({
     user: currentUser!,
