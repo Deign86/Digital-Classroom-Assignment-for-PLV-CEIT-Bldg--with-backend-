@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
-import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
 
 const REQUIRED_ENV_VARS = [
   'VITE_FIREBASE_API_KEY',
@@ -72,6 +72,18 @@ export const getFirebaseDb = (): Firestore => {
   if (!firestoreInstance) {
     const app = getFirebaseApp();
     firestoreInstance = getFirestore(app);
+    
+    // Connect to emulator in development
+    const useEmulator = import.meta.env.VITE_FIREBASE_USE_EMULATOR === 'true';
+    if (useEmulator && import.meta.env.DEV) {
+      const emulatorHost = import.meta.env.VITE_FIREBASE_FIRESTORE_EMULATOR_HOST || 'localhost:8080';
+      try {
+        connectFirestoreEmulator(firestoreInstance, 'localhost', 8081);
+        console.log('🔥 Connected to Firestore emulator at', emulatorHost);
+      } catch (error) {
+        console.warn('Firestore emulator connection failed (may already be connected):', error);
+      }
+    }
   }
   return firestoreInstance;
 };
@@ -80,6 +92,18 @@ export const getFirebaseAuth = async (): Promise<Auth> => {
   if (!authInstance) {
     const app = getFirebaseApp();
     authInstance = getAuth(app);
+    
+    // Connect to emulator in development
+    const useEmulator = import.meta.env.VITE_FIREBASE_USE_EMULATOR === 'true';
+    if (useEmulator && import.meta.env.DEV) {
+      const emulatorUrl = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL || 'http://localhost:9099';
+      try {
+        connectAuthEmulator(authInstance, emulatorUrl, { disableWarnings: true });
+        console.log('🔐 Connected to Auth emulator at', emulatorUrl);
+      } catch (error) {
+        console.warn('Auth emulator connection failed (may already be connected):', error);
+      }
+    }
     
     // Set auth persistence to LOCAL (survives browser restarts)
     try {

@@ -6,10 +6,16 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
+    "dev:emulator": "concurrently \"npm run emulator\" \"npm run dev\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "predeploy": "npm run build"
+    "predeploy": "npm run build",
+    "emulator": "firebase emulators:start --import=./emulator-data --export-on-exit",
+    "emulator:ui": "firebase emulators:start --import=./emulator-data --export-on-exit",
+    "emulator:seed": "firebase emulators:exec --import=./emulator-data \"npm run seed\"",
+    "emulator:reset": "firebase emulators:exec \"echo 'Emulator data reset'\"",
+    "seed": "node scripts/seed-emulator.js"
   },
   "keywords": [],
   "author": "",
@@ -70,6 +76,8 @@
     "@types/react": "^18.3.15",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^8.2.2",
+    "firebase-tools": "^13.35.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.7"
