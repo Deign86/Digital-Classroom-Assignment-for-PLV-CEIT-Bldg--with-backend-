@@ -308,7 +308,56 @@ export default function App() {
           // Continue with signup anyway
         }
 
-        const { request } = await authService.registerFaculty(email, password, name, department);
+        let request: SignupRequest;
+        
+        try {
+          const result = await authService.registerFaculty(email, password, name, department);
+          request = result.request;
+        } catch (registerError: any) {
+          // Handle the case where email already exists but user was previously rejected
+          if (registerError?.code === 'auth/email-already-in-use') {
+            console.log('Auth account exists, checking if user was previously rejected...');
+            
+            // Check if there's an existing user record
+            try {
+              const existingUser = await userService.getByEmail(email);
+              if (existingUser) {
+                toast.error('Account already exists', {
+                  description: 'Please sign in or reset your password if you forgot it.',
+                });
+                return false;
+              }
+            } catch (userCheckError) {
+              console.log('No existing user record found, attempting reactivation...');
+            }
+            
+            // No user record exists, try to reactivate the account
+            try {
+              const result = await authService.handleRejectedUserReactivation(email, password, name, department);
+              request = result.request;
+              
+              toast.success('Account reactivated!', {
+                description: 'Your signup request has been resubmitted for administrator review.',
+                duration: 6000,
+              });
+            } catch (reactivationError: any) {
+              console.error('Reactivation failed:', reactivationError);
+              if (reactivationError?.code === 'auth/invalid-login-credentials') {
+                toast.error('Cannot reuse this email', {
+                  description: 'This email was previously used. Please use a different email or contact support.',
+                  duration: 8000,
+                });
+              } else {
+                toast.error('Reactivation failed', {
+                  description: 'Unable to reactivate account. Please contact support.',
+                });
+              }
+              return false;
+            }
+          } else {
+            throw registerError; // Re-throw other registration errors
+          }
+        }
 
         setSignupRequests((prev) => {
           const withoutDuplicate = prev.filter((existing) => existing.id !== request.id);
@@ -329,6 +378,7 @@ export default function App() {
           // Continue anyway - the signup was successful
         }
 
+        // Show default success message for new registrations
         toast.success('Signup request submitted!', {
           description:
             'Your account has been created with pending status. An administrator will approve your access shortly.',

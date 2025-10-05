@@ -33,6 +33,7 @@ import {
   type Auth,
   type User as FirebaseAuthUser,
 } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory, User } from '../App';
 import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
 
@@ -727,6 +728,61 @@ const mapAuthErrorToMessage = (error: { code?: string }): string => {
 };
 
 export const authService = {
+  async handleRejectedUserReactivation(
+    email: string,
+    password: string,
+    name: string,
+    department: string
+  ): Promise<{ request: SignupRequest }> {
+    // Try to sign in first to get the existing Firebase Auth user
+    ensureAuthStateListener();
+    const auth = getFirebaseAuth();
+    
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = credential.user;
+
+      // Update profile
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: name }).catch(() => undefined);
+      }
+
+      // Recreate user record
+      const record = await ensureUserRecordFromAuth(firebaseUser, {
+        email,
+        name,
+        department,
+        role: 'faculty',
+        status: 'pending',
+      });
+
+      const database = getDb();
+      const now = nowIso();
+
+      const requestRecord: FirestoreSignupRequestRecord = {
+        uid: firebaseUser.uid,
+        email: record.email,
+        emailLower: record.emailLower,
+        name: record.name,
+        department,
+        status: 'pending',
+        requestDate: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
+      
+      await sendEmailVerification(firebaseUser).catch(() => undefined);
+
+      return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
+    } finally {
+      await firebaseSignOut(auth).catch(() => undefined);
+      currentUserCache = null;
+      notifyAuthListeners(null);
+    }
+  },
+
   async registerFaculty(
     email: string,
     password: string,
@@ -1609,15 +1665,17 @@ export const signupRequestService = {
     });
 
     try {
-      // Delete the signup request
+      // Use the new Firebase Functions approach for complete account deletion
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+      
+      // Call the cloud function to delete the user account completely
+      const result = await deleteUserAccount({ userId: request.userId });
+      console.log('Account deletion result:', result.data);
+      
+      // Delete the signup request from Firestore
       await this.delete(requestId);
-      
-      // Delete the user record
-      await userService.delete(request.userId);
-      
-      // Note: Firebase Auth account will remain but is functionally inactive
-      // The reactivation logic in handleSignup will handle re-signup attempts
-      console.log('Firebase Auth account cleanup not performed (would require Firebase Admin SDK)');
 
       return historyRecord;
     } catch (error) {
@@ -1628,6 +1686,34 @@ export const signupRequestService = {
         console.error('Failed to clean up history record after failed rejection:', historyDeleteError);
       }
       throw error;
+    }
+  },
+
+  // Bulk cleanup for rejected accounts using Firebase Functions
+  async bulkCleanupRejectedAccounts(): Promise<{
+    success: boolean;
+    message: string;
+    processedCount: number;
+    successfulDeletions: number;
+    errors: string[];
+  }> {
+    try {
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const bulkCleanup = httpsCallable(functions, 'bulkCleanupRejectedAccounts');
+      
+      // Call the cloud function
+      const result = await bulkCleanup({});
+      return result.data as {
+        success: boolean;
+        message: string;
+        processedCount: number;
+        successfulDeletions: number;
+        errors: string[];
+      };
+    } catch (error) {
+      console.error('Bulk cleanup error:', error);
+      throw new Error(`Failed to perform bulk cleanup: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 };
