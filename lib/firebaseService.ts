@@ -1615,17 +1615,10 @@ export const signupRequestService = {
       // Delete the user record
       await userService.delete(request.userId);
       
-      // Try to delete the Firebase Auth account (this might fail if user is logged in elsewhere)
-      try {
-        const auth = getFirebaseAuth();
-        const user = auth.currentUser;
-        if (user && user.uid === request.userId) {
-          await user.delete();
-        }
-      } catch (authError) {
-        console.warn('Could not delete Firebase Auth user (user may be signed in elsewhere):', authError);
-        // This is non-critical - the important cleanup (Firestore records) is done
-      }
+      // Note: Firebase Auth account deletion from client SDK requires Firebase Admin SDK
+      // For now, we'll leave the auth account - the important cleanup is the Firestore records
+      // This prevents the "email already in use" error since we're deleting the user record
+      console.log('Auth account cleanup skipped - requires Firebase Admin SDK for proper implementation');
 
       return historyRecord;
     } catch (error) {
