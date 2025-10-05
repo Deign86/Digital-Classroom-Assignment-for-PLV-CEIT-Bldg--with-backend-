@@ -727,61 +727,6 @@ const mapAuthErrorToMessage = (error: { code?: string }): string => {
 };
 
 export const authService = {
-  async handleRejectedUserReactivation(
-    email: string,
-    password: string,
-    name: string,
-    department: string
-  ): Promise<{ request: SignupRequest }> {
-    // Try to sign in first to get the existing Firebase Auth user
-    ensureAuthStateListener();
-    const auth = getFirebaseAuth();
-    
-    try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = credential.user;
-
-      // Update profile
-      if (firebaseUser) {
-        await updateProfile(firebaseUser, { displayName: name }).catch(() => undefined);
-      }
-
-      // Recreate user record
-      const record = await ensureUserRecordFromAuth(firebaseUser, {
-        email,
-        name,
-        department,
-        role: 'faculty',
-        status: 'pending',
-      });
-
-      const database = getDb();
-      const now = nowIso();
-
-      const requestRecord: FirestoreSignupRequestRecord = {
-        uid: firebaseUser.uid,
-        email: record.email,
-        emailLower: record.emailLower,
-        name: record.name,
-        department,
-        status: 'pending',
-        requestDate: now,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
-      
-      await sendEmailVerification(firebaseUser).catch(() => undefined);
-
-      return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
-    } finally {
-      await firebaseSignOut(auth).catch(() => undefined);
-      currentUserCache = null;
-      notifyAuthListeners(null);
-    }
-  },
-
   async registerFaculty(
     email: string,
     password: string,
@@ -1670,10 +1615,9 @@ export const signupRequestService = {
       // Delete the user record
       await userService.delete(request.userId);
       
-      // Note: Firebase Auth account deletion from client SDK requires Firebase Admin SDK
-      // For now, we'll leave the auth account - the important cleanup is the Firestore records
-      // This prevents the "email already in use" error since we're deleting the user record
-      console.log('Auth account cleanup skipped - requires Firebase Admin SDK for proper implementation');
+      // Note: Firebase Auth account will remain but is functionally inactive
+      // The reactivation logic in handleSignup will handle re-signup attempts
+      console.log('Firebase Auth account cleanup not performed (would require Firebase Admin SDK)');
 
       return historyRecord;
     } catch (error) {

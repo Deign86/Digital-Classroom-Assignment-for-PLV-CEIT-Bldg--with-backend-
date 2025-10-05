@@ -56,14 +56,5 @@ service cloud.firestore {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
     }
-    
-    // Signup History collection
-    match /signupHistory/{historyId} {
-      // Only authenticated users can read signup history (admin functionality).
-      // Only authenticated users can create signup history records.
-      // No updates or deletes allowed to preserve audit trail integrity.
-      allow read, create: if request.auth != null;
-      allow delete: if request.auth != null; // Allow delete for cleanup operations
-    }
   }
 }
