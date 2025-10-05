@@ -727,6 +727,61 @@ const mapAuthErrorToMessage = (error: { code?: string }): string => {
 };
 
 export const authService = {
+  async handleRejectedUserReactivation(
+    email: string,
+    password: string,
+    name: string,
+    department: string
+  ): Promise<{ request: SignupRequest }> {
+    // Try to sign in first to get the existing Firebase Auth user
+    ensureAuthStateListener();
+    const auth = getFirebaseAuth();
+    
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = credential.user;
+
+      // Update profile
+      if (firebaseUser) {
+        await updateProfile(firebaseUser, { displayName: name }).catch(() => undefined);
+      }
+
+      // Recreate user record
+      const record = await ensureUserRecordFromAuth(firebaseUser, {
+        email,
+        name,
+        department,
+        role: 'faculty',
+        status: 'pending',
+      });
+
+      const database = getDb();
+      const now = nowIso();
+
+      const requestRecord: FirestoreSignupRequestRecord = {
+        uid: firebaseUser.uid,
+        email: record.email,
+        emailLower: record.emailLower,
+        name: record.name,
+        department,
+        status: 'pending',
+        requestDate: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
+      
+      await sendEmailVerification(firebaseUser).catch(() => undefined);
+
+      return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
+    } finally {
+      await firebaseSignOut(auth).catch(() => undefined);
+      currentUserCache = null;
+      notifyAuthListeners(null);
+    }
+  },
+
   async registerFaculty(
     email: string,
     password: string,
