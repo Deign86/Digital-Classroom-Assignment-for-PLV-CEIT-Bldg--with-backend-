@@ -50,11 +50,16 @@ const createFirebaseApp = (): FirebaseApp => {
     appId: config.VITE_FIREBASE_APP_ID,
   } as const;
 
-  if (getApps().length === 0) {
-    return initializeApp(firebaseConfig);
+  try {
+    if (getApps().length === 0) {
+      console.log('Initializing Firebase app with projectId:', firebaseConfig.projectId);
+      return initializeApp(firebaseConfig);
+    }
+    return getApp();
+  } catch (error) {
+    console.error('Failed to initialize Firebase app:', error);
+    throw new Error(`Firebase initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return getApp();
 };
 
 let appInstance: FirebaseApp | null = null;
@@ -70,8 +75,14 @@ export const getFirebaseApp = (): FirebaseApp => {
 
 export const getFirebaseDb = (): Firestore => {
   if (!firestoreInstance) {
-    const app = getFirebaseApp();
-    firestoreInstance = getFirestore(app);
+    try {
+      const app = getFirebaseApp();
+      firestoreInstance = getFirestore(app);
+      console.log('Firestore instance initialized for project:', app.options.projectId);
+    } catch (error) {
+      console.error('Failed to initialize Firestore:', error);
+      throw new Error(`Firestore initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
   return firestoreInstance;
 };
