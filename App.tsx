@@ -432,49 +432,54 @@ export default function App() {
   const handleLogout = useCallback(async () => {
     try {
       console.log('🔴 Logout clicked - user:', currentUser?.email);
-      
       await authService.signOut();
+
+      // Set flag for login page to show success notification
+      sessionStorage.setItem('logoutSuccess', 'true');
+
+      // Clear user state and listeners
       setCurrentUser(null);
-      
+
       // Cleanup real-time listeners
       realtimeService.cleanup();
-      
+
       // Clear all cached data
       setClassrooms([]);
       setBookingRequests([]);
       setSignupRequests([]);
       setSchedules([]);
       setUsers([]);
-      
+
       console.log('✅ User state cleared');
-      toast.success('Logged out successfully');
     } catch (err) {
       console.error('❌ Logout error:', err);
       // Force logout even if auth service fails
       setCurrentUser(null);
-      
+
+      // Set flag for logout with error
+      sessionStorage.setItem('logoutError', 'true');
+
       // Cleanup real-time listeners
       realtimeService.cleanup();
-      
+
       setClassrooms([]);
       setBookingRequests([]);
       setSignupRequests([]);
       setSchedules([]);
       setUsers([]);
-      toast.error('Logged out (with errors). Please refresh if needed.');
     }
   }, [currentUser]);
 
   // Idle timeout handlers
   const handleIdleTimeout = useCallback(async () => {
     console.log('🕒 Session expired due to inactivity');
-    toast.warning('Session expired due to inactivity', {
-      description: 'You have been logged out for security reasons',
-      duration: 5000
-    });
     
     try {
       await authService.signOutDueToIdleTimeout();
+      
+      // Set flag for login page to show session timeout notification
+      sessionStorage.setItem('sessionExpired', 'true');
+
       setCurrentUser(null);
       setClassrooms([]);
       setBookingRequests([]);
@@ -485,6 +490,7 @@ export default function App() {
     } catch (err) {
       console.error('❌ Idle timeout logout error:', err);
       // Force logout even if service fails
+      sessionStorage.setItem('sessionExpired', 'true');
       setCurrentUser(null);
       setShowSessionWarning(false);
     }
@@ -920,6 +926,38 @@ export default function App() {
       realtimeService.cleanup();
     };
   }, []);
+
+  // Check for logout notifications when user state changes to show them on login page
+  useEffect(() => {
+    if (!currentUser) {
+      // Check for logout success notification
+      if (sessionStorage.getItem('logoutSuccess') === 'true') {
+        sessionStorage.removeItem('logoutSuccess');
+        toast.success('Logged out successfully', {
+          description: 'You have been signed out',
+          duration: 4000
+        });
+      }
+      
+      // Check for logout error notification
+      if (sessionStorage.getItem('logoutError') === 'true') {
+        sessionStorage.removeItem('logoutError');
+        toast.error('Logged out with errors', {
+          description: 'Please refresh if you experience any issues',
+          duration: 5000
+        });
+      }
+      
+      // Check for session expired notification
+      if (sessionStorage.getItem('sessionExpired') === 'true') {
+        sessionStorage.removeItem('sessionExpired');
+        toast.warning('Session expired', {
+          description: 'You have been logged out due to inactivity',
+          duration: 5000
+        });
+      }
+    }
+  }, [currentUser]);
 
   // Expose services after app initialization (for debugging)
   React.useEffect(() => {
