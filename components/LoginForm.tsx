@@ -41,14 +41,26 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     e.preventDefault();
     
     // Don't attempt login if fields are empty
-    if (!email.trim() || !password.trim()) {
+    // Sanitize password in case user pasted it
+    const sanitizePassword = (pwd: string) => {
+      if (!pwd) return pwd;
+      let cleaned = pwd.replace(/[\r\n\t]/g, '');
+      cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+      cleaned = cleaned.trim();
+      return cleaned;
+    };
+
+    const cleanedPassword = sanitizePassword(password);
+    if (cleanedPassword !== password) setPassword(cleanedPassword);
+
+    if (!email.trim() || !cleanedPassword.trim()) {
       return;
     }
     
     setIsLoading(true);
     
     try {
-      const success = await onLogin(email, password);
+      const success = await onLogin(email, cleanedPassword);
       if (!success) {
         setPassword('');
       }
@@ -84,6 +96,21 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     if (!signupData.password) {
       toast.error('Please create a password');
       return;
+    }
+
+    // Sanitize signup password fields
+    const sanitizePassword = (pwd: string) => {
+      if (!pwd) return pwd;
+      let cleaned = pwd.replace(/[\r\n\t]/g, '');
+      cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+      cleaned = cleaned.trim();
+      return cleaned;
+    };
+
+    const cleaned = sanitizePassword(signupData.password);
+    const cleanedConfirm = sanitizePassword(signupData.confirmPassword);
+    if (cleaned !== signupData.password || cleanedConfirm !== signupData.confirmPassword) {
+      setSignupData(prev => ({ ...prev, password: cleaned, confirmPassword: cleanedConfirm }));
     }
 
     if (signupData.password.length < 8) {

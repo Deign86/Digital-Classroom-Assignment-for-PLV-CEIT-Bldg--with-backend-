@@ -62,13 +62,33 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     return null;
   };
 
+  // Sanitize a password string coming from paste: trim, remove newlines/tabs and zero-width chars
+  const sanitizePassword = (pwd: string): string => {
+    if (!pwd) return pwd;
+    // Remove newline/tab characters
+    let cleaned = pwd.replace(/[\r\n\t]/g, '');
+    // Remove common zero-width/invisible characters
+    cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    // Trim leading/trailing whitespace
+    cleaned = cleaned.trim();
+    return cleaned;
+  };
+
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Automatically sanitize pasted/typed passwords before validation
+    const sanitizedNew = sanitizePassword(passwordData.newPassword);
+    const sanitizedConfirm = sanitizePassword(passwordData.confirmPassword);
+
+    // Update form values to reflect sanitized strings (so the UI shows the cleaned value)
+    setPasswordData((prev) => ({ ...prev, newPassword: sanitizedNew, confirmPassword: sanitizedConfirm }));
+
     const validationError = validatePassword();
     if (validationError) {
       toast.error(validationError);
       return;
     }
+
     // Only show the confirmation dialog if validation passes
     setShowConfirmDialog(true);
   };
