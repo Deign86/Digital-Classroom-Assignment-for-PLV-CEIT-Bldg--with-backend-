@@ -38,6 +38,9 @@ export interface User {
   role: 'admin' | 'faculty';
   department?: string;
   status: 'pending' | 'approved' | 'rejected';
+  failedLoginAttempts?: number;
+  accountLocked?: boolean;
+  lockedUntil?: string;
 }
 
 export interface SignupRequest {
@@ -283,7 +286,14 @@ export default function App() {
             }
         }
       } else if (err instanceof Error && err.message) {
-        message = err.message;
+        // Check for account locked error
+        if (err.message.includes('Account locked') || err.message.includes('Account is locked')) {
+          message = err.message;
+        } else if (err.message.includes('attempts remaining')) {
+          message = err.message;
+        } else {
+          message = err.message;
+        }
       }
       
       toast.error('Login failed', { description: message, duration: 6000 });
@@ -819,6 +829,30 @@ export default function App() {
     }
   }, [schedules, bookingRequests]);
 
+  const handleUnlockAccount = useCallback(async (userId: string) => {
+    try {
+      const unlockedUser = await userService.unlockAccount(userId);
+      
+      // Update the user in the users list
+      setUsers(prev =>
+        prev.map(user => 
+          user.id === userId ? unlockedUser : user
+        )
+      );
+      
+      toast.success('Account unlocked successfully!', {
+        description: `${unlockedUser.name}'s account has been unlocked and can now login.`,
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error('Unlock account error:', err);
+      toast.error('Failed to unlock account', {
+        description: 'Please try again or contact support.',
+        duration: 5000,
+      });
+    }
+  }, []);
+
   // Create dashboard props objects to prevent prop drilling and improve performance
   const adminDashboardProps = useMemo(() => ({
     user: currentUser!,
@@ -827,14 +861,16 @@ export default function App() {
     signupRequests,
     signupHistory,
     schedules,
+    users,
     onLogout: handleLogout,
     onClassroomUpdate: handleClassroomUpdate,
     onRequestApproval: handleRequestApproval,
     onSignupApproval: handleSignupApproval,
     onCancelSchedule: handleCancelSchedule,
     onCancelApprovedBooking: handleCancelApprovedBooking,
+    onUnlockAccount: handleUnlockAccount,
     checkConflicts
-  }), [currentUser, classrooms, bookingRequests, signupRequests, signupHistory, schedules, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, checkConflicts]);
+  }), [currentUser, classrooms, bookingRequests, signupRequests, signupHistory, schedules, users, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, handleUnlockAccount, checkConflicts]);
 
   const facultyDashboardProps = useMemo(() => ({
     user: currentUser!,

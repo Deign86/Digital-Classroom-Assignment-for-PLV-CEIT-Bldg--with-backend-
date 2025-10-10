@@ -98,6 +98,9 @@ type FirestoreUserRecord = {
   lastSignInAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  failedLoginAttempts?: number;
+  accountLocked?: boolean;
+  lockedUntil?: string;
 };
 
 type FirestoreClassroomRecord = {
@@ -417,6 +420,9 @@ const toUser = (id: string, data: FirestoreUserRecord): User => ({
   role: data.role,
   department: data.department,
   status: data.status,
+  failedLoginAttempts: data.failedLoginAttempts || 0,
+  accountLocked: data.accountLocked || false,
+  lockedUntil: data.lockedUntil,
 });
 
 const ensureUserData = (snapshot: DocumentSnapshot<DocumentData>): FirestoreUserRecord => {
@@ -848,8 +854,43 @@ export const authService = {
   async signIn(email: string, password: string): Promise<User | null> {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
+    const database = getDb();
+    const MAX_FAILED_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
     try {
+      // First, check if the user exists and if they're locked out
+      const usersRef = collection(database, COLLECTIONS.USERS);
+      const emailLower = email.toLowerCase().trim();
+      const q = query(usersRef, where('emailLower', '==', emailLower));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data() as FirestoreUserRecord;
+        
+        // Check if account is locked
+        if (userData.accountLocked && userData.lockedUntil) {
+          const lockedUntilDate = new Date(userData.lockedUntil);
+          const now = new Date();
+          
+          if (now < lockedUntilDate) {
+            // Account is still locked
+            const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
+            throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
+          } else {
+            // Lockout period has expired, unlock the account
+            await updateDoc(doc(database, COLLECTIONS.USERS, userDoc.id), {
+              accountLocked: false,
+              lockedUntil: null,
+              failedLoginAttempts: 0,
+              updatedAt: nowIso(),
+            });
+          }
+        }
+      }
+
+      // Attempt to sign in with Firebase Authentication
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = credential.user;
       
@@ -876,6 +917,16 @@ export const authService = {
         );
       }
 
+      // Success! Reset failed login attempts
+      const userDocRef = doc(database, COLLECTIONS.USERS, firebaseUser.uid);
+      await updateDoc(userDocRef, {
+        failedLoginAttempts: 0,
+        accountLocked: false,
+        lockedUntil: null,
+        lastSignInAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+
       currentUserCache = user;
       notifyAuthListeners(user);
       return user;
@@ -884,6 +935,7 @@ export const authService = {
         throw error;
       }
 
+      // Handle failed login attempts
       if (error && typeof error === 'object' && 'code' in error) {
         const code = (error as { code?: string }).code;
         if (
@@ -891,6 +943,52 @@ export const authService = {
           code === 'auth/user-not-found' ||
           code === 'auth/wrong-password'
         ) {
+          // Increment failed login attempts
+          try {
+            const usersRef = collection(database, COLLECTIONS.USERS);
+            const emailLower = email.toLowerCase().trim();
+            const q = query(usersRef, where('emailLower', '==', emailLower));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+              const userDoc = querySnapshot.docs[0];
+              const userData = userDoc.data() as FirestoreUserRecord;
+              const currentAttempts = (userData.failedLoginAttempts || 0) + 1;
+
+              if (currentAttempts >= MAX_FAILED_ATTEMPTS) {
+                // Lock the account
+                const lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString();
+                await updateDoc(doc(database, COLLECTIONS.USERS, userDoc.id), {
+                  failedLoginAttempts: currentAttempts,
+                  accountLocked: true,
+                  lockedUntil: lockedUntil,
+                  updatedAt: nowIso(),
+                });
+                
+                throw new Error(`Account locked due to too many failed login attempts. Please try again in 30 minutes.`);
+              } else {
+                // Just increment the counter
+                await updateDoc(doc(database, COLLECTIONS.USERS, userDoc.id), {
+                  failedLoginAttempts: currentAttempts,
+                  updatedAt: nowIso(),
+                });
+                
+                const attemptsRemaining = MAX_FAILED_ATTEMPTS - currentAttempts;
+                console.warn(`Failed login attempt ${currentAttempts}/${MAX_FAILED_ATTEMPTS} for ${email}`);
+                
+                if (attemptsRemaining <= 2) {
+                  throw new Error(`Invalid credentials. You have ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining before your account is locked.`);
+                }
+              }
+            }
+          } catch (updateError) {
+            // If it's our custom error, re-throw it
+            if (updateError instanceof Error && updateError.message.includes('Account locked')) {
+              throw updateError;
+            }
+            console.error('Failed to update login attempts:', updateError);
+          }
+          
           return null;
         }
       }
@@ -1212,6 +1310,26 @@ export const userService = {
     overrides: Partial<User> = {}
   ): Promise<User> {
     return userService.update(id, { ...overrides, status });
+  },
+
+  async unlockAccount(id: string): Promise<User> {
+    const database = getDb();
+    const userRef = doc(database, COLLECTIONS.USERS, id);
+
+    await updateDoc(userRef, {
+      failedLoginAttempts: 0,
+      accountLocked: false,
+      lockedUntil: null,
+      updatedAt: nowIso(),
+    });
+
+    const snapshot = await getDoc(userRef);
+    if (!snapshot.exists()) {
+      throw new Error('User not found');
+    }
+
+    const record = ensureUserData(snapshot);
+    return toUser(snapshot.id, record);
   },
 
   async delete(id: string): Promise<void> {

@@ -35,12 +35,14 @@ interface AdminDashboardProps {
   signupRequests: SignupRequest[];
   signupHistory: SignupHistory[];
   schedules: Schedule[];
+  users?: User[];
   onLogout: () => void;
   onClassroomUpdate: (classrooms: Classroom[]) => void;
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
   onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
   onCancelSchedule: (scheduleId: string) => void;
   onCancelApprovedBooking?: (requestId: string) => void;
+  onUnlockAccount?: (userId: string) => Promise<void>;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
 
@@ -51,12 +53,14 @@ export default function AdminDashboard({
   signupRequests,
   signupHistory,
   schedules,
+  users = [],
   onLogout,
   onClassroomUpdate,
   onRequestApproval,
   onSignupApproval,
   onCancelSchedule,
   onCancelApprovedBooking,
+  onUnlockAccount,
   checkConflicts
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -373,6 +377,72 @@ export default function AdminDashboard({
                 </CardContent>
               </Card>
             </div>
+
+            {/* Locked Accounts Warning */}
+            {users && users.filter(u => u.accountLocked).length > 0 && (
+              <div className="animate-in" style={{ animationDelay: '0.4s' }}>
+                <Card className="border-red-200 bg-red-50 transition-shadow duration-200 hover:shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-red-800">
+                      <AlertTriangle className="h-5 w-5 mr-2" />
+                      Locked Accounts
+                    </CardTitle>
+                    <CardDescription className="text-red-700">
+                      These accounts are locked due to failed login attempts
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {users.filter(u => u.accountLocked).map((lockedUser, index) => {
+                        const lockedUntil = lockedUser.lockedUntil ? new Date(lockedUser.lockedUntil) : null;
+                        const now = new Date();
+                        const isStillLocked = lockedUntil && lockedUntil > now;
+                        const minutesRemaining = lockedUntil ? Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000) : 0;
+                        
+                        return (
+                          <div 
+                            key={lockedUser.id} 
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-red-200 rounded-lg animate-in"
+                            style={{ animationDelay: `${0.1 * index}s` }}
+                          >
+                            <div className="flex-1 min-w-0 mb-3 sm:mb-0">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <p className="font-medium text-gray-900">{lockedUser.name}</p>
+                                <Badge variant="destructive" className="flex-shrink-0">
+                                  Locked
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{lockedUser.email}</p>
+                              <p className="text-sm text-gray-600">{lockedUser.department || 'N/A'}</p>
+                              {isStillLocked ? (
+                                <p className="text-xs text-red-600 mt-1">
+                                  Auto-unlock in {minutesRemaining} minute{minutesRemaining !== 1 ? 's' : ''}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-orange-600 mt-1">
+                                  Lockout period expired - will unlock on next login attempt
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-1">
+                                Failed attempts: {lockedUser.failedLoginAttempts || 0}
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              onClick={() => onUnlockAccount && onUnlockAccount(lockedUser.id)}
+                              className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Unlock Account
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="classrooms">
