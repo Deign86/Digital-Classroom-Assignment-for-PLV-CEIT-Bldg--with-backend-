@@ -170,7 +170,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
         </CardHeader>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
         {/* Desktop Tab Layout */}
         <TabsList className="hidden sm:flex w-full max-w-3xl mx-auto h-12">
           <TabsTrigger value="upcoming" className="flex-1 px-4 py-2">

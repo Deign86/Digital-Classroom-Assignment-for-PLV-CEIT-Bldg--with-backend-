@@ -740,6 +740,17 @@ export const authService = {
     name: string,
     department: string
   ): Promise<{ request: SignupRequest }> {
+    // If a user's signup was rejected, their Auth account was likely deleted.
+    // In this case, reactivation is the same as a new registration.
+    // We can check if the user exists by trying to fetch them by email.
+    // If they don't exist, we just call the normal registration flow.
+    const existingUser = await userService.getByEmail(email);
+    if (!existingUser) {
+      console.log(`Reactivation attempt for non-existent user ${email}. Treating as new registration.`);
+      // The user was fully deleted, so this is a new registration.
+      return this.registerFaculty(email, password, name, department);
+    }
+
     // Try to sign in first to get the existing Firebase Auth user
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
@@ -955,10 +966,10 @@ export const authService = {
             const data = result.data as { 
               locked?: boolean; 
               attemptsRemaining?: number; 
-              message?: string;
+              message?: string; // This message is now user-facing
               lockedUntil?: string;
             };
-
+  
             console.log('✅ trackFailedLogin response:', data);
 
             if (data.locked) {
@@ -973,7 +984,7 @@ export const authService = {
             // If tracking fails or throws our custom error, handle it
             if (trackError instanceof Error && 
                 (trackError.message.includes('Account locked') || 
-                 trackError.message.includes('attempt'))) {
+                 trackError.message.includes('attempts remaining'))) {
               throw trackError;
             }
             console.warn('⚠️ Failed to track login attempt:', trackError);
@@ -982,7 +993,12 @@ export const authService = {
         }
       }
       
-      throw error;
+      // Throw a more generic error if we haven't thrown a specific one yet
+      if (error instanceof Error && (error.message.includes('Account locked') || error.message.includes('attempts remaining'))) {
+        throw error;
+      }
+
+      throw new Error('Invalid credentials. Please check your email and password.');
     }
   },
 

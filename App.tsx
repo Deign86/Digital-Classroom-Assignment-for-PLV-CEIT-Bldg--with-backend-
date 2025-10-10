@@ -209,6 +209,44 @@ export default function App() {
   }, []);
 
   const handleLogin = useCallback(async (email: string, password: string) => {
+    // Show immediate feedback
+    const loginPromise = authService.signIn(email, password);
+
+    toast.promise(loginPromise, {
+      loading: 'Signing in...',
+      success: (user) => {
+        if (!user) {
+          // This case should ideally be handled by the error part, but as a fallback:
+          return 'Login failed. Please check your credentials.';
+        }
+        // Set user and setup listeners after success
+        setCurrentUser(user);
+        setupRealtimeListeners(user);
+
+        const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
+        return `${greeting}, ${user.name}!`;
+      },
+      error: (err) => {
+        // The authService.signIn method is designed to throw specific, user-friendly errors.
+        // We can display them directly.
+        if (err instanceof Error) {
+          return err.message;
+        }
+        return 'An unknown login error occurred.';
+      },
+      duration: 4000,
+    });
+
+    try {
+      const user = await loginPromise;
+      return !!user;
+    } catch (err) {
+      // Error is already handled by the toast.promise, but we need to return false for the form.
+      return false;
+    }
+  }, [setupRealtimeListeners]);
+
+  const oldHandleLogin = useCallback(async (email: string, password: string) => {
     try {
       const user = await authService.signIn(email, password);
       if (user) {
@@ -299,7 +337,7 @@ export default function App() {
       toast.error('Login failed', { description: message, duration: 6000 });
       return false;
     }
-  }, [setupRealtimeListeners]);
+  }, [setupRealtimeListeners]); // Note: I'm keeping the old function here for reference, but the new one is active.
 
   const handleSignup = useCallback(
     async (email: string, name: string, department: string, password: string) => {
@@ -324,46 +362,17 @@ export default function App() {
           const result = await authService.registerFaculty(email, password, name, department);
           request = result.request;
         } catch (registerError: any) {
-          // Handle the case where email already exists but user was previously rejected
+          // If registration fails because the email is already in use,
+          // it means an Auth account exists. We should not allow a new signup.
+          // This covers both active users and users whose accounts might be in a limbo state
+          // after a rejected signup. We will treat them all as "account exists".
           if (registerError?.code === 'auth/email-already-in-use') {
-            console.log('Auth account exists, checking if user was previously rejected...');
-            
-            // Check if there's an existing user record
-            try {
-              const existingUser = await userService.getByEmail(email);
-              if (existingUser) {
-                toast.error('Account already exists', {
-                  description: 'Please sign in or reset your password if you forgot it.',
-                });
-                return false;
-              }
-            } catch (userCheckError) {
-              console.log('No existing user record found, attempting reactivation...');
-            }
-            
-            // No user record exists, try to reactivate the account
-            try {
-              const result = await authService.handleRejectedUserReactivation(email, password, name, department);
-              request = result.request;
-              
-              toast.success('Account reactivated!', {
-                description: 'Your signup request has been resubmitted for administrator review.',
-                duration: 6000,
-              });
-            } catch (reactivationError: any) {
-              console.error('Reactivation failed:', reactivationError);
-              if (reactivationError?.code === 'auth/invalid-login-credentials') {
-                toast.error('Cannot reuse this email', {
-                  description: 'This email was previously used. Please use a different email or contact support.',
-                  duration: 8000,
-                });
-              } else {
-                toast.error('Reactivation failed', {
-                  description: 'Unable to reactivate account. Please contact support.',
-                });
-              }
-              return false;
-            }
+            console.log('Signup failed: email already in use. Directing user to sign in.');
+            toast.error('Account already exists', {
+              description: 'This email is already associated with an account. Please sign in or use the password reset link if you forgot your password.',
+              duration: 8000,
+            });
+            return false;
           } else {
             throw registerError; // Re-throw other registration errors
           }
@@ -388,12 +397,14 @@ export default function App() {
           // Continue anyway - the signup was successful
         }
 
-        // Show default success message for new registrations
-        toast.success('Signup request submitted!', {
-          description:
-            'Your account has been created with pending status. An administrator will approve your access shortly.',
-          duration: 6000,
-        });
+        // Only show success toast if a request was actually created.
+        if (request) {
+          toast.success('Signup request submitted!', {
+            description:
+              'Your account has been created with pending status. An administrator will approve your access shortly.',
+            duration: 6000,
+          });
+        }
         return true;
       } catch (err) {
         console.error('Signup error:', err);
