@@ -51,6 +51,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   });
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [pendingConflicts, setPendingConflicts] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const availableClassrooms = classrooms.filter(c => c.isAvailable);
 
@@ -156,73 +157,84 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     }
   }, [formData, schedules, bookingRequests]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent multiple submissions
 
-    // Validation
-    if (!formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()) {
-      toast.error('Please fill in all required fields');
-      return;
+    setIsSubmitting(true);
+    try {
+      // Validation
+      if (!formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      if (!isValidTimeRange(formData.startTime, formData.endTime)) {
+        toast.error('End time must be after start time (same day booking only)');
+        return;
+      }
+
+      if (!isValidSchoolTime(formData.startTime) || !isValidSchoolTime(formData.endTime)) {
+        toast.error('Times must be within school hours (7:00 AM - 8:00 PM)');
+        return;
+      }
+
+      if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
+        toast.error('Booking duration must be between 30 minutes and 8 hours');
+        return;
+      }
+
+      if (isPastBookingTime(formData.date, formData.startTime)) {
+        toast.error('Cannot book time slots that have already passed');
+        return;
+      }
+
+      // Re-check for conflicts right before submission
+      const hasConflict = await checkConflicts(
+        formData.classroomId,
+        formData.date,
+        convertTo24Hour(formData.startTime),
+        convertTo24Hour(formData.endTime),
+        true // Also check against past times as a final safeguard
+      );
+
+      if (hasConflict) {
+        toast.error('A conflict was detected. The requested time slot is no longer available.');
+        // Optionally, you might want to refresh schedules/bookings here
+        return;
+      }
+
+      const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
+      if (!selectedClassroom) {
+        toast.error('Selected classroom not found');
+        return;
+      }
+
+      const request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'> = {
+        facultyId: user.id,
+        facultyName: user.name,
+        classroomId: formData.classroomId,
+        classroomName: selectedClassroom.name,
+        date: formData.date,
+        startTime: convertTo24Hour(formData.startTime),
+        endTime: convertTo24Hour(formData.endTime),
+        purpose: formData.purpose
+      };
+
+      await onBookingRequest(request);
+
+      // Reset form
+      setFormData({
+        classroomId: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        purpose: ''
+      });
+
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (!isValidTimeRange(formData.startTime, formData.endTime)) {
-      toast.error('End time must be after start time (same day booking only)');
-      return;
-    }
-
-    if (!isValidSchoolTime(formData.startTime) || !isValidSchoolTime(formData.endTime)) {
-      toast.error('Times must be within school hours (7:00 AM - 8:00 PM)');
-      return;
-    }
-
-    if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
-      toast.error('Booking duration must be between 30 minutes and 8 hours');
-      return;
-    }
-
-    // Check if booking time is in the past
-    if (isPastBookingTime(formData.date, formData.startTime)) {
-      toast.error('Cannot book time slots that have already passed');
-      return;
-    }
-
-    if (conflicts.length > 0) {
-      toast.error('Cannot submit request due to confirmed booking conflicts');
-      return;
-    }
-
-    if (pendingConflicts.length > 0) {
-      toast.error('Cannot submit request due to pending booking conflicts');
-      return;
-    }
-
-    const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
-    if (!selectedClassroom) {
-      toast.error('Selected classroom not found');
-      return;
-    }
-
-    const request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'> = {
-      facultyId: user.id,
-      facultyName: user.name,
-      classroomId: formData.classroomId,
-      classroomName: selectedClassroom.name,
-      date: formData.date,
-      startTime: convertTo24Hour(formData.startTime),
-      endTime: convertTo24Hour(formData.endTime),
-      purpose: formData.purpose
-    };
-
-    onBookingRequest(request);
-
-    // Reset form
-    setFormData({
-      classroomId: '',
-      date: '',
-      startTime: '',
-      endTime: '',
-      purpose: ''
-    });
   };
 
   const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
@@ -770,11 +782,25 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 >
                   <Button 
                     type="submit" 
-                    disabled={conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()}
+                    disabled={isSubmitting || conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()}
                     className="w-full sm:w-auto transition-all duration-200 disabled:opacity-50"
                   >
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    Submit Booking Request
+                    {isSubmitting ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                        </motion.div>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        Submit Booking Request
+                      </>
+                    )}
                   </Button>
                 </motion.div>
               </div>
