@@ -859,38 +859,7 @@ export const authService = {
     const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
     try {
-      // First, check if the user exists and if they're locked out
-      const usersRef = collection(database, COLLECTIONS.USERS);
-      const emailLower = email.toLowerCase().trim();
-      const q = query(usersRef, where('emailLower', '==', emailLower));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data() as FirestoreUserRecord;
-        
-        // Check if account is locked
-        if (userData.accountLocked && userData.lockedUntil) {
-          const lockedUntilDate = new Date(userData.lockedUntil);
-          const now = new Date();
-          
-          if (now < lockedUntilDate) {
-            // Account is still locked
-            const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
-            throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
-          } else {
-            // Lockout period has expired, unlock the account
-            await updateDoc(doc(database, COLLECTIONS.USERS, userDoc.id), {
-              accountLocked: false,
-              lockedUntil: null,
-              failedLoginAttempts: 0,
-              updatedAt: nowIso(),
-            });
-          }
-        }
-      }
-
-      // Attempt to sign in with Firebase Authentication
+      // Attempt to sign in with Firebase Authentication first
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = credential.user;
       
@@ -903,6 +872,24 @@ export const authService = {
       
       const record = await ensureUserRecordFromAuth(firebaseUser);
       const user = toUser(firebaseUser.uid, record);
+
+      // Check if account is locked (after authentication but before allowing login)
+      if (user.accountLocked && user.lockedUntil) {
+        const lockedUntilDate = new Date(user.lockedUntil);
+        const now = new Date();
+        
+        if (now < lockedUntilDate) {
+          // Account is still locked - sign them out
+          await firebaseSignOut(auth);
+          currentUserCache = null;
+          notifyAuthListeners(null);
+          
+          const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
+          throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
+        } else {
+          // Lockout period has expired, will be unlocked below in success handler
+        }
+      }
 
       if (user.status !== 'approved') {
         await firebaseSignOut(auth);
@@ -935,64 +922,10 @@ export const authService = {
         throw error;
       }
 
-      // Handle failed login attempts
-      if (error && typeof error === 'object' && 'code' in error) {
-        const code = (error as { code?: string }).code;
-        if (
-          code === 'auth/invalid-credential' ||
-          code === 'auth/user-not-found' ||
-          code === 'auth/wrong-password'
-        ) {
-          // Increment failed login attempts
-          try {
-            const usersRef = collection(database, COLLECTIONS.USERS);
-            const emailLower = email.toLowerCase().trim();
-            const q = query(usersRef, where('emailLower', '==', emailLower));
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-              const userDoc = querySnapshot.docs[0];
-              const userData = userDoc.data() as FirestoreUserRecord;
-              const currentAttempts = (userData.failedLoginAttempts || 0) + 1;
-
-              if (currentAttempts >= MAX_FAILED_ATTEMPTS) {
-                // Lock the account
-                const lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString();
-                await updateDoc(doc(database, COLLECTIONS.USERS, userDoc.id), {
-                  failedLoginAttempts: currentAttempts,
-                  accountLocked: true,
-                  lockedUntil: lockedUntil,
-                  updatedAt: nowIso(),
-                });
-                
-                throw new Error(`Account locked due to too many failed login attempts. Please try again in 30 minutes.`);
-              } else {
-                // Just increment the counter
-                await updateDoc(doc(database, COLLECTIONS.USERS, userDoc.id), {
-                  failedLoginAttempts: currentAttempts,
-                  updatedAt: nowIso(),
-                });
-                
-                const attemptsRemaining = MAX_FAILED_ATTEMPTS - currentAttempts;
-                console.warn(`Failed login attempt ${currentAttempts}/${MAX_FAILED_ATTEMPTS} for ${email}`);
-                
-                if (attemptsRemaining <= 2) {
-                  throw new Error(`Invalid credentials. You have ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining before your account is locked.`);
-                }
-              }
-            }
-          } catch (updateError) {
-            // If it's our custom error, re-throw it
-            if (updateError instanceof Error && updateError.message.includes('Account locked')) {
-              throw updateError;
-            }
-            console.error('Failed to update login attempts:', updateError);
-          }
-          
-          return null;
-        }
-      }
-
+      // Note: We cannot track failed login attempts in Firestore without authentication
+      // Firebase Auth provides its own rate limiting via 'auth/too-many-requests' error
+      // Admins can manually lock accounts via the admin dashboard if needed
+      
       throw error;
     }
   },
