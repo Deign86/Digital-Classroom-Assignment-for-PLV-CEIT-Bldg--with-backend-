@@ -269,7 +269,7 @@ export default function App() {
             message = 'Incorrect password. Please try again.';
             break;
           case 'auth/too-many-requests':
-            message = 'Too many failed login attempts. Please try again later.';
+            message = 'Too many login attempts from this device. Access temporarily restricted by Firebase security. Please wait 15-30 minutes or try password reset.';
             break;
           case 'auth/user-disabled':
             message = 'This account has been disabled.';
