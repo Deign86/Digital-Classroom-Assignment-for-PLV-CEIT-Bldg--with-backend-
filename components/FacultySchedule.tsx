@@ -11,10 +11,11 @@ import type { Schedule, BookingRequest } from '../App';
 interface FacultyScheduleProps {
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
+  initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history';
 }
 
-export default function FacultySchedule({ schedules, bookingRequests }: FacultyScheduleProps) {
-  const [activeTab, setActiveTab] = useState('upcoming');
+export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming' }: FacultyScheduleProps) {
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // Filter schedules
   const today = new Date();

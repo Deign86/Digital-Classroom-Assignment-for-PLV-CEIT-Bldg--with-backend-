@@ -49,6 +49,7 @@ export default function FacultyDashboard({
   checkConflicts
 }: FacultyDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history'>('upcoming');
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -238,8 +239,11 @@ export default function FacultyDashboard({
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 
                   className="h-full stat-card-clickable cursor-pointer" 
-                  onClick={() => setActiveTab('booking')}
-                  title="Click to book a new room"
+                  onClick={() => {
+                    setScheduleInitialTab('requests');
+                    setActiveTab('schedule');
+                  }}
+                  title="Click to view your requests"
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -401,6 +405,7 @@ export default function FacultyDashboard({
               <FacultySchedule
                 schedules={schedules}
                 bookingRequests={bookingRequests}
+                initialTab={scheduleInitialTab}
               />
             </div>
           </TabsContent>
