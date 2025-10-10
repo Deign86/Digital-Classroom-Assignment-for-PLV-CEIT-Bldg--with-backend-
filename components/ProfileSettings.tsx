@@ -141,26 +141,6 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     }
   };
 
-  const handleRequestPasswordReset = async () => {
-    try {
-      const result = await authService.resetPassword(user.email);
-
-      if (!result.success) {
-        toast.error('Failed to send reset email', {
-          description: result.message
-        });
-      } else {
-        toast.success('Password reset email sent!', {
-          description: `Check your inbox at ${user.email}`,
-          duration: 6000
-        });
-      }
-    } catch (err) {
-      console.error('Password reset request error:', err);
-      toast.error('An error occurred');
-    }
-  };
-
   const getPasswordStrength = (password: string): { strength: string; color: string } => {
     if (password.length === 0) return { strength: '', color: '' };
     
@@ -355,16 +335,6 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 className="flex-1"
               >
                 {isChangingPassword ? 'Updating...' : 'Update Password'}
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRequestPasswordReset}
-                disabled={isChangingPassword}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Email Reset Link
               </Button>
             </div>
           </form>
