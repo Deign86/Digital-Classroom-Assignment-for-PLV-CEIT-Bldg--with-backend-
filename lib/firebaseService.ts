@@ -855,8 +855,7 @@ export const authService = {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
     const database = getDb();
-    const MAX_FAILED_ATTEMPTS = 5;
-    const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+    const functions = getFunctions(getFirebaseApp());
 
     try {
       // Attempt to sign in with Firebase Authentication first
@@ -904,15 +903,27 @@ export const authService = {
         );
       }
 
-      // Success! Reset failed login attempts
-      const userDocRef = doc(database, COLLECTIONS.USERS, firebaseUser.uid);
-      await updateDoc(userDocRef, {
-        failedLoginAttempts: 0,
-        accountLocked: false,
-        lockedUntil: null,
-        lastSignInAt: nowIso(),
-        updatedAt: nowIso(),
-      });
+      // Success! Call Cloud Function to reset failed login attempts
+      try {
+        const resetFailedLogins = httpsCallable(functions, 'resetFailedLogins');
+        await resetFailedLogins();
+        console.log('✅ Failed login attempts reset');
+      } catch (cloudFunctionError) {
+        console.warn('⚠️ Failed to call resetFailedLogins cloud function:', cloudFunctionError);
+        // Don't fail login if cloud function fails - try to update directly as fallback
+        try {
+          const userDocRef = doc(database, COLLECTIONS.USERS, firebaseUser.uid);
+          await updateDoc(userDocRef, {
+            failedLoginAttempts: 0,
+            accountLocked: false,
+            lockedUntil: null,
+            lastSignInAt: nowIso(),
+            updatedAt: nowIso(),
+          });
+        } catch (fallbackError) {
+          console.error('Failed to reset login attempts (fallback):', fallbackError);
+        }
+      }
 
       currentUserCache = user;
       notifyAuthListeners(user);
@@ -922,9 +933,43 @@ export const authService = {
         throw error;
       }
 
-      // Note: We cannot track failed login attempts in Firestore without authentication
-      // Firebase Auth provides its own rate limiting via 'auth/too-many-requests' error
-      // Admins can manually lock accounts via the admin dashboard if needed
+      // Handle failed login attempts - call Cloud Function to track
+      if (error && typeof error === 'object' && 'code' in error) {
+        const code = (error as { code?: string }).code;
+        if (
+          code === 'auth/invalid-credential' ||
+          code === 'auth/user-not-found' ||
+          code === 'auth/wrong-password'
+        ) {
+          // Call Cloud Function to track failed attempt
+          try {
+            const trackFailedLogin = httpsCallable(functions, 'trackFailedLogin');
+            const result = await trackFailedLogin({ email });
+            const data = result.data as { 
+              locked?: boolean; 
+              attemptsRemaining?: number; 
+              message?: string;
+              lockedUntil?: string;
+            };
+
+            if (data.locked) {
+              throw new Error(data.message || 'Account locked due to too many failed login attempts. Please try again in 30 minutes.');
+            } else if (data.message) {
+              // Show warning about remaining attempts
+              throw new Error(data.message);
+            }
+          } catch (trackError) {
+            // If tracking fails or throws our custom error, handle it
+            if (trackError instanceof Error && 
+                (trackError.message.includes('Account locked') || 
+                 trackError.message.includes('attempt'))) {
+              throw trackError;
+            }
+            console.warn('⚠️ Failed to track login attempt:', trackError);
+            // Continue with normal error handling
+          }
+        }
+      }
       
       throw error;
     }
