@@ -934,14 +934,21 @@ export const authService = {
       }
 
       // Handle failed login attempts - call Cloud Function to track
+      // Log the error to see what we're getting
+      console.log('🔍 Login error details:', {
+        error,
+        code: error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : 'no-code',
+        message: error instanceof Error ? error.message : 'unknown'
+      });
+
+      // Always try to track failed login for any authentication error
       if (error && typeof error === 'object' && 'code' in error) {
         const code = (error as { code?: string }).code;
-        if (
-          code === 'auth/invalid-credential' ||
-          code === 'auth/user-not-found' ||
-          code === 'auth/wrong-password'
-        ) {
-          // Call Cloud Function to track failed attempt
+        
+        // Track any auth-related error
+        if (code?.startsWith('auth/')) {
+          console.log('🔒 Calling trackFailedLogin for:', email);
+          
           try {
             const trackFailedLogin = httpsCallable(functions, 'trackFailedLogin');
             const result = await trackFailedLogin({ email });
@@ -952,6 +959,8 @@ export const authService = {
               lockedUntil?: string;
             };
 
+            console.log('✅ trackFailedLogin response:', data);
+
             if (data.locked) {
               throw new Error(data.message || 'Account locked due to too many failed login attempts. Please try again in 30 minutes.');
             } else if (data.message) {
@@ -959,6 +968,8 @@ export const authService = {
               throw new Error(data.message);
             }
           } catch (trackError) {
+            console.error('❌ trackFailedLogin error:', trackError);
+            
             // If tracking fails or throws our custom error, handle it
             if (trackError instanceof Error && 
                 (trackError.message.includes('Account locked') || 
