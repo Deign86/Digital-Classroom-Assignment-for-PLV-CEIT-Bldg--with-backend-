@@ -36,30 +36,60 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [errors, setErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
-  const validatePassword = (): string | null => {
-    if (passwordData.newPassword.length < 8) {
-      return 'Password must be at least 8 characters long';
+  const validatePassword = (): boolean => {
+    const newErrors = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    };
+
+    let isValid = true;
+
+    // Validate current password
+    if (!passwordData.currentPassword) {
+      newErrors.currentPassword = 'Current password is required';
+      isValid = false;
     }
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      return 'Passwords do not match';
+    // Validate new password
+    if (!passwordData.newPassword) {
+      newErrors.newPassword = 'New password is required';
+      isValid = false;
+    } else if (passwordData.newPassword.length < 8) {
+      newErrors.newPassword = 'Password must be at least 8 characters long';
+      isValid = false;
+    } else {
+      const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
+      const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
+      const hasNumber = /[0-9]/.test(passwordData.newPassword);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword);
+
+      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        newErrors.newPassword = 'Password must contain uppercase, lowercase, number, and special character';
+        isValid = false;
+      } else if (passwordData.newPassword === passwordData.currentPassword) {
+        newErrors.newPassword = 'New password cannot be the same as the current password';
+        isValid = false;
+      }
     }
 
-    if (passwordData.newPassword === passwordData.currentPassword) {
-      return 'New password cannot be the same as the current password.';
+    // Validate confirm password
+    if (!passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
     }
 
-    const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
-    const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
-    const hasNumber = /[0-9]/.test(passwordData.newPassword);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword);
-
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return 'Password must contain uppercase, lowercase, number, and special character';
-    }
-
-    return null;
+    setErrors(newErrors);
+    return isValid;
   };
 
   // Sanitize a password string coming from paste: trim, remove newlines/tabs and zero-width chars
@@ -76,6 +106,14 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+
     // Automatically sanitize pasted/typed passwords before validation
     const sanitizedNew = sanitizePassword(passwordData.newPassword);
     const sanitizedConfirm = sanitizePassword(passwordData.confirmPassword);
@@ -83,14 +121,16 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     // Update form values to reflect sanitized strings (so the UI shows the cleaned value)
     setPasswordData((prev) => ({ ...prev, newPassword: sanitizedNew, confirmPassword: sanitizedConfirm }));
 
-    const validationError = validatePassword();
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
+    // Validate with a slight delay to ensure state is updated
+    setTimeout(() => {
+      const isValid = validatePassword();
+      if (!isValid) {
+        return;
+      }
 
-    // Only show the confirmation dialog if validation passes
-    setShowConfirmDialog(true);
+      // Only show the confirmation dialog if validation passes
+      setShowConfirmDialog(true);
+    }, 0);
   };
 
   const handleConfirmPasswordChange = async () => {
@@ -256,8 +296,13 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type={showCurrentPassword ? 'text' : 'password'}
                     placeholder="Enter your current password"
                     value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                    className="pl-10 pr-10"
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }));
+                      if (errors.currentPassword) {
+                        setErrors(prev => ({ ...prev, currentPassword: '' }));
+                      }
+                    }}
+                    className={`pl-10 pr-10 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -268,6 +313,12 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {errors.currentPassword && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.currentPassword}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -279,8 +330,13 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter new password"
                     value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                    className="pl-10 pr-10"
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, newPassword: e.target.value }));
+                      if (errors.newPassword) {
+                        setErrors(prev => ({ ...prev, newPassword: '' }));
+                      }
+                    }}
+                    className={`pl-10 pr-10 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -291,7 +347,12 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {passwordData.newPassword && (
+                {errors.newPassword ? (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.newPassword}
+                  </p>
+                ) : passwordData.newPassword && (
                   <p className={`text-sm font-medium ${passwordStrength.color}`}>
                     Strength: {passwordStrength.strength}
                   </p>
@@ -307,8 +368,13 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirm new password"
                     value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="pl-10 pr-10"
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                      if (errors.confirmPassword) {
+                        setErrors(prev => ({ ...prev, confirmPassword: '' }));
+                      }
+                    }}
+                    className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -319,7 +385,12 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                {passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword && (
+                {errors.confirmPassword ? (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.confirmPassword}
+                  </p>
+                ) : passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword && (
                   <p className="text-sm font-medium text-green-600 flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />
                     Passwords match
