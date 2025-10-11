@@ -16,6 +16,7 @@ import {
   type Firestore,
   type Unsubscribe,
   type QuerySnapshot,
+  type DocumentReference,
 } from 'firebase/firestore';
 import {
   getAuth,
@@ -36,6 +37,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory, User } from '../App';
 import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
+import { isPastBookingTime } from '../utils/timeUtils';
 
 const db = () => getFirebaseDb();
 
@@ -544,6 +546,10 @@ const toSignupHistory = (
 let authStateInitialized = false;
 let authStateReadyPromise: Promise<void> | null = null;
 let authStateReadyResolve: (() => void) | null = null;
+// When true, the onAuthStateChanged handler will ignore state changes.
+// This is used to prevent race conditions when the app programmatically
+// creates or signs in a user (e.g., during registration/reactivation).
+let suppressAuthStateHandling = false;
 
 const ensureUserRecordFromAuth = async (
   firebaseUser: FirebaseAuthUser,
@@ -658,6 +664,15 @@ const ensureAuthStateListener = () => {
   const auth = getFirebaseAuth();
 
   onAuthStateChanged(auth, async (firebaseUser) => {
+    if (suppressAuthStateHandling) {
+      console.log('Auth state change suppressed temporarily (registration/reactivation flow)');
+      // Ensure any waiter for initial auth state doesn't hang.
+      if (authStateReadyResolve) {
+        authStateReadyResolve();
+        authStateReadyResolve = null;
+      }
+      return;
+    }
     if (!firebaseUser) {
       currentUserCache = null;
       notifyAuthListeners(null);
@@ -754,7 +769,8 @@ export const authService = {
     // Try to sign in first to get the existing Firebase Auth user
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
-    
+    // Suppress auth state handling while we programmatically sign in and recreate records
+    suppressAuthStateHandling = true;
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = credential.user;
@@ -794,6 +810,8 @@ export const authService = {
 
       return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
     } finally {
+      // Always clear suppression and sign out the programmatic session
+      suppressAuthStateHandling = false;
       await firebaseSignOut(auth).catch(() => undefined);
       currentUserCache = null;
       notifyAuthListeners(null);
@@ -809,6 +827,8 @@ export const authService = {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
 
+    // Suppress auth state handling to avoid racing the global listener
+    suppressAuthStateHandling = true;
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = credential.user;
 
@@ -856,6 +876,8 @@ export const authService = {
       }
       throw error;
     } finally {
+      // Clear suppression and sign out the programmatic session
+      suppressAuthStateHandling = false;
       await firebaseSignOut(auth).catch(() => undefined);
       currentUserCache = null;
       notifyAuthListeners(null);
@@ -1408,7 +1430,87 @@ export const classroomService = {
   async delete(id: string): Promise<void> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.CLASSROOMS, id);
+
+    // Before deleting the classroom, delete related booking requests and schedules
+    // but keep ones that already lapsed (i.e., their end time is in the past).
+    try {
+      // Helper to chunk write batches (max 500 ops per batch)
+  const chunkAndCommit = async (docsToDelete: DocumentReference[] | any[]) => {
+        // We'll build batches of up to 450 to be safe
+        const CHUNK_SIZE = 450;
+        for (let i = 0; i < docsToDelete.length; i += CHUNK_SIZE) {
+          const chunk = docsToDelete.slice(i, i + CHUNK_SIZE);
+    // Use the Firestore write batch helper exposed from the Firestore instance if available
+    const firestoreInstance: any = (getDb() as any);
+    const batch = firestoreInstance && firestoreInstance.batch ? firestoreInstance.batch() : null;
+          // Use low-level write batch if available
+          if (batch) {
+            chunk.forEach((d: any) => batch.delete(d));
+            await batch.commit();
+          } else {
+            // Fallback: delete sequentially
+            for (const d of chunk) {
+              await deleteDoc(d);
+            }
+          }
+        }
+      };
+
+      // Collect booking requests for this classroom
+      const bookingRef = collection(database, COLLECTIONS.BOOKING_REQUESTS);
+      const bookingQ = query(bookingRef, where('classroomId', '==', id));
+      const bookingSnap = await getDocs(bookingQ);
+
+      const bookingDeletes: ReturnType<typeof doc>[] = [];
+      for (const bs of bookingSnap.docs) {
+        const data = bs.data() as FirestoreBookingRequestRecord;
+        // Consider a booking lapsed if its endTime is in the past for the given date
+        const lapsed = isPastBookingTime(data.date, data.endTime);
+        if (!lapsed) {
+          bookingDeletes.push(doc(database, COLLECTIONS.BOOKING_REQUESTS, bs.id));
+        }
+      }
+
+      // Collect schedules for this classroom
+      const scheduleRef = collection(database, COLLECTIONS.SCHEDULES);
+      const scheduleQ = query(scheduleRef, where('classroomId', '==', id));
+      const scheduleSnap = await getDocs(scheduleQ);
+
+      const scheduleDeletes: ReturnType<typeof doc>[] = [];
+      for (const ss of scheduleSnap.docs) {
+        const data = ss.data() as FirestoreScheduleRecord;
+        const lapsed = isPastBookingTime(data.date, data.endTime);
+        if (!lapsed) {
+          scheduleDeletes.push(doc(database, COLLECTIONS.SCHEDULES, ss.id));
+        }
+      }
+
+      // Commit deletions in chunks
+      if (bookingDeletes.length > 0) {
+        // convert to DocumentReference array
+        await chunkAndCommit(bookingDeletes);
+        console.log(`Deleted ${bookingDeletes.length} related booking request(s) for classroom ${id}`);
+      }
+
+      if (scheduleDeletes.length > 0) {
+        await chunkAndCommit(scheduleDeletes);
+        console.log(`Deleted ${scheduleDeletes.length} related schedule(s) for classroom ${id}`);
+      }
+    } catch (cascadeError) {
+      console.error('Error during cascade deletion for classroom:', cascadeError);
+      // proceed to still delete classroom document even if cascade had issues
+    }
+
     await deleteDoc(ref);
+  },
+
+  // Call server-side cascade delete (admin-only). Returns deleted related count.
+  async deleteCascade(id: string): Promise<{ success: boolean; deletedRelated: number }> {
+    const app = getFirebaseApp();
+    const functions = getFunctions(app);
+    const deleteClassroomCascade = httpsCallable(functions, 'deleteClassroomCascade');
+    const result = await deleteClassroomCascade({ classroomId: id });
+    return result.data as { success: boolean; deletedRelated: number };
   },
 };
 

@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Switch } from './ui/switch'; // Assuming you have a Checkbox component
 import { Checkbox } from './ui/checkbox';
 import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor, AlertCircle } from 'lucide-react';
+import * as Phosphor from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { Classroom } from '../App';
 
@@ -20,13 +21,29 @@ interface ClassroomManagementProps {
   onClassroomUpdate: (classrooms: Classroom[]) => void;
 }
 
+// Helper: try to resolve a Phosphor icon dynamically from a set of candidate names.
+const getPhosphorIcon = (candidates: string[], props: any = {}) => {
+  for (const name of candidates) {
+    // Try both exact export and the common "Icon" suffix used by the package
+    const Comp = (Phosphor as any)[name] ?? (Phosphor as any)[`${name}Icon`];
+    if (Comp) return <Comp {...props} />;
+  }
+  return null;
+};
+
 const equipmentIcons: { [key: string]: React.ReactNode } = {
-  'Projector': <Projector className="h-4 w-4" />,
-  'Computer': <Monitor className="h-4 w-4" />,
-  'Computers': <Monitor className="h-4 w-4" />,
-  'WiFi': <Wifi className="h-4 w-4" />,
-  'Whiteboard': <Edit className="h-4 w-4" />,
-  'TV': <Monitor className="h-4 w-4" />,
+  'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen'], { className: 'h-4 w-4' }) || <Projector className="h-4 w-4" />,
+  'Computer': getPhosphorIcon(['Monitor', 'Desktop', 'DesktopTower'], { className: 'h-4 w-4' }) || <Monitor className="h-4 w-4" />,
+  'Computers': getPhosphorIcon(['Monitor', 'Desktop', 'DesktopTower'], { className: 'h-4 w-4' }) || <Monitor className="h-4 w-4" />,
+  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple'], { className: 'h-4 w-4' }) || <Wifi className="h-4 w-4" />,
+  'Whiteboard': getPhosphorIcon(['Chalkboard', 'Board'], { className: 'h-4 w-4' }) || <Edit className="h-4 w-4" />,
+  'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay'], { className: 'h-4 w-4' }) || <Monitor className="h-4 w-4" />,
+  'Microphone': getPhosphorIcon(['Microphone'], { className: 'h-4 w-4' }),
+  'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple'], { className: 'h-4 w-4' }),
+  'Camera': getPhosphorIcon(['Camera'], { className: 'h-4 w-4' }),
+  'Air Conditioner': getPhosphorIcon(['Fan', 'Wind'], { className: 'h-4 w-4' }),
+  'Plug': getPhosphorIcon(['Plug'], { className: 'h-4 w-4' }),
+  'Podium': getPhosphorIcon(['Podium', 'Presentation', 'SpeakerHigh', 'Microphone'], { className: 'h-4 w-4' }) || <Users className="h-4 w-4" />,
 };
 
 const allEquipment = [
@@ -152,12 +169,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const handleDeleteConfirm = async () => {
     if (!classroomToDelete) return;
     try {
-      await classroomService.delete(classroomToDelete.id);
+      const result = await classroomService.deleteCascade(classroomToDelete.id);
       const updatedClassrooms = await classroomService.getAll();
       onClassroomUpdate(updatedClassrooms);
-      toast.success('Classroom deleted successfully');
+      toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future booking(s)/schedules removed.`);
     } catch (err) {
-      toast.error('Error deleting classroom');
+      console.error('Error deleting classroom (cascade):', err);
+      toast.error('Error deleting classroom. See console for details.');
     }
     setDeleteDialogOpen(false);
     setClassroomToDelete(null);
@@ -304,7 +322,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               }));
                             }}
                           />
-                          <Label htmlFor={`eq-${eq}`} className="text-sm font-normal cursor-pointer">{eq}</Label>
+                          <label htmlFor={`eq-${eq}`} className="flex items-center space-x-2 cursor-pointer text-sm font-normal">
+                            {equipmentIcons[eq] && <span className="text-gray-600">{equipmentIcons[eq]}</span>}
+                            <span>{eq}</span>
+                          </label>
                         </div>
                       ))}
                     </div>

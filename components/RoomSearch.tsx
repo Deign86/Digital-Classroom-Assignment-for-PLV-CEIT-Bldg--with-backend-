@@ -5,7 +5,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi, Projector, Monitor } from 'lucide-react';
+import { Search, MapPin, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
+import * as Phosphor from '@phosphor-icons/react';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour } from '../utils/timeUtils';
@@ -19,13 +20,22 @@ interface RoomSearchProps {
 
 const timeSlots = generateTimeSlots();
 
+const getPhosphorIcon = (names: string[]) => {
+  for (const n of names) {
+    const Comp = (Phosphor as any)[n] ?? (Phosphor as any)[`${n}Icon`];
+    if (Comp) return <Comp className="h-4 w-4" />;
+  }
+  return null;
+};
+
 const equipmentIcons: { [key: string]: React.ReactNode } = {
-  'Projector': <Projector className="h-4 w-4" />,
-  'Computer': <Monitor className="h-4 w-4" />,
-  'Computers': <Monitor className="h-4 w-4" />,
-  'WiFi': <Wifi className="h-4 w-4" />,
-  'Whiteboard': <Search className="h-4 w-4" />,
-  'TV': <Monitor className="h-4 w-4" />,
+  'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen']),
+  'Computer': getPhosphorIcon(['Monitor', 'Desktop']),
+  'Computers': getPhosphorIcon(['Monitor', 'Desktop']),
+  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple']),
+  'Whiteboard': getPhosphorIcon(['Chalkboard', 'ChalkboardSimple']) || getPhosphorIcon(['Note']),
+  'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay']),
+  'Podium': getPhosphorIcon(['Podium', 'Presentation', 'Microphone']) || getPhosphorIcon(['SpeakerHigh']),
 };
 
 export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {

@@ -1,9 +1,10 @@
 import './styles/globals.css';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
-import AdminDashboard from './components/AdminDashboard';
-import FacultyDashboard from './components/FacultyDashboard';
+// Lazy-load heavy dashboard components to reduce initial bundle size
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
@@ -343,17 +344,21 @@ export default function App() {
     async (email: string, name: string, department: string, password: string) => {
       try {
         // Check for duplicate requests (optional - don't fail signup if this fails)
+        // Only attempt reads if we have an authenticated client session to avoid permission errors
         try {
-          const pendingRequest = await signupRequestService.getByEmail(email);
-          if (pendingRequest) {
-            toast.error('Request already pending', {
-              description: 'Please wait for an administrator to review your existing request.',
-            });
-            return false;
+          const currentAuth = await authService.getCurrentUser();
+          if (currentAuth) {
+            const pendingRequest = await signupRequestService.getByEmail(email);
+            if (pendingRequest) {
+              toast.error('Request already pending', {
+                description: 'Please wait for an administrator to review your existing request.',
+              });
+              return false;
+            }
           }
         } catch (checkError) {
-          console.warn('Could not check for existing requests:', checkError);
-          // Continue with signup anyway
+          // Do not surface permission errors for unauthenticated users. Log only unexpected errors.
+          console.warn('Could not check for existing requests (possibly unauthenticated):', checkError instanceof Error ? checkError.message : checkError);
         }
 
         let request: SignupRequest;
@@ -385,15 +390,18 @@ export default function App() {
 
         // Try to load user data (optional - don't fail signup if this fails)
         try {
-          const maybeUser = await userService.getByEmail(email);
-          if (maybeUser) {
-            setUsers((prev) => {
-              const others = prev.filter((user) => user.id !== maybeUser.id);
-              return [...others, maybeUser];
-            });
+          const currentAuth = await authService.getCurrentUser();
+          if (currentAuth) {
+            const maybeUser = await userService.getByEmail(email);
+            if (maybeUser) {
+              setUsers((prev) => {
+                const others = prev.filter((user) => user.id !== maybeUser.id);
+                return [...others, maybeUser];
+              });
+            }
           }
         } catch (userError) {
-          console.warn('Could not load user data:', userError);
+          console.warn('Could not load user data (possibly unauthenticated):', userError instanceof Error ? userError.message : userError);
           // Continue anyway - the signup was successful
         }
 
@@ -754,6 +762,16 @@ export default function App() {
             return;
           }
 
+          // Confirm destructive action before proceeding. Replace with a proper modal if desired.
+          const confirmed = window.confirm(
+            `Are you sure you want to reject and permanently delete the account for ${request.name}? This action cannot be undone.`
+          );
+
+          if (!confirmed) {
+            toast.info('Rejection cancelled');
+            return;
+          }
+
           // Use the new rejection method that properly cleans up everything
           await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback);
 
@@ -1108,11 +1126,17 @@ export default function App() {
     <ErrorBoundary>
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex-1">
-          {activeUser.role === 'admin' ? (
-            <AdminDashboard {...adminDashboardProps} />
-          ) : (
-            <FacultyDashboard {...facultyDashboardProps} />
-          )}
+          <Suspense fallback={
+            <div className="p-8 flex items-center justify-center">
+              <div className="text-gray-600">Loading dashboard…</div>
+            </div>
+          }>
+            {activeUser.role === 'admin' ? (
+              <AdminDashboard {...adminDashboardProps} />
+            ) : (
+              <FacultyDashboard {...facultyDashboardProps} />
+            )}
+          </Suspense>
         </div>
         <Footer />
         <SessionTimeoutWarning

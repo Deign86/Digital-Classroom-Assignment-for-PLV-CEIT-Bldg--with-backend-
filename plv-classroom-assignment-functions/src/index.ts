@@ -56,6 +56,27 @@ export const deleteUserAccount = onCall(async (request) => {
     const msg = `Admin ${callerUid} attempting to delete user ${userId}`;
     logger.info(msg);
 
+    // Prevent accidental deletion of admin accounts or self-deletion
+    try {
+      const targetDoc = await admin.firestore().collection('users').doc(userId).get();
+      if (targetDoc.exists) {
+        const targetData = targetDoc.data();
+        if (targetData && targetData.role === 'admin') {
+          logger.warn(`Attempt to delete admin account blocked for user ${userId}`);
+          throw new HttpsError('permission-denied', 'Cannot delete an admin account');
+        }
+      }
+      // Disallow self-deletion via this callable (require a safer workflow)
+      if (userId === callerUid) {
+        logger.warn(`Attempt to self-delete blocked for admin ${callerUid}`);
+        throw new HttpsError('permission-denied', 'Admins cannot delete their own account via this function');
+      }
+    } catch (precheckError) {
+      // If the check threw an HttpsError, rethrow so it propagates to the client
+      if (precheckError instanceof HttpsError) throw precheckError;
+      // Otherwise, log and continue - the subsequent deletion attempt will surface any issues
+      logger.warn('Error performing pre-delete checks:', precheckError);
+    }
     // Delete from Firebase Authentication
     try {
       await admin.auth().deleteUser(userId);
@@ -110,6 +131,185 @@ export const deleteUserAccount = onCall(async (request) => {
 
     const failMsg = `Failed to delete user account: ${err.message}`;
     throw new HttpsError("internal", failMsg);
+  }
+});
+
+/**
+ * Deletes a classroom and cascades deletion to related bookingRequests and schedules
+ * Only non-lapsed bookings/schedules are deleted. Lapsed entries are preserved.
+ * This function must be called by an authenticated admin user.
+ */
+export const deleteClassroomCascade = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user data not found');
+  }
+  const callerData = callerDoc.data();
+  if (!callerData || callerData.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admin users can delete classrooms');
+  }
+
+  const { classroomId } = request.data || {};
+  if (!classroomId || typeof classroomId !== 'string') {
+    throw new HttpsError('invalid-argument', 'classroomId is required and must be a string');
+  }
+
+  logger.info(`Admin ${callerUid} requested cascade delete for classroom ${classroomId}`);
+
+  // Helper: parse date + time into JS Date. Supports 'HH:MM' (24h) and 'h:mm AM/PM'.
+  const parseBookingDateTime = (dateStr: string, timeStr: string): Date | null => {
+    try {
+      const [y, m, d] = dateStr.split('-').map((v) => parseInt(v, 10));
+      if (!y || !m || !d) return null;
+      let hours = 0;
+      let minutes = 0;
+
+      const trimmed = (timeStr || '').trim();
+      if (!trimmed) return null;
+
+      const ampmMatch = trimmed.match(/(AM|PM)$/i);
+      if (ampmMatch) {
+        // 12-hour format
+        const parts = trimmed.replace(/\s?(AM|PM)$/i, '').split(':');
+        hours = parseInt(parts[0], 10);
+        minutes = parts[1] ? parseInt(parts[1], 10) : 0;
+        const isPM = /PM$/i.test(trimmed);
+        if (hours === 12) {
+          hours = isPM ? 12 : 0;
+        } else if (isPM) {
+          hours += 12;
+        }
+      } else {
+        // assume 24-hour HH:MM
+        const parts = trimmed.split(':');
+        hours = parseInt(parts[0], 10);
+        minutes = parts[1] ? parseInt(parts[1], 10) : 0;
+      }
+
+      return new Date(y, m - 1, d, hours, minutes, 0, 0);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Consider lapsed if endDateTime <= now + buffer
+  const isLapsed = (dateStr: string, endTimeStr: string): boolean => {
+    const dt = parseBookingDateTime(dateStr, endTimeStr);
+    if (!dt) return false; // if cannot parse, be conservative (do NOT delete)
+    const now = new Date();
+    // small buffer 5 minutes
+    const bufferMs = 5 * 60 * 1000;
+    return dt.getTime() <= now.getTime() + bufferMs;
+  };
+
+  try {
+    const db = admin.firestore();
+
+    // Verify classroom exists
+    const classroomDoc = await db.collection('classrooms').doc(classroomId).get();
+    if (!classroomDoc.exists) {
+      throw new HttpsError('not-found', 'Classroom not found');
+    }
+
+    // Ensure idempotency: create a lock document so concurrent calls don't perform duplicate work.
+    const LOCK_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const lockRef = db.collection('deletionLocks').doc(classroomId);
+
+    // Acquire lock in a transaction: fail if a recent lock exists
+    await db.runTransaction(async (tx) => {
+      const lockSnap = await tx.get(lockRef);
+      if (lockSnap.exists) {
+        const ld = lockSnap.data() as any;
+        const lockedAt = typeof ld?.timestamp === 'number' ? ld.timestamp : 0;
+        if (Date.now() - lockedAt < LOCK_TIMEOUT_MS) {
+          throw new HttpsError('already-exists', 'A deletion for this classroom is already in progress');
+        }
+      }
+      tx.set(lockRef, { locked: true, lockedBy: callerUid, timestamp: Date.now() });
+    });
+
+    // Query related bookingRequests and schedules
+    const bookingSnap = await db.collection('bookingRequests').where('classroomId', '==', classroomId).get();
+    const scheduleSnap = await db.collection('schedules').where('classroomId', '==', classroomId).get();
+
+    const toDeleteRefs: admin.firestore.DocumentReference[] = [];
+
+    bookingSnap.docs.forEach((d) => {
+      const data = d.data() as any;
+      const lapsed = isLapsed(data.date, data.endTime);
+      if (!lapsed) toDeleteRefs.push(d.ref);
+    });
+
+    scheduleSnap.docs.forEach((d) => {
+      const data = d.data() as any;
+      const lapsed = isLapsed(data.date, data.endTime);
+      if (!lapsed) toDeleteRefs.push(d.ref);
+    });
+
+    // Batch delete in chunks of 450
+    const CHUNK = 450;
+    let deletedCount = 0;
+    for (let i = 0; i < toDeleteRefs.length; i += CHUNK) {
+      const chunk = toDeleteRefs.slice(i, i + CHUNK);
+      const batch = db.batch();
+      chunk.forEach((ref) => batch.delete(ref));
+      await batch.commit();
+      deletedCount += chunk.length;
+    }
+
+    // Finally delete the classroom document
+    await db.collection('classrooms').doc(classroomId).delete();
+    logger.info(`Cascade delete complete for classroom ${classroomId}. Deleted ${deletedCount} related docs.`);
+
+    // Write an audit log entry
+    const auditEntry = {
+      classroomId,
+      deletedBy: callerUid,
+      deletedCount,
+      timestamp: Date.now(),
+    };
+    await db.collection('deletionLogs').add(auditEntry);
+
+    // Create a simple notification document for further processing (emails, etc.)
+    await db.collection('deletionNotifications').add({
+      title: `Classroom ${classroomId} deleted`,
+      message: `Admin ${callerUid} deleted classroom ${classroomId} and ${deletedCount} related item(s).`,
+      classroomId,
+      deletedBy: callerUid,
+      deletedCount,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      processed: false,
+    });
+
+    // Release the lock
+    try {
+      await lockRef.delete();
+    } catch (e) {
+      logger.warn('Failed to delete deletion lock:', e);
+    }
+
+    return { success: true, deletedRelated: deletedCount };
+  } catch (error) {
+    logger.error(`Error in deleteClassroomCascade for ${classroomId}:`, error);
+    // Attempt to clean up the lock if present
+    try {
+      const db = admin.firestore();
+      const lockRef = db.collection('deletionLocks').doc(classroomId);
+      const lockSnap = await lockRef.get();
+      if (lockSnap.exists) {
+        await lockRef.delete();
+      }
+    } catch (cleanupErr) {
+      logger.warn('Failed to cleanup deletion lock after error:', cleanupErr);
+    }
+
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', `Failed to delete classroom: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
