@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Badge } from './ui/badge';
+import { Badge } from './ui/badge'; 
 import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
@@ -50,6 +50,13 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     purpose: ''
   });
   const [conflicts, setConflicts] = useState<string[]>([]);
+  const [errors, setErrors] = useState({
+    classroomId: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    purpose: '',
+  });
   const [pendingConflicts, setPendingConflicts] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,8 +91,6 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     const dt = new Date(y, m - 1, d);
     return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
   };
-
-  const [dateError, setDateError] = React.useState<string | null>(null);
 
   // Detect small phones (between 320px and 425px) and fall back to native date input
   const [isSmallPhone, setIsSmallPhone] = React.useState(false);
@@ -157,28 +162,60 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     }
   }, [formData, schedules, bookingRequests]);
 
+  const validate = () => {
+    const newErrors = { classroomId: '', date: '', startTime: '', endTime: '', purpose: '' };
+    let isValid = true;
+
+    if (!formData.classroomId) {
+      newErrors.classroomId = 'Please select a classroom.';
+      isValid = false;
+    }
+    if (!formData.date) {
+      newErrors.date = 'Please select a date.';
+      isValid = false;
+    }
+    if (!formData.startTime) {
+      newErrors.startTime = 'Please select a start time.';
+      isValid = false;
+    }
+    if (!formData.endTime) {
+      newErrors.endTime = 'Please select an end time.';
+      isValid = false;
+    }
+    if (!formData.purpose.trim()) {
+      newErrors.purpose = 'Purpose is required.';
+      isValid = false;
+    }
+
+    if (formData.startTime && formData.endTime && !isValidTimeRange(formData.startTime, formData.endTime)) {
+      newErrors.endTime = 'End time must be after start time.';
+      isValid = false;
+    }
+
+    if (formData.startTime && !isValidSchoolTime(formData.startTime)) {
+      newErrors.startTime = 'Time must be within school hours (7am-8pm).';
+      isValid = false;
+    }
+    if (formData.endTime && !isValidSchoolTime(formData.endTime)) {
+      newErrors.endTime = 'Time must be within school hours (7am-8pm).';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return; // Prevent multiple submissions
 
+    if (!validate()) {
+      toast.error('Please fill in all required fields correctly.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Validation
-      if (!formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()) {
-        toast.error('Please fill in all required fields');
-        return;
-      }
-
-      if (!isValidTimeRange(formData.startTime, formData.endTime)) {
-        toast.error('End time must be after start time (same day booking only)');
-        return;
-      }
-
-      if (!isValidSchoolTime(formData.startTime) || !isValidSchoolTime(formData.endTime)) {
-        toast.error('Times must be within school hours (7:00 AM - 8:00 PM)');
-        return;
-      }
-
       if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
         toast.error('Booking duration must be between 30 minutes and 8 hours');
         return;
@@ -231,6 +268,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         endTime: '',
         purpose: ''
       });
+      setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
 
     } finally {
       setIsSubmitting(false);
@@ -280,8 +318,11 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               {/* Classroom Selection */}
               <div className="space-y-2">
                 <Label htmlFor="classroom">Classroom *</Label>
-                <Select value={formData.classroomId} onValueChange={(value) => setFormData(prev => ({ ...prev, classroomId: value }))}>
-                  <SelectTrigger id="classroom" className="transition-all duration-200 focus:scale-105">
+                <Select value={formData.classroomId} onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, classroomId: value }));
+                  if (errors.classroomId) setErrors(prev => ({ ...prev, classroomId: '' }));
+                }}>
+                  <SelectTrigger id="classroom" className={`transition-all duration-200 focus:scale-105 ${errors.classroomId ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Select a classroom" />
                   </SelectTrigger>
                 <SelectContent>
@@ -302,6 +343,12 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   )}
                   </SelectContent>
                 </Select>
+                {errors.classroomId && (
+                  <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {errors.classroomId}
+                  </p>
+                )}
               </div>
 
               {/* Classroom Details */}
@@ -375,22 +422,27 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       onChange={(e) => {
                         const v = e.target.value;
                         if (!v) {
-                          setFormData(prev => ({ ...prev, date: '' }));
-                          setDateError(null);
+                          setFormData(prev => ({ ...prev, date: '' }));                          
+                          setErrors(prev => ({ ...prev, date: 'Please select a date.' }));
                           return;
                         }
                         if (!isValidISODate(v)) {
-                          setDateError('Invalid date');
+                          setErrors(prev => ({ ...prev, date: 'Invalid date.' }));
                         } else if (v < today) {
-                          setDateError('Date must be today or later');
+                          setErrors(prev => ({ ...prev, date: 'Date must be today or later.' }));
                         } else {
-                          setDateError(null);
+                          setErrors(prev => ({ ...prev, date: '' }));
                           setFormData(prev => ({ ...prev, date: v }));
                         }
-                      }}
+                      }} 
                       className="w-full px-3 py-2 bg-surface border rounded-md"
                     />
-                    {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
+                    {errors.date && (
+                      <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {errors.date}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <Popover>
@@ -398,7 +450,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 bg-surface hover:bg-muted/50 border rounded-md flex items-center justify-between"
-                      >
+                      > 
                         <span className={`text-sm ${formData.date ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {formData.date ? formatISOToMDY(formData.date) : 'Select a date'}
                         </span>
@@ -412,14 +464,14 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                           onSelect={(iso) => {
                             // calendar provides valid ISO or undefined
                             if (!iso) {
-                              setFormData(prev => ({ ...prev, date: '' }));
-                              setDateError(null);
+                              setFormData(prev => ({ ...prev, date: '' }));                              
+                              setErrors(prev => ({ ...prev, date: 'Please select a date.' }));
                               return;
                             }
                             if (!isValidISODate(iso) || iso < today) {
-                              setDateError('Invalid or past date');
+                              setErrors(prev => ({ ...prev, date: 'Invalid or past date.' }));
                             } else {
-                              setDateError(null);
+                              setErrors(prev => ({ ...prev, date: '' }));
                               setFormData(prev => ({ ...prev, date: iso }));
                             }
                           }}
@@ -430,13 +482,22 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   </Popover>
                 )}
               </div>
+              {errors.date && !isSmallPhone && (
+                <p className="text-sm text-red-600 flex items-center gap-1 -mt-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {errors.date}
+                </p>
+              )}
 
               {/* Time Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Start Time *</Label>
-                  <Select value={formData.startTime} onValueChange={(value) => setFormData(prev => ({ ...prev, startTime: value }))}>
-                    <SelectTrigger id="startTime" className="transition-all duration-200 focus:scale-105">
+                  <Select value={formData.startTime} onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, startTime: value }));
+                    if (errors.startTime) setErrors(prev => ({ ...prev, startTime: '' }));
+                  }}>
+                    <SelectTrigger id="startTime" className={`transition-all duration-200 focus:scale-105 ${errors.startTime ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Select start time" />
                     </SelectTrigger>
                   <SelectContent>
@@ -504,16 +565,25 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     })}
                   </SelectContent>
                 </Select>
+                {errors.startTime && (
+                  <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {errors.startTime}
+                  </p>
+                )}
               </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="endTime">End Time *</Label>
                   <Select 
                     value={formData.endTime} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, endTime: value }))}
+                    onValueChange={(value) => {
+                      setFormData(prev => ({ ...prev, endTime: value }));
+                      if (errors.endTime) setErrors(prev => ({ ...prev, endTime: '' }));
+                    }}
                     disabled={!formData.startTime}
                   >
-                    <SelectTrigger id="endTime" className="transition-all duration-200 focus:scale-105 disabled:opacity-50">
+                    <SelectTrigger id="endTime" className={`transition-all duration-200 focus:scale-105 disabled:opacity-50 ${errors.endTime ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder={formData.startTime ? "Select end time" : "Select start time first"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -590,6 +660,12 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       })}
                     </SelectContent>
                   </Select>
+                  {errors.endTime && (
+                    <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {errors.endTime}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -742,11 +818,19 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   id="purpose"
                   placeholder="Describe the purpose of your classroom booking (e.g., Lecture - Data Structures, Lab Session - Web Development)"
                   value={formData.purpose}
-                  onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, purpose: e.target.value }));
+                    if (errors.purpose) setErrors(prev => ({ ...prev, purpose: '' }));
+                  }}
                   rows={3}
-                  className="transition-all duration-200 focus:scale-105"
-                  required
+                  className={`transition-all duration-200 focus:scale-105 ${errors.purpose ? 'border-red-500' : ''}`}
                 />
+                {errors.purpose && (
+                  <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {errors.purpose}
+                  </p>
+                )}
               </motion.div>
 
               {/* Submission Summary */}
@@ -782,7 +866,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 >
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting || conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim()}
+                    disabled={isSubmitting || conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim() || Object.values(errors).some(e => e)}
                     className="w-full sm:w-auto transition-all duration-200 disabled:opacity-50"
                   >
                     {isSubmitting ? (

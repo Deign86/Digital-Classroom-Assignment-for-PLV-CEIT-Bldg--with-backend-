@@ -9,8 +9,9 @@ import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Switch } from './ui/switch';
-import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor } from 'lucide-react';
+import { Switch } from './ui/switch'; // Assuming you have a Checkbox component
+import { Checkbox } from './ui/checkbox';
+import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Classroom } from '../App';
 
@@ -28,6 +29,16 @@ const equipmentIcons: { [key: string]: React.ReactNode } = {
   'TV': <Monitor className="h-4 w-4" />,
 };
 
+const allEquipment = [
+  // Equipment with icons first
+  'Projector', 'WiFi', 'TV', 'Computers',
+  // Other common equipment
+  'Whiteboard', 'Air Conditioner', 'Podium', 'Speakers'
+].sort((a, b) => {
+  if (equipmentIcons[a] && !equipmentIcons[b]) return -1;
+  if (!equipmentIcons[a] && equipmentIcons[b]) return 1;
+  return a.localeCompare(b);
+});
 export default function ClassroomManagement({ classrooms, onClassroomUpdate }: ClassroomManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingClassroom, setEditingClassroom] = useState<Classroom | null>(null);
@@ -35,9 +46,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     name: '',
     capacity: '',
     equipment: '',
+    selectedEquipment: [] as string[],
     building: '',
     floor: '1',
     isAvailable: true
+  });
+  const [errors, setErrors] = useState({
+    name: '',
+    capacity: '',
+    building: '',
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
@@ -47,42 +64,60 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       name: '',
       capacity: '',
       equipment: '',
+      selectedEquipment: [],
       building: '',
       floor: '1',
       isAvailable: true
     });
+    setErrors({ name: '', capacity: '', building: '' });
+  };
+
+  const validateForm = () => {
+    const newErrors = { name: '', capacity: '', building: '' };
+    let isValid = true;
+    if (!formData.name.trim()) {
+      newErrors.name = 'Room name is required.';
+      isValid = false;
+    }
+    if (!formData.capacity.trim() || parseInt(formData.capacity) <= 0) {
+      newErrors.capacity = 'A valid capacity is required.';
+      isValid = false;
+    }
+    if (!formData.building.trim()) {
+      newErrors.building = 'Building name is required.';
+      isValid = false;
+    }
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.capacity || !formData.building) {
-      toast.error('Please fill in all required fields');
+    if (!validateForm()) {
+      toast.error('Please correct the errors before submitting.');
       return;
     }
-    const equipmentArray = formData.equipment
-      .split(',')
-      .map(eq => eq.trim())
-      .filter(eq => eq.length > 0);
     try {
       if (editingClassroom) {
         await classroomService.update(editingClassroom.id, {
           name: formData.name,
           capacity: parseInt(formData.capacity),
-          equipment: equipmentArray,
+          equipment: formData.selectedEquipment,
           building: formData.building,
           floor: parseInt(formData.floor),
           isAvailable: formData.isAvailable
         });
         toast.success('Classroom updated successfully');
       } else {
-        await classroomService.create({
+        const newClassroom: Omit<Classroom, 'id'> = {
           name: formData.name,
           capacity: parseInt(formData.capacity),
-          equipment: equipmentArray,
+          equipment: formData.selectedEquipment,
           building: formData.building,
           floor: parseInt(formData.floor),
           isAvailable: formData.isAvailable
-        });
+        };
+        await classroomService.create(newClassroom);
         toast.success('Classroom added successfully');
       }
       const updatedClassrooms = await classroomService.getAll();
@@ -100,7 +135,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setFormData({
       name: classroom.name,
       capacity: classroom.capacity.toString(),
-      equipment: classroom.equipment.join(', '),
+      equipment: '', // This is now unused for input
+      selectedEquipment: classroom.equipment,
       building: classroom.building,
       floor: classroom.floor.toString(),
       isAvailable: classroom.isAvailable
@@ -179,9 +215,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       id="name"
                       placeholder="e.g., CEIT-101"
                       value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, name: e.target.value }));
+                        if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+                      }}
+                      className={errors.name ? 'border-red-500' : ''}
                     />
+                    {errors.name && (
+                      <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.name}
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -190,12 +235,21 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       <Input
                         id="capacity"
                         type="number"
-                        placeholder="50"
+                        placeholder="e.g., 45"
                         min="1"
                         value={formData.capacity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
-                        required
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, capacity: e.target.value }));
+                          if (errors.capacity) setErrors(prev => ({ ...prev, capacity: '' }));
+                        }}
+                        className={errors.capacity ? 'border-red-500' : ''}
                       />
+                      {errors.capacity && (
+                        <p className="text-sm text-red-600 flex items-center gap-1 mt-1 whitespace-nowrap">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.capacity}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="floor">Floor *</Label>
@@ -219,20 +273,41 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       id="building"
                       placeholder="e.g., CEIT Building"
                       value={formData.building}
-                      onChange={(e) => setFormData(prev => ({ ...prev, building: e.target.value }))}
-                      required
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, building: e.target.value }));
+                        if (errors.building) setErrors(prev => ({ ...prev, building: '' }));
+                      }}
+                      className={errors.building ? 'border-red-500' : ''}
                     />
+                    {errors.building && (
+                      <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.building}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="equipment">Equipment</Label>
-                    <Textarea
-                      id="equipment"
-                      placeholder="e.g., Projector, Whiteboard, AC (separate with commas)"
-                      value={formData.equipment}
-                      onChange={(e) => setFormData(prev => ({ ...prev, equipment: e.target.value }))}
-                      rows={3}
-                    />
+                    <div className="grid grid-cols-2 gap-2 rounded-md border p-4">
+                      {allEquipment.map(eq => (
+                        <div key={eq} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`eq-${eq}`}
+                            checked={formData.selectedEquipment.includes(eq)}
+                            onCheckedChange={(checked) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedEquipment: checked
+                                  ? [...prev.selectedEquipment, eq]
+                                  : prev.selectedEquipment.filter(item => item !== eq)
+                              }));
+                            }}
+                          />
+                          <Label htmlFor={`eq-${eq}`} className="text-sm font-normal cursor-pointer">{eq}</Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
