@@ -14,6 +14,16 @@ interface ScheduleViewerProps {
   onCancelSchedule?: (scheduleId: string) => void;
 }
 
+// Helper to check if a schedule has already passed
+const isScheduleLapsed = (schedule: Schedule): boolean => {
+  const now = new Date();
+  // The schedule end time is parsed as a date object on the given schedule date
+  const scheduleEndDateTime = new Date(`${schedule.date}T${schedule.endTime}`);
+  
+  // The schedule is considered lapsed if the current time is past the schedule's end time
+  return now > scheduleEndDateTime;
+}
+
 export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule }: ScheduleViewerProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClassroom, setSelectedClassroom] = useState<string>('');
@@ -184,10 +194,10 @@ function DayView({
 }) {
   if (schedules.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 border-2 border-dashed rounded-lg">
         <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Classes Scheduled</h3>
-        <p className="text-gray-600">No classes are scheduled for this day.</p>
+        <p className="text-gray-600">There are no confirmed classes for this day.</p>
       </div>
     );
   }
@@ -198,6 +208,7 @@ function DayView({
   return (
     <div className="space-y-4">
       {sortedSchedules.map((schedule) => {
+        const isLapsed = isScheduleLapsed(schedule);
         const classroom = classrooms.find(c => c.id === schedule.classroomId);
         return (
           <Card key={schedule.id} className="border-l-4 border-l-blue-500">
@@ -228,13 +239,13 @@ function DayView({
                   <p className="text-gray-700">{schedule.purpose}</p>
                 </div>
                 
-                {onCancelSchedule && (
+                {onCancelSchedule && !isLapsed && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button 
-                        variant="ghost" 
+                        variant="outline"
                         size="sm" 
-                        className="ml-4 text-gray-500 hover:text-red-600 hover:bg-gray-50 border border-gray-200 hover:border-red-200 min-w-[80px] transition-all duration-200"
+                        className="ml-4 text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 min-w-[80px] transition-all duration-200"
                       >
                         <X className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Cancel</span>
@@ -284,7 +295,7 @@ function WeekView({
     <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
       {weekDates.map((date, index) => {
         const daySchedules = schedules.filter(s => s.date === date);
-        
+
         return (
           <div key={date} className="space-y-2">
             <div className="text-center">
@@ -296,50 +307,53 @@ function WeekView({
             
             <div className="space-y-2 min-h-[200px]">
               {daySchedules.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8 h-full flex items-center justify-center">
                   <p className="text-xs text-gray-400">No classes</p>
                 </div>
               ) : (
                 daySchedules
                   .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                  .map((schedule) => (
-                    <Card key={schedule.id} className="p-2 border-l-2 border-l-blue-500 relative group">
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium">{formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}</p>
-                        <p className="text-xs text-gray-600">{schedule.classroomName}</p>
-                        <p className="text-xs text-gray-600">{schedule.facultyName}</p>
-                        <p className="text-xs text-gray-500 truncate">{schedule.purpose}</p>
-                        
-                        {onCancelSchedule && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-gray-50 opacity-60 hover:opacity-100 transition-all duration-200 md:opacity-0 md:group-hover:opacity-100"
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to cancel this booking? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
-                                  Cancel Booking
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                    </Card>
-                  ))
+                  .map((schedule) => {
+                    const isLapsed = isScheduleLapsed(schedule);
+                    return (
+                      <Card key={schedule.id} className="p-2 border-l-2 border-l-blue-500 relative group">
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium">{formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}</p>
+                          <p className="text-xs text-gray-600">{schedule.classroomName}</p>
+                          <p className="text-xs text-gray-600">{schedule.facultyName}</p>
+                          <p className="text-xs text-gray-500 truncate">{schedule.purpose}</p>
+                          
+                          {onCancelSchedule && !isLapsed && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-gray-50 opacity-60 hover:opacity-100 transition-all duration-200"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to cancel this booking? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
+                                    Cancel Booking
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })
               )}
             </div>
           </div>
