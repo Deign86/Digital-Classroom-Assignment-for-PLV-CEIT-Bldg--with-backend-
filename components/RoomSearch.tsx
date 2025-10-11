@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, MapPin, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi as LucideWifi } from 'lucide-react';
 import * as Phosphor from '@phosphor-icons/react';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
@@ -36,6 +36,30 @@ const equipmentIcons: { [key: string]: React.ReactNode } = {
   'Whiteboard': getPhosphorIcon(['Chalkboard', 'ChalkboardSimple']) || getPhosphorIcon(['Note']),
   'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay']),
   'Podium': getPhosphorIcon(['Podium', 'Presentation', 'Microphone']) || getPhosphorIcon(['SpeakerHigh']),
+  // Common variants that may appear in classroom data
+  'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+  'Speaker': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+  'Air Conditioner': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+  'AC': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+};
+
+const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+// Robust lookup for equipment icons: normalized exact match, singular/plural, WiFi fallback
+const getIconForEquipment = (eq?: string) => {
+  if (!eq) return null;
+  const rawKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(eq));
+  if (rawKey) return equipmentIcons[rawKey];
+  const singularAttempt = eq.endsWith('s') ? eq.slice(0, -1) : `${eq}s`;
+  const spKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(singularAttempt));
+  if (spKey) return equipmentIcons[spKey];
+
+  // wifi fallback (only match 'wifi' to avoid collisions with words like 'whiteboard')
+  if (normalize(eq).includes('wifi')) {
+    return <LucideWifi className="h-4 w-4" />;
+  }
+
+  return null;
 };
 
 export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {
@@ -557,7 +581,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                           <div className="flex flex-wrap gap-1">
                             {classroom.equipment.map((eq, index) => (
                               <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
-                                {equipmentIcons[eq] && <span>{equipmentIcons[eq]}</span>}
+                                {getIconForEquipment(eq) && <span>{getIconForEquipment(eq)}</span>}
                                 <span>{eq}</span>
                               </Badge>
                             ))}

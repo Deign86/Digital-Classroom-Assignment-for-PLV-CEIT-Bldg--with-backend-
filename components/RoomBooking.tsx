@@ -6,7 +6,8 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge'; 
-import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle, Wifi as LucideWifi } from 'lucide-react';
+import * as Phosphor from '@phosphor-icons/react';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 import Calendar from './ui/calendar';
@@ -277,6 +278,52 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
 
   const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
 
+  const getPhosphorIcon = (names: string[]) => {
+    for (const n of names) {
+      const Comp = (Phosphor as any)[n] ?? (Phosphor as any)[`${n}Icon`];
+      if (Comp) return <Comp className="h-4 w-4 inline-block mr-1 align-middle" />;
+    }
+    return null;
+  };
+
+  const equipmentIcons: { [key: string]: React.ReactNode } = {
+    'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen']),
+    'Computer': getPhosphorIcon(['Monitor', 'Desktop']),
+    'Computers': getPhosphorIcon(['Monitor', 'Desktop']),
+  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple']) || <LucideWifi className="h-4 w-4 inline-block mr-1 align-middle text-gray-600" />,
+    'Whiteboard': getPhosphorIcon(['Chalkboard', 'ChalkboardSimple']) || getPhosphorIcon(['Note']),
+    'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay']),
+    'Podium': getPhosphorIcon(['Podium', 'Presentation', 'Microphone']) || getPhosphorIcon(['SpeakerHigh']),
+    // Common variants that may appear in classroom data
+    'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+    'Speaker': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+    'Air Conditioner': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+    'AC': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+  };
+
+  // Lookup helper: try exact match, case-insensitive match, plural/singular variants, then fallback
+  const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+  const getIconForEquipment = (eq: string) => {
+    if (!eq) return null;
+    // normalized keys map
+    const rawKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(eq));
+    if (rawKey) return equipmentIcons[rawKey];
+
+    // singular/plural attempt
+    const singularAttempt = eq.endsWith('s') ? eq.slice(0, -1) : `${eq}s`;
+    const spKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(singularAttempt));
+    if (spKey) return equipmentIcons[spKey];
+
+    // Wi-Fi variants -> lucide wifi fallback
+    if (normalize(eq).includes('wifi')) {
+      return <LucideWifi className="h-4 w-4 inline-block mr-1 align-middle text-gray-600" />;
+    }
+
+    // generic fallback
+    return <CheckCircle className="h-4 w-4 inline-block mr-1 align-middle text-gray-500" />;
+  };
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -395,8 +442,9 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                                     stiffness: 300 
                                   }}
                                 >
-                                  <Badge variant="secondary" className="text-xs">
-                                    {eq}
+                                  <Badge variant="secondary" className="text-xs inline-flex items-center">
+                                    {getIconForEquipment(eq)}
+                                    <span className="align-middle">{eq}</span>
                                   </Badge>
                                 </motion.div>
                               ))}
