@@ -1,0 +1,41 @@
+name: Vercel Speed Insights
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  speed-insights:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vercel Speed Insights (mobile)
+        env:
+          TARGET_URL: 'https://digital-classroom-assignment-for-plv.vercel.app/'
+        run: |
+          npx speed-insights --url "$TARGET_URL" --config speed-insights.config.js --runName mobile --formFactor mobile || true
+
+      - name: Run Vercel Speed Insights (desktop)
+        env:
+          TARGET_URL: 'https://digital-classroom-assignment-for-plv.vercel.app/'
+        run: |
+          npx speed-insights --url "$TARGET_URL" --config speed-insights.config.js --runName desktop --formFactor desktop || true
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: speed-insights-reports
+          path: speed-insights-reports/
