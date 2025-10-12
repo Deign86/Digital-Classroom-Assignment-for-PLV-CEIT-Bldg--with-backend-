@@ -49,6 +49,65 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
 
   const departments = ['Civil Engineering', 'Information Technology'];
 
+  // Shared sanitizer for password fields
+  const sanitizePassword = (pwd: string) => {
+    if (!pwd) return pwd;
+    let cleaned = pwd.replace(/[[\r\n\t]]/g, '');
+    cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    cleaned = cleaned.trim();
+    return cleaned;
+  };
+
+  const validateSignupData = (data: typeof signupData) => {
+    const errors = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      department: '',
+      password: '',
+      confirmPassword: ''
+    };
+    let hasErrors = false;
+
+    if (!data.firstName.trim()) {
+      errors.firstName = 'First name is required';
+      hasErrors = true;
+    }
+
+    if (!data.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+      hasErrors = true;
+    }
+
+    if (!data.email.trim()) {
+      errors.email = 'Email is required';
+      hasErrors = true;
+    }
+
+    if (!data.department) {
+      errors.department = 'Please select a department';
+      hasErrors = true;
+    }
+
+    if (!data.password) {
+      errors.password = 'Please create a password';
+      hasErrors = true;
+    } else if (data.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters long';
+      hasErrors = true;
+    }
+
+    if (!data.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+      hasErrors = true;
+    } else if (data.password !== data.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      hasErrors = true;
+    }
+
+    return { errors, hasErrors } as const;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -57,14 +116,6 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     
     // Don't attempt login if fields are empty
     // Sanitize password in case user pasted it
-    const sanitizePassword = (pwd: string) => {
-      if (!pwd) return pwd;
-      let cleaned = pwd.replace(/[\r\n\t]/g, '');
-      cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
-      cleaned = cleaned.trim();
-      return cleaned;
-    };
-
     const cleanedPassword = sanitizePassword(password);
     if (cleanedPassword !== password) setPassword(cleanedPassword);
 
@@ -98,7 +149,6 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
       setIsLoading(false);
     }
   };
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -112,67 +162,13 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
       confirmPassword: ''
     });
 
-    const errors = {
-      firstName: '',
-      lastName: '',
-      email: '',
-      department: '',
-      password: '',
-      confirmPassword: ''
-    };
-    let hasErrors = false;
-
-    // Validate all fields
-    if (!signupData.firstName.trim()) {
-      errors.firstName = 'First name is required';
-      hasErrors = true;
-    }
-
-    if (!signupData.lastName.trim()) {
-      errors.lastName = 'Last name is required';
-      hasErrors = true;
-    }
-
-    if (!signupData.email.trim()) {
-      errors.email = 'Email is required';
-      hasErrors = true;
-    }
-
-    if (!signupData.department) {
-      errors.department = 'Please select a department';
-      hasErrors = true;
-    }
-
-    if (!signupData.password) {
-      errors.password = 'Please create a password';
-      hasErrors = true;
-    } else if (signupData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
-      hasErrors = true;
-    }
-
-    if (!signupData.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
-      hasErrors = true;
-    } else if (signupData.password !== signupData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-      hasErrors = true;
-    }
-
+    const { errors, hasErrors } = validateSignupData(signupData);
     if (hasErrors) {
       setSignupErrors(errors);
       return;
     }
 
-    // Sanitize signup password fields
-    const sanitizePassword = (pwd: string) => {
-      if (!pwd) return pwd;
-      let cleaned = pwd.replace(/[\r\n\t]/g, '');
-      cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
-      cleaned = cleaned.trim();
-      return cleaned;
-    };
-
+    // Sanitize signup password fields and persist sanitized versions if changed
     const cleaned = sanitizePassword(signupData.password);
     const cleanedConfirm = sanitizePassword(signupData.confirmPassword);
     if (cleaned !== signupData.password || cleanedConfirm !== signupData.confirmPassword) {
@@ -186,7 +182,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
       signupData.department,
       signupData.password
     );
-    
+
     if (success) {
       setSignupData({
         email: '',
