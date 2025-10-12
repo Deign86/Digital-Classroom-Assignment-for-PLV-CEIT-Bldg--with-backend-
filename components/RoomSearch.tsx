@@ -5,8 +5,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, MapPin, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
-import equipmentIcons, { getIconForEquipment } from '../lib/equipmentIcons';
+import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi as LucideWifi } from 'lucide-react';
+import * as Phosphor from '@phosphor-icons/react';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour } from '../utils/timeUtils';
@@ -20,9 +20,47 @@ interface RoomSearchProps {
 
 const timeSlots = generateTimeSlots();
 
-// Use shared equipmentIcons/getIconForEquipment helper (use getIconForEquipment dynamically at render time)
+const getPhosphorIcon = (names: string[]) => {
+  for (const n of names) {
+    const Comp = (Phosphor as any)[n] ?? (Phosphor as any)[`${n}Icon`];
+    if (Comp) return <Comp className="h-4 w-4" />;
+  }
+  return null;
+};
 
-// re-exported from shared helper: getIconForEquipment
+const equipmentIcons: { [key: string]: React.ReactNode } = {
+  'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen']),
+  'Computer': getPhosphorIcon(['Monitor', 'Desktop']),
+  'Computers': getPhosphorIcon(['Monitor', 'Desktop']),
+  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple']),
+  'Whiteboard': getPhosphorIcon(['Chalkboard', 'ChalkboardSimple']) || getPhosphorIcon(['Note']),
+  'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay']),
+  'Podium': getPhosphorIcon(['Podium', 'Presentation', 'Microphone']) || getPhosphorIcon(['SpeakerHigh']),
+  // Common variants that may appear in classroom data
+  'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+  'Speaker': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+  'Air Conditioner': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+  'AC': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+};
+
+const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+// Robust lookup for equipment icons: normalized exact match, singular/plural, WiFi fallback
+const getIconForEquipment = (eq?: string) => {
+  if (!eq) return null;
+  const rawKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(eq));
+  if (rawKey) return equipmentIcons[rawKey];
+  const singularAttempt = eq.endsWith('s') ? eq.slice(0, -1) : `${eq}s`;
+  const spKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(singularAttempt));
+  if (spKey) return equipmentIcons[spKey];
+
+  // wifi fallback (only match 'wifi' to avoid collisions with words like 'whiteboard')
+  if (normalize(eq).includes('wifi')) {
+    return <LucideWifi className="h-4 w-4" />;
+  }
+
+  return null;
+};
 
 export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {
   const [searchFilters, setSearchFilters] = useState({
@@ -76,97 +114,152 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
   };
 
-  // Small helpers to reduce repeated logic and complexity
-  const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) => {
-    // intervals [aStart, aEnd) and [bStart, bEnd)
-    return aStart < bEnd && bStart < aEnd;
-  };
-
-  const to24 = (t: string) => convertTo24Hour(t);
-
-  const checkConflictsForClassroom = (classroomId: string, date: string, start24: string, end24: string) => {
-    let confirmed = false;
-    let pending = false;
-
-    for (const schedule of schedules) {
-      if (schedule.classroomId !== classroomId || schedule.date !== date) continue;
-      if (schedule.status === 'confirmed' && overlaps(start24, end24, schedule.startTime, schedule.endTime)) confirmed = true;
-    }
-
-    for (const req of bookingRequests) {
-      if (req.classroomId !== classroomId || req.date !== date) continue;
-      if (req.status === 'pending' && overlaps(start24, end24, req.startTime, req.endTime)) pending = true;
-    }
-
-    return { confirmed, pending };
-  };
-
   // Check if classroom is available for given time slot
   const isClassroomAvailable = (classroomId: string, date: string, startTime: string, endTime: string): boolean => {
     if (!date || !startTime || !endTime) return true;
-    const start24 = to24(startTime);
-    const end24 = to24(endTime);
-    const { confirmed, pending } = checkConflictsForClassroom(classroomId, date, start24, end24);
-    return !confirmed && !pending;
+
+    // Convert 12-hour format to 24-hour for comparison with stored schedule data
+    const startTime24 = convertTo24Hour(startTime);
+    const endTime24 = convertTo24Hour(endTime);
+
+    // Check confirmed schedules
+    const scheduleConflict = schedules.some(schedule => 
+      schedule.classroomId === classroomId &&
+      schedule.date === date &&
+      schedule.status === 'confirmed' &&
+      (
+        (startTime24 >= schedule.startTime && startTime24 < schedule.endTime) ||
+        (endTime24 > schedule.startTime && endTime24 <= schedule.endTime) ||
+        (startTime24 <= schedule.startTime && endTime24 >= schedule.endTime)
+      )
+    );
+
+    // Check pending booking requests
+    const pendingConflict = bookingRequests.some(request => 
+      request.classroomId === classroomId &&
+      request.date === date &&
+      request.status === 'pending' &&
+      (
+        (startTime24 >= request.startTime && startTime24 < request.endTime) ||
+        (endTime24 > request.startTime && endTime24 <= request.endTime) ||
+        (startTime24 <= request.startTime && endTime24 >= request.endTime)
+      )
+    );
+
+    return !scheduleConflict && !pendingConflict;
   };
 
   // Get conflict type for time slot
   const getTimeSlotConflictType = (time: string, isStartTime: boolean = true): 'none' | 'confirmed' | 'pending' | 'both' => {
     if (!searchFilters.date) return 'none';
+    
     const availableClassrooms = classrooms.filter(c => c.isAvailable);
     if (availableClassrooms.length === 0) return 'none';
 
-    let hasConfirmed = false;
-    let hasPending = false;
-
-    const time24 = to24(time);
+    let hasConfirmedConflict = false;
+    let hasPendingConflict = false;
 
     if (isStartTime) {
-      for (const classroom of availableClassrooms) {
-        // check a single instant [time, time+epsilon) by testing overlaps with stored ranges
-        const { confirmed, pending } = checkConflictsForClassroom(classroom.id, searchFilters.date, time24, String(Number(time24) + 0.01));
-        if (confirmed) hasConfirmed = true;
-        if (pending) hasPending = true;
-        if (hasConfirmed && hasPending) break;
-      }
+      availableClassrooms.forEach(classroom => {
+        // Check confirmed schedules
+        const scheduleConflict = schedules.some(schedule => 
+          schedule.classroomId === classroom.id &&
+          schedule.date === searchFilters.date &&
+          schedule.status === 'confirmed' &&
+          convertTo24Hour(time) >= schedule.startTime && 
+          convertTo24Hour(time) < schedule.endTime
+        );
+        
+        // Check pending booking requests
+        const pendingConflict = bookingRequests.some(request => 
+          request.classroomId === classroom.id &&
+          request.date === searchFilters.date &&
+          request.status === 'pending' &&
+          convertTo24Hour(time) >= request.startTime && 
+          convertTo24Hour(time) < request.endTime
+        );
+        
+        if (scheduleConflict) hasConfirmedConflict = true;
+        if (pendingConflict) hasPendingConflict = true;
+      });
     } else {
+      // For end time, check with selected start time
       if (!searchFilters.startTime) return 'none';
-      const start24 = to24(searchFilters.startTime);
-      for (const classroom of availableClassrooms) {
-        const { confirmed, pending } = checkConflictsForClassroom(classroom.id, searchFilters.date, start24, to24(time));
-        if (confirmed) hasConfirmed = true;
-        if (pending) hasPending = true;
-        if (hasConfirmed && hasPending) break;
-      }
+      availableClassrooms.forEach(classroom => {
+        const available = isClassroomAvailable(classroom.id, searchFilters.date, searchFilters.startTime, time);
+        if (!available) {
+          // Need to determine if it's confirmed or pending conflict
+          const scheduleConflict = schedules.some(schedule => 
+            schedule.classroomId === classroom.id &&
+            schedule.date === searchFilters.date &&
+            schedule.status === 'confirmed' &&
+            (
+              (convertTo24Hour(searchFilters.startTime) >= schedule.startTime && convertTo24Hour(searchFilters.startTime) < schedule.endTime) ||
+              (convertTo24Hour(time) > schedule.startTime && convertTo24Hour(time) <= schedule.endTime) ||
+              (convertTo24Hour(searchFilters.startTime) <= schedule.startTime && convertTo24Hour(time) >= schedule.endTime)
+            )
+          );
+          
+          const pendingConflict = bookingRequests.some(request => 
+            request.classroomId === classroom.id &&
+            request.date === searchFilters.date &&
+            request.status === 'pending' &&
+            (
+              (convertTo24Hour(searchFilters.startTime) >= request.startTime && convertTo24Hour(searchFilters.startTime) < request.endTime) ||
+              (convertTo24Hour(time) > request.startTime && convertTo24Hour(time) <= request.endTime) ||
+              (convertTo24Hour(searchFilters.startTime) <= request.startTime && convertTo24Hour(time) >= request.endTime)
+            )
+          );
+          
+          if (scheduleConflict) hasConfirmedConflict = true;
+          if (pendingConflict) hasPendingConflict = true;
+        }
+      });
     }
 
-    if (hasConfirmed && hasPending) return 'both';
-    if (hasConfirmed) return 'confirmed';
-    if (hasPending) return 'pending';
+    if (hasConfirmedConflict && hasPendingConflict) return 'both';
+    if (hasConfirmedConflict) return 'confirmed';
+    if (hasPendingConflict) return 'pending';
     return 'none';
   };
 
   // Check if a time slot has conflicts across any available classroom
   const hasTimeSlotConflicts = (time: string, isStartTime: boolean = true): boolean => {
     if (!searchFilters.date) return false;
+    
     const availableClassrooms = classrooms.filter(c => c.isAvailable);
     if (availableClassrooms.length === 0) return false;
 
-    const time24 = to24(time);
-
+    // For start time, check if this time would conflict with any booking
     if (isStartTime) {
       return availableClassrooms.some(classroom => {
-        const { confirmed, pending } = checkConflictsForClassroom(classroom.id, searchFilters.date, time24, String(Number(time24) + 0.01));
-        return confirmed || pending;
+        // Check confirmed schedules
+        const scheduleConflict = schedules.some(schedule => 
+          schedule.classroomId === classroom.id &&
+          schedule.date === searchFilters.date &&
+          schedule.status === 'confirmed' &&
+          convertTo24Hour(time) >= schedule.startTime && 
+          convertTo24Hour(time) < schedule.endTime
+        );
+        
+        // Check pending booking requests
+        const pendingConflict = bookingRequests.some(request => 
+          request.classroomId === classroom.id &&
+          request.date === searchFilters.date &&
+          request.status === 'pending' &&
+          convertTo24Hour(time) >= request.startTime && 
+          convertTo24Hour(time) < request.endTime
+        );
+        
+        return scheduleConflict || pendingConflict;
       });
+    } else {
+      // For end time, check with selected start time
+      if (!searchFilters.startTime) return false;
+      return availableClassrooms.some(classroom => 
+        !isClassroomAvailable(classroom.id, searchFilters.date, searchFilters.startTime, time)
+      );
     }
-
-    if (!searchFilters.startTime) return false;
-    const start24 = to24(searchFilters.startTime);
-    return availableClassrooms.some(classroom => {
-      const { confirmed, pending } = checkConflictsForClassroom(classroom.id, searchFilters.date, start24, to24(time));
-      return confirmed || pending;
-    });
   };
 
   // Filter and search classrooms
