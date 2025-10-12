@@ -210,40 +210,76 @@ export default function App() {
   }, []);
 
   const handleLogin = useCallback(async (email: string, password: string) => {
-    // Show immediate feedback
-    const loginPromise = authService.signIn(email, password);
-
-    toast.promise(loginPromise, {
-      loading: 'Signing in...',
-      success: (user) => {
-        if (!user) {
-          // This case should ideally be handled by the error part, but as a fallback:
-          return 'Login failed. Please check your credentials.';
-        }
-        // Set user and setup listeners after success
+    setIsLoading(true);
+    try {
+      const user = await authService.signIn(email, password);
+      if (user) {
         setCurrentUser(user);
         setupRealtimeListeners(user);
-
         const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
-        return `${greeting}, ${user.name}!`;
-      },
-      error: (err) => {
-        // The authService.signIn method is designed to throw specific, user-friendly errors.
-        // We can display them directly.
-        if (err instanceof Error) {
-          return err.message;
-        }
-        return 'An unknown login error occurred.';
-      },
-      duration: 4000,
-    });
-
-    try {
-      const user = await loginPromise;
-      return !!user;
-    } catch (err) {
-      // Error is already handled by the toast.promise, but we need to return false for the form.
+        toast.success(`${greeting}, ${user.name}!`, { duration: 4000 });
+        return true;
+      }
+      // If signIn returned falsy without throwing, show a generic error
+      toast.error('Login failed. Please check your credentials.');
       return false;
+    } catch (err) {
+      // Handle/display error similar to previous implementation
+      if (err instanceof Error && 'status' in err) {
+        const status = (err as { status: SignupRequest['status'] }).status;
+        if (status === 'pending') {
+          toast.info('Awaiting approval', {
+            description: 'Your account is pending administrator approval. Watch your email for updates.',
+            duration: 6000,
+          });
+          return false;
+        } else if (status === 'rejected') {
+          toast.error('Account rejected', {
+            description: 'Please contact the administrator for assistance.',
+            duration: 6000,
+          });
+          return false;
+        }
+      }
+
+      // Map common Firebase/auth errors to user-friendly messages
+      let message = 'Please check your email and password and try again.';
+      if (err && typeof err === 'object' && 'code' in err) {
+        const code = (err as { code?: string }).code;
+        switch (code) {
+          case 'auth/invalid-email':
+            message = 'Invalid email address format.';
+            break;
+          case 'auth/user-not-found':
+            message = 'No account found with this email address.';
+            break;
+          case 'auth/wrong-password':
+            message = 'Incorrect password. Please try again.';
+            break;
+          case 'auth/too-many-requests':
+            message = 'Too many login attempts from this device. Access temporarily restricted by Firebase security. Please wait 15-30 minutes or try password reset.';
+            break;
+          case 'auth/user-disabled':
+            message = 'This account has been disabled.';
+            break;
+          case 'permission-denied':
+            message = 'Permission denied. Please contact administrator.';
+            break;
+          default:
+            if ('message' in err && typeof err.message === 'string') {
+              message = err.message;
+            } else {
+              message = `Authentication error: ${code}`;
+            }
+        }
+      } else if (err instanceof Error && err.message) {
+        message = err.message;
+      }
+
+      toast.error('Login failed', { description: message, duration: 6000 });
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   }, [setupRealtimeListeners]);
 

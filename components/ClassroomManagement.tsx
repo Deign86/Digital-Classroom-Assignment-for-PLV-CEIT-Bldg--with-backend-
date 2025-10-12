@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch'; // Assuming you have a Checkbox component
 import { Checkbox } from './ui/checkbox';
-import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor, AlertCircle } from 'lucide-react';
-import * as Phosphor from '@phosphor-icons/react';
+import { Plus, Edit, Trash2, Users, MapPin, AlertCircle } from 'lucide-react';
+import equipmentIcons, { getIconForEquipment, getPhosphorIcon } from '../lib/equipmentIcons';
 import { toast } from 'sonner';
 import type { Classroom } from '../App';
 
@@ -21,30 +21,7 @@ interface ClassroomManagementProps {
   onClassroomUpdate: (classrooms: Classroom[]) => void;
 }
 
-// Helper: try to resolve a Phosphor icon dynamically from a set of candidate names.
-const getPhosphorIcon = (candidates: string[], props: any = {}) => {
-  for (const name of candidates) {
-    // Try both exact export and the common "Icon" suffix used by the package
-    const Comp = (Phosphor as any)[name] ?? (Phosphor as any)[`${name}Icon`];
-    if (Comp) return <Comp {...props} />;
-  }
-  return null;
-};
-
-const equipmentIcons: { [key: string]: React.ReactNode } = {
-  'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen'], { className: 'h-4 w-4' }) || <Projector className="h-4 w-4" />,
-  'Computer': getPhosphorIcon(['Monitor', 'Desktop', 'DesktopTower'], { className: 'h-4 w-4' }) || <Monitor className="h-4 w-4" />,
-  'Computers': getPhosphorIcon(['Monitor', 'Desktop', 'DesktopTower'], { className: 'h-4 w-4' }) || <Monitor className="h-4 w-4" />,
-  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple'], { className: 'h-4 w-4' }) || <Wifi className="h-4 w-4" />,
-  'Whiteboard': getPhosphorIcon(['Chalkboard', 'Board'], { className: 'h-4 w-4' }) || <Edit className="h-4 w-4" />,
-  'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay'], { className: 'h-4 w-4' }) || <Monitor className="h-4 w-4" />,
-  'Microphone': getPhosphorIcon(['Microphone'], { className: 'h-4 w-4' }),
-  'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple'], { className: 'h-4 w-4' }),
-  'Camera': getPhosphorIcon(['Camera'], { className: 'h-4 w-4' }),
-  'Air Conditioner': getPhosphorIcon(['Fan', 'Wind'], { className: 'h-4 w-4' }),
-  'Plug': getPhosphorIcon(['Plug'], { className: 'h-4 w-4' }),
-  'Podium': getPhosphorIcon(['Podium', 'Presentation', 'SpeakerHigh', 'Microphone'], { className: 'h-4 w-4' }) || <Users className="h-4 w-4" />,
-};
+// Use shared equipmentIcons and helpers from lib/equipmentIcons
 
 const allEquipment = [
   // Equipment with icons first
@@ -323,7 +300,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                             }}
                           />
                           <label htmlFor={`eq-${eq}`} className="flex items-center space-x-2 cursor-pointer text-sm font-normal">
-                            {equipmentIcons[eq] && <span className="text-gray-600">{equipmentIcons[eq]}</span>}
+                            {getIconForEquipment(eq) && <span className="text-gray-600">{getIconForEquipment(eq)}</span>}
                             <span>{eq}</span>
                           </label>
                         </div>
@@ -396,7 +373,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           ) : (
                             classroom.equipment.slice(0, 3).map((eq, index) => (
                               <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
-                                {equipmentIcons[eq] && <span>{equipmentIcons[eq]}</span>}
+                                {getIconForEquipment(eq) && <span>{getIconForEquipment(eq)}</span>}
                                 <span>{eq}</span>
                               </Badge>
                             ))
