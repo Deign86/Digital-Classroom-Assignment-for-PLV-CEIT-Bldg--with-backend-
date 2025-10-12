@@ -214,7 +214,8 @@ export default function App() {
     const loginPromise = authService.signIn(email, password);
 
     toast.promise(loginPromise, {
-      loading: 'Signing in...',
+      // Removed loading message because the LoginForm already shows a "Signing In..." button state.
+      // Keeping success/error messages only to avoid duplicate feedback.
       success: (user) => {
         if (!user) {
           // This case should ideally be handled by the error part, but as a fallback:
