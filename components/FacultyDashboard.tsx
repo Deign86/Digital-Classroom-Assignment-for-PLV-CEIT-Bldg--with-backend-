@@ -49,7 +49,7 @@ export default function FacultyDashboard({
   checkConflicts
 }: FacultyDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history'>('upcoming');
+  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -65,6 +65,7 @@ export default function FacultyDashboard({
 
   const pendingRequests = bookingRequests.filter(r => r.status === 'pending').length;
   const approvedRequests = bookingRequests.filter(r => r.status === 'approved').length;
+  const rejectedRequests = bookingRequests.filter(r => r.status === 'rejected').length;
   const totalRequests = bookingRequests.length;
 
   const getStatusBadgeVariant = (status: string) => {
@@ -183,7 +184,7 @@ export default function FacultyDashboard({
 
           <TabsContent value="overview" className="space-y-6">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 animate-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 animate-in">
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 
                   className="h-full stat-card-clickable cursor-pointer" 
@@ -205,7 +206,23 @@ export default function FacultyDashboard({
               </div>
 
               <div className="transition-all duration-300 hover:-translate-y-1">
-                <Card className="h-full">
+                <Card
+                  className="h-full stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view your pending requests"
+                  onClick={() => {
+                    setScheduleInitialTab('requests');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('requests');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -220,8 +237,56 @@ export default function FacultyDashboard({
                 </Card>
               </div>
 
+            <div className="transition-all duration-300 hover:-translate-y-1">
+              <Card
+                className="h-full stat-card-clickable cursor-pointer"
+                role="button"
+                tabIndex={0}
+                title="Click to view your rejected requests"
+                onClick={() => {
+                  setScheduleInitialTab('rejected');
+                  setActiveTab('schedule');
+                }}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setScheduleInitialTab('rejected');
+                    setActiveTab('schedule');
+                  }
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Rejected Requests</p>
+                      <p className="text-3xl font-bold text-red-600">{rejectedRequests}</p>
+                    </div>
+                    <div className="transition-transform hover:scale-110">
+                      <X className="h-8 w-8 text-red-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
               <div className="transition-all duration-300 hover:-translate-y-1">
-                <Card className="h-full">
+                <Card
+                  className="h-full stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view your approved requests"
+                  onClick={() => {
+                    setScheduleInitialTab('approved');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('approved');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -237,13 +302,22 @@ export default function FacultyDashboard({
               </div>
 
               <div className="transition-all duration-300 hover:-translate-y-1">
-                <Card 
-                  className="h-full stat-card-clickable cursor-pointer" 
+                <Card
+                  className="h-full stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view request history"
                   onClick={() => {
-                    setScheduleInitialTab('requests');
+                    setScheduleInitialTab('history');
                     setActiveTab('schedule');
                   }}
-                  title="Click to view your requests"
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('history');
+                      setActiveTab('schedule');
+                    }
+                  }}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -264,7 +338,23 @@ export default function FacultyDashboard({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Booking Requests */}
               <div className="animate-in" style={{ animationDelay: '0.2s' }}>
-                <Card className="h-full transition-shadow duration-200 hover:shadow-lg">
+                <Card
+                  className="h-full transition-shadow duration-200 hover:shadow-lg stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view your requests"
+                  onClick={() => {
+                    setScheduleInitialTab('requests');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('requests');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
                   <CardHeader>
                     <CardTitle>Recent Requests</CardTitle>
                     <CardDescription>Your latest classroom booking requests</CardDescription>
@@ -318,7 +408,23 @@ export default function FacultyDashboard({
 
               {/* Upcoming Schedule */}
               <div className="animate-in" style={{ animationDelay: '0.4s' }}>
-                <Card className="h-full transition-shadow duration-200 hover:shadow-lg">
+                <Card
+                  className="h-full transition-shadow duration-200 hover:shadow-lg stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view upcoming classes"
+                  onClick={() => {
+                    setScheduleInitialTab('upcoming');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('upcoming');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
                   <CardHeader>
                     <CardTitle>Upcoming Classes</CardTitle>
                     <CardDescription>Your confirmed classroom bookings</CardDescription>
