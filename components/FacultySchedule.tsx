@@ -11,7 +11,7 @@ import type { Schedule, BookingRequest } from '../App';
 interface FacultyScheduleProps {
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
-  initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history';
+  initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected';
 }
 
 export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming' }: FacultyScheduleProps) {
@@ -190,6 +190,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             <CheckCircle className="h-4 w-4 mr-2" />
             Approved
           </TabsTrigger>
+          <TabsTrigger value="rejected" className="flex-1 px-4 py-2">
+            <X className="h-4 w-4 mr-2" />
+            Rejected
+          </TabsTrigger>
           <TabsTrigger value="cancelled" className="flex-1 px-4 py-2">
             <XCircle className="h-4 w-4 mr-2" />
             Cancelled
@@ -215,6 +219,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                   {pendingRequests.length}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="rejected" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+              <X className="h-4 w-4 flex-shrink-0" />
+              <span>Rejected</span>
             </TabsTrigger>
             <TabsTrigger value="approved" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <CheckCircle className="h-4 w-4 flex-shrink-0" />
@@ -275,7 +283,25 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               </CardContent>
             </Card>
           ) : (
-            [...approvedRequests, ...rejectedRequests]
+            approvedRequests
+              .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+              .map((request) => (
+                <RequestCard key={request.id} request={request} />
+              ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="rejected" className="space-y-4">
+          {rejectedRequests.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <X className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Rejected Requests</h3>
+                <p className="text-gray-600">You have no rejected booking requests.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            rejectedRequests
               .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
               .map((request) => (
                 <RequestCard key={request.id} request={request} />
