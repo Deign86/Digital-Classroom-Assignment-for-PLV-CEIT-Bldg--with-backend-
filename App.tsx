@@ -195,8 +195,20 @@ export default function App() {
             setSignupHistory(history);
           })
           .catch((err) => {
+            // Log full error for debugging
             console.error('❌ Failed to load signup history:', err);
-            // Non-critical error - don't block the app
+
+            // Surface a user-facing toast so admins know history may be stale
+            try {
+              const message = err instanceof Error ? err.message : String(err);
+              toast.error('Failed to load signup history', {
+                description: message || 'Please refresh the page or try again later.',
+                duration: 7000,
+              });
+            } catch (toastErr) {
+              // If toasting fails for any reason, still keep the original error logged
+              console.warn('Could not show toast for signup history error:', toastErr);
+            }
           });
       }
       
