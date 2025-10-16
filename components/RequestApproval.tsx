@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
+import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 
 interface RequestApprovalProps {
@@ -272,13 +272,18 @@ function RequestCard({
             <CardTitle className="text-lg">{request.facultyName}</CardTitle>
             <CardDescription className="text-sm">Request ID: {request.id.slice(0, 8)}</CardDescription>
           </div>
-          <Badge variant={
-            status === 'pending' ? 'secondary' : 
-            status === 'approved' ? 'default' : 
-            'destructive'
-          }>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {status === 'pending' && isPastBookingTime(request.date, convertTo12Hour(request.startTime)) && (
+              <Badge variant="destructive">Expired</Badge>
+            )}
+            <Badge variant={
+              status === 'pending' ? 'secondary' : 
+              status === 'approved' ? 'default' : 
+              'destructive'
+            }>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       
@@ -342,7 +347,7 @@ function RequestCard({
           <div className="flex gap-3 pt-3 border-t">
             <Button 
               onClick={onApprove}
-              disabled={hasConflict}
+              disabled={hasConflict || isPastBookingTime(request.date, convertTo12Hour(request.startTime))}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white"
             >
               <CheckCircle className="h-4 w-4 mr-2" />

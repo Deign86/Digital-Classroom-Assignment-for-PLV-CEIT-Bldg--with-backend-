@@ -1,3 +1,67 @@
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+
+admin.initializeApp();
+const db = admin.firestore();
+
+// Scheduled Cloud Function: run daily to expire pending booking requests whose start time is in the past
+export const expirePastPendingBookings = functions.pubsub
+  .schedule('every 24 hours')
+  .timeZone('Etc/UTC')
+  .onRun(async (context) => {
+    const now = admin.firestore.Timestamp.now();
+
+    // IMPORTANT: Prefer a proper timestamp field (startAt) on booking requests. This function
+    // handles both timestamp and legacy string-based (date/startTime) formats conservatively.
+    const snapshot = await db.collection('bookingRequests')
+      .where('status', '==', 'pending')
+      .get();
+
+    const batch = db.batch();
+    let changed = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      // If explicit timestamp exists, use it
+      let startTs: admin.firestore.Timestamp | null = null;
+      if (data.startAt && data.startAt._seconds) {
+        // already a Firestore Timestamp-like object
+        startTs = data.startAt as admin.firestore.Timestamp;
+      } else if (data.startAt && data.startAt.seconds) {
+        startTs = admin.firestore.Timestamp.fromMillis((data.startAt.seconds || 0) * 1000);
+      } else if (data.date && data.startTime) {
+        // Try to parse ISO-like strings. Expect date = 'YYYY-MM-DD' and startTime = 'HH:MM' or 'HH:MM:SS'
+        try {
+          const iso = `${data.date}T${data.startTime}`;
+          const parsed = new Date(iso);
+          if (!isNaN(parsed.getTime())) {
+            startTs = admin.firestore.Timestamp.fromDate(parsed);
+          }
+        } catch (e) {
+          // ignore parse errors
+        }
+      }
+
+      if (!startTs) return;
+
+      if (startTs.toMillis() < now.toMillis()) {
+        batch.update(doc.ref, {
+          status: 'rejected',
+          adminFeedback: 'Auto-rejected: booking date/time has passed',
+          resolvedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        changed++;
+      }
+    });
+
+    if (changed > 0) {
+      await batch.commit();
+    }
+
+    console.log(`Expire job ran. Marked ${changed} pending requests as rejected.`);
+    return null;
+  });
 /**
  * Firebase Cloud Functions for PLV Classroom Assignment System
  * Provides admin-level user management capabilities using Firebase Admin SDK
