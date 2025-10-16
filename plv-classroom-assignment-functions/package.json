@@ -15,6 +15,9 @@
     "firebase-functions": "^5.0.0"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.200",
+    "@types/semver": "^7.3.12",
+    "@types/yauzl": "^2.10.0",
     "typescript": "^5.0.0"
   }
 }

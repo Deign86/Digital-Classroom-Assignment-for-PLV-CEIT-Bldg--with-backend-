@@ -1,14 +1,19 @@
-import * as functions from 'firebase-functions';
+import { scheduler } from 'firebase-functions/v2';
+
+// Local typed shape matching firebase-functions v2 ScheduledEvent
+type ScheduledEventLike = {
+  jobName?: string;
+  scheduleTime: string;
+};
 import * as admin from 'firebase-admin';
 
 admin.initializeApp();
 const db = admin.firestore();
 
 // Scheduled Cloud Function: run daily to expire pending booking requests whose start time is in the past
-export const expirePastPendingBookings = functions.pubsub
-  .schedule('every 24 hours')
-  .timeZone('Etc/UTC')
-  .onRun(async (context: functions.EventContext) => {
+export const expirePastPendingBookings = scheduler.onSchedule(
+  { schedule: 'every 24 hours', timeZone: 'Etc/UTC' },
+  async (event: ScheduledEventLike) => {
     const now = admin.firestore.Timestamp.now();
 
     // IMPORTANT: Prefer a proper timestamp field (startAt) on booking requests. This function
@@ -60,8 +65,9 @@ export const expirePastPendingBookings = functions.pubsub
     }
 
     console.log(`Expire job ran. Marked ${changed} pending requests as rejected.`);
-    return null;
-  });
+    return;
+  }
+);
 /**
  * Firebase Cloud Functions for PLV Classroom Assignment System
  * Provides admin-level user management capabilities using Firebase Admin SDK
@@ -74,11 +80,17 @@ import * as logger from "firebase-functions/logger";
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
+// Minimal typed wrapper for callable requests to improve editor/typechecking
+type CallableRequest<T = any> = {
+  auth?: { uid: string } | null;
+  data?: T;
+};
+
 /**
  * Deletes a user's Firebase Auth account and all associated Firestore data
  * Only callable by authenticated admin users
  */
-export const deleteUserAccount = onCall(async (request: any) => {
+export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId?: string }>) => {
   // Verify the user is authenticated
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated");
@@ -102,7 +114,7 @@ export const deleteUserAccount = onCall(async (request: any) => {
       "Only admin users can delete accounts");
   }
 
-  const {userId} = request.data;
+  const {userId} = request.data || {};
   if (!userId || typeof userId !== "string") {
     throw new HttpsError("invalid-argument",
       "userId is required and must be a string");
@@ -195,7 +207,7 @@ export const deleteUserAccount = onCall(async (request: any) => {
  * Only non-lapsed bookings/schedules are deleted. Lapsed entries are preserved.
  * This function must be called by an authenticated admin user.
  */
-export const deleteClassroomCascade = onCall(async (request: any) => {
+export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ classroomId?: string }>) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -373,8 +385,8 @@ export const deleteClassroomCascade = onCall(async (request: any) => {
  * Tracks failed login attempts and locks accounts after too many failures
  * Called by the client after a failed login attempt
  */
-export const trackFailedLogin = onCall(async (request: any) => {
-  const {email} = request.data;
+export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?: string }>) => {
+  const {email} = request.data || {};
 
   if (!email || typeof email !== "string") {
     throw new HttpsError("invalid-argument",
@@ -459,7 +471,7 @@ export const trackFailedLogin = onCall(async (request: any) => {
  * Resets failed login attempts and unlocks an account after successful login
  * Called by the client after successful authentication
  */
-export const resetFailedLogins = onCall(async (request: any) => {
+export const resetFailedLogins = onCall(async (request: CallableRequest) => {
   // User must be authenticated to reset their own failed attempts
   if (!request.auth) {
     throw new HttpsError("unauthenticated",
