@@ -8,7 +8,7 @@ const db = admin.firestore();
 export const expirePastPendingBookings = functions.pubsub
   .schedule('every 24 hours')
   .timeZone('Etc/UTC')
-  .onRun(async (context) => {
+  .onRun(async (context: functions.EventContext) => {
     const now = admin.firestore.Timestamp.now();
 
     // IMPORTANT: Prefer a proper timestamp field (startAt) on booking requests. This function
@@ -67,16 +67,8 @@ export const expirePastPendingBookings = functions.pubsub
  * Provides admin-level user management capabilities using Firebase Admin SDK
  */
 
-import {setGlobalOptions} from "firebase-functions";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
-import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
-
-// Initialize Firebase Admin SDK
-admin.initializeApp();
-
-// Set global options for cost control
-setGlobalOptions({maxInstances: 10});
 
 // Constants for brute force protection
 const MAX_FAILED_ATTEMPTS = 5;
@@ -86,7 +78,7 @@ const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
  * Deletes a user's Firebase Auth account and all associated Firestore data
  * Only callable by authenticated admin users
  */
-export const deleteUserAccount = onCall(async (request) => {
+export const deleteUserAccount = onCall(async (request: any) => {
   // Verify the user is authenticated
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated");
@@ -203,7 +195,7 @@ export const deleteUserAccount = onCall(async (request) => {
  * Only non-lapsed bookings/schedules are deleted. Lapsed entries are preserved.
  * This function must be called by an authenticated admin user.
  */
-export const deleteClassroomCascade = onCall(async (request) => {
+export const deleteClassroomCascade = onCall(async (request: any) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated');
   }
@@ -381,7 +373,7 @@ export const deleteClassroomCascade = onCall(async (request) => {
  * Tracks failed login attempts and locks accounts after too many failures
  * Called by the client after a failed login attempt
  */
-export const trackFailedLogin = onCall(async (request) => {
+export const trackFailedLogin = onCall(async (request: any) => {
   const {email} = request.data;
 
   if (!email || typeof email !== "string") {
@@ -467,7 +459,7 @@ export const trackFailedLogin = onCall(async (request) => {
  * Resets failed login attempts and unlocks an account after successful login
  * Called by the client after successful authentication
  */
-export const resetFailedLogins = onCall(async (request) => {
+export const resetFailedLogins = onCall(async (request: any) => {
   // User must be authenticated to reset their own failed attempts
   if (!request.auth) {
     throw new HttpsError("unauthenticated",
