@@ -309,8 +309,11 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    aria-pressed={showCurrentPassword}
+                    title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
                   >
-                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showCurrentPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.currentPassword && (
@@ -343,8 +346,11 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+                    aria-pressed={showPassword}
+                    title={showPassword ? 'Hide new password' : 'Show new password'}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.newPassword ? (
@@ -381,8 +387,11 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-pressed={showConfirmPassword}
+                    title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.confirmPassword ? (
