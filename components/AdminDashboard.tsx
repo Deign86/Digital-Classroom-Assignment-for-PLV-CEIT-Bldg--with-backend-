@@ -127,7 +127,7 @@ export default function AdminDashboard({
               <Settings className="h-4 w-4 flex-shrink-0" />
               <span>Classrooms</span>
             </TabsTrigger>
-            <TabsTrigger value="requests" className="flex items-center justify-center space-x-1 text-sm px-2 py-2 relative">
+                <TabsTrigger value="requests" className="flex items-center justify-center space-x-1 text-sm px-2 py-2 relative">
               <Users className="h-4 w-4 flex-shrink-0" />
               <span>Classroom Requests</span>
               {pendingRequests > 0 && (
@@ -251,7 +251,7 @@ export default function AdminDashboard({
                 <Card 
                   className="h-full stat-card-clickable cursor-pointer" 
                   onClick={() => setActiveTab('requests')}
-                  title="Click to view pending booking requests"
+                  title="Click to view pending reservation requests"
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -311,9 +311,9 @@ export default function AdminDashboard({
             {/* Recent Requests */}
             <div className="animate-in" style={{ animationDelay: '0.3s' }}>
               <Card className="transition-shadow duration-200 hover:shadow-lg">
-                <CardHeader>
+                  <CardHeader>
                   <CardTitle>Recent Requests</CardTitle>
-                  <CardDescription>Latest classroom booking requests from faculty</CardDescription>
+                  <CardDescription>Latest classroom reservation requests from faculty</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {recentRequests.length === 0 ? (

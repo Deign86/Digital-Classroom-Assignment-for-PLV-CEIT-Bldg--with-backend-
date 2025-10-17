@@ -139,7 +139,7 @@ export default function FacultyDashboard({
             </TabsTrigger>
             <TabsTrigger value="booking" className="flex-1 px-4 py-2">
               <Plus className="h-4 w-4 mr-2" />
-              Request a Classroom
+              Reserve a Classroom
             </TabsTrigger>
             <TabsTrigger value="search" className="flex-1 px-4 py-2">
               <Search className="h-4 w-4 mr-2" />
@@ -164,7 +164,7 @@ export default function FacultyDashboard({
               </TabsTrigger>
               <TabsTrigger value="booking" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
                 <Plus className="h-4 w-4 flex-shrink-0" />
-                <span>Request a Classroom</span>
+                <span>Reserve a Classroom</span>
               </TabsTrigger>
               <TabsTrigger value="search" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
                 <Search className="h-4 w-4 flex-shrink-0" />
@@ -336,7 +336,7 @@ export default function FacultyDashboard({
 
             {/* Recent Requests and Upcoming Schedule */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent Booking Requests */}
+              {/* Recent Reservation Requests */}
               <div className="animate-in" style={{ animationDelay: '0.2s' }}>
                 <Card
                   className="h-full transition-shadow duration-200 hover:shadow-lg stat-card-clickable cursor-pointer"
@@ -355,20 +355,20 @@ export default function FacultyDashboard({
                     }
                   }}
                 >
-                  <CardHeader>
+                    <CardHeader>
                     <CardTitle>Recent Requests</CardTitle>
-                    <CardDescription>Your latest classroom booking requests</CardDescription>
+                    <CardDescription>Your latest classroom reservation requests</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {bookingRequests.length === 0 ? (
                       <div className="text-center py-8">
                         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">No booking requests yet</p>
+                        <p className="text-gray-500">No reservation requests yet</p>
                         <Button 
                           onClick={() => setActiveTab('booking')} 
                           className="mt-4 transition-transform hover:scale-105"
                         >
-                          Book Your First Room
+                          Reserve Your First Room
                         </Button>
                       </div>
                     ) : (
@@ -425,9 +425,9 @@ export default function FacultyDashboard({
                     }
                   }}
                 >
-                  <CardHeader>
+                    <CardHeader>
                     <CardTitle>Upcoming Classes</CardTitle>
-                    <CardDescription>Your confirmed classroom bookings</CardDescription>
+                    <CardDescription>Your confirmed classroom reservations</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {schedules.filter(s => {
@@ -442,7 +442,7 @@ export default function FacultyDashboard({
                           onClick={() => setActiveTab('booking')} 
                           className="mt-4 transition-transform hover:scale-105"
                         >
-                          Book a Room
+                          Reserve a Room
                         </Button>
                       </div>
                     ) : (

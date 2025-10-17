@@ -105,7 +105,7 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
               <CardTitle>Schedule Overview</CardTitle>
-              <CardDescription>View classroom schedules and bookings</CardDescription>
+              <CardDescription>View classroom schedules and reservations</CardDescription>
             </div>
             <div className="flex items-center space-x-4">
               {/* View Mode Toggle */}
@@ -253,16 +253,16 @@ function DayView({
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
+                        <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to cancel this booking? This action cannot be undone.
+                          Are you sure you want to cancel this reservation? This action cannot be undone.
                           The faculty member will need to submit a new request if they need this classroom again.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                        <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
                         <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
-                          Cancel Booking
+                          Cancel Reservation
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -336,15 +336,15 @@ function WeekView({
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Cancel Classroom Booking</AlertDialogTitle>
+                                  <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Are you sure you want to cancel this booking? This action cannot be undone.
+                                    Are you sure you want to cancel this reservation? This action cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                                  <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
                                   <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
-                                    Cancel Booking
+                                    Cancel Reservation
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

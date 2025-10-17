@@ -49,8 +49,8 @@ VITE_FIREBASE_ADMIN_EMAILS=admin@plv.edu.ph
 |------------|---------|------------|
 | `users` | User profiles | email, name, role, status |
 | `classrooms` | Room inventory | name, capacity, equipment, building |
-| `bookingRequests` | Pending bookings | classroomId, facultyId, date, startTime, status |
-| `schedules` | Confirmed bookings | classroomId, facultyId, date, startTime |
+| `bookingRequests` | Pending reservation requests | classroomId, facultyId, date, startTime, status |
+| `schedules` | Confirmed reservations | classroomId, facultyId, date, startTime |
 | `signupRequests` | Faculty signups | email, name, department, status |
 
 ---
@@ -141,7 +141,7 @@ npm install
 1. Login works with admin credentials
 2. Can create classroom in app
 3. Classroom appears in Firebase Console
-4. Can submit booking request as faculty
+4. Can submit reservation request as faculty
 5. Can approve request as admin
 6. Real-time updates work (edit in console, see in app)
 

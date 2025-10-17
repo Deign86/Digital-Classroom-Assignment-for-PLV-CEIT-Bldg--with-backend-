@@ -149,7 +149,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       const result = await classroomService.deleteCascade(classroomToDelete.id);
       const updatedClassrooms = await classroomService.getAll();
       onClassroomUpdate(updatedClassrooms);
-      toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future booking(s)/schedules removed.`);
+    toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future reservation(s)/schedules removed.`);
     } catch (err) {
       console.error('Error deleting classroom (cascade):', err);
       toast.error('Error deleting classroom. See console for details.');
@@ -314,7 +314,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       checked={formData.isAvailable}
                       onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, isAvailable: checked }))}
                     />
-                    <Label htmlFor="available">Available for booking</Label>
+                    <Label htmlFor="available">Available for reservation</Label>
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">

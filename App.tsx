@@ -1117,7 +1117,7 @@ export default function App() {
               <p className="text-blue-600 mb-2">PLV CEIT</p>
               <h1 className="mb-6">Digital Classroom</h1>
               <p className="text-gray-600 mb-8">
-                Streamlined classroom assignment and booking system for PLV CEIT.
+                Streamlined classroom assignment and reservation system for PLV CEIT.
               </p>
             </div>
             

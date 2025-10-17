@@ -194,7 +194,7 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
               <CardTitle>Classroom Utilization Reports</CardTitle>
-              <CardDescription>Analytics and insights on classroom usage and booking patterns</CardDescription>
+                          <CardDescription>Analytics and insights on classroom usage and reservation patterns</CardDescription>
             </div>
             <div className="flex items-center space-x-4">
               <Select value={reportPeriod} onValueChange={(value: 'week' | 'month' | 'semester') => setReportPeriod(value)}>
@@ -212,11 +212,13 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
                 Export
               </Button>
             </div>
-          </div>
+            </div>
+        </CardHeader>
+        <CardHeader>
+          <CardTitle>Reports</CardTitle>
+            <CardDescription>Analytics and insights on classroom usage and reservation patterns</CardDescription>
         </CardHeader>
       </Card>
-
-      {/* Key Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -296,7 +298,7 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
         <Card>
           <CardHeader>
             <CardTitle>Request Status Distribution</CardTitle>
-            <CardDescription>Breakdown of booking request statuses</CardDescription>
+            <CardDescription>Breakdown of reservation request statuses</CardDescription>
           </CardHeader>
           <CardContent>
             {requestStatusData.length > 0 ? (

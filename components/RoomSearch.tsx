@@ -392,7 +392,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                     const getBadgeText = () => {
                       switch (conflictType) {
                         case 'pending': return 'Pending';
-                        case 'confirmed': return 'Booked';
+                        case 'confirmed': return 'Reserved';
                         case 'both': return 'Limited';
                         default: return '';
                       }
@@ -442,7 +442,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                     const getBadgeText = () => {
                       switch (conflictType) {
                         case 'pending': return 'Pending';
-                        case 'confirmed': return 'Booked';
+                        case 'confirmed': return 'Reserved';
                         case 'both': return 'Limited';
                         default: return '';
                       }

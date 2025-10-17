@@ -97,7 +97,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               <p className="font-medium text-gray-900">{schedule.purpose}</p>
               <p className="text-sm text-gray-500 mt-1">{formatDate(schedule.date)}</p>
               {schedule.status === 'cancelled' && (
-                <p className="text-sm text-red-600 mt-1 italic">This booking has been cancelled</p>
+                <p className="text-sm text-red-600 mt-1 italic">This reservation has been cancelled</p>
               )}
             </div>
           </div>
@@ -166,7 +166,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
       <Card>
         <CardHeader>
           <CardTitle>My Schedule & Requests</CardTitle>
-          <CardDescription>View your confirmed classes and booking requests</CardDescription>
+          <CardDescription>View your confirmed classes and reservation requests</CardDescription>
         </CardHeader>
       </Card>
 
@@ -297,7 +297,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               <CardContent className="p-8 text-center">
                 <X className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Rejected Requests</h3>
-                <p className="text-gray-600">You have no rejected booking requests.</p>
+                <p className="text-gray-600">You have no rejected reservation requests.</p>
               </CardContent>
             </Card>
           ) : (
@@ -314,8 +314,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             <Card>
               <CardContent className="p-8 text-center">
                 <XCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Cancelled Bookings</h3>
-                <p className="text-gray-600">You haven't cancelled any bookings yet.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Cancelled Reservations</h3>
+                <p className="text-gray-600">You haven't cancelled any reservations yet.</p>
               </CardContent>
             </Card>
           ) : (

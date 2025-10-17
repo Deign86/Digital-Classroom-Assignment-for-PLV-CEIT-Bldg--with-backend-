@@ -151,11 +151,11 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
 
       // Set conflicts
       setConflicts(confirmedConflicts.map(schedule => 
-        `${schedule.facultyName} has booked this room from ${convertTo12Hour(schedule.startTime)} to ${convertTo12Hour(schedule.endTime)}`
+        `${schedule.facultyName} has reserved this room from ${convertTo12Hour(schedule.startTime)} to ${convertTo12Hour(schedule.endTime)}`
       ));
 
       setPendingConflicts(pendingConflictReqs.map(request => 
-        `${request.facultyName} has a pending request for this room from ${convertTo12Hour(request.startTime)} to ${convertTo12Hour(request.endTime)}`
+        `${request.facultyName} has a pending reservation request for this room from ${convertTo12Hour(request.startTime)} to ${convertTo12Hour(request.endTime)}`
       ));
     } else {
       setConflicts([]);
@@ -218,12 +218,12 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     setIsSubmitting(true);
     try {
       if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
-        toast.error('Booking duration must be between 30 minutes and 8 hours');
+        toast.error('Reservation duration must be between 30 minutes and 8 hours');
         return;
       }
 
       if (isPastBookingTime(formData.date, formData.startTime)) {
-        toast.error('Cannot book time slots that have already passed');
+        toast.error('Cannot reserve time slots that have already passed');
         return;
       }
 
@@ -313,7 +313,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
       <Card className="transition-shadow duration-200 hover:shadow-lg animate-in">
         <CardHeader>
           <CardTitle>Request a Classroom</CardTitle>
-          <CardDescription>Submit a new classroom booking request</CardDescription>
+          <CardDescription>Submit a new classroom reservation request</CardDescription>
         </CardHeader>
         <CardContent className="relative overflow-visible">
           <form 
@@ -563,7 +563,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                               >
                                 {startConflictType === 'pending' ? 'Pending' : 
                                  startConflictType === 'both' ? 'Conflict' : 
-                                 startConflictType === 'past' ? 'Past' : 'Booked'}
+                                 startConflictType === 'past' ? 'Past' : 'Reserved'}
                               </Badge>
                             )}
                           </div>
@@ -657,8 +657,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                                   }`}
                                 >
                                   {endConflictType === 'pending' ? 'Pending' : 
-                                   endConflictType === 'both' ? 'Conflict' : 
-                                   endConflictType === 'past' ? 'Past' : 'Booked'}
+                                     endConflictType === 'both' ? 'Conflict' : 
+                                     endConflictType === 'past' ? 'Past' : 'Reserved'}
                                 </Badge>
                               )}
                             </div>
@@ -735,7 +735,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       <AlertTriangle className="h-5 w-5 text-red-600" />
                     </motion.div>
                     <div>
-                      <p className="text-sm font-medium text-red-800">Booking Conflict</p>
+                      <p className="text-sm font-medium text-red-800">Reservation Conflict</p>
                       {conflicts.map((conflict, index) => (
                         <motion.p 
                           key={index} 
@@ -811,7 +811,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                         The selected time has already passed. Please choose a future time slot.
                       </p>
                       <p className="text-xs text-gray-600 mt-1 italic">
-                        You can only book time slots that are at least 5 minutes in the future.
+                        You can only reserve time slots that are at least 5 minutes in the future.
                       </p>
                     </div>
                   </motion.div>
@@ -823,7 +823,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 <Label htmlFor="purpose">Purpose *</Label>
                 <Textarea
                   id="purpose"
-                  placeholder="Describe the purpose of your classroom booking (e.g., Lecture - Data Structures, Lab Session - Web Development)"
+                  placeholder="Describe the purpose of your classroom reservation (e.g., Lecture - Data Structures, Lab Session - Web Development)"
                   value={formData.purpose}
                   onChange={(e) => {
                     setFormData(prev => ({ ...prev, purpose: e.target.value }));
@@ -889,7 +889,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     ) : (
                       <>
                         <CalendarIcon className="h-4 w-4 mr-2" />
-                        Submit Booking Request
+                        Submit Reservation Request
                       </>
                     )}
                   </Button>

@@ -1,7 +1,7 @@
 # Copilot Instructions for Digital Classroom Assignment System (PLV CEIT)
 
 ## Project Overview
-- **Purpose:** Modern classroom booking and management for PLV CEIT, with role-based dashboards (Admin/Faculty), real-time conflict detection, and comprehensive reporting.
+- **Purpose:** Modern classroom reservation and management for PLV CEIT, with role-based dashboards (Admin/Faculty), real-time conflict detection, and comprehensive reporting.
 - **Stack:** React (TypeScript), Vite, Tailwind CSS, Firebase (Auth, Firestore), Shadcn/ui, Framer Motion, Vercel/Firebase Hosting.
 
 ## Architecture & Key Patterns
@@ -18,13 +18,15 @@ Short, actionable guide for AI coding agents to be productive in this repo.
 
 - Real-time & roles: `realtimeService.subscribeToData(user, callbacks)` sets up role-filtered listeners. Admin receives all collections; faculty receives filtered booking/schedule streams.
 
+- Real-time & roles: `realtimeService.subscribeToData(user, callbacks)` sets up role-filtered listeners. Admin receives all collections; faculty receives filtered reservation/schedule streams.
+
 - Cloud functions & security hooks: UI relies on callable functions for login-protection and account cleanup — common names: `trackFailedLogin`, `resetFailedLogins`, `deleteUserAccount`, `bulkCleanupRejectedAccounts`. When adding infra-affecting changes, update client usage in `lib/firebaseService.ts`.
 
 - Auth & env: `lib/firebaseConfig.ts` throws on missing VITE_* env vars. Auth persistence is set to `browserLocalPersistence`. When running locally, ensure `.env` contains required `VITE_FIREBASE_*` keys and `VITE_FIREBASE_ADMIN_EMAILS` if used.
 
 - Forms & validation: Project uses Radix + `react-hook-form` patterns (see `components/ui/form.tsx`) and many form components in `components/*` (e.g., `RoomBooking.tsx`) that implement inline validation and conflict checks. Follow same pattern: FormProvider + Controllers + `FormItem`/`FormLabel`/`FormMessage`.
 
-- Time & booking rules: Business logic enforces 30-minute slots between 7:00–20:00, 24h storage/12h display. Conflict checks are implemented client-side in components (e.g., `RoomBooking.tsx`) and server-side via Firestore queries (`bookingRequestService.checkConflicts`, `scheduleService.checkConflict`). Mirror these checks when modifying booking flows.
+- Time & reservation rules: Business logic enforces 30-minute slots between 7:00–20:00, 24h storage/12h display. Conflict checks are implemented client-side in components (e.g., `RoomBooking.tsx`) and server-side via Firestore queries (`bookingRequestService.checkConflicts`, `scheduleService.checkConflict`). Mirror these checks when modifying reservation flows.
 
 - Code style & conventions: TypeScript strict mode is enabled. Use explicit types for props/services. Keep service logic in `lib/`, UI in `components/`, shared utils in `utils/`.
 
@@ -35,7 +37,8 @@ Short, actionable guide for AI coding agents to be productive in this repo.
   - Preview: `npm run preview`
 
 - Quick examples to reference:
-  - Use `bookingRequestService.create(...)` for creating booking requests (see `lib/firebaseService.ts`).
+ - Quick examples to reference:
+  - Use `bookingRequestService.create(...)` for creating reservation requests (see `lib/firebaseService.ts`).
   - Subscribe to real-time data: `realtimeService.subscribeToData(user, { onClassroomsUpdate, onBookingRequestsUpdate, onSchedulesUpdate })`.
   - Use `Form`, `FormItem`, `FormControl`, `FormMessage` from `components/ui/form.tsx` for new forms.
 

@@ -88,7 +88,7 @@ export default function RequestCard({
             <div>
               <p className="text-sm font-semibold text-red-900">Scheduling Conflict</p>
               <p className="text-xs text-red-700 mt-1">
-                This time slot conflicts with an existing booking.
+                This time slot conflicts with an existing reservation.
               </p>
             </div>
           </div>
@@ -153,29 +153,29 @@ export default function RequestCard({
         )}
 
         {status === 'approved' && onCancelApproved && (
-          <div className="flex gap-3 pt-3 border-t">
-            <AlertDialog>
+            <div className="flex gap-3 pt-3 border-t">
+              <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
                   className="flex-1 text-gray-600 hover:text-red-600 border-gray-200 hover:border-red-200 hover:bg-gray-50 transition-all duration-200"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
-                  Cancel Booking
+                  Cancel Reservation
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Approved Booking</AlertDialogTitle>
+                  <AlertDialogTitle>Cancel Approved Reservation</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to cancel this approved booking? This action cannot be undone.
+                    Are you sure you want to cancel this approved reservation? This action cannot be undone.
                     The faculty member will need to submit a new request if they need this classroom again.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                  <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
                   <AlertDialogAction onClick={() => onCancelApproved(request.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
-                    Cancel Booking
+                    Cancel Reservation
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
