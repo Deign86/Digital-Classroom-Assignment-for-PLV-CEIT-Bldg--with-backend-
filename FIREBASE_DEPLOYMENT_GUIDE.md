@@ -444,7 +444,7 @@ The app should start at `http://localhost:5173`
 2. Try accessing Admin Dashboard
 3. Test creating classrooms
 4. Test approving users
-5. Test managing bookings
+5. Test managing reservations
 
 ---
 
@@ -612,6 +612,11 @@ Use this checklist when setting up a new Firebase project:
 - [ ] Test classroom creation
 - [ ] Test booking system
 - [ ] Verify email sending
+
+ - [ ] Test admin dashboard
+ - [ ] Test classroom creation
+ - [ ] Test reservation system
+ - [ ] Verify email sending
 - [ ] Check security rules in production mode
 
 ---

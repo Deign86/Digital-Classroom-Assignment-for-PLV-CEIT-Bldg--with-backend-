@@ -17,6 +17,7 @@ Short, actionable guide for AI coding agents to be productive in this repo.
 - Service boundary: All reads/writes and real-time listeners go through `lib/firebaseService.ts` (e.g., `bookingRequestService`, `scheduleService`, `authService`, `realtimeService`). Prefer using these exported methods instead of calling Firestore directly.
 
 - Real-time & roles: `realtimeService.subscribeToData(user, callbacks)` sets up role-filtered listeners. Admin receives all collections; faculty receives filtered booking/schedule streams.
+ - Real-time & roles: `realtimeService.subscribeToData(user, callbacks)` sets up role-filtered listeners. Admin receives all collections; faculty receives filtered reservation/schedule streams.
 
 - Real-time & roles: `realtimeService.subscribeToData(user, callbacks)` sets up role-filtered listeners. Admin receives all collections; faculty receives filtered reservation/schedule streams.
 
@@ -46,3 +47,4 @@ Short, actionable guide for AI coding agents to be productive in this repo.
 
 If anything here is ambiguous or you want longer examples (cloud function signatures, env examples, or common UI patterns), tell me which section to expand and I'll iterate.
 - **Error handling:** User-friendly error messages, especially for auth and booking conflicts.
+ - **Error handling:** User-friendly error messages, especially for auth and reservation conflicts.
