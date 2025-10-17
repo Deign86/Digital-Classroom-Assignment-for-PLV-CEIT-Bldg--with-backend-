@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle } from 'lucide-react';
+import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
@@ -46,6 +46,11 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     password: '',
     confirmPassword: ''
   });
+
+  // Password visibility states for login/signup fields
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
 
   const departments = ['Civil Engineering', 'Information Technology'];
 
@@ -250,7 +255,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => {
@@ -262,6 +267,16 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                     className={`pl-10 h-12 rounded-xl ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showLoginPassword}
+                    title={showLoginPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showLoginPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
                 </div>
                 {loginErrors.password && (
                   <p className="text-sm text-red-600 flex items-center gap-1">
@@ -411,7 +426,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="signup-password"
-                    type="password"
+                    type={showSignupPassword ? 'text' : 'password'}
                     placeholder="Enter a strong password"
                     value={signupData.password}
                     onChange={(e) => {
@@ -423,6 +438,16 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                     className={`pl-10 h-12 rounded-xl ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignupPassword(!showSignupPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showSignupPassword}
+                    title={showSignupPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showSignupPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
                 </div>
                 {signupErrors.password ? (
                   <p className="text-sm text-red-600 flex items-center gap-1">
@@ -442,7 +467,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     id="signup-confirm-password"
-                    type="password"
+                    type={showSignupConfirmPassword ? 'text' : 'password'}
                     placeholder="Re-enter your password"
                     value={signupData.confirmPassword}
                     onChange={(e) => {
@@ -454,6 +479,16 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                     className={`pl-10 h-12 rounded-xl ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-pressed={showSignupConfirmPassword}
+                    title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showSignupConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  </button>
                 </div>
                 {signupErrors.confirmPassword && (
                   <p className="text-sm text-red-600 flex items-center gap-1">
