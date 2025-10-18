@@ -89,7 +89,7 @@ export interface BookingRequest {
   startTime: string;
   endTime: string;
   purpose: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   requestDate: string;
   adminFeedback?: string;
 }

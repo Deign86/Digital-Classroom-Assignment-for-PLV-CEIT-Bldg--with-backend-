@@ -1435,18 +1435,20 @@ export const classroomService = {
     // but keep ones that already lapsed (i.e., their end time is in the past).
     try {
       // Helper to chunk write batches (max 500 ops per batch)
-  const chunkAndCommit = async (docsToDelete: DocumentReference[] | any[]) => {
+    const chunkAndCommit = async (docsToDelete: DocumentReference[] | any[]) => {
         // We'll build batches of up to 450 to be safe
         const CHUNK_SIZE = 450;
         for (let i = 0; i < docsToDelete.length; i += CHUNK_SIZE) {
           const chunk = docsToDelete.slice(i, i + CHUNK_SIZE);
-    // Use the Firestore write batch helper exposed from the Firestore instance if available
-    const firestoreInstance: any = (getDb() as any);
-    const batch = firestoreInstance && firestoreInstance.batch ? firestoreInstance.batch() : null;
+          // Use the Firestore write batch helper exposed from the Firestore instance if available
+          const dbInst = getDb();
+          // Minimal typed batch shape we need
+          type MinimalBatch = { delete: (ref: DocumentReference) => void; commit: () => Promise<void> };
+          const maybeBatch = (dbInst as unknown as { batch?: () => MinimalBatch }).batch?.();
           // Use low-level write batch if available
-          if (batch) {
-            chunk.forEach((d: any) => batch.delete(d));
-            await batch.commit();
+          if (maybeBatch) {
+            chunk.forEach((d: DocumentReference) => maybeBatch.delete(d));
+            await maybeBatch.commit();
           } else {
             // Fallback: delete sequentially
             for (const d of chunk) {

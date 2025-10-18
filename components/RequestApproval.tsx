@@ -26,7 +26,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
+  // Consider a request expired if server-marked or if it's still pending but its start time is in the past
+  const expiredRequests = requests.filter(r => r.status === 'expired' || (r.status === 'pending' && isPastBookingTime(r.date, convertTo12Hour(r.startTime))));
+
+  // Pending requests exclude server-marked expired ones (status === 'expired') and time-based expired ones
+  const pendingRequests = requests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime)));
   const approvedRequests = requests.filter(r => r.status === 'approved');
   const rejectedRequests = requests.filter(r => r.status === 'rejected');
 
@@ -59,7 +63,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12">
+          <TabsList className="grid w-full grid-cols-4 h-12">
             <TabsTrigger value="pending" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Pending ({pendingRequests.length})
@@ -71,6 +75,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             <TabsTrigger value="rejected" className="flex items-center gap-2">
               <XCircle className="h-4 w-4" />
               Rejected ({rejectedRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="expired" className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              Expired ({expiredRequests.length})
             </TabsTrigger>
           </TabsList>
 
@@ -123,6 +131,30 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     onCancelApproved={onCancelApproved}
                     checkConflicts={checkConflicts}
                     status="approved"
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="expired" className="mt-6">
+            {expiredRequests.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Clock className="h-16 w-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Expired Requests</h3>
+                  <p className="text-gray-500 text-center max-w-md">
+                    There are no expired pending requests.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {expiredRequests.map((request) => (
+                  <RequestCard
+                    key={request.id}
+                    request={request}
+                    status="expired"
                   />
                 ))}
               </div>

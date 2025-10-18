@@ -19,7 +19,8 @@ import {
   UserPlus,
   UserCog
 } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
+import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import ClassroomManagement from './ClassroomManagement';
 import RequestApproval from './RequestApproval';
 import SignupApproval from './SignupApproval';
@@ -322,56 +323,74 @@ export default function AdminDashboard({
                     </p>
                   ) : (
                     <div className="space-y-4">
-                      {recentRequests.map((request, index) => (
-                        <div 
-                          key={request.id} 
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-gray-50 space-y-3 sm:space-y-0 animate-in"
-                          style={{ animationDelay: `${0.1 * index}s` }}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-1 flex-wrap">
-                              <p className="font-medium">{request.facultyName}</p>
-                              <Badge 
-                                variant={
-                                  request.status === 'pending' ? 'secondary' :
-                                  request.status === 'approved' ? 'default' : 'destructive'
-                                }
-                                className="flex-shrink-0"
-                              >
-                                {request.status}
-                              </Badge>
+                      {recentRequests.map((request, index) => {
+                        const isExpired = request.status === 'expired' || (request.status === 'pending' && isPastBookingTime(request.date, convertTo12Hour(request.startTime)));
+                        return (
+                          <div 
+                            key={request.id} 
+                            className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-gray-50 space-y-3 sm:space-y-0 animate-in"
+                            style={{ animationDelay: `${0.1 * index}s` }}
+                          >
+                            <div className="flex-1 min-w-0">
+                                      <div className="flex items-center space-x-2 mb-1 flex-wrap">
+                                        <p className="font-medium">{request.facultyName}</p>
+                                          {isExpired ? (
+                                            <Badge variant="destructive" className="flex-shrink-0">Expired</Badge>
+                                          ) : (
+                                            <Badge 
+                                              variant={
+                                                request.status === 'pending' ? 'secondary' :
+                                                request.status === 'approved' ? 'default' : 'destructive'
+                                              }
+                                              className="flex-shrink-0"
+                                            >
+                                              {request.status}
+                                            </Badge>
+                                          )}
+                                      </div>
+                              <p className="text-sm text-gray-600 break-words">{request.classroomName} • {request.date} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
+                              <p className="text-sm text-gray-500 break-words">{request.purpose}</p>
                             </div>
-                            <p className="text-sm text-gray-600 break-words">{request.classroomName} • {request.date} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
-                            <p className="text-sm text-gray-500 break-words">{request.purpose}</p>
+                            {request.status === 'pending' && (
+                              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-shrink-0 items-center">
+                                {!isExpired ? (
+                                  <>
+                                    <div className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => onRequestApproval(request.id, true)}
+                                        className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
+                                        aria-label={`Approve request ${request.id}`}
+                                      >
+                                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                        Approve
+                                      </Button>
+                                    </div>
+                                    <div className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => onRequestApproval(request.id, false)}
+                                        className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
+                                        aria-label={`Reject request ${request.id}`}
+                                      >
+                                        <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="w-full sm:w-auto">
+                                    <p className="text-sm text-muted-foreground">Expired — cannot be approved or rejected.</p>
+                                    <span className="sr-only" role="status" aria-live="polite">This request has expired and cannot be approved or rejected.</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          {request.status === 'pending' && (
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-shrink-0">
-                              <div className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => onRequestApproval(request.id, true)}
-                                  className="transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm"
-                                >
-                                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                  Approve
-                                </Button>
-                              </div>
-                              <div className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => onRequestApproval(request.id, false)}
-                                  className="transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm"
-                                >
-                                  <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

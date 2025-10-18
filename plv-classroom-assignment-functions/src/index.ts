@@ -10,9 +10,14 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 const db = admin.firestore();
 
+// Minimal local types to avoid casting to `any` in a few server-side helpers
+type DeletionLockDoc = { locked?: boolean; lockedBy?: string; timestamp?: number };
+type BookingDocData = { date?: string; startTime?: string; endTime?: string; startAt?: any };
+
 // Scheduled Cloud Function: run daily to expire pending booking requests whose start time is in the past
 export const expirePastPendingBookings = scheduler.onSchedule(
-  { schedule: 'every 24 hours', timeZone: 'Etc/UTC' },
+  // Run hourly to reduce lag between a booking expiring and the UI reflecting that status
+  { schedule: '0 * * * *', timeZone: 'Etc/UTC' },
   async (event: ScheduledEventLike) => {
     const now = admin.firestore.Timestamp.now();
 
@@ -52,8 +57,9 @@ export const expirePastPendingBookings = scheduler.onSchedule(
 
       if (startTs.toMillis() < now.toMillis()) {
         batch.update(doc.ref, {
-          status: 'rejected',
-          adminFeedback: 'Auto-rejected: booking date/time has passed',
+          status: 'expired',
+          adminFeedback: 'Auto-expired: booking date/time has passed',
+          expiredAt: admin.firestore.FieldValue.serverTimestamp(),
           resolvedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         changed++;
@@ -64,7 +70,7 @@ export const expirePastPendingBookings = scheduler.onSchedule(
       await batch.commit();
     }
 
-    console.log(`Expire job ran. Marked ${changed} pending requests as rejected.`);
+  console.log(`Expire job ran. Marked ${changed} pending requests as expired.`);
     return;
   }
 );
@@ -292,7 +298,7 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
     await db.runTransaction(async (tx) => {
       const lockSnap = await tx.get(lockRef);
       if (lockSnap.exists) {
-        const ld = lockSnap.data() as any;
+        const ld = lockSnap.data() as DeletionLockDoc | undefined;
         const lockedAt = typeof ld?.timestamp === 'number' ? ld.timestamp : 0;
         if (Date.now() - lockedAt < LOCK_TIMEOUT_MS) {
           throw new HttpsError('already-exists', 'A deletion for this classroom is already in progress');
@@ -308,14 +314,14 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
     const toDeleteRefs: admin.firestore.DocumentReference[] = [];
 
     bookingSnap.docs.forEach((d) => {
-      const data = d.data() as any;
-      const lapsed = isLapsed(data.date, data.endTime);
+      const data = d.data() as BookingDocData | undefined;
+      const lapsed = !data ? false : isLapsed(data.date || '', data.endTime || '');
       if (!lapsed) toDeleteRefs.push(d.ref);
     });
 
     scheduleSnap.docs.forEach((d) => {
-      const data = d.data() as any;
-      const lapsed = isLapsed(data.date, data.endTime);
+      const data = d.data() as BookingDocData | undefined;
+      const lapsed = !data ? false : isLapsed(data.date || '', data.endTime || '');
       if (!lapsed) toDeleteRefs.push(d.ref);
     });
 

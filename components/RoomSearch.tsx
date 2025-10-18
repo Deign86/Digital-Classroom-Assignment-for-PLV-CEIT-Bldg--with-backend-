@@ -20,9 +20,10 @@ interface RoomSearchProps {
 
 const timeSlots = generateTimeSlots();
 
+const phosphorIndex = Phosphor as unknown as Record<string, React.ElementType | undefined>;
 const getPhosphorIcon = (names: string[]) => {
   for (const n of names) {
-    const Comp = (Phosphor as any)[n] ?? (Phosphor as any)[`${n}Icon`];
+    const Comp = phosphorIndex[n] ?? phosphorIndex[`${n}Icon`];
     if (Comp) return <Comp className="h-4 w-4" />;
   }
   return null;

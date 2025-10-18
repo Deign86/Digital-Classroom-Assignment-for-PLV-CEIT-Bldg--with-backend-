@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
@@ -16,16 +17,17 @@ export default function RequestCard({
   status
 }: {
   request: BookingRequest;
-  onApprove: () => void;
-  onReject: () => void;
+  onApprove?: () => void;
+  onReject?: () => void;
   onCancelApproved?: (requestId: string) => void;
-  checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
-  status: 'pending' | 'approved' | 'rejected';
+  checkConflicts?: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
 }) {
   const [hasConflict, setHasConflict] = useState(false);
 
   useEffect(() => {
     const checkForConflicts = async () => {
+      if (typeof checkConflicts !== 'function') return;
       try {
         const result = checkConflicts(
           request.classroomId,
@@ -47,16 +49,21 @@ export default function RequestCard({
       }
     };
 
-    if (status === 'pending') {
+    if (status === 'pending' && typeof checkConflicts === 'function') {
       checkForConflicts();
     }
   }, [request, checkConflicts, status]);
+
+  const isServerExpired = request.status === 'expired';
+  const isExpired = isServerExpired || (status === 'pending' && isPastBookingTime(request.date, convertTo12Hour(request.startTime)));
 
   const borderColor = status === 'pending'
     ? (hasConflict ? 'border-l-red-500' : 'border-l-orange-500')
     : status === 'approved'
       ? 'border-l-green-500'
-      : 'border-l-red-500';
+      : status === 'rejected'
+        ? 'border-l-red-500'
+        : 'border-l-gray-400';
 
   return (
     <Card className={`border-l-4 ${borderColor} transition-shadow hover:shadow-md`}>
@@ -67,12 +74,13 @@ export default function RequestCard({
             <CardDescription className="text-sm">Request ID: {request.id.slice(0, 8)}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {status === 'pending' && isPastBookingTime(request.date, convertTo12Hour(request.startTime)) && (
+            {isExpired && (
               <Badge variant="destructive">Expired</Badge>
             )}
             <Badge variant={
               status === 'pending' ? 'secondary' :
               status === 'approved' ? 'default' :
+              status === 'rejected' ? 'destructive' :
               'destructive'
             }>
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -136,19 +144,61 @@ export default function RequestCard({
         )}
 
         {status === 'pending' && (
-          <div className="flex gap-3 pt-3 border-t">
-            <Button
-              onClick={onApprove}
-              disabled={hasConflict || isPastBookingTime(request.date, convertTo12Hour(request.startTime))}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Approve
-            </Button>
-            <Button onClick={onReject} variant="destructive" className="flex-1">
-              <XCircle className="h-4 w-4 mr-2" />
-              Reject
-            </Button>
+          <div className="flex gap-3 pt-3 border-t items-center">
+            {!isExpired ? (
+              // If there's a conflict, show a tooltip explaining why Approve is disabled
+              hasConflict ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex-1">
+                        <Button
+                          onClick={() => onApprove?.()}
+                          disabled
+                          className={`flex-1 bg-gray-200 text-gray-600 cursor-not-allowed`}
+                          aria-disabled={true}
+                          aria-label="Approve (disabled due to scheduling conflict)"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">There is a scheduling conflict with this time slot; approve is disabled until the conflict is resolved.</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Button
+                  onClick={() => onApprove?.()}
+                  className={`flex-1 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white`}
+                  aria-label="Approve request"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve
+                </Button>
+              )
+            ) : (
+              // When expired: remove actionable buttons entirely and provide accessible status info
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Expired — cannot be approved or rejected.</p>
+                <span className="sr-only" role="status" aria-live="polite">This request has expired and cannot be approved or rejected.</span>
+              </div>
+            )}
+
+            {!isExpired ? (
+              <Button
+                onClick={() => onReject?.()}
+                variant="destructive"
+                className={'flex-1'}
+                aria-label="Reject request"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reject
+              </Button>
+            ) : (
+              // nothing (no Reject button for expired items)
+              <div />
+            )}
           </div>
         )}
 

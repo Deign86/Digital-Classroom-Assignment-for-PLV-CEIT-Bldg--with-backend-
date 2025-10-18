@@ -31,10 +31,15 @@ service cloud.firestore {
     // Booking Requests collection
     match /bookingRequests/{requestId} {
       // Any authenticated user can create and read booking requests.
-      // Any authenticated user can update (for both owner edits and admin approval).
-      // Users can delete their own requests.
       allow create, read: if request.auth != null;
-      allow update: if request.auth != null;
+
+      // Updates are allowed for authenticated users but clients MUST NOT set status to 'expired'.
+      // Only server/cloud-functions or admin agents should write 'expired'.
+      allow update: if request.auth != null &&
+        // If the client is attempting to set status to 'expired', block unless they are an admin
+        !(request.resource.data.status == 'expired' && !(request.auth.token.admin == true));
+
+      // Users can delete their own requests.
       allow delete: if request.auth != null && isOwner(resource.data.facultyId);
     }
     

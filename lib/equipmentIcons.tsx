@@ -3,9 +3,10 @@ import * as Phosphor from '@phosphor-icons/react';
 import { Wifi as LucideWifi, CheckCircle as LucideCheckCircle, Projector as LucideProjector, Monitor as LucideMonitor, Users as LucideUsers, Edit as LucideEdit } from 'lucide-react';
 
 // Try to resolve a Phosphor icon dynamically from a set of candidate names.
+const phosphorIndex = Phosphor as unknown as Record<string, React.ElementType | undefined>;
 export const getPhosphorIcon = (candidates: string[], props: any = {}) => {
   for (const name of candidates) {
-    const Comp = (Phosphor as any)[name] ?? (Phosphor as any)[`${name}Icon`];
+    const Comp = phosphorIndex[name] ?? phosphorIndex[`${name}Icon`];
     if (Comp) return <Comp {...props} />;
   }
   return null;
