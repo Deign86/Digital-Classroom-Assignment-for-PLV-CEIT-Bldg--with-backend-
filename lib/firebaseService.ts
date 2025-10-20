@@ -1015,12 +1015,12 @@ export const authService = {
         }
       }
       
-      // Throw a more generic error if we haven't thrown a specific one yet
-      if (error instanceof Error && (error.message.includes('Account locked') || error.message.includes('attempts remaining'))) {
-        throw error;
-      }
+          // Throw a more generic error if we haven't thrown a specific one yet
+          if (error instanceof Error && (error.message.includes('Account locked') || error.message.includes('attempts remaining'))) {
+            throw error;
+          }
 
-      throw new Error('Invalid credentials. Please check your email and password.');
+          throw new Error('Invalid credentials. Please check your email and password.');
     }
   },
 
@@ -2099,6 +2099,29 @@ export const realtimeService = {
   // Get current listener count (for debugging)
   getListenerCount() {
     return activeUnsubscribes.length;
+  }
+};
+
+// Client helper: call testPush cloud function (admin-only). Returns callable result.data.
+export const callTestPush = async (userId: string) => {
+  const app = getFirebaseApp();
+  // Use the same region where functions are deployed to avoid cross-origin issues
+  const functions = getFunctions(app, 'us-central1');
+  const fn = httpsCallable(functions, 'testPush');
+  const result = await fn({ userId });
+  return result.data;
+};
+
+export const callGetVapidPublicKey = async () => {
+  try {
+    const app = getFirebaseApp();
+    const functions = getFunctions(app, 'us-central1');
+    const fn = httpsCallable(functions, 'getVapidPublicKey');
+    const res = await fn({});
+    return res.data;
+  } catch (error) {
+    console.warn('Failed to fetch VAPID public key', error);
+    return { ok: false };
   }
 };
 

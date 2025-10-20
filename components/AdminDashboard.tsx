@@ -22,6 +22,20 @@ import {
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import ClassroomManagement from './ClassroomManagement';
+import Notifications from './Notifications';
+import { callTestPush } from '../lib/firebaseService';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from './ui/dialog';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from './ui/select';
 import RequestApproval from './RequestApproval';
 import SignupApproval from './SignupApproval';
 import ScheduleViewer from './ScheduleViewer';
@@ -65,6 +79,14 @@ export default function AdminDashboard({
   checkConflicts
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(users && users.length > 0 ? users[0].id : undefined);
+
+  const filteredUsers = users.filter((u) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || u.id.includes(q);
+  });
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -105,6 +127,76 @@ export default function AdminDashboard({
                 <p className="text-sm font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
                 <p className="text-xs text-gray-500 whitespace-nowrap">{user.email}</p>
               </div>
+                <div className="mr-2">
+                  <Notifications userId={user.id} />
+                </div>
+                {user.role === 'admin' && (
+                  <div className="mr-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="ghost">Test Push</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Send Test Push</DialogTitle>
+                          <DialogDescription>Select a user to send a test push notification.</DialogDescription>
+                        </DialogHeader>
+
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Search user</label>
+                          <input
+                            type="search"
+                            aria-label="Search users"
+                            placeholder="Search by name or email"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full border rounded-md px-3 py-2 mb-3 text-sm"
+                          />
+
+                          <div className="max-h-56 overflow-y-auto border rounded-md">
+                            {filteredUsers.length === 0 ? (
+                              <div className="p-3 text-sm text-gray-500">No users found</div>
+                            ) : (
+                              <ul className="divide-y">
+                                {filteredUsers.map((u) => (
+                                  <li key={u.id} className={`p-2 cursor-pointer hover:bg-gray-50 ${selectedUserId === u.id ? 'bg-gray-100' : ''}`} onClick={() => setSelectedUserId(u.id)}>
+                                    <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                                    <div className="text-xs text-gray-500">{u.email}</div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button size="sm" variant="outline">Cancel</Button>
+                          </DialogClose>
+                          <Button size="sm" onClick={async () => {
+                            const selected = selectedUserId || (users && users.length > 0 ? users[0].id : undefined);
+                            if (!selected) {
+                              toast.error('Please select a user');
+                              return;
+                            }
+                            try {
+                              const res = await callTestPush(selected);
+                              const r = res as any;
+                              if (r && r.ok) {
+                                toast.success(`Test push sent to ${selected} (${r.results?.length || 0} subscriptions)`);
+                              } else {
+                                toast.error(r && r.message ? String(r.message) : `No subscriptions found for ${selected}`);
+                              }
+                            } catch (err: any) {
+                              console.error('testPush failed', err);
+                              toast.error(err?.message || 'Failed to send test push');
+                            }
+                          }}>Send</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
               <div className="transition-transform hover:scale-105 active:scale-95">
                 <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
                   <LogOut className="h-4 w-4 sm:mr-2" />

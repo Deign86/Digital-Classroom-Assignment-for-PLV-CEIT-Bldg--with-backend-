@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "plv-classroom-assignment-functions": "file:.."
+  }
+}

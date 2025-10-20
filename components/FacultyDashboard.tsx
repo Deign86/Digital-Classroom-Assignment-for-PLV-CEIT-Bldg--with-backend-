@@ -24,6 +24,7 @@ import RoomSearch from './RoomSearch';
 import FacultySchedule from './FacultySchedule';
 import ProfileSettings from './ProfileSettings';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
+import Notifications from './Notifications';
 
 interface FacultyDashboardProps {
   user: User;
@@ -117,6 +118,9 @@ export default function FacultyDashboard({
               <div className="hidden md:block text-right min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate max-w-[280px]">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate max-w-[280px]">{user.department} • {user.email}</p>
+              </div>
+              <div className="mr-2">
+                <Notifications userId={user.id} />
               </div>
               <div className="transition-transform hover:scale-105 active:scale-95">
                 <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">

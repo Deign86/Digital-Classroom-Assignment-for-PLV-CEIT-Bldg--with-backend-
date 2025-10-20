@@ -335,6 +335,39 @@ VITE_FIREBASE_MEASUREMENT_ID=your-measurement-id
 - Each developer should have their own `.env` file
 - For production, use environment variables in your hosting platform
 
+### Step 5.4: Push Notifications (VAPID) and Admin Config
+
+This project uses Web Push (VAPID) for browser push notifications and a small admin-only callable that can send test pushes. Store VAPID keys and admin email list in Firebase Functions config so they are available at runtime.
+
+1. Generate VAPID keys (one-time):
+
+```bash
+npx web-push generate-vapid-keys --json
+```
+
+2. Set the VAPID keys in your Firebase functions config (replace values):
+
+```bash
+firebase functions:config:set push.vapid_public="<YOUR_PUBLIC_KEY>" push.vapid_private="<YOUR_PRIVATE_KEY>"
+```
+
+3. (Optional) Provide a comma-separated list of admin emails for the `testPush` callable:
+
+```bash
+firebase functions:config:set admins.emails="admin1@example.com,admin2@example.com"
+```
+
+4. Deploy functions:
+
+```bash
+firebase deploy --only functions
+```
+
+Notes:
+- The functions code will read VAPID keys from `functions.config().push.vapid_public` and `functions.config().push.vapid_private` and fall back to environment variables if not set.
+- The `testPush` callable checks for a custom claim `admin=true` on the caller or matches the caller email against the `admins.emails` list in functions config.
+
+
 ---
 
 ## 6. Email Templates Setup
