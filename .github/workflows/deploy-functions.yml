@@ -1,0 +1,48 @@
+name: Build and Deploy Functions (HTTP wrappers)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - feat/enable-notifications
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies (functions)
+        run: |
+          cd plv-classroom-assignment-functions
+          npm ci --prefer-offline
+
+      - name: Build functions (tsc)
+        run: |
+          cd plv-classroom-assignment-functions
+          npm run build
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Deploy HTTP functions
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          # Deploy only the two HTTP functions so the CORS allowlist change goes live
+          firebase deploy --only functions:getVapidPublicKeyHttp,functions:testPushHttp --project=plv-classroom-assignment --token "$FIREBASE_TOKEN"
+
+      - name: Post-deploy notes
+        run: |
+          echo "If deploy succeeds, ensure runtime env vars are set for the functions:"
+          echo "  - ALLOWED_CORS_ORIGINS (comma-separated origins)"
+          echo "  - PUSH_VAPID_PUBLIC and PUSH_VAPID_PRIVATE (use Secret Manager or set as environment variables)"
