@@ -557,9 +557,23 @@ export const getVapidPublicKey = onCall(async (request: CallableRequest<{}>) => 
   });
 
   // HTTP wrapper for getVapidPublicKey to support browser fetch + CORS preflight from localhost/dev hosts.
+  // Restrict allowed origins via ALLOWED_CORS_ORIGINS environment variable (comma-separated).
   export const getVapidPublicKeyHttp = onRequest(async (req: Request, res: Response) => {
-    // Allow CORS for development and production origins. Adjust as needed.
-    res.set('Access-Control-Allow-Origin', '*');
+    const allowedEnv = process.env.ALLOWED_CORS_ORIGINS || '';
+    const allowed = allowedEnv.split(',').map((s) => s.trim()).filter(Boolean);
+    const origin = req.get('Origin') || req.get('origin');
+
+    // If an Origin header is present, enforce the allowlist. If no Origin, treat as server-to-server and allow.
+    if (origin) {
+      if (allowed.length === 0 || !allowed.includes(origin)) {
+        // Not allowed
+        if (req.method === 'OPTIONS') return res.status(403).send('Origin not allowed');
+        return res.status(403).json({ ok: false, message: 'origin-not-allowed' });
+      }
+      // Allowed origin: echo it back
+      res.set('Access-Control-Allow-Origin', origin);
+    }
+
     res.set('Access-Control-Allow-Methods', 'GET,OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') {
@@ -579,8 +593,20 @@ export const getVapidPublicKey = onCall(async (request: CallableRequest<{}>) => 
 
   // HTTP wrapper for testPush to support browser fetch + CORS preflight. This endpoint expects
   // an Authorization: Bearer <idToken> header to authenticate the caller (same as callable would).
+  // Restrict allowed origins via ALLOWED_CORS_ORIGINS environment variable (comma-separated).
   export const testPushHttp = onRequest(async (req: Request, res: Response) => {
-    res.set('Access-Control-Allow-Origin', '*');
+    const allowedEnv = process.env.ALLOWED_CORS_ORIGINS || '';
+    const allowed = allowedEnv.split(',').map((s) => s.trim()).filter(Boolean);
+    const origin = req.get('Origin') || req.get('origin');
+
+    if (origin) {
+      if (allowed.length === 0 || !allowed.includes(origin)) {
+        if (req.method === 'OPTIONS') return res.status(403).send('Origin not allowed');
+        return res.status(403).json({ ok: false, message: 'origin-not-allowed' });
+      }
+      res.set('Access-Control-Allow-Origin', origin);
+    }
+
     res.set('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') {
