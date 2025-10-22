@@ -93,7 +93,7 @@ export interface BookingRequest {
   startTime: string;
   endTime: string;
   purpose: string;
-  status: 'pending' | 'approved' | 'rejected' | 'expired';
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
   requestDate: string;
   adminFeedback?: string;
 }
@@ -640,8 +640,8 @@ export default function App() {
       // Submit the booking request
       const newRequest = await bookingRequestService.create(request);
       
-      setBookingRequests(prev => [...prev, newRequest]);
-      toast.success('Classroom request submitted!');
+  setBookingRequests(prev => [...prev, newRequest]);
+  toast.success('Reservation request submitted!');
     } catch (err) {
       console.error('Booking request error:', err);
       // Check if it's a duplicate/conflict error from the database
@@ -730,7 +730,7 @@ export default function App() {
         setSchedules(prev => [...prev, newSchedule]);
       }
       
-      toast.success(approved ? 'Request approved!' : 'Request rejected.');
+  toast.success(approved ? 'Reservation approved!' : 'Reservation rejected.');
     } catch (err) {
       console.error('Approval error:', err);
       toast.error('Failed to process request');
@@ -840,7 +840,7 @@ export default function App() {
   const handleCancelSchedule = useCallback(async (scheduleId: string) => {
     try {
       await scheduleService.cancelApprovedBooking(scheduleId);
-      
+
       setSchedules(prev =>
         prev.map(schedule => 
           schedule.id === scheduleId 
@@ -848,8 +848,8 @@ export default function App() {
             : schedule
         )
       );
-      
-      toast.success('Booking cancelled!');
+
+      toast.success('Reservation cancelled!');
     } catch (err) {
       console.error('Cancel schedule error:', err);
       toast.error('Failed to cancel booking');
@@ -879,18 +879,18 @@ export default function App() {
         );
       }
 
-      // Update the booking request status to rejected
-      await bookingRequestService.update(requestId, { status: 'rejected', adminFeedback: 'Booking cancelled by administrator' });
-      
+      // Update the booking request status to cancelled
+      await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: 'Reservation cancelled by administrator' });
+
       setBookingRequests(prev =>
         prev.map(request => 
           request.id === requestId 
-            ? { ...request, status: 'rejected' as const, adminFeedback: 'Booking cancelled by administrator' }
+            ? { ...request, status: 'cancelled' as const, adminFeedback: 'Reservation cancelled by administrator' }
             : request
         )
       );
-      
-      toast.success('Approved booking cancelled!');
+
+      toast.success('Approved reservation cancelled!');
     } catch (err) {
       console.error('Cancel approved booking error:', err);
       toast.error('Failed to cancel approved booking');

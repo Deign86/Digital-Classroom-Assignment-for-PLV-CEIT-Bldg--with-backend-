@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// react-router navigation removed for bulk results to avoid unexpected full-screen navigation
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -173,6 +173,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.length - succeeded;
 
+    // show a single summary toast instead of opening a bulk results dialog
     if (succeeded > 0 && failed === 0) {
       const message = `${succeeded} request(s) processed successfully.`;
       toast.success(message);
@@ -195,7 +196,6 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const [bulkActionApprove, setBulkActionApprove] = useState<boolean | null>(null);
   const [bulkFeedback, setBulkFeedback] = useState('');
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
-  const [bulkResultsOpen, setBulkResultsOpen] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
   const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
 
@@ -275,7 +275,20 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     });
 
   setBulkResults({ succeeded, failed });
-  setBulkResultsOpen(true);
+  // show a single summary toast instead of opening the bulk results dialog
+  if (succeeded.length > 0 && failed.length === 0) {
+    const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} items processed.`;
+    toast.success(message);
+    announce?.(message, 'polite');
+  } else if (succeeded.length > 0 && failed.length > 0) {
+    const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} succeeded, ${failed.length} failed.`;
+    toast.success(message);
+    announce?.(message, 'polite');
+  } else if (succeeded.length === 0 && failed.length > 0) {
+    const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} failed for all ${failed.length} items.`;
+    toast.error(message);
+    announce?.(message, 'assertive');
+  }
   setIsProcessingBulk(false);
   setBulkProgress({ processed: 0, total: 0 });
 
@@ -295,7 +308,6 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
   const retryFailed = async () => {
     if (!bulkResults.failed.length) return;
-    setBulkResultsOpen(false);
     setIsProcessingBulk(true);
 
     const ids = bulkResults.failed.map(f => f.id);
@@ -312,7 +324,14 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     });
 
     setBulkResults({ succeeded, failed });
-    setBulkResultsOpen(true);
+    // show summary
+    if (succeeded.length > 0 && failed.length === 0) {
+      toast.success(`${succeeded.length} request(s) processed successfully.`);
+    } else if (succeeded.length > 0 && failed.length > 0) {
+      toast.success(`${succeeded.length} request(s) processed. ${failed.length} failed.`);
+    } else {
+      toast.error('Failed to process selected requests.');
+    }
     setIsProcessingBulk(false);
     setBulkProgress({ processed: 0, total: 0 });
   };
@@ -342,25 +361,14 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     // Prefer matching by userId/requestDate to find the history item id
     const historyEntry = signupHistory.find(h => (h.userId && req.userId && h.userId === req.userId) || (h.email === req.email && h.requestDate === req.requestDate));
 
-    const navigate = (() => {
+    if (historyEntry) {
+      // Try to navigate with a full-page location change (avoids dependency on react-router here)
       try {
-        return useNavigate();
+        window.location.href = `/admin/signups/history/${historyEntry.id}`;
+        return;
       } catch (e) {
-        return null;
+        // ignore and fallback to scroll behavior
       }
-    })();
-
-    if (historyEntry && navigate) {
-      // Use react-router to open the dedicated history page and focus the item
-      navigate(`/admin/signups/history/${historyEntry.id}`);
-      return;
-    }
-
-    // Fallback: if we have a router but no matching history entry, navigate to history list without id
-    if (navigate) {
-      navigate('/admin/signups/history');
-      toast.info('No matching history entry found yet. Showing full history.');
-      return;
     }
 
     // Final fallback: scroll to processed list in current view
@@ -561,60 +569,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
         )}
       </Dialog>
 
-      {/* Bulk results dialog */}
-      <Dialog open={bulkResultsOpen} onOpenChange={setBulkResultsOpen}>
-        {bulkResultsOpen && (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Bulk operation results</DialogTitle>
-              <DialogDescription>
-                {bulkResults.succeeded.length > 0 && <div className="text-sm text-green-700">{bulkResults.succeeded.length} succeeded</div>}
-                {bulkResults.failed.length > 0 && <div className="text-sm text-red-700">{bulkResults.failed.length} failed</div>}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-4">
-              {bulkResults.failed.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-700">Failed items:</p>
-                  <ul className="pl-0 text-sm text-gray-600 max-h-52 overflow-auto space-y-2">
-                    {bulkResults.failed.map(f => {
-                      const req = signupRequests.find(r => r.id === f.id);
-                      const label = req ? `${req.name} — ${req.email}` : f.id;
-                      return (
-                        <li key={f.id} className="flex items-start justify-between gap-4 p-2 border rounded">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">{label}</div>
-                            {req && (
-                              <div className="text-xs text-gray-500">
-                                <span>{req.department}</span>
-                                <span className="mx-2">•</span>
-                                <span>Requested: {formatDate(req.requestDate)}</span>
-                              </div>
-                            )}
-                            {f.error != null && <div className="text-xs text-red-600 mt-1">{String(f.error)}</div>}
-                          </div>
-                          <div className="flex-shrink-0">
-                            <Button variant="ghost" onClick={() => viewInHistory(f.id)} className="text-xs">View in History</Button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setBulkResultsOpen(false)}>Close</Button>
-              {bulkResults.failed.length > 0 && (
-                <Button onClick={retryFailed} className="ml-2">Retry Failed</Button>
-              )}
-            </DialogFooter>
-            <DialogClose />
-          </DialogContent>
-        )}
-      </Dialog>
+      {/* Bulk results are summarized via Sonner toasts; detailed dialog removed to avoid full-screen navigation */}
 
       {processedRequests.length > 0 && (
         <div className="space-y-4">

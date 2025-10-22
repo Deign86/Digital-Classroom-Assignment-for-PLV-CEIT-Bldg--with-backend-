@@ -15,7 +15,7 @@ import {
 import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-export type NotificationType = 'approved' | 'rejected' | 'info';
+export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled';
 
 export type Notification = {
   id: string;

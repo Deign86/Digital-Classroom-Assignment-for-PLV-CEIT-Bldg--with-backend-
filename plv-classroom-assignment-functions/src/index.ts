@@ -476,7 +476,7 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
 /**
  * Callable function to create a notification server-side.
  * Only callable by admin users.
- * Expects data: { userId: string, type: 'approved'|'rejected'|'info', message: string, bookingRequestId?: string, adminFeedback?: string }
+ * Expects data: { userId: string, type: 'approved'|'rejected'|'info'|'cancelled', message: string, bookingRequestId?: string, adminFeedback?: string }
  */
 export const createNotification = onCall(async (request: CallableRequest<{ userId?: string; type?: string; message?: string; bookingRequestId?: string; adminFeedback?: string }>) => {
   if (!request.auth) {
@@ -498,8 +498,8 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
   if (!userId || typeof userId !== 'string') {
     throw new HttpsError('invalid-argument', 'userId is required and must be a string');
   }
-  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info')) {
-    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected' or 'info'");
+  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled')) {
+    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info' or 'cancelled'");
   }
   if (!message || typeof message !== 'string') {
     throw new HttpsError('invalid-argument', 'message is required and must be a string');

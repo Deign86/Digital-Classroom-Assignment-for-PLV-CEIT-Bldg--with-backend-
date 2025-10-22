@@ -194,8 +194,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         else failed.push({ id, error: res?.reason });
       });
 
-      setBulkResults({ succeeded, failed });
-      setBulkResultsOpen(true);
+  setBulkResults({ succeeded, failed });
+  showBulkSummary(succeeded, failed);
 
       setIsProcessingBulk(false);
       setBulkProgress({ processed: 0, total: 0 });
@@ -224,12 +224,28 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
   // Bulk processing UI state
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
-  const [bulkResultsOpen, setBulkResultsOpen] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
+
+  // Show a single Sonner toast summary for bulk actions (replaces the old modal-based flow)
+  const showBulkSummary = (succeeded: string[], failed: { id: string; error?: unknown }[]) => {
+    setBulkResults({ succeeded, failed });
+    if (succeeded.length > 0 && failed.length === 0) {
+      const msg = `${succeeded.length} request(s) processed successfully.`;
+      toast.success(msg);
+      try { announce(msg, 'polite'); } catch (e) {}
+    } else if (succeeded.length > 0 && failed.length > 0) {
+      const msg = `${succeeded.length} processed, ${failed.length} failed.`;
+      toast.success(msg);
+      try { announce(msg, 'polite'); } catch (e) {}
+    } else {
+      const msg = 'Failed to process selected requests.';
+      toast.error(msg);
+      try { announce(msg, 'assertive'); } catch (e) {}
+    }
+  };
 
   const retryFailed = async () => {
     if (!bulkResults.failed.length) return;
-    setBulkResultsOpen(false);
     setIsProcessingBulk(true);
     const ids = bulkResults.failed.map(f => f.id);
     setBulkProgress({ processed: 0, total: ids.length });
@@ -249,8 +265,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       else failed.push({ id, error: res?.reason });
     });
 
-    setBulkResults({ succeeded, failed });
-    setBulkResultsOpen(true);
+  setBulkResults({ succeeded, failed });
+  showBulkSummary(succeeded, failed);
     setIsProcessingBulk(false);
     setBulkProgress({ processed: 0, total: 0 });
   };
@@ -455,10 +471,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+          <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'approve' ? 'Approve' : 'Reject'} Reservation
+              {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}
             </DialogTitle>
             <DialogDescription>
               {actionType === 'approve' 
@@ -482,7 +498,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               />
             </div>
           </div>
-          <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {
@@ -499,74 +515,13 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >
-              {actionType === 'approve' ? 'Approve Request' : 'Reject Request'}
+                {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Bulk results dialog */}
-      <Dialog open={bulkResultsOpen} onOpenChange={setBulkResultsOpen}>
-        {bulkResultsOpen && (
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Bulk operation results</DialogTitle>
-              <DialogDescription>
-                {bulkResults.succeeded.length > 0 && <div className="text-sm text-green-700">{bulkResults.succeeded.length} succeeded</div>}
-                {bulkResults.failed.length > 0 && <div className="text-sm text-red-700">{bulkResults.failed.length} failed</div>}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-4">
-              {bulkResults.failed.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-700">Failed items:</p>
-                  <ul className="pl-0 text-sm text-gray-600 max-h-52 overflow-auto space-y-2">
-                    {bulkResults.failed.map(f => {
-                      const req = requests.find(r => r.id === f.id);
-                      const label = req ? `${req.facultyName} — ${req.classroomName}` : f.id;
-                      return (
-                        <li key={f.id} className="flex items-start justify-between gap-4 p-2 border rounded">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">{label}</div>
-                            {req && (
-                              <div className="text-xs text-gray-500">
-                                <span>{req.date}</span>
-                                <span className="mx-2">•</span>
-                                <span>{formatTimeRange(convertTo12Hour(req.startTime), convertTo12Hour(req.endTime))}</span>
-                              </div>
-                            )}
-                            {f.error != null && <div className="text-xs text-red-600 mt-1">{String(f.error)}</div>}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4">
-              {isProcessingBulk && bulkProgress.total > 0 && (
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">Processing {bulkProgress.processed} of {bulkProgress.total}</div>
-                  <div className="w-full bg-gray-200 rounded h-2 overflow-hidden">
-                    <div className="bg-indigo-600 h-2" style={{ width: `${Math.round((bulkProgress.processed / bulkProgress.total) * 100)}%` }} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end mt-4">
-              <Button variant="secondary" onClick={() => setBulkResultsOpen(false)}>Close</Button>
-              {bulkResults.failed.length > 0 && (
-                <Button onClick={retryFailed} className="ml-2">Retry Failed</Button>
-              )}
-            </div>
-            <DialogContent />
-          </DialogContent>
-        )}
-      </Dialog>
+      {/* Bulk results are now shown as a single Sonner toast summary via showBulkSummary() */}
     </div>
   );
 }

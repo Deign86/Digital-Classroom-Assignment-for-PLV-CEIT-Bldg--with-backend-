@@ -253,7 +253,7 @@ export default function RequestCard({
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Approved Reservation</AlertDialogTitle>
+                  <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
                   <AlertDialogDescription>
                     Are you sure you want to cancel this approved reservation? This action cannot be undone.
                     The faculty member will need to submit a new request if they need this classroom again.

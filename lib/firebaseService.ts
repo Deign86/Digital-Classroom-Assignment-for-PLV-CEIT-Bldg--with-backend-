@@ -1647,13 +1647,25 @@ export const bookingRequestService = {
     }
     const data = snapshot.data() as FirestoreBookingRequestRecord;
 
-    // If status changed to approved or rejected, create a notification for the faculty
-    if (updatePayload.status === 'approved' || updatePayload.status === 'rejected') {
+    // If status changed to approved, rejected, or cancelled, create a notification for the faculty
+    if (
+      updatePayload.status === 'approved' ||
+      updatePayload.status === 'rejected' ||
+      updatePayload.status === 'cancelled'
+    ) {
       try {
+        // Cast to NotificationType compatible union; notificationService accepts 'cancelled' now
+        const notifType = (updatePayload.status as 'approved' | 'rejected' | 'cancelled');
+        const verb = notifType === 'cancelled' ? 'cancelled' : `was ${notifType}`;
+        const message =
+          notifType === 'cancelled'
+            ? `Your approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was cancelled.`
+            : `Your booking request for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} ${verb}.`;
+
         await notificationService.createNotification(
           data.facultyId,
-          updatePayload.status as 'approved' | 'rejected',
-          `Your booking request for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was ${updatePayload.status}.`,
+          notifType,
+          message,
           { bookingRequestId: snapshot.id, adminFeedback: updatePayload.adminFeedback }
         );
       } catch (err) {

@@ -265,7 +265,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         purpose: formData.purpose
       };
 
-      await onBookingRequest(request);
+        await onBookingRequest(request);
 
       // Reset form
       setFormData({
@@ -276,7 +276,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         purpose: ''
       });
   setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
-  try { announce('Booking request submitted. You will be notified when it is approved.', 'polite'); } catch (e) {}
+  try { announce('Reservation request submitted. You will be notified when it is approved.', 'polite'); } catch (e) {}
 
     } finally {
       setIsSubmitting(false);

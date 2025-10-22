@@ -364,8 +364,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                         }
                       }
 
-                      // Prepare booking request updates for all ids that we attempted (mark rejected and add adminFeedback)
-                      const bookingUpdates = ids.map(id => ({ id, data: { status: 'rejected' as const, adminFeedback: 'Booking cancelled by administrator' } }));
+                      // Prepare booking request updates for all ids that we attempted (mark cancelled and add adminFeedback)
+                      const bookingUpdates = ids.map(id => ({ id, data: { status: 'cancelled' as const, adminFeedback: 'Reservation cancelled by administrator' } }));
 
                       try {
                         await bookingRequestService.bulkUpdate(bookingUpdates);
