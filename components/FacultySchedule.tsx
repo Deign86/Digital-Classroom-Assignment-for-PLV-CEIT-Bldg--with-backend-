@@ -357,12 +357,12 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                         <DialogHeader>
                           <DialogTitle>Cancel selected reservations</DialogTitle>
                         </DialogHeader>
-                        <DialogDescription>
-                          Cancelling approved reservations requires an administrator reason. Please enter a brief explanation (max 500 characters) that will be shown to faculty.
+                        <DialogDescription className="text-sm text-muted-foreground">
+                          Cancelling approved reservations requires a reason. Please enter a brief explanation (max 500 characters) that will be shown to the faculty member(s).
                         </DialogDescription>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-700">Administrator reason</label>
+                          <label className="block text-sm font-medium">Reason (required)</label>
                           <div className="mt-2">
                             <Textarea
                               value={bulkCancelReason}
@@ -376,15 +376,15 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                               maxLength={500}
                               rows={4}
                               autoFocus
-                              placeholder="Explain why you're cancelling these reservations (required)"
-                              aria-label="Administrator cancellation reason"
+                              placeholder="Explain briefly why the reservation(s) are being cancelled"
+                              aria-label="Cancellation reason"
                               aria-invalid={!!bulkReasonError}
                               className="mt-0"
                             />
                           </div>
-                          <div className="flex items-center justify-between text-sm text-gray-500 mt-1">
-                            <div>{bulkReasonError ? <span className="text-red-600">{bulkReasonError}</span> : <span>&nbsp;</span>}</div>
-                            <div>{bulkCancelReason.length}/500</div>
+                          <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
+                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span className="text-destructive">{bulkReasonError}</span> : <span className="text-sm text-muted-foreground">Max 500 characters</span>}</div>
+                            <div className="text-sm text-muted-foreground">{bulkCancelReason.length}/500</div>
                           </div>
                         </div>
 
