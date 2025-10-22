@@ -26,7 +26,7 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
           </div>
           <div>
             <div className="text-sm font-semibold text-slate-900">
-              {n.type === 'approved' ? 'Reservation approved' : n.type === 'rejected' ? 'Request rejected' : n.type === 'cancelled' ? 'Reservation cancelled' : 'Info'}
+              {n.type === 'approved' ? 'Reservation approved' : n.type === 'rejected' ? 'Reservation rejected' : n.type === 'cancelled' ? 'Reservation cancelled' : 'Info'}
             </div>
             <div className="text-xs text-gray-600 mt-1">{n.message}</div>
             {n.adminFeedback && <div className="mt-2 text-xs italic text-gray-700 rounded px-2 py-1 bg-slate-50">Admin Feedback: {n.adminFeedback}</div>}
