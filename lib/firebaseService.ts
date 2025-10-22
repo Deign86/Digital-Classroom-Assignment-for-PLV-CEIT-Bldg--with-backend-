@@ -1624,6 +1624,24 @@ export const bookingRequestService = {
       updatedAt: nowIso(),
     };
     const ref = await addDoc(collection(database, COLLECTIONS.BOOKING_REQUESTS), record);
+    // Notify admins about the new request using the server callable for consistency and permissions
+    try {
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const fn = httpsCallable(functions, 'notifyAdminsOfNewRequest');
+      await fn({
+        bookingRequestId: ref.id,
+        facultyId: record.facultyId,
+        facultyName: record.facultyName,
+        classroomName: record.classroomName,
+        date: record.date,
+        startTime: record.startTime,
+        endTime: record.endTime,
+        purpose: record.purpose,
+      });
+    } catch (err) {
+      console.warn('Failed to notify admins of new booking request:', err);
+    }
     return toBookingRequest(ref.id, record);
   },
 

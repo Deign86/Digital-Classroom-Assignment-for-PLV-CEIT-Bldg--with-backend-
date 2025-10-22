@@ -707,6 +707,58 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
 });
 
 /**
+ * Callable to notify all admins about a new booking request.
+ * Expects data: { bookingRequestId: string, facultyId: string, facultyName: string, classroomName: string, date: string, startTime: string, endTime: string, purpose?: string }
+ * Callable by any authenticated user (the faculty who created the request will normally call this via the client service).
+ */
+export const notifyAdminsOfNewRequest = onCall(async (request: CallableRequest<{ bookingRequestId?: string; facultyId?: string; facultyName?: string; classroomName?: string; date?: string; startTime?: string; endTime?: string; purpose?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Caller must be authenticated');
+  }
+
+  const data = request.data || {};
+  const { bookingRequestId, facultyId, facultyName, classroomName, date, startTime, endTime, purpose } = data;
+  if (!bookingRequestId || typeof bookingRequestId !== 'string') {
+    throw new HttpsError('invalid-argument', 'bookingRequestId is required and must be a string');
+  }
+  if (!facultyId || !facultyName || !classroomName || !date || !startTime || !endTime) {
+    throw new HttpsError('invalid-argument', 'Missing required booking request metadata');
+  }
+
+  try {
+    const db = admin.firestore();
+    // Find all admin users
+    const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
+    if (adminsSnap.empty) return { success: true, notified: 0 };
+
+    const batch = db.batch();
+    const shortMessage = `New reservation request from ${facultyName}: ${classroomName} on ${date} ${startTime}-${endTime}.`;
+    const longMessage = purpose ? `${shortMessage} Purpose: ${purpose}` : shortMessage;
+
+    adminsSnap.docs.forEach((adoc) => {
+      const notifRef = db.collection('notifications').doc();
+      batch.set(notifRef, {
+        userId: adoc.id,
+        type: 'info',
+        message: longMessage,
+        bookingRequestId,
+        adminFeedback: null,
+        acknowledgedBy: null,
+        acknowledgedAt: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+    return { success: true, notified: adminsSnap.size };
+  } catch (err) {
+    logger.error('Failed to notify admins of new booking request', err);
+    throw new HttpsError('internal', 'Failed to notify admins');
+  }
+});
+
+/**
  * Callable function to acknowledge a notification.
  * Ensures server-side timestamping and verifies the caller is the recipient.
  * Expects data: { notificationId: string }
