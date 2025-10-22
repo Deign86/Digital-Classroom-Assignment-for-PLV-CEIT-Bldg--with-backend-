@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import type { SignupHistory } from '../App';
 import { Button } from './ui/button';
@@ -12,9 +11,17 @@ interface Props {
 
 const formatDate = (d: string) => new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+function getIdFromQuery(): string | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('id');
+  } catch (e) {
+    return null;
+  }
+}
+
 export default function SignupHistoryPage({ signupHistory }: Props) {
-  const { id } = useParams<{ id?: string }>();
-  const navigate = useNavigate();
+  const id = getIdFromQuery();
   const { announce } = useAnnouncer();
 
   useEffect(() => {
@@ -36,7 +43,7 @@ export default function SignupHistoryPage({ signupHistory }: Props) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Signup History</h2>
         <div>
-          <Button variant="ghost" onClick={() => navigate(-1)}>Back</Button>
+          <Button variant="ghost" onClick={() => window.history.back()}>Back</Button>
         </div>
       </div>
 

@@ -1,12 +1,10 @@
 import './styles/globals.css';
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
 // Lazy-load heavy dashboard components to reduce initial bundle size
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
-const SignupHistoryPage = React.lazy(() => import('./components/SignupHistoryPage'));
 import Footer from './components/Footer';
 import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -121,6 +119,7 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
@@ -160,22 +159,26 @@ export default function App() {
     }
 
     try {
+      setLoadingMessage('Loading dashboard...');
       setIsLoading(true);
       
       realtimeService.subscribeToData(user, {
         onClassroomsUpdate: (classrooms) => {
           console.log('📍 Real-time update: Classrooms', classrooms.length);
           setClassrooms(classrooms);
+          setLoadingMessage('Loading classrooms...');
         },
         
         onBookingRequestsUpdate: (requests) => {
           console.log('📋 Real-time update: Booking Requests', requests.length);
           setBookingRequests(requests);
+          setLoadingMessage('Loading booking requests...');
         },
         
         onSchedulesUpdate: (schedules) => {
           console.log('📅 Real-time update: Schedules', schedules.length);
           setSchedules(schedules);
+          setLoadingMessage('Loading schedules...');
         },
         
         onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
@@ -229,11 +232,12 @@ export default function App() {
       }
       
       console.log('✅ Real-time listeners setup complete');
-    } catch (err) {
+      } catch (err) {
       console.error('❌ Failed to setup real-time listeners:', err);
       toast.error('Failed to setup real-time data sync');
     } finally {
       setIsLoading(false);
+      setLoadingMessage(null);
     }
   }, []);
 
@@ -1006,6 +1010,7 @@ export default function App() {
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing app...');
+        setLoadingMessage('Checking authentication...');
 
         const user = await authService.getCurrentUser();
         
@@ -1015,6 +1020,7 @@ export default function App() {
           
           // Setup real-time listeners if user is authenticated
           console.log('📊 Setting up real-time listeners...');
+          setLoadingMessage('Loading dashboard...');
           setupRealtimeListeners(user);
           console.log('✅ Real-time listeners setup');
         } else {
@@ -1031,6 +1037,7 @@ export default function App() {
         console.log('✅ Setting isLoading to false');
         setIsAuthChecked(true);
         setIsLoading(false);
+        setLoadingMessage(null);
       }
     };
 
@@ -1171,7 +1178,7 @@ export default function App() {
           <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4 animate-pulse">
             <div className="text-white text-lg font-bold">PLV</div>
           </div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">{loadingMessage ?? 'Loading...'}</p>
           <Analytics />
         </div>
       </div>
@@ -1270,7 +1277,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AnnouncerProvider>
-        <BrowserRouter>
           {/* Skip link for keyboard users */}
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
           <div className="min-h-screen bg-background flex flex-col">
@@ -1278,22 +1284,15 @@ export default function App() {
           <div className="flex-1">
             <Suspense fallback={
               <div className="p-8 flex items-center justify-center">
-                <div className="text-gray-600">Loading…</div>
+                <div className="text-gray-600">{loadingMessage ?? 'Loading…'}</div>
               </div>
             }>
-              <Routes>
-                {/* Admin history route */}
-                <Route path="/admin/signups/history/:id?" element={<SignupHistoryPage signupHistory={signupHistory} />} />
-
-                {/* Default dashboard route - render inline based on role */}
-                <Route path="/*" element={(
-                  activeUser.role === 'admin' ? (
-                    <AdminDashboard {...adminDashboardProps} />
-                  ) : (
-                    <FacultyDashboard {...facultyDashboardProps} />
-                  )
-                )} />
-              </Routes>
+              {/* Render the appropriate dashboard directly (react-router removed). */}
+              {activeUser.role === 'admin' ? (
+                <AdminDashboard {...adminDashboardProps} />
+              ) : (
+                <FacultyDashboard {...facultyDashboardProps} />
+              )}
             </Suspense>
           </div>
           <Footer />
@@ -1327,7 +1326,6 @@ export default function App() {
 
           <Analytics />
           </div>
-        </BrowserRouter>
       </AnnouncerProvider>
     </ErrorBoundary>
   );
