@@ -110,16 +110,11 @@ export const getNotificationById = async (id: string): Promise<Notification | nu
   return toNotification(snap.id, data);
 };
 
-export const getUnreadCount = async (userId?: string): Promise<number> => {
+export const getUnreadCount = async (userId: string): Promise<number> => {
   const database = db();
   // Firestore allows querying for null equality
   const notificationsRef = collection(database, COLLECTION);
-  let q;
-  if (userId) {
-    q = query(notificationsRef, where('userId', '==', userId), where('acknowledgedAt', '==', null));
-  } else {
-    q = query(notificationsRef, where('acknowledgedAt', '==', null));
-  }
+  const q = query(notificationsRef, where('userId', '==', userId), where('acknowledgedAt', '==', null));
   const snapshot = await getDocs(q);
   return snapshot.size;
 };

@@ -3,7 +3,7 @@ import { notificationService, type Notification } from '../lib/notificationServi
 import { Bell } from '@phosphor-icons/react';
 
 type Props = {
-  userId?: string | null; // if undefined, bell will listen for all notifications (admin view)
+  userId?: string | null;
   onOpen?: () => void;
 };
 
@@ -11,24 +11,22 @@ export const NotificationBell: React.FC<Props> = ({ userId, onOpen }) => {
   const [count, setCount] = useState<number>(0);
 
   useEffect(() => {
-    let listeningForAll = false;
-    if (!userId) {
-      // Admin: listen for all notifications
-      listeningForAll = true;
-    }
-
     let unsub: (() => void) | undefined;
 
     const setup = async () => {
       try {
-        const normalizedUserId = userId ?? undefined;
-        const initial = normalizedUserId ? await notificationService.getUnreadCount(normalizedUserId) : await notificationService.getUnreadCount();
+        if (!userId) {
+          setCount(0);
+          return;
+        }
+
+        const initial = await notificationService.getUnreadCount(userId);
         setCount(initial);
 
         unsub = notificationService.setupNotificationsListener((items: Notification[]) => {
           const unread = items.filter((i) => !i.acknowledgedAt).length;
           setCount(unread);
-        }, undefined, normalizedUserId);
+        }, undefined, userId);
       } catch (err) {
         console.error('NotificationBell error:', err);
       }

@@ -3,10 +3,7 @@ import { notificationService, type Notification } from '../lib/notificationServi
 import { Bell, BellSimpleSlash, CheckCircle, XCircle } from '@phosphor-icons/react';
 
 type Props = {
-  // userId filters the list to that user's notifications. If omitted, all notifications are shown (admin/global view).
-  userId?: string;
-  // currentUserId is the id of the currently signed-in user and is used for acknowledge calls.
-  currentUserId: string;
+  userId: string;
   onClose?: () => void;
 };
 
@@ -51,14 +48,16 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
   );
 };
 
-export const NotificationCenter: React.FC<Props> = ({ userId, currentUserId, onClose }) => {
+export const NotificationCenter: React.FC<Props> = ({ userId, onClose }) => {
   const [items, setItems] = useState<Notification[]>([]);
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    if (!userId) return;
     const unsub = notificationService.setupNotificationsListener((list) => {
       // The service normalizes timestamps; ensure we filter and sort reliably
-      const filtered = (userId ? list.filter((i) => i.userId === userId) : list)
+      const filtered = list
+        .filter((i) => i.userId === userId)
         .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
       setItems(filtered);
     }, (err) => console.error('NotificationCenter listener error', err), userId);
@@ -71,7 +70,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, currentUserId, onC
     setAckPending((s) => ({ ...s, [id]: true }));
     try {
       // Make server call; server will emit updated doc via listener
-      await notificationService.acknowledgeNotification(id, currentUserId);
+      await notificationService.acknowledgeNotification(id, userId);
     } catch (err) {
       console.error('Acknowledge error', err);
     } finally {
