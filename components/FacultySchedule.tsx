@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from './ui/dialog';
 import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
@@ -357,12 +358,27 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                         <DialogHeader>
                           <DialogTitle>Cancel selected reservations</DialogTitle>
                         </DialogHeader>
-                        <DialogDescription className="text-sm text-muted-foreground">
-                          Cancelling approved reservations requires a reason. Please enter a brief explanation (max 500 characters) that will be shown to the faculty member(s).
-                        </DialogDescription>
+                          <DialogDescription className="text-sm text-muted-foreground">
+                            Cancelling approved reservations requires a reason. Please enter a brief explanation (max 500 characters) that will be shown to the faculty member(s).
+                          </DialogDescription>
 
                         <div className="mt-4">
-                          <label className="block text-sm font-medium">Reason (required)</label>
+                          {/* Summary of selected reservations for admin confirmation */}
+                          {Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]).length > 0 && (
+                            <div className="mb-3 border rounded-md p-3 bg-muted/30">
+                              <div className="text-sm font-medium mb-2">Selected reservations</div>
+                              <ul className="text-sm list-none space-y-1">
+                                {bookingRequests.filter(r => Object.keys(approvedSelectedIds).includes(r.id) && approvedSelectedIds[r.id]).map(r => (
+                                  <li key={r.id} className="text-sm">
+                                    <div className="font-medium">{new Date(r.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                                    <div className="text-muted-foreground">{formatTimeRange(convertTo12Hour(r.startTime), convertTo12Hour(r.endTime))} · {r.classroomName}</div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          <Label className="block">Reason (required)</Label>
                           <div className="mt-2">
                             <Textarea
                               value={bulkCancelReason}
@@ -383,7 +399,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                             />
                           </div>
                           <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
-                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span className="text-destructive">{bulkReasonError}</span> : <span className="text-sm text-muted-foreground">Max 500 characters</span>}</div>
+                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span role="alert" className="text-destructive">{bulkReasonError}</span> : null}</div>
                             <div className="text-sm text-muted-foreground">{bulkCancelReason.length}/500</div>
                           </div>
                         </div>

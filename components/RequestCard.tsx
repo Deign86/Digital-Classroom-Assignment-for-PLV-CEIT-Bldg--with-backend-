@@ -3,6 +3,8 @@ import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
@@ -261,52 +263,58 @@ export default function RequestCard({
                     The faculty member will need to submit a new request if they need this classroom again.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <div className="px-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
-                  <textarea
-                    id={`cancel-reason-${request.id}`}
-                    aria-label="Cancellation reason"
-                    className="w-full border rounded-md p-2 text-sm h-24"
-                    value={cancelReason}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val.length <= 500) {
-                        setCancelReason(val);
-                        setCancelError(null);
-                      } else {
-                        setCancelError('Reason must be 500 characters or less.');
-                      }
-                    }}
-                    placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
-                    maxLength={500}
-                  />
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-gray-500">Max 500 characters</p>
+                <div className="mt-4 w-full">
+                  <Label className="block">Reason (required)</Label>
+                  <div className="mt-2">
+                    <Textarea
+                      id={`cancel-reason-${request.id}`}
+                      aria-label="Cancellation reason"
+                      value={cancelReason}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val.length <= 500) {
+                          setCancelReason(val);
+                          setCancelError(null);
+                        } else {
+                          setCancelError('Reason must be 500 characters or less.');
+                        }
+                      }}
+                      placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
+                      maxLength={500}
+                      rows={4}
+                      className="w-full mt-0"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end mt-1">
                     <p className="text-xs text-gray-500">{cancelReason.length}/500</p>
                   </div>
-                  {cancelError && <p className="text-xs text-red-600 mt-1">{cancelError}</p>}
+                  {cancelError && <p role="alert" className="text-xs text-red-600 mt-1">{cancelError}</p>}
                 </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      const reason = cancelReason.trim();
-                      if (!reason) {
-                        try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) {}
-                        setCancelError('Please provide a reason for the cancellation.');
-                        return;
-                      }
-                      if (reason.length > 500) {
-                        setCancelError('Reason must be 500 characters or less.');
-                        return;
-                      }
+                  {cancelReason.trim().length === 0 ? (
+                    <Button disabled className="bg-gray-900 opacity-60 cursor-not-allowed text-white">Cancel Reservation</Button>
+                  ) : (
+                    <AlertDialogAction
+                      onClick={() => {
+                        const reason = cancelReason.trim();
+                        if (!reason) {
+                          try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) {}
+                          setCancelError('Please provide a reason for the cancellation.');
+                          return;
+                        }
+                        if (reason.length > 500) {
+                          setCancelError('Reason must be 500 characters or less.');
+                          return;
+                        }
 
-                      onCancelApproved?.(request.id, reason);
-                    }}
-                    className="bg-gray-900 hover:bg-red-600 transition-colors duration-200"
-                  >
-                    Cancel Reservation
-                  </AlertDialogAction>
+                        onCancelApproved?.(request.id, reason);
+                      }}
+                      className="bg-gray-900 hover:bg-red-600 transition-colors duration-200"
+                    >
+                      Cancel Reservation
+                    </AlertDialogAction>
+                  )}
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
