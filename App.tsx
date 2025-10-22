@@ -842,14 +842,20 @@ export default function App() {
     [signupRequests]
   );
 
-  const handleCancelSchedule = useCallback(async (scheduleId: string) => {
+  const handleCancelSchedule = useCallback(async (scheduleId: string, reason: string) => {
     try {
-      await scheduleService.cancelApprovedBooking(scheduleId);
+      const feedback = typeof reason === 'string' ? reason.trim() : '';
+      if (!feedback) {
+        toast.error('Cancellation reason is required');
+        return;
+      }
+
+      await scheduleService.cancelApprovedBooking(scheduleId, feedback);
 
       setSchedules(prev =>
         prev.map(schedule => 
           schedule.id === scheduleId 
-            ? { ...schedule, status: 'cancelled' as const }
+            ? { ...schedule, status: 'cancelled' as const, adminFeedback: feedback }
             : schedule
         )
       );
@@ -861,8 +867,14 @@ export default function App() {
     }
   }, []);
 
-  const handleCancelApprovedBooking = useCallback(async (requestId: string) => {
+  const handleCancelApprovedBooking = useCallback(async (requestId: string, reason: string) => {
     try {
+      const feedback = typeof reason === 'string' ? reason.trim() : '';
+      if (!feedback) {
+        toast.error('Cancellation reason is required');
+        return;
+      }
+
       // Find the corresponding schedule for this booking request
       const correspondingSchedule = schedules.find(schedule => 
         schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
@@ -873,24 +885,24 @@ export default function App() {
       );
 
       if (correspondingSchedule) {
-        await scheduleService.cancelApprovedBooking(correspondingSchedule.id);
+        await scheduleService.cancelApprovedBooking(correspondingSchedule.id, feedback);
         
         setSchedules(prev =>
           prev.map(schedule => 
             schedule.id === correspondingSchedule.id 
-              ? { ...schedule, status: 'cancelled' as const }
+              ? { ...schedule, status: 'cancelled' as const, ...(feedback ? { adminFeedback: feedback } : {}) }
               : schedule
           )
         );
       }
 
-      // Update the booking request status to cancelled
-      await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: 'Reservation cancelled by administrator' });
+      // Update the booking request status to cancelled and record admin feedback
+      await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
 
       setBookingRequests(prev =>
         prev.map(request => 
           request.id === requestId 
-            ? { ...request, status: 'cancelled' as const, adminFeedback: 'Reservation cancelled by administrator' }
+            ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
             : request
         )
       );

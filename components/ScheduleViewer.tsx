@@ -12,7 +12,7 @@ import type { Schedule, Classroom } from '../App';
 interface ScheduleViewerProps {
   schedules: Schedule[];
   classrooms: Classroom[];
-  onCancelSchedule?: (scheduleId: string) => void;
+  onCancelSchedule?: (scheduleId: string, reason: string) => void;
 }
 
 const isScheduleLapsed = (schedule: Schedule): boolean => {
@@ -26,6 +26,8 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
   const [selectedClassroom, setSelectedClassroom] = useState<string>('');
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const { announce } = useAnnouncer();
+  const [cancelReasons, setCancelReasons] = useState<Record<string, string>>({});
+  const [cancelErrors, setCancelErrors] = useState<Record<string, string | null>>({});
 
   const filteredSchedules = schedules.filter(schedule => {
     if (selectedClassroom && schedule.classroomId !== selectedClassroom) return false;
@@ -125,9 +127,30 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
           </div>
 
           {viewMode === 'day' ? (
-            <DayView schedules={filteredSchedules} classrooms={classrooms} timeSlots={timeSlots} selectedDate={selectedDate} onCancelSchedule={onCancelSchedule} announce={announce} />
+            <DayView
+              schedules={filteredSchedules}
+              classrooms={classrooms}
+              timeSlots={timeSlots}
+              selectedDate={selectedDate}
+              onCancelSchedule={onCancelSchedule}
+              announce={announce}
+              cancelReasons={cancelReasons}
+              setCancelReasons={setCancelReasons}
+              cancelErrors={cancelErrors}
+              setCancelErrors={setCancelErrors}
+            />
           ) : (
-            <WeekView schedules={filteredSchedules} classrooms={classrooms} weekDates={getWeekDates(selectedDate)} onCancelSchedule={onCancelSchedule} announce={announce} />
+            <WeekView
+              schedules={filteredSchedules}
+              classrooms={classrooms}
+              weekDates={getWeekDates(selectedDate)}
+              onCancelSchedule={onCancelSchedule}
+              announce={announce}
+              cancelReasons={cancelReasons}
+              setCancelReasons={setCancelReasons}
+              cancelErrors={cancelErrors}
+              setCancelErrors={setCancelErrors}
+            />
           )}
         </CardContent>
       </Card>
@@ -135,7 +158,7 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
   );
 }
 
-function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSchedule, announce }: { schedules: Schedule[]; classrooms: Classroom[]; timeSlots: string[]; selectedDate: string; onCancelSchedule?: (scheduleId: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; }) {
+function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSchedule, announce, cancelReasons, setCancelReasons, cancelErrors, setCancelErrors }: { schedules: Schedule[]; classrooms: Classroom[]; timeSlots: string[]; selectedDate: string; onCancelSchedule?: (scheduleId: string, reason: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; cancelReasons: Record<string, string>; setCancelReasons: React.Dispatch<React.SetStateAction<Record<string, string>>>; cancelErrors: Record<string, string | null>; setCancelErrors: React.Dispatch<React.SetStateAction<Record<string, string | null>>>; }) {
   if (schedules.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed rounded-lg">
@@ -147,6 +170,8 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
   }
 
   const sortedSchedules = [...schedules].sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  
 
   return (
     <div className="space-y-4">
@@ -188,16 +213,53 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                         <span className="hidden sm:inline">Cancel</span>
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
-                        <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone. The faculty member will need to submit a new request if they need this classroom again.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { try { announce?.('Cancelling reservation', 'polite'); } catch(e){}; onCancelSchedule?.(schedule.id); }} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">Cancel Reservation</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
+                            <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone. The faculty member will need to submit a new request if they need this classroom again.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="px-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
+                            <textarea
+                              id={`schedule-cancel-reason-${schedule.id}`}
+                              aria-label="Cancellation reason"
+                              className="w-full border rounded-md p-2 text-sm h-28"
+                              placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
+                              value={cancelReasons[schedule.id] || ''}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setCancelReasons(prev => ({ ...prev, [schedule.id]: v }));
+                                setCancelErrors(prev => ({ ...prev, [schedule.id]: v.length > 500 ? 'Reason must be 500 characters or less.' : null }));
+                              }}
+                              maxLength={500}
+                            />
+                            <div className="flex items-center justify-between mt-1">
+                              <p className="text-xs text-gray-500">Max 500 characters</p>
+                              <p className="text-xs text-gray-500">{(cancelReasons[schedule.id] || '').length}/500</p>
+                            </div>
+                            {cancelErrors[schedule.id] && <p className="text-xs text-red-600 mt-1">{cancelErrors[schedule.id]}</p>}
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => {
+                              const reason = (cancelReasons[schedule.id] || '').trim();
+                              if (!reason) {
+                                try { announce?.('Please provide a reason for the cancellation.', 'assertive'); } catch(e){}
+                                const el = document.getElementById(`schedule-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null;
+                                (el as HTMLTextAreaElement | null)?.focus();
+                                setCancelErrors(prev => ({ ...prev, [schedule.id]: 'Reason is required.' }));
+                                return;
+                              }
+                              if (cancelErrors[schedule.id]) {
+                                const el = document.getElementById(`schedule-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null;
+                                (el as HTMLTextAreaElement | null)?.focus();
+                                return;
+                              }
+                              try { announce?.('Cancelling reservation', 'polite'); } catch(e){}
+                              onCancelSchedule?.(schedule.id, reason);
+                            }} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">Cancel Reservation</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
                   </AlertDialog>
                 )}
               </div>
@@ -209,7 +271,7 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
   );
 }
 
-function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce }: { schedules: Schedule[]; classrooms: Classroom[]; weekDates: string[]; onCancelSchedule?: (scheduleId: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; }) {
+function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce, cancelReasons, setCancelReasons, cancelErrors, setCancelErrors }: { schedules: Schedule[]; classrooms: Classroom[]; weekDates: string[]; onCancelSchedule?: (scheduleId: string, reason: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; cancelReasons: Record<string, string>; setCancelReasons: React.Dispatch<React.SetStateAction<Record<string, string>>>; cancelErrors: Record<string, string | null>; setCancelErrors: React.Dispatch<React.SetStateAction<Record<string, string | null>>>; }) {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
@@ -249,16 +311,43 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                   <X className="h-3 w-3" />
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
-                                  <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => { try { announce?.('Cancelling reservation', 'polite'); } catch(e){}; onCancelSchedule?.(schedule.id); }} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">Cancel Reservation</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
+                                    <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <div className="px-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
+                                    <textarea
+                                      id={`schedule-week-cancel-reason-${schedule.id}`}
+                                      aria-label="Cancellation reason"
+                                      className="w-full border rounded-md p-2 text-sm h-20"
+                                      placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
+                                      value={cancelReasons[schedule.id] || ''}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        setCancelReasons(prev => ({ ...prev, [schedule.id]: v }));
+                                        setCancelErrors(prev => ({ ...prev, [schedule.id]: v.length > 500 ? 'Reason must be 500 characters or less.' : null }));
+                                      }}
+                                      maxLength={500}
+                                    />
+                                    <div className="flex items-center justify-between mt-1">
+                                      <p className="text-xs text-gray-500">Max 500 characters</p>
+                                      <p className="text-xs text-gray-500">{(cancelReasons[schedule.id] || '').length}/500</p>
+                                    </div>
+                                    {cancelErrors[schedule.id] && <p className="text-xs text-red-600 mt-1">{cancelErrors[schedule.id]}</p>}
+                                  </div>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => {
+                                      const reason = (cancelReasons[schedule.id] || '').trim();
+                                      if (!reason) { try { announce?.('Please provide a reason for the cancellation.', 'assertive'); } catch(e){}; const el = document.getElementById(`schedule-week-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); setCancelErrors(prev => ({ ...prev, [schedule.id]: 'Reason is required.' })); return; }
+                                      if (cancelErrors[schedule.id]) { const el = document.getElementById(`schedule-week-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); return; }
+                                      try { announce?.('Cancelling reservation', 'polite'); } catch(e){}
+                                      onCancelSchedule?.(schedule.id, reason);
+                                    }} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">Cancel Reservation</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
                             </AlertDialog>
                           )}
                         </div>

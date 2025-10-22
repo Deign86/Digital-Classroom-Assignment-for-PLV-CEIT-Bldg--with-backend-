@@ -17,7 +17,7 @@ import { useAnnouncer } from './Announcer';
 interface RequestApprovalProps {
   requests: BookingRequest[];
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => Promise<void>;
-  onCancelApproved?: (requestId: string) => void;
+  onCancelApproved?: (requestId: string, reason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
 
@@ -26,6 +26,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(null);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState('');
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
   const { announce } = useAnnouncer();
@@ -159,29 +160,41 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       return results;
     };
 
-    (async () => {
+  (async () => {
       if (targetIds.length === 0) {
         setIsDialogOpen(false);
         return;
       }
 
+      const fb = (feedback || '').trim();
+      if (actionType === 'reject' && activeTab === 'approved' && !fb) {
+        setFeedbackError('Please provide a reason for cancelling approved reservations.');
+        return setIsDialogOpen(true);
+      }
+
+      if (fb.length > 500) {
+        setFeedbackError('Reason must be 500 characters or less.');
+        return setIsDialogOpen(true);
+      }
+
+      setFeedbackError(null);
       setIsProcessingBulk(true);
       setBulkProgress({ processed: 0, total: targetIds.length });
 
-      const tasks = targetIds.map((id) => async () => {
-        if (activeTab === 'approved' && actionType === 'reject' && onCancelApproved) {
-          try {
-            await Promise.resolve(onCancelApproved(id));
-            return { id, ok: true };
-          } catch (err) {
-            // fall back to update via onRequestApproval
-            await onRequestApproval(id, false, feedback || undefined, true);
-            return { id, ok: true };
+        const tasks = targetIds.map((id) => async () => {
+          if (activeTab === 'approved' && actionType === 'reject' && onCancelApproved) {
+            try {
+              await Promise.resolve(onCancelApproved(id, fb));
+              return { id, ok: true };
+            } catch (err) {
+              // fall back to update via onRequestApproval
+              await onRequestApproval(id, false, fb || undefined, true);
+              return { id, ok: true };
+            }
           }
-        }
-        await onRequestApproval(id, actionType === 'approve', feedback || undefined, true);
-        return { id, ok: true };
-      });
+          await onRequestApproval(id, actionType === 'approve', fb || undefined, true);
+          return { id, ok: true };
+        });
 
       const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
@@ -481,9 +494,23 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                   ? 'Enter any additional feedback...'
                   : 'Enter the reason for rejection...'}
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.length <= 500) {
+                    setFeedback(v);
+                    setFeedbackError(null);
+                  } else {
+                    setFeedbackError('Reason must be 500 characters or less.');
+                  }
+                }}
                 className="min-h-[100px]"
+                maxLength={500}
               />
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-gray-500">Max 500 characters</p>
+                <p className="text-xs text-gray-500">{feedback.length}/500</p>
+              </div>
+              {feedbackError && <p className="text-xs text-red-600 mt-1">{feedbackError}</p>}
             </div>
           </div>
             <div className="flex gap-3 justify-end">
@@ -499,7 +526,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={(actionType === 'reject' && !feedback.trim()) || isProcessingBulk}
+              disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
               className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >

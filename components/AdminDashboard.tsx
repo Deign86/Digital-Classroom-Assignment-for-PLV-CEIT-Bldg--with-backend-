@@ -43,8 +43,8 @@ interface AdminDashboardProps {
   onClassroomUpdate: (classrooms: Classroom[]) => void;
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => Promise<void>;
   onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => Promise<void>;
-  onCancelSchedule: (scheduleId: string) => void;
-  onCancelApprovedBooking?: (requestId: string) => void;
+  onCancelSchedule: (scheduleId: string, reason: string) => void;
+  onCancelApprovedBooking?: (requestId: string, reason: string) => void;
   onUnlockAccount?: (userId: string) => Promise<void>;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }

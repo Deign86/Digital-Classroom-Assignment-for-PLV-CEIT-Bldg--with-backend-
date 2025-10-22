@@ -474,6 +474,53 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
 });
 
 /**
+ * Acknowledge multiple notifications in a single callable.
+ * Expects request.data.notificationIds: string[]
+ * Returns { success: true, unreadCount: number }
+ */
+export const acknowledgeNotifications = onCall(async (request: CallableRequest<{ notificationIds?: string[] }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const ids = Array.isArray(request.data?.notificationIds) ? request.data!.notificationIds! : [];
+  if (!ids.length) {
+    throw new HttpsError('invalid-argument', 'notificationIds is required and must be a non-empty array');
+  }
+
+  try {
+    const db = admin.firestore();
+    const batch = db.batch();
+
+    // Update each notification doc to mark acknowledgedAt and acknowledgedBy
+    ids.forEach((id) => {
+      const ref = db.collection('notifications').doc(id);
+      batch.update(ref, {
+        acknowledgedAt: admin.firestore.FieldValue.serverTimestamp(),
+        acknowledgedBy: callerUid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+
+    // Compute new unread count for the calling user
+    const unreadSnap = await db.collection('notifications')
+      .where('userId', '==', callerUid)
+      .where('acknowledgedAt', '==', null)
+      .get();
+
+    const unreadCount = unreadSnap.size;
+
+    return { success: true, unreadCount };
+  } catch (err) {
+    logger.error('Error in acknowledgeNotifications:', err);
+    throw new HttpsError('internal', 'Failed to acknowledge notifications');
+  }
+});
+
+/**
  * Callable function to create a notification server-side.
  * Only callable by admin users.
  * Expects data: { userId: string, type: 'approved'|'rejected'|'info'|'cancelled', message: string, bookingRequestId?: string, adminFeedback?: string }
@@ -505,12 +552,27 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
     throw new HttpsError('invalid-argument', 'message is required and must be a string');
   }
 
+  // Defensive handling of adminFeedback: trim and truncate to 500 chars.
+  const MAX_ADMIN_FEEDBACK = 500;
+  let storedAdminFeedback: string | null = null;
+  let finalMessage = message;
+  if (adminFeedback && typeof adminFeedback === 'string') {
+    const trimmed = adminFeedback.trim();
+    if (trimmed.length > 0) {
+      storedAdminFeedback = trimmed.length > MAX_ADMIN_FEEDBACK ? trimmed.substring(0, MAX_ADMIN_FEEDBACK) : trimmed;
+      // Create a shorter excerpt for the message preview to avoid huge notifications in UIs
+      const EXCERPT_LEN = 240;
+      const excerpt = storedAdminFeedback.length > EXCERPT_LEN ? storedAdminFeedback.substring(0, EXCERPT_LEN) + '…' : storedAdminFeedback;
+      finalMessage = `${message}\n\nAdmin reason: ${excerpt}`;
+    }
+  }
+
   const record = {
     userId,
     type,
-    message,
+    message: finalMessage,
     bookingRequestId: bookingRequestId || null,
-    adminFeedback: adminFeedback || null,
+    adminFeedback: storedAdminFeedback,
     acknowledgedBy: null,
     acknowledgedAt: null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -8,8 +8,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "predeploy": "npm run build"
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "verify:textareas": "node ./scripts/verify-textareas.js",
+  "predeploy": "npm run build"
   },
   "keywords": [],
   "author": "",

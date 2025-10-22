@@ -1872,7 +1872,7 @@ export const scheduleService = {
     });
   },
 
-  async cancelApprovedBooking(scheduleId: string): Promise<void> {
+  async cancelApprovedBooking(scheduleId: string, adminFeedback: string): Promise<void> {
     // Check if user is admin
     const user = await authService.getCurrentUser();
     if (!user || user.role !== 'admin') {
@@ -1888,10 +1888,17 @@ export const scheduleService = {
       throw new Error('Schedule not found');
     }
 
-    // Update the schedule status to cancelled
+    // adminFeedback is required to explain why the reservation was cancelled
+    const fb = typeof adminFeedback === 'string' ? adminFeedback.trim() : '';
+    if (!fb) {
+      throw new Error('adminFeedback (cancellation reason) is required when cancelling an approved booking.');
+    }
+
+    // Update the schedule status to cancelled and record admin feedback
     await updateDoc(ref, {
       status: 'cancelled',
       updatedAt: nowIso(),
+      adminFeedback: fb,
     });
   },
 };

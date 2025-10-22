@@ -833,12 +833,22 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   placeholder="Describe the purpose of your classroom reservation (e.g., Lecture - Data Structures, Lab Session - Web Development)"
                   value={formData.purpose}
                   onChange={(e) => {
-                    setFormData(prev => ({ ...prev, purpose: e.target.value }));
+                    const v = e.target.value;
+                    setFormData(prev => ({ ...prev, purpose: v }));
                     if (errors.purpose) setErrors(prev => ({ ...prev, purpose: '' }));
+                    // client-side validation length
+                    if (v.length > 500) {
+                      setErrors(prev => ({ ...prev, purpose: 'Purpose must be 500 characters or less.' }));
+                    }
                   }}
                   rows={3}
                   className={`transition-all duration-200 focus:scale-105 ${errors.purpose ? 'border-red-500' : ''}`}
+                  maxLength={500}
                 />
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-gray-500">Max 500 characters</p>
+                  <p className="text-xs text-gray-500">{formData.purpose.length}/500</p>
+                </div>
                 {errors.purpose && (
                   <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
                     <AlertTriangle className="h-3 w-3" />

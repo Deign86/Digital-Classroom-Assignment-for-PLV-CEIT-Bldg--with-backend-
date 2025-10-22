@@ -25,7 +25,7 @@ export default function RequestCard({
   request: BookingRequest;
   onApprove?: () => void;
   onReject?: () => void;
-  onCancelApproved?: (requestId: string) => void;
+  onCancelApproved?: (requestId: string, reason: string) => void;
   checkConflicts?: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
   status: 'pending' | 'approved' | 'rejected' | 'expired';
   showSelect?: boolean;
@@ -34,6 +34,8 @@ export default function RequestCard({
   disabled?: boolean;
 }) {
   const [hasConflict, setHasConflict] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const { announce } = useAnnouncer();
 
   useEffect(() => {
@@ -259,9 +261,50 @@ export default function RequestCard({
                     The faculty member will need to submit a new request if they need this classroom again.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="px-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
+                  <textarea
+                    id={`cancel-reason-${request.id}`}
+                    aria-label="Cancellation reason"
+                    className="w-full border rounded-md p-2 text-sm h-24"
+                    value={cancelReason}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length <= 500) {
+                        setCancelReason(val);
+                        setCancelError(null);
+                      } else {
+                        setCancelError('Reason must be 500 characters or less.');
+                      }
+                    }}
+                    placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
+                    maxLength={500}
+                  />
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-gray-500">Max 500 characters</p>
+                    <p className="text-xs text-gray-500">{cancelReason.length}/500</p>
+                  </div>
+                  {cancelError && <p className="text-xs text-red-600 mt-1">{cancelError}</p>}
+                </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onCancelApproved(request.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
+                  <AlertDialogAction
+                    onClick={() => {
+                      const reason = cancelReason.trim();
+                      if (!reason) {
+                        try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) {}
+                        setCancelError('Please provide a reason for the cancellation.');
+                        return;
+                      }
+                      if (reason.length > 500) {
+                        setCancelError('Reason must be 500 characters or less.');
+                        return;
+                      }
+
+                      onCancelApproved?.(request.id, reason);
+                    }}
+                    className="bg-gray-900 hover:bg-red-600 transition-colors duration-200"
+                  >
                     Cancel Reservation
                   </AlertDialogAction>
                 </AlertDialogFooter>

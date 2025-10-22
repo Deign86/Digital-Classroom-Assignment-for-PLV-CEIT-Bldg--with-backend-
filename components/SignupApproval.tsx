@@ -64,6 +64,7 @@ const formatDate = (dateString: string) =>
 export default function SignupApproval({ signupRequests = [], signupHistory = [], onSignupApproval }: SignupApprovalProps) {
   const { announce } = useAnnouncer();
   const [feedback, setFeedback] = useState<Record<string, string>>({});
+  const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
   const toggleSelect = (id: string, checked: boolean) => {
@@ -195,6 +196,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const [isBulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkActionApprove, setBulkActionApprove] = useState<boolean | null>(null);
   const [bulkFeedback, setBulkFeedback] = useState('');
+  const [bulkFeedbackError, setBulkFeedbackError] = useState<string | null>(null);
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
   const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
@@ -502,9 +504,19 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                       id={`feedback-${request.id}`}
                       placeholder="Add comments or notes for this request..."
                       value={feedback[request.id] ?? ''}
-                      onChange={(event) => setFeedback((prev) => ({ ...prev, [request.id]: event.target.value }))}
+                      onChange={(event) => {
+                        const v = event.target.value;
+                        setFeedback((prev) => ({ ...prev, [request.id]: v }));
+                        setFeedbackErrors((prev) => ({ ...prev, [request.id]: v.length > 500 ? 'Feedback must be 500 characters or less.' : null }));
+                      }}
                       rows={3}
+                      maxLength={500}
                     />
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-xs text-gray-500">Max 500 characters</p>
+                      <p className="text-xs text-gray-500">{(feedback[request.id] ?? '').length}/500</p>
+                    </div>
+                    {feedbackErrors[request.id] && <p className="text-xs text-red-600 mt-1">{feedbackErrors[request.id]}</p>}
                     <p className="text-xs text-gray-500">Feedback is required when rejecting a request and optional when approving.</p>
                   </div>
 
@@ -557,7 +569,24 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 Admin Feedback {bulkActionApprove ? '(optional)' : '(required)'}
               </Label>
               {/* Increase rows and add padding so the textarea doesn't clip text and looks spacious like the design */}
-              <Textarea id="bulk-feedback" rows={6} value={bulkFeedback} onChange={(e) => setBulkFeedback(e.target.value)} placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'} className="min-h-[120px] p-3 mt-0" />
+              <Textarea
+                id="bulk-feedback"
+                rows={6}
+                value={bulkFeedback}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setBulkFeedback(v);
+                  setBulkFeedbackError(v.length > 500 ? 'Feedback must be 500 characters or less.' : null);
+                }}
+                placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'}
+                className="min-h-[120px] p-3 mt-0"
+                maxLength={500}
+              />
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-gray-500">Max 500 characters</p>
+                <p className="text-xs text-gray-500">{bulkFeedback.length}/500</p>
+              </div>
+              {bulkFeedbackError && <p className="text-xs text-red-600 mt-1">{bulkFeedbackError}</p>}
             </div>
 
             <DialogFooter>
