@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { storageKeyFor, readStoredTab } from '../utils/tabPersistence';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -66,7 +67,20 @@ export default function AdminDashboard({
   onUnlockAccount,
   checkConflicts
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const STORAGE_KEY = storageKeyFor('admin');
+
+  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings'];
+
+  const [activeTab, setActiveTab] = useState<string>(() => readStoredTab(STORAGE_KEY, 'overview', allowedTabs));
+
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return;
+      window.localStorage.setItem(STORAGE_KEY, activeTab);
+    } catch (err) {
+      console.warn('Failed to save AdminDashboard active tab', err);
+    }
+  }, [activeTab, STORAGE_KEY]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
   
@@ -504,6 +518,7 @@ export default function AdminDashboard({
                 onRequestApproval={onRequestApproval}
                 onCancelApproved={onCancelApprovedBooking}
                 checkConflicts={checkConflicts}
+                userId={user?.id}
               />
             </div>
           </TabsContent>

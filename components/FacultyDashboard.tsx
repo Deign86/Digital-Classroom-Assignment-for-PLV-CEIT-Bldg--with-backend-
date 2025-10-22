@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { storageKeyFor, readStoredTab } from '../utils/tabPersistence';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -50,8 +51,22 @@ export default function FacultyDashboard({
   onBookingRequest,
   checkConflicts
 }: FacultyDashboardProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const STORAGE_KEY = storageKeyFor('faculty');
+
+  const allowedTabs = ['overview','booking','search','schedule','settings'];
+
+  const [activeTab, setActiveTab] = useState<string>(() => readStoredTab(STORAGE_KEY, 'overview', allowedTabs));
+
   const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
+
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return;
+      window.localStorage.setItem(STORAGE_KEY, activeTab);
+    } catch (err) {
+      console.warn('Failed to save FacultyDashboard active tab', err);
+    }
+  }, [activeTab, STORAGE_KEY]);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -535,6 +550,7 @@ export default function FacultyDashboard({
                 schedules={schedules}
                 bookingRequests={bookingRequests}
                 initialTab={scheduleInitialTab}
+                userId={user?.id}
               />
             </div>
           </TabsContent>
