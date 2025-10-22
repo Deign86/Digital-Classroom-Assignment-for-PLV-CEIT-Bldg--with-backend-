@@ -1719,6 +1719,43 @@ export const bookingRequestService = {
   async bulkUpdate(updates: Array<{ id: string; data: Partial<BookingRequest> }>): Promise<void> {
     const payloads = updates.map(u => ({ id: u.id, data: u.data as Record<string, unknown> }));
     await bulkUpdateDocs(COLLECTIONS.BOOKING_REQUESTS, payloads);
+
+    // After the batch commit, create notifications for any requests whose
+    // status was changed to approved, rejected, or cancelled. We fetch the
+    // latest document state to construct a friendly message.
+    try {
+      for (const u of updates) {
+        const status = (u.data as Partial<BookingRequest>).status as BookingRequest['status'] | undefined;
+        if (!status) continue;
+        if (status !== 'approved' && status !== 'rejected' && status !== 'cancelled') continue;
+
+        const db = getDb();
+        const ref = doc(db, COLLECTIONS.BOOKING_REQUESTS, u.id);
+        const snapshot = await getDoc(ref);
+        if (!snapshot.exists()) continue;
+        const data = snapshot.data() as FirestoreBookingRequestRecord;
+
+        const notifType = status === 'cancelled' ? 'cancelled' : (status === 'approved' ? 'approved' : 'rejected');
+        const verb = notifType === 'cancelled' ? 'was cancelled' : `was ${notifType}`;
+        const message =
+          notifType === 'cancelled'
+            ? `Your approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was cancelled.`
+            : `Your booking request for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} ${verb}.`;
+
+        try {
+          await notificationService.createNotification(
+            data.facultyId,
+            notifType as any,
+            message,
+            { bookingRequestId: snapshot.id, adminFeedback: (u.data as any).adminFeedback }
+          );
+        } catch (err) {
+          console.warn('Failed to create notification after bulk booking update for', u.id, err);
+        }
+      }
+    } catch (err) {
+      console.warn('Error while post-processing bulk booking updates for notifications:', err);
+    }
   },
 };
 

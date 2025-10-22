@@ -5,6 +5,7 @@ import { Bell, BellSimpleSlash, CheckCircle, XCircle } from '@phosphor-icons/rea
 type Props = {
   userId: string;
   onClose?: () => void;
+  onAcknowledgeAll?: (newUnreadCount: number | null) => void; // optional callback to allow parent components to update bell immediately
 };
 
 const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) => void; acknowledging?: boolean }> = ({ n, onAcknowledge, acknowledging }) => {
@@ -52,7 +53,7 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
   );
 };
 
-export const NotificationCenter: React.FC<Props> = ({ userId, onClose }) => {
+export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll }) => {
   const [items, setItems] = useState<Notification[]>([]);
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
 
@@ -93,7 +94,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose }) => {
           <button
             onClick={async () => {
               // acknowledge all unread notifications optimistically
-              const unread = items.filter(i => !i.acknowledgedAt).map(i => i.id);
+                    const unread = items.filter(i => !i.acknowledgedAt).map(i => i.id);
               if (!unread.length) {
                 onClose?.();
                 return;
@@ -102,7 +103,16 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose }) => {
               const prev = items;
               setItems(prev.map(it => unread.includes(it.id) ? { ...it, acknowledgedAt: new Date().toISOString() } : it));
               try {
-                await Promise.all(unread.map(id => notificationService.acknowledgeNotification(id, userId)));
+                      // prefer batch acknowledge if supported by service
+                      if (typeof notificationService.acknowledgeNotifications === 'function') {
+                        const newUnread = await notificationService.acknowledgeNotifications(unread, userId);
+                        // notify parent about new unread count so the bell can update immediately
+                        onAcknowledgeAll?.(typeof newUnread === 'number' ? newUnread : null);
+                      } else {
+                        await Promise.all(unread.map(id => notificationService.acknowledgeNotification(id, userId)));
+                        // parent can refresh via listener; we don't know the final unread count here
+                        onAcknowledgeAll?.(0);
+                      }
               } catch (err) {
                 console.error('Failed to acknowledge all notifications', err);
                 // revert the optimistic update by re-triggering listener (listener will correct state)

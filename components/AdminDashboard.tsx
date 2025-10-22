@@ -67,6 +67,8 @@ export default function AdminDashboard({
   checkConflicts
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
   
 
   // Scroll to top when component mounts
@@ -116,6 +118,9 @@ export default function AdminDashboard({
                   <LogOut className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Logout</span>
                 </Button>
+              </div>
+              <div className="ml-3">
+                <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
               </div>
             </div>
           </div>
@@ -233,6 +238,19 @@ export default function AdminDashboard({
                   </CardContent>
                 </Card>
               </div>
+              {showNotifications && (
+                <div className="fixed right-4 top-20 z-50">
+                  <NotificationCenter
+                    userId={user.id}
+                    onClose={() => setShowNotifications(false)}
+                    onAcknowledgeAll={(newCount) => {
+                      setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                      setTimeout(() => setForceBellUnread(null), 1500);
+                      setShowNotifications(false);
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 

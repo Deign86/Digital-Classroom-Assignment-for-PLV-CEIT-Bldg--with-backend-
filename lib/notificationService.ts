@@ -101,6 +101,20 @@ export const acknowledgeNotification = async (id: string, acknowledgedBy: string
   }
 };
 
+export const acknowledgeNotifications = async (ids: string[], acknowledgedBy: string): Promise<number> => {
+  // Prefer a server-side callable that can acknowledge many notifications in one atomic operation
+  const app = getFirebaseApp();
+  const functions = getFunctions(app);
+  const fn = httpsCallable(functions, 'acknowledgeNotifications');
+  const result = await fn({ notificationIds: ids });
+  const anyResult = result as any;
+  if (!anyResult?.data?.success) {
+    throw new Error('Failed to acknowledge notifications');
+  }
+  // Optionally the function returns the new unread count for the user
+  return typeof anyResult?.data?.unreadCount === 'number' ? anyResult.data.unreadCount : 0;
+};
+
 export const getNotificationById = async (id: string): Promise<Notification | null> => {
   const database = db();
   const ref = doc(database, COLLECTION, id);
@@ -160,6 +174,7 @@ export const setupNotificationsListener = (
 export const notificationService = {
   createNotification,
   acknowledgeNotification,
+  acknowledgeNotifications,
   getNotificationById,
   getUnreadCount,
   setupNotificationsListener,

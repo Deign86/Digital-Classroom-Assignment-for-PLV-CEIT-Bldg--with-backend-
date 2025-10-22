@@ -175,11 +175,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
     // show a single summary toast instead of opening a bulk results dialog
     if (succeeded > 0 && failed === 0) {
-      const message = `${succeeded} request(s) processed successfully.`;
+      const message = `${succeeded} reservation(s) processed successfully.`;
       toast.success(message);
       announce?.(message, 'polite');
     } else if (succeeded > 0 && failed > 0) {
-      const message = `${succeeded} request(s) processed. ${failed} failed.`;
+      const message = `${succeeded} reservation(s) processed. ${failed} failed.`;
       toast.success(message);
       announce?.(message, 'polite');
     } else {
@@ -277,11 +277,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   setBulkResults({ succeeded, failed });
   // show a single summary toast instead of opening the bulk results dialog
   if (succeeded.length > 0 && failed.length === 0) {
-    const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} items processed.`;
+  const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} reservation(s) processed.`;
     toast.success(message);
     announce?.(message, 'polite');
-  } else if (succeeded.length > 0 && failed.length > 0) {
-    const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} succeeded, ${failed.length} failed.`;
+    } else if (succeeded.length > 0 && failed.length > 0) {
+      const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} reservation(s) succeeded, ${failed.length} failed.`;
     toast.success(message);
     announce?.(message, 'polite');
   } else if (succeeded.length === 0 && failed.length > 0) {
@@ -295,7 +295,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     clearSelection();
     // Announce summary for screen readers
     if (succeeded.length > 0 && failed.length === 0) {
-      const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} items processed.`;
+      const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} reservation(s) processed.`;
       announce?.(message, 'polite');
     } else if (succeeded.length > 0 && failed.length > 0) {
       const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} succeeded, ${failed.length} failed.`;
@@ -326,9 +326,9 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     setBulkResults({ succeeded, failed });
     // show summary
     if (succeeded.length > 0 && failed.length === 0) {
-      toast.success(`${succeeded.length} request(s) processed successfully.`);
+      toast.success(`${succeeded.length} reservation(s) processed successfully.`);
     } else if (succeeded.length > 0 && failed.length > 0) {
-      toast.success(`${succeeded.length} request(s) processed. ${failed.length} failed.`);
+      toast.success(`${succeeded.length} reservation(s) processed. ${failed.length} failed.`);
     } else {
       toast.error('Failed to process selected requests.');
     }

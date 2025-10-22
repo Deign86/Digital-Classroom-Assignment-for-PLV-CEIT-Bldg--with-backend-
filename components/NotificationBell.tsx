@@ -5,9 +5,10 @@ import { Bell } from '@phosphor-icons/react';
 type Props = {
   userId?: string | null;
   onOpen?: () => void;
+  forceUnread?: number | null;
 };
 
-export const NotificationBell: React.FC<Props> = ({ userId, onOpen }) => {
+export const NotificationBell: React.FC<Props> = ({ userId, onOpen, forceUnread = null }) => {
   const [count, setCount] = useState<number>(0);
 
   useEffect(() => {
@@ -39,12 +40,14 @@ export const NotificationBell: React.FC<Props> = ({ userId, onOpen }) => {
     };
   }, [userId]);
 
+  const displayCount = forceUnread !== null && forceUnread !== undefined ? forceUnread : count;
+
   return (
-    <button aria-label={`Notifications (${count} unread)`} onClick={onOpen} className="relative">
+    <button aria-label={`Notifications (${displayCount} unread)`} onClick={onOpen} className="relative">
       <Bell size={20} weight="regular" aria-hidden className="text-current" />
-      {count > 0 && (
+      {displayCount > 0 && (
         <span aria-hidden className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full text-xs px-1">
-          {count}
+          {displayCount}
         </span>
       )}
     </button>

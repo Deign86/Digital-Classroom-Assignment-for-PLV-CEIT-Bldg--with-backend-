@@ -101,6 +101,7 @@ export default function FacultyDashboard({
   };
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,7 +124,7 @@ export default function FacultyDashboard({
                 <p className="text-xs text-gray-500 truncate max-w-[280px]">{user.department} • {user.email}</p>
               </div>
               <div className="flex items-center space-x-2">
-                <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} />
+                <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
                 <div className="transition-transform hover:scale-105 active:scale-95">
                   <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
                     <LogOut className="h-4 w-4 sm:mr-2" />
@@ -133,7 +134,17 @@ export default function FacultyDashboard({
               </div>
               {showNotifications && (
                 <div className="fixed right-4 top-20 z-50">
-                  <NotificationCenter userId={user.id} onClose={() => setShowNotifications(false)} />
+                  <NotificationCenter
+                    userId={user.id}
+                    onClose={() => setShowNotifications(false)}
+                    onAcknowledgeAll={(newCount) => {
+                      // Immediately show the new unread count on the bell. If null, force to 0.
+                      setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                      // Clear the forced value after 1.5s so the real-time listener resumes control
+                      setTimeout(() => setForceBellUnread(null), 1500);
+                      setShowNotifications(false);
+                    }}
+                  />
                 </div>
               )}
             </div>

@@ -16,7 +16,7 @@ import { useAnnouncer } from './Announcer';
 
 interface RequestApprovalProps {
   requests: BookingRequest[];
-  onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => Promise<void>;
+  onRequestApproval: (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => Promise<void>;
   onCancelApproved?: (requestId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
@@ -175,11 +175,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             return { id, ok: true };
           } catch (err) {
             // fall back to update via onRequestApproval
-            await onRequestApproval(id, false, feedback || undefined);
+            await onRequestApproval(id, false, feedback || undefined, true);
             return { id, ok: true };
           }
         }
-        await onRequestApproval(id, actionType === 'approve', feedback || undefined);
+        await onRequestApproval(id, actionType === 'approve', feedback || undefined, true);
         return { id, ok: true };
       });
 
@@ -194,8 +194,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         else failed.push({ id, error: res?.reason });
       });
 
-  setBulkResults({ succeeded, failed });
-  showBulkSummary(succeeded, failed);
+    setBulkResults({ succeeded, failed });
+    showBulkSummary(succeeded, failed);
 
       setIsProcessingBulk(false);
       setBulkProgress({ processed: 0, total: 0 });
@@ -205,19 +205,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       setIsDialogOpen(false);
       setSelectedRequest(null);
       setFeedback('');
-      if (succeeded.length > 0 && failed.length === 0) {
-        const msg = `${succeeded.length} request(s) processed successfully.`;
-        toast.success(msg);
-        try { announce(msg, 'polite'); } catch (e) {}
-      } else if (succeeded.length > 0 && failed.length > 0) {
-        const msg = `${succeeded.length} processed, ${failed.length} failed.`;
-        toast.success(msg);
-        try { announce(msg, 'polite'); } catch (e) {}
-      } else {
-        const msg = 'Failed to process selected requests.';
-        toast.error(msg);
-        try { announce(msg, 'assertive'); } catch (e) {}
-      }
+      // Aggregated toast is handled by showBulkSummary above.
     })();
   };
 
@@ -230,7 +218,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
   const showBulkSummary = (succeeded: string[], failed: { id: string; error?: unknown }[]) => {
     setBulkResults({ succeeded, failed });
     if (succeeded.length > 0 && failed.length === 0) {
-      const msg = `${succeeded.length} request(s) processed successfully.`;
+      const msg = `${succeeded.length} reservation(s) processed successfully.`;
       toast.success(msg);
       try { announce(msg, 'polite'); } catch (e) {}
     } else if (succeeded.length > 0 && failed.length > 0) {
@@ -238,7 +226,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       toast.success(msg);
       try { announce(msg, 'polite'); } catch (e) {}
     } else {
-      const msg = 'Failed to process selected requests.';
+      const msg = 'Failed to process selected reservations.';
       toast.error(msg);
       try { announce(msg, 'assertive'); } catch (e) {}
     }
@@ -251,7 +239,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
     setBulkProgress({ processed: 0, total: ids.length });
 
     const tasks = ids.map((id) => async () => {
-      await onRequestApproval(id, actionType === 'approve', feedback || undefined);
+  await onRequestApproval(id, actionType === 'approve', feedback || undefined, true);
       return { id, ok: true };
     });
 

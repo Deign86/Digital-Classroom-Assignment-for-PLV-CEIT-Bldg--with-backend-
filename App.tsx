@@ -654,7 +654,7 @@ export default function App() {
     }
   }, [checkConflicts]);
 
-  const handleRequestApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string) => {
+  const handleRequestApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => {
     try {
       // Find the request first
       const request = bookingRequests.find(req => req.id === requestId);
@@ -713,7 +713,7 @@ export default function App() {
         prev.map(req => req.id === requestId ? updatedRequest : req)
       );
       
-      // Create schedule only if approved
+  // Create schedule only if approved
       if (approved) {
         const newSchedule = await scheduleService.create({
           classroomId: request.classroomId,
@@ -730,10 +730,15 @@ export default function App() {
         setSchedules(prev => [...prev, newSchedule]);
       }
       
-  toast.success(approved ? 'Reservation approved!' : 'Reservation rejected.');
+      // Only show a per-item toast when the caller hasn't requested suppression
+      if (!suppressToast) {
+        toast.success(approved ? 'Reservation approved!' : 'Reservation rejected.');
+      }
     } catch (err) {
       console.error('Approval error:', err);
-      toast.error('Failed to process request');
+      if (!suppressToast) {
+        toast.error('Failed to process request');
+      }
     }
   }, [bookingRequests]);
 
