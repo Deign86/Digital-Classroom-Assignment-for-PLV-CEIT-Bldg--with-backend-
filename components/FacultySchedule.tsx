@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
+import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -12,10 +14,13 @@ interface FacultyScheduleProps {
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
   initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected';
+  onCancelSelected?: (scheduleId: string) => Promise<void> | void;
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming' }: FacultyScheduleProps) {
+export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected }: FacultyScheduleProps) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Filter schedules
   const today = new Date();
@@ -283,11 +288,126 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               </CardContent>
             </Card>
           ) : (
-            approvedRequests
-              .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
-              .map((request) => (
-                <RequestCard key={request.id} request={request} />
-              ))
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all approved"
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      const map: Record<string, boolean> = {};
+                      approvedRequests.forEach(r => { map[r.id] = checked; });
+                      setApprovedSelectedIds(map);
+                    }}
+                    checked={approvedRequests.length > 0 && approvedRequests.every(r => approvedSelectedIds[r.id])}
+                    className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                  />
+                  <span className="text-sm">Select all ({approvedRequests.length})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      const ids = Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]);
+                      if (!ids.length) return;
+
+                      // If a parent handler is provided, prefer it (backwards compatibility).
+                      if (typeof onCancelSelected === 'function') {
+                        try {
+                          setIsCancelling(true);
+                          for (const id of ids) {
+                            try {
+                              await onCancelSelected(id);
+                            } catch (err) {
+                              console.error('onCancelSelected failed for', id, err);
+                            }
+                          }
+                          toast.success(`Attempted to cancel ${ids.length} reservation(s).`);
+                        } finally {
+                          setIsCancelling(false);
+                          setApprovedSelectedIds({});
+                        }
+                        return;
+                      }
+
+                      // Default bulk flow: cancel schedules (requires admin permission) and then atomically update booking requests.
+                      setIsCancelling(true);
+                      const successfulScheduleCancellations: string[] = [];
+                      const failedScheduleCancellations: Array<{ id: string; error: unknown }> = [];
+
+                      for (const requestId of ids) {
+                        try {
+                          // Find a corresponding schedule for this booking request
+                          const correspondingSchedule = schedules.find(schedule =>
+                            schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
+                            schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
+                            schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
+                            schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
+                            schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
+                          );
+
+                          if (correspondingSchedule) {
+                            await scheduleService.cancelApprovedBooking(correspondingSchedule.id);
+                            successfulScheduleCancellations.push(requestId);
+                          } else {
+                            // No schedule found — still include in booking updates
+                            successfulScheduleCancellations.push(requestId);
+                          }
+                        } catch (err) {
+                          console.error('Failed to cancel schedule for request', requestId, err);
+                          failedScheduleCancellations.push({ id: requestId, error: err });
+                        }
+                      }
+
+                      // Prepare booking request updates for all ids that we attempted (mark rejected and add adminFeedback)
+                      const bookingUpdates = ids.map(id => ({ id, data: { status: 'rejected' as const, adminFeedback: 'Booking cancelled by administrator' } }));
+
+                      try {
+                        await bookingRequestService.bulkUpdate(bookingUpdates);
+                      } catch (err) {
+                        console.error('Bulk update of booking requests failed', err);
+                        // If the batch update fails, fall back to per-item updates to maximize success
+                        for (const u of bookingUpdates) {
+                          try {
+                            await bookingRequestService.update(u.id, u.data as Partial<any>);
+                          } catch (innerErr) {
+                            console.error('Fallback per-item update failed for', u.id, innerErr);
+                            failedScheduleCancellations.push({ id: u.id, error: innerErr });
+                          }
+                        }
+                      }
+
+                      setIsCancelling(false);
+                      setApprovedSelectedIds({});
+
+                      const successCount = ids.length - failedScheduleCancellations.length;
+                      if (failedScheduleCancellations.length === 0) {
+                        toast.success(`Successfully cancelled ${successCount} reservation(s).`);
+                      } else {
+                        toast.error(`Cancelled ${successCount} reservation(s). ${failedScheduleCancellations.length} failed.`);
+                      }
+                    }}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? 'Cancelling...' : `Cancel Selected (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
+                {approvedRequests
+                  .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+                  .map((request) => (
+                    <div key={request.id} className="flex items-start gap-3">
+                      <input type="checkbox" checked={!!approvedSelectedIds[request.id]} onChange={(e) => setApprovedSelectedIds(prev => ({ ...prev, [request.id]: e.target.checked }))} className="h-4 w-4 text-indigo-600 rounded border-gray-300 mt-3" />
+                      <div className="flex-1">
+                        <RequestCard request={request} />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           )}
         </TabsContent>
 

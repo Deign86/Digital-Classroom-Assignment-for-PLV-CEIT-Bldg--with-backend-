@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { toast } from 'sonner';
 import {
   CheckCircle,
@@ -20,7 +22,8 @@ import type { SignupRequest, SignupHistory } from '../App';
 interface SignupApprovalProps {
   signupRequests?: SignupRequest[];
   signupHistory?: SignupHistory[];
-  onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  // added optional skipConfirm flag so bulk flows can perform destructive actions without per-item dialog
+  onSignupApproval: (requestId: string, approved: boolean, feedback?: string, skipConfirm?: boolean) => Promise<void>;
 }
 
 const getStatusBadge = (status: SignupRequest['status']) => {
@@ -59,6 +62,15 @@ const formatDate = (dateString: string) =>
 
 export default function SignupApproval({ signupRequests = [], signupHistory = [], onSignupApproval }: SignupApprovalProps) {
   const [feedback, setFeedback] = useState<Record<string, string>>({});
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds(prev => ({ ...prev, [id]: checked }));
+  };
+
+  const clearSelection = () => setSelectedIds({});
+
+  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SignupRequest['status']>('pending');
@@ -113,10 +125,21 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       const dateB = 'resolvedAt' in b ? b.resolvedAt : b.requestDate;
       return new Date(dateB || 0).getTime() - new Date(dateA || 0).getTime();
     });
-  
-  const processedRequests = allProcessedItems;
 
-  const handleApproval = (requestId: string, approved: boolean) => {
+  // Ensure each processed item appears individually and only once (de-duplicate by id)
+  const processedRequests = (() => {
+    const seen = new Set<string>();
+    const result: Array<SignupRequest | SignupHistory> = [];
+    for (const it of allProcessedItems) {
+      if (!seen.has(it.id)) {
+        seen.add(it.id);
+        result.push(it);
+      }
+    }
+    return result;
+  })();
+
+  const handleApproval = async (requestId: string, approved: boolean) => {
     const feedbackText = (feedback[requestId] ?? '').trim();
 
     if (!approved && !feedbackText) {
@@ -124,9 +147,214 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       return;
     }
 
-    onSignupApproval(requestId, approved, approved ? feedbackText || undefined : feedbackText);
-    setFeedback((prev) => ({ ...prev, [requestId]: '' }));
+    try {
+      await onSignupApproval(requestId, approved, approved ? feedbackText || undefined : feedbackText);
+      setFeedback((prev) => ({ ...prev, [requestId]: '' }));
+    } catch (err) {
+      console.error('Signup approval error:', err);
+      toast.error('Failed to process signup request');
+    }
   };
+
+  const startBulkApproval = async (approved: boolean) => {
+    // This function is now the low-level executor; UI should open the dialog to collect
+    // bulkFeedback for the selected items and then call this. Keep it here for reuse.
+    const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
+    if (ids.length === 0) return;
+    // Run all bulk ops in parallel but collect results so we can surface a summary
+    const promises = ids.map((id) => {
+      const feedbackText = (feedback[id] ?? '').trim();
+      return onSignupApproval(id, approved, approved ? feedbackText || undefined : feedbackText, true);
+    });
+
+    const results = await Promise.allSettled(promises);
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.length - succeeded;
+
+    if (succeeded > 0 && failed === 0) {
+      toast.success(`${succeeded} request(s) processed successfully.`);
+    } else if (succeeded > 0 && failed > 0) {
+      toast.success(`${succeeded} request(s) processed. ${failed} failed.`);
+    } else {
+      toast.error('Failed to process selected requests.');
+    }
+
+    clearSelection();
+  };
+
+  // Bulk dialog state
+  const [isBulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkActionApprove, setBulkActionApprove] = useState<boolean | null>(null);
+  const [bulkFeedback, setBulkFeedback] = useState('');
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [bulkResultsOpen, setBulkResultsOpen] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
+  const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
+
+  // Throttled worker runner - processes promises with limited concurrency
+  const runWithConcurrency = async <T,>(
+    tasks: Array<() => Promise<T>>,
+    concurrency: number,
+    onProgress?: (processed: number, total: number) => void
+  ) : Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
+    const results: Array<any> = [];
+    let index = 0;
+    let processed = 0;
+    const total = tasks.length;
+
+    const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
+      while (true) {
+        const i = index++;
+        if (i >= tasks.length) return;
+        try {
+          const value = await tasks[i]();
+          results[i] = { status: 'fulfilled', value };
+        } catch (err) {
+          results[i] = { status: 'rejected', reason: err };
+        } finally {
+          processed += 1;
+          if (onProgress) onProgress(processed, total);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  };
+
+  const openBulkDialog = (approved: boolean) => {
+    setBulkActionApprove(approved);
+    // When approving, prefill with empty string; when rejecting we require feedback
+    setBulkFeedback('');
+    setBulkDialogOpen(true);
+  };
+
+  const confirmBulkAction = async () => {
+    if (bulkActionApprove === null) return setBulkDialogOpen(false);
+    const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
+    if (ids.length === 0) {
+      setBulkDialogOpen(false);
+      return;
+    }
+
+    // If rejecting, ensure there's feedback provided
+    if (!bulkActionApprove && !bulkFeedback.trim()) {
+      toast.error('Please provide feedback for rejected requests.');
+      return;
+    }
+
+    // Execute bulk operations in parallel and summarize the results
+    setBulkDialogOpen(false);
+    setIsProcessingBulk(true);
+
+    // Build tasks
+    const tasks = ids.map(id => async () => onSignupApproval(id, bulkActionApprove, bulkFeedback.trim() || undefined, true));
+
+  // Use a concurrency of 4 to avoid throttling spikes
+  setBulkProgress({ processed: 0, total: ids.length });
+  const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error?: unknown }[] = [];
+
+    results.forEach((res, idx) => {
+      const id = ids[idx];
+      if (res?.status === 'fulfilled') {
+        succeeded.push(id);
+      } else {
+        failed.push({ id, error: res?.reason });
+      }
+    });
+
+  setBulkResults({ succeeded, failed });
+  setBulkResultsOpen(true);
+  setIsProcessingBulk(false);
+  setBulkProgress({ processed: 0, total: 0 });
+
+    clearSelection();
+  };
+
+  const retryFailed = async () => {
+    if (!bulkResults.failed.length) return;
+    setBulkResultsOpen(false);
+    setIsProcessingBulk(true);
+
+    const ids = bulkResults.failed.map(f => f.id);
+    const tasks = ids.map(id => async () => onSignupApproval(id, bulkActionApprove ?? false, bulkFeedback.trim() || undefined, true));
+  setBulkProgress({ processed: 0, total: ids.length });
+  const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error?: unknown }[] = [];
+    results.forEach((res, idx) => {
+      const id = ids[idx];
+      if (res?.status === 'fulfilled') succeeded.push(id);
+      else failed.push({ id, error: res?.reason });
+    });
+
+    setBulkResults({ succeeded, failed });
+    setBulkResultsOpen(true);
+    setIsProcessingBulk(false);
+    setBulkProgress({ processed: 0, total: 0 });
+  };
+
+  // Scroll to a matching history entry (if present) or to the processed list.
+  const highlightAndScroll = (el: HTMLElement | null) => {
+    if (!el) return;
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50'), 2500);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const viewInHistory = (failedId: string) => {
+    const req = signupRequests.find(r => r.id === failedId);
+    if (!req) {
+      // fallback: scroll to processed list
+      const listEl = document.getElementById('processed-requests');
+      if (listEl) highlightAndScroll(listEl);
+      toast.info('No matching signup request found in memory.');
+      return;
+    }
+    // Try to navigate to the full-screen history route for a deterministic view
+    // Prefer matching by userId/requestDate to find the history item id
+    const historyEntry = signupHistory.find(h => (h.userId && req.userId && h.userId === req.userId) || (h.email === req.email && h.requestDate === req.requestDate));
+
+    const navigate = (() => {
+      try {
+        return useNavigate();
+      } catch (e) {
+        return null;
+      }
+    })();
+
+    if (historyEntry && navigate) {
+      // Use react-router to open the dedicated history page and focus the item
+      navigate(`/admin/signups/history/${historyEntry.id}`);
+      return;
+    }
+
+    // Fallback: if we have a router but no matching history entry, navigate to history list without id
+    if (navigate) {
+      navigate('/admin/signups/history');
+      toast.info('No matching history entry found yet. Showing full history.');
+      return;
+    }
+
+    // Final fallback: scroll to processed list in current view
+    const listEl = document.getElementById('processed-requests');
+    if (listEl) {
+      highlightAndScroll(listEl);
+      toast.info('No matching history entry found yet. Check Recent Processed Requests.');
+    } else {
+      toast.info('History not available in this view.');
+    }
+  };
+
+  // No-op: route-based focusing is handled by the dedicated SignupHistoryPage route
 
   // Helper to check if an item is from history
   const isHistoryItem = (item: SignupRequest | SignupHistory): item is SignupHistory => {
@@ -173,10 +401,40 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       {pendingRequests.length > 0 ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Pending Faculty Signup Requests</h3>
-            <Badge variant="outline" className="text-orange-600 border-orange-200">
-              {pendingRequests.length} pending
-            </Badge>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                aria-label="Select all signups"
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  const map: Record<string, boolean> = {};
+                  pendingRequests.forEach(r => { map[r.id] = checked; });
+                  setSelectedIds(map);
+                }}
+                checked={pendingRequests.length > 0 && pendingRequests.every(r => selectedIds[r.id])}
+                className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+              />
+              <h3 className="text-lg font-semibold">Pending Faculty Signup Requests</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-orange-600 border-orange-200">
+                {pendingRequests.length} pending
+              </Badge>
+              <Button onClick={() => openBulkDialog(true)} disabled={selectedCount === 0 || isProcessingBulk} className="bg-green-600 hover:bg-green-700 text-white">
+                {isProcessingBulk ? 'Processing…' : `Approve Selected (${selectedCount})`}
+              </Button>
+              <Button variant="destructive" onClick={() => openBulkDialog(false)} disabled={selectedCount === 0 || isProcessingBulk}>
+                {isProcessingBulk ? 'Processing…' : `Reject Selected (${selectedCount})`}
+              </Button>
+            </div>
+            {isProcessingBulk && bulkProgress.total > 0 && (
+              <div className="w-full mt-2">
+                <div className="text-xs text-gray-600 mb-1">Processing {bulkProgress.processed} of {bulkProgress.total}</div>
+                <div className="w-full bg-gray-200 rounded h-2 overflow-hidden">
+                  <div className="bg-indigo-600 h-2" style={{ width: `${Math.round((bulkProgress.processed / bulkProgress.total) * 100)}%` }} />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4">
@@ -185,6 +443,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
+                      <input type="checkbox" aria-label={`Select signup ${request.id}`} checked={!!selectedIds[request.id]} onChange={(e) => toggleSelect(request.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300" />
                       <User className="h-5 w-5 text-gray-600" />
                       <CardTitle className="text-lg">{request.name}</CardTitle>
                     </div>
@@ -252,16 +511,102 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
         </Card>
       )}
 
+      {/* Bulk action dialog for collect admin feedback when rejecting */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        {isBulkDialogOpen && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{bulkActionApprove ? 'Approve Selected Requests' : 'Reject Selected Requests'}</DialogTitle>
+              <DialogDescription>
+                {bulkActionApprove
+                  ? 'Optionally add admin feedback to apply to all selected approvals.'
+                  : 'Provide a reason for rejecting the selected requests. This feedback will be sent to the users.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-2">
+              {/* Move label slightly upward and ensure it renders above the textarea focus ring */}
+              <Label htmlFor="bulk-feedback" className="relative z-10 inline-block -translate-y-2 bg-background px-1">
+                Admin Feedback {bulkActionApprove ? '(optional)' : '(required)'}
+              </Label>
+              {/* Increase rows and add padding so the textarea doesn't clip text and looks spacious like the design */}
+              <Textarea id="bulk-feedback" rows={6} value={bulkFeedback} onChange={(e) => setBulkFeedback(e.target.value)} placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'} className="min-h-[120px] p-3 mt-0" />
+            </div>
+
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
+              <Button onClick={confirmBulkAction} className="ml-2">{bulkActionApprove ? 'Approve Selected' : 'Reject Selected'}</Button>
+            </DialogFooter>
+            <DialogClose />
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {/* Bulk results dialog */}
+      <Dialog open={bulkResultsOpen} onOpenChange={setBulkResultsOpen}>
+        {bulkResultsOpen && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk operation results</DialogTitle>
+              <DialogDescription>
+                {bulkResults.succeeded.length > 0 && <div className="text-sm text-green-700">{bulkResults.succeeded.length} succeeded</div>}
+                {bulkResults.failed.length > 0 && <div className="text-sm text-red-700">{bulkResults.failed.length} failed</div>}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4">
+              {bulkResults.failed.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-700">Failed items:</p>
+                  <ul className="pl-0 text-sm text-gray-600 max-h-52 overflow-auto space-y-2">
+                    {bulkResults.failed.map(f => {
+                      const req = signupRequests.find(r => r.id === f.id);
+                      const label = req ? `${req.name} — ${req.email}` : f.id;
+                      return (
+                        <li key={f.id} className="flex items-start justify-between gap-4 p-2 border rounded">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">{label}</div>
+                            {req && (
+                              <div className="text-xs text-gray-500">
+                                <span>{req.department}</span>
+                                <span className="mx-2">•</span>
+                                <span>Requested: {formatDate(req.requestDate)}</span>
+                              </div>
+                            )}
+                            {f.error != null && <div className="text-xs text-red-600 mt-1">{String(f.error)}</div>}
+                          </div>
+                          <div className="flex-shrink-0">
+                            <Button variant="ghost" onClick={() => viewInHistory(f.id)} className="text-xs">View in History</Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setBulkResultsOpen(false)}>Close</Button>
+              {bulkResults.failed.length > 0 && (
+                <Button onClick={retryFailed} className="ml-2">Retry Failed</Button>
+              )}
+            </DialogFooter>
+            <DialogClose />
+          </DialogContent>
+        )}
+      </Dialog>
+
       {processedRequests.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Recent Processed Requests</h3>
-          <div className="grid gap-4">
+          <div id="processed-requests" className="grid gap-4">
             {processedRequests.slice(0, 5).map((item) => {
               const isHistory = isHistoryItem(item);
               const resolvedDate = isHistory ? item.resolvedAt : item.resolvedAt;
               
               return (
-                <Card key={item.id} className="border-l-4 border-l-gray-300">
+                <Card key={item.id} id={isHistory ? `history-item-${item.id}` : undefined} className="border-l-4 border-l-gray-300">
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">

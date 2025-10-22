@@ -455,9 +455,15 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                     {signupErrors.password}
                   </p>
                 ) : (
-                  <p className="text-xs text-gray-500">
-                    Minimum 8 characters. Mix letters, numbers, and symbols for a stronger password.
-                  </p>
+                  <div className="text-sm text-gray-700 text-left">
+                    <p className="font-medium mb-1">Password Requirements:</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs text-gray-600 text-left pl-4">
+                      <li>At least 8 characters long</li>
+                      <li>Contains uppercase and lowercase letters</li>
+                      <li>Contains at least one number</li>
+                      <li>Contains at least one special character (e.g., !@#$%^&*)</li>
+                    </ul>
+                  </div>
                 )}
               </div>
 

@@ -39,8 +39,8 @@ interface AdminDashboardProps {
   users?: User[];
   onLogout: () => void;
   onClassroomUpdate: (classrooms: Classroom[]) => void;
-  onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
-  onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => Promise<void>;
+  onSignupApproval: (requestId: string, approved: boolean, feedback?: string) => Promise<void>;
   onCancelSchedule: (scheduleId: string) => void;
   onCancelApprovedBooking?: (requestId: string) => void;
   onUnlockAccount?: (userId: string) => Promise<void>;
@@ -70,6 +70,8 @@ export default function AdminDashboard({
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  // (Hash-based deep-linking removed — navigation now uses react-router)
 
   // Statistics
   const totalClassrooms = classrooms.length;

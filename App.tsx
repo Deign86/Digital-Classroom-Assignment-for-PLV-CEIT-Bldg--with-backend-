@@ -1,15 +1,18 @@
 import './styles/globals.css';
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
 // Lazy-load heavy dashboard components to reduce initial bundle size
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
+const SignupHistoryPage = React.lazy(() => import('./components/SignupHistoryPage'));
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
 import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import {
@@ -120,6 +123,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
+  // Pending destructive reject action (replaces window.confirm)
+  // Include the signup request's userId so we can reliably remove the correct user record
+  const [pendingRejectAction, setPendingRejectAction] = useState<{
+    requestId: string;
+    userId: string;
+    feedback: string;
+    requestName: string;
+  } | null>(null);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -169,6 +180,10 @@ export default function App() {
         onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
           console.log('👥 Real-time update: Signup Requests', requests.length);
           setSignupRequests(requests);
+        } : undefined,
+        onSignupHistoryUpdate: user.role === 'admin' ? (history) => {
+          console.log('📜 Real-time update: Signup History', history.length);
+          setSignupHistory(history);
         } : undefined,
         
         onUsersUpdate: user.role === 'admin' ? (users) => {
@@ -718,7 +733,7 @@ export default function App() {
   }, [bookingRequests]);
 
   const handleSignupApproval = useCallback(
-    async (requestId: string, approved: boolean, feedback?: string) => {
+    async (requestId: string, approved: boolean, feedback?: string, skipConfirm: boolean = false) => {
       try {
         const request = signupRequests.find((r) => r.id === requestId);
         if (!request) {
@@ -775,29 +790,35 @@ export default function App() {
             return;
           }
 
-          // Confirm destructive action before proceeding. Replace with a proper modal if desired.
-          const confirmed = window.confirm(
-            `Are you sure you want to reject and permanently delete the account for ${request.name}? This action cannot be undone.`
-          );
+          // If this is part of a bulk confirmed action, skip the per-item confirmation
+          if (skipConfirm) {
+            try {
+              const historyRecord = await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback.trim());
 
-          if (!confirmed) {
-            toast.info('Rejection cancelled');
+              // Remove the signup request from local list
+              setSignupRequests((prev) => prev.filter((entry) => entry.id !== requestId));
+
+              // Append the history record so processed items appear in Recent History
+              setSignupHistory((prev) => [historyRecord, ...prev]);
+
+              // Remove the corresponding user by the signup request's userId
+              setUsers((prev) => prev.filter((user) => user.id !== request.userId));
+
+              toast.success(`Signup request rejected for ${request.name}.`, {
+                description: 'The account has been completely removed. They can submit a new signup request.',
+                duration: 6000,
+              });
+            } catch (err) {
+              console.error('Signup rejection error (bulk):', err);
+              toast.error('Failed to reject signup request');
+            }
             return;
           }
 
-          // Use the new rejection method that properly cleans up everything
-          await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback);
-
-          // Remove the request from the UI
-          setSignupRequests((prev) => prev.filter((entry) => entry.id !== requestId));
-
-          // Remove the user from the users list since they've been deleted
-          setUsers((prev) => prev.filter((user) => user.id !== request.userId));
-
-          toast.success(`Signup request rejected for ${request.name}.`, {
-            description: 'The account has been completely removed. They can submit a new signup request.',
-            duration: 6000,
-          });
+          // Open the app-styled confirmation dialog instead of using window.confirm
+          setPendingRejectAction({ requestId, userId: request.userId, feedback: feedback.trim(), requestName: request.name });
+          // Actual rejection will be performed when admin confirms in the dialog
+          return;
         }
       } catch (err) {
         console.error('Signup approval error:', err);
@@ -893,6 +914,39 @@ export default function App() {
         duration: 5000,
       });
     }
+  }, []);
+
+  // Handlers for the app-styled confirmation dialog for rejecting signup requests
+  const confirmPendingReject = useCallback(async () => {
+    if (!pendingRejectAction || !currentUser) return;
+    const { requestId, userId, feedback, requestName } = pendingRejectAction;
+    try {
+      const historyRecord = await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback);
+
+      // Remove the signup request entry
+      setSignupRequests((prev) => prev.filter((entry) => entry.id !== requestId));
+
+      // Append to signup history so it appears in Recent Processed Requests
+      setSignupHistory((prev) => [historyRecord, ...prev]);
+
+      // Remove the corresponding user by userId provided in the pending action
+      setUsers((prev) => prev.filter((user) => user.id !== userId));
+
+      toast.success(`Signup request rejected for ${requestName}.`, {
+        description: 'The account has been completely removed. They can submit a new signup request.',
+        duration: 6000,
+      });
+    } catch (err) {
+      console.error('Failed to reject signup request:', err);
+      toast.error('Failed to reject signup request');
+    } finally {
+      setPendingRejectAction(null);
+    }
+  }, [pendingRejectAction, currentUser]);
+
+  const cancelPendingReject = useCallback(() => {
+    setPendingRejectAction(null);
+    toast.info('Rejection cancelled');
   }, []);
 
   // Create dashboard props objects to prevent prop drilling and improve performance
@@ -1137,33 +1191,61 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="flex-1">
-          <Suspense fallback={
-            <div className="p-8 flex items-center justify-center">
-              <div className="text-gray-600">Loading dashboard…</div>
-            </div>
-          }>
-            {activeUser.role === 'admin' ? (
-              <AdminDashboard {...adminDashboardProps} />
-            ) : (
-              <FacultyDashboard {...facultyDashboardProps} />
-            )}
-          </Suspense>
+      <BrowserRouter>
+        <div className="min-h-screen bg-background flex flex-col">
+          <div className="flex-1">
+            <Suspense fallback={
+              <div className="p-8 flex items-center justify-center">
+                <div className="text-gray-600">Loading…</div>
+              </div>
+            }>
+              <Routes>
+                {/* Admin history route */}
+                <Route path="/admin/signups/history/:id?" element={<SignupHistoryPage signupHistory={signupHistory} />} />
+
+                {/* Default dashboard route - render inline based on role */}
+                <Route path="/*" element={(
+                  activeUser.role === 'admin' ? (
+                    <AdminDashboard {...adminDashboardProps} />
+                  ) : (
+                    <FacultyDashboard {...facultyDashboardProps} />
+                  )
+                )} />
+              </Routes>
+            </Suspense>
+          </div>
+          <Footer />
+          <SessionTimeoutWarning
+            isOpen={showSessionWarning}
+            timeRemaining={sessionTimeRemaining}
+            onExtendSession={() => {
+              extendSession();
+              handleExtendSession();
+            }}
+            onLogout={handleIdleTimeout}
+          />
+          <Toaster />
+
+          {/* App-styled confirm dialog for destructive signup rejection */}
+          <AlertDialog open={!!pendingRejectAction} onOpenChange={(open) => { if (!open) cancelPendingReject(); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reject and Delete Account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the account and associated data for{' '}
+                  <strong>{pendingRejectAction?.requestName}</strong>. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={cancelPendingReject}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmPendingReject} className="ml-2 bg-red-600 text-white">Confirm Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Analytics />
         </div>
-        <Footer />
-        <SessionTimeoutWarning
-          isOpen={showSessionWarning}
-          timeRemaining={sessionTimeRemaining}
-          onExtendSession={() => {
-            extendSession();
-            handleExtendSession();
-          }}
-          onLogout={handleIdleTimeout}
-        />
-        <Toaster />
-        <Analytics />
-      </div>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

@@ -11,6 +11,7 @@ import {
   where,
   orderBy,
   onSnapshot,
+  writeBatch,
   type DocumentData,
   type DocumentSnapshot,
   type Firestore,
@@ -348,6 +349,31 @@ const setupSignupRequestsListener = (callback: DataListener<SignupRequest>, erro
   return unsubscribe;
 };
 
+const setupSignupHistoryListener = (callback: DataListener<import('../App').SignupHistory>, errorCallback?: DataErrorCallback) => {
+  const database = getDb();
+  const signupHistoryRef = collection(database, COLLECTIONS.SIGNUP_HISTORY);
+  const q = query(signupHistoryRef, orderBy('resolvedAt', 'desc'));
+
+  const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    try {
+      const history = snapshot.docs.map((doc) => {
+        const data = doc.data() as any;
+        return toSignupHistory(doc.id, data);
+      });
+      callback(history);
+    } catch (error) {
+      console.error('SignupHistory listener error:', error);
+      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }, (error) => {
+    console.error('SignupHistory listener error:', error);
+    errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+  });
+
+  activeUnsubscribes.push(unsubscribe);
+  return unsubscribe;
+};
+
 const setupUsersListener = (callback: DataListener<User>, errorCallback?: DataErrorCallback) => {
   const database = getDb();
   const usersRef = collection(database, COLLECTIONS.USERS);
@@ -390,6 +416,27 @@ const removeUndefinedValues = <T>(obj: Partial<T>): Partial<T> => {
   return Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
+};
+
+// Generic bulk updater using Firestore writeBatch. Uses set with merge:true
+// to safely apply partial updates to existing documents (and will create a
+// document if it doesn't exist). Returns void or throws on batch commit failure.
+export const bulkUpdateDocs = async (
+  collectionName: string,
+  updates: Array<{ id: string; data: Record<string, unknown> }>
+): Promise<void> => {
+  if (!updates || updates.length === 0) return;
+  const database = getDb();
+  const batch = writeBatch(database);
+
+  for (const u of updates) {
+    const ref = doc(database, collectionName, u.id);
+    const cleaned = removeUndefinedValues(u.data as any) as Record<string, unknown>;
+    // Use set with merge to avoid failing when doc is missing and to only update provided fields
+    batch.set(ref, { ...cleaned, updatedAt: nowIso() } as Record<string, unknown>, { merge: true } as any);
+  }
+
+  await batch.commit();
 };
 
 const sanitizeUserUpdate = (record: Partial<FirestoreUserRecord>): Record<string, unknown> =>
@@ -1636,6 +1683,13 @@ export const bookingRequestService = {
 
     return false; // No conflicts found
   },
+
+  // Bulk update multiple booking requests atomically using a write batch.
+  // Each update entry should contain the document id and a partial data object.
+  async bulkUpdate(updates: Array<{ id: string; data: Partial<BookingRequest> }>): Promise<void> {
+    const payloads = updates.map(u => ({ id: u.id, data: u.data as Record<string, unknown> }));
+    await bulkUpdateDocs(COLLECTIONS.BOOKING_REQUESTS, payloads);
+  },
 };
 
 function doTimeRangesOverlap(
@@ -1943,6 +1997,12 @@ export const signupRequestService = {
       throw new Error(`Failed to perform bulk cleanup: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
+
+  // Bulk update signup requests using Firestore write batch
+  async bulkUpdate(updates: Array<{ id: string; data: Partial<SignupRequest> }>): Promise<void> {
+    const payloads = updates.map(u => ({ id: u.id, data: u.data as Record<string, unknown> }));
+    await bulkUpdateDocs(COLLECTIONS.SIGNUP_REQUESTS, payloads);
+  },
 };
 
 // ============================================
@@ -2049,6 +2109,7 @@ export const realtimeService = {
       onBookingRequestsUpdate: (requests: BookingRequest[]) => void;
       onSchedulesUpdate: (schedules: Schedule[]) => void;
       onSignupRequestsUpdate?: (requests: SignupRequest[]) => void;
+      onSignupHistoryUpdate?: (history: import('../App').SignupHistory[]) => void;
       onUsersUpdate?: (users: User[]) => void;
       onError?: (error: Error) => void;
     }
@@ -2063,6 +2124,7 @@ export const realtimeService = {
       onBookingRequestsUpdate, 
       onSchedulesUpdate, 
       onSignupRequestsUpdate, 
+      onSignupHistoryUpdate,
       onUsersUpdate, 
       onError 
     } = callbacks;
@@ -2079,7 +2141,11 @@ export const realtimeService = {
         if (onSignupRequestsUpdate) {
           setupSignupRequestsListener(onSignupRequestsUpdate, onError);
         }
-        
+
+        if (onSignupHistoryUpdate) {
+          setupSignupHistoryListener(onSignupHistoryUpdate, onError);
+        }
+
         if (onUsersUpdate) {
           setupUsersListener(onUsersUpdate, onError);
         }

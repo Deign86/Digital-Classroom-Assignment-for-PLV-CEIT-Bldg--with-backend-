@@ -11,10 +11,11 @@ import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } fr
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 import RequestCard from './RequestCard';
+import { toast } from 'sonner';
 
 interface RequestApprovalProps {
   requests: BookingRequest[];
-  onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
+  onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => Promise<void>;
   onCancelApproved?: (requestId: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
@@ -22,6 +23,7 @@ interface RequestApprovalProps {
 export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts }: RequestApprovalProps) {
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
@@ -41,17 +43,208 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
     setIsDialogOpen(true);
   };
 
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds(prev => ({ ...prev, [id]: checked }));
+  };
+
+  const clearSelection = () => setSelectedIds({});
+
+  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
+
+  const startBulkAction = (type: 'approve' | 'reject') => {
+    setSelectedRequest(null);
+    setActionType(type);
+    setFeedback('');
+    setIsDialogOpen(true);
+  };
+
+  // Throttled concurrency runner used by multiple handlers (bulk confirm + retry)
+  const runWithConcurrency = async <T,>(
+    tasks: Array<() => Promise<T>>,
+    concurrency: number,
+    onProgress?: (processed: number, total: number) => void
+  ): Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
+    const results: Array<any> = [];
+    let index = 0;
+    let processed = 0;
+    const total = tasks.length;
+
+    const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
+      while (true) {
+        const i = index++;
+        if (i >= tasks.length) return;
+        try {
+          const value = await tasks[i]();
+          results[i] = { status: 'fulfilled', value };
+        } catch (err) {
+          results[i] = { status: 'rejected', reason: err };
+        } finally {
+          processed += 1;
+          if (onProgress) onProgress(processed, total);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  };
+
+  // Approved-tab bulk cancel state
+  const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
+  const approvedSelectedCount = Object.values(approvedSelectedIds).filter(Boolean).length;
+
+  const toggleApprovedSelect = (id: string, checked: boolean) => {
+    setApprovedSelectedIds(prev => ({ ...prev, [id]: checked }));
+  };
+
+  const clearApprovedSelection = () => setApprovedSelectedIds({});
+
+  const startBulkCancelApproved = () => {
+    // reuse dialog to gather feedback (required)
+    setSelectedRequest(null);
+    setActionType('reject'); // treat cancel as a reject operation for feedback purposes
+    setFeedback('');
+    setIsDialogOpen(true);
+  };
+
   const handleConfirm = () => {
+    // Determine target ids: prefer dialog-origin selection. If dialog opened by approved-tab bulk cancel,
+    // and no selectedRequest is set, and there are approvedSelectedIds, use those.
+    const pendingTargetIds = Object.keys(selectedIds).filter(id => selectedIds[id]);
+    const approvedTargetIds = Object.keys(approvedSelectedIds).filter(id => approvedSelectedIds[id]);
+
+    let targetIds: string[];
     if (selectedRequest) {
-      onRequestApproval(
-        selectedRequest.id,
-        actionType === 'approve',
-        feedback || undefined
-      );
+      targetIds = [selectedRequest.id];
+    } else if (approvedTargetIds.length > 0 && activeTab === 'approved') {
+      targetIds = approvedTargetIds;
+    } else {
+      targetIds = pendingTargetIds;
+    }
+    if (targetIds.length === 0) {
+      setIsDialogOpen(false);
+      return;
+    }
+
+    // Use a throttled runner for bulk operations so UI stays responsive and we can show progress
+    const runWithConcurrency = async <T,>(
+      tasks: Array<() => Promise<T>>,
+      concurrency: number,
+      onProgress?: (processed: number, total: number) => void
+    ) : Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
+      const results: Array<any> = [];
+      let index = 0;
+      let processed = 0;
+      const total = tasks.length;
+
+      const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
+        while (true) {
+          const i = index++;
+          if (i >= tasks.length) return;
+          try {
+            const value = await tasks[i]();
+            results[i] = { status: 'fulfilled', value };
+          } catch (err) {
+            results[i] = { status: 'rejected', reason: err };
+          } finally {
+            processed += 1;
+            if (onProgress) onProgress(processed, total);
+          }
+        }
+      });
+
+      await Promise.all(workers);
+      return results;
+    };
+
+    (async () => {
+      if (targetIds.length === 0) {
+        setIsDialogOpen(false);
+        return;
+      }
+
+      setIsProcessingBulk(true);
+      setBulkProgress({ processed: 0, total: targetIds.length });
+
+      const tasks = targetIds.map((id) => async () => {
+        if (activeTab === 'approved' && actionType === 'reject' && onCancelApproved) {
+          try {
+            await Promise.resolve(onCancelApproved(id));
+            return { id, ok: true };
+          } catch (err) {
+            // fall back to update via onRequestApproval
+            await onRequestApproval(id, false, feedback || undefined);
+            return { id, ok: true };
+          }
+        }
+        await onRequestApproval(id, actionType === 'approve', feedback || undefined);
+        return { id, ok: true };
+      });
+
+      const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+
+      const succeeded: string[] = [];
+      const failed: { id: string; error?: unknown }[] = [];
+
+      results.forEach((res, idx) => {
+        const id = targetIds[idx];
+        if (res?.status === 'fulfilled') succeeded.push(id);
+        else failed.push({ id, error: res?.reason });
+      });
+
+      setBulkResults({ succeeded, failed });
+      setBulkResultsOpen(true);
+
+      setIsProcessingBulk(false);
+      setBulkProgress({ processed: 0, total: 0 });
+
+      clearSelection();
+      clearApprovedSelection();
       setIsDialogOpen(false);
       setSelectedRequest(null);
       setFeedback('');
-    }
+      if (succeeded.length > 0 && failed.length === 0) {
+        toast.success(`${succeeded.length} request(s) processed successfully.`);
+      } else if (succeeded.length > 0 && failed.length > 0) {
+        toast.success(`${succeeded.length} processed, ${failed.length} failed.`);
+      } else {
+        toast.error('Failed to process selected requests.');
+      }
+    })();
+  };
+
+  // Bulk processing UI state
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
+  const [bulkResultsOpen, setBulkResultsOpen] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
+
+  const retryFailed = async () => {
+    if (!bulkResults.failed.length) return;
+    setBulkResultsOpen(false);
+    setIsProcessingBulk(true);
+    const ids = bulkResults.failed.map(f => f.id);
+    setBulkProgress({ processed: 0, total: ids.length });
+
+    const tasks = ids.map((id) => async () => {
+      await onRequestApproval(id, actionType === 'approve', feedback || undefined);
+      return { id, ok: true };
+    });
+
+    const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error?: unknown }[] = [];
+    results.forEach((res, idx) => {
+      const id = ids[idx];
+      if (res?.status === 'fulfilled') succeeded.push(id);
+      else failed.push({ id, error: res?.reason });
+    });
+
+    setBulkResults({ succeeded, failed });
+    setBulkResultsOpen(true);
+    setIsProcessingBulk(false);
+    setBulkProgress({ processed: 0, total: 0 });
   };
 
   return (
@@ -94,17 +287,50 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {pendingRequests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onApprove={() => handleAction(request, 'approve')}
-                    onReject={() => handleAction(request, 'reject')}
-                    checkConflicts={checkConflicts}
-                    status="pending"
-                  />
-                ))}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all pending requests"
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newMap: Record<string, boolean> = {};
+                        pendingRequests.forEach(r => { newMap[r.id] = checked; });
+                        setSelectedIds(newMap);
+                      }}
+                      checked={pendingRequests.length > 0 && pendingRequests.every(r => selectedIds[r.id])}
+                      className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Select all ({pendingRequests.length})</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="bg-green-600 hover:bg-green-700 text-white">
+                      {isProcessingBulk ? `Processing… (${bulkProgress.processed}/${bulkProgress.total})` : `Approve Selected (${selectedCount})`}
+                    </Button>
+                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk}>
+                      {isProcessingBulk ? 'Processing…' : `Reject Selected (${selectedCount})`}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  {pendingRequests.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      onApprove={() => handleAction(request, 'approve')}
+                      onReject={() => handleAction(request, 'reject')}
+                      checkConflicts={checkConflicts}
+                      status="pending"
+                      showSelect
+                      selected={!!selectedIds[request.id]}
+                      onToggleSelect={(checked) => toggleSelect(request.id, checked)}
+                      disabled={isProcessingBulk}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>
@@ -121,18 +347,48 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {approvedRequests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onApprove={() => {}}
-                    onReject={() => {}}
-                    onCancelApproved={onCancelApproved}
-                    checkConflicts={checkConflicts}
-                    status="approved"
-                  />
-                ))}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all approved requests"
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newMap: Record<string, boolean> = {};
+                        approvedRequests.forEach(r => { newMap[r.id] = checked; });
+                        setApprovedSelectedIds(newMap);
+                      }}
+                      checked={approvedRequests.length > 0 && approvedRequests.every(r => approvedSelectedIds[r.id])}
+                      className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Select all ({approvedRequests.length})</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk}>
+                      {isProcessingBulk ? 'Processing…' : `Cancel Selected (${approvedSelectedCount})`}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  {approvedRequests.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      onApprove={() => {}}
+                      onReject={() => {}}
+                      onCancelApproved={onCancelApproved}
+                      checkConflicts={checkConflicts}
+                      status="approved"
+                      showSelect
+                      selected={!!approvedSelectedIds[request.id]}
+                      onToggleSelect={(checked) => toggleApprovedSelect(request.id, checked)}
+                      disabled={isProcessingBulk}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>
@@ -231,7 +487,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={actionType === 'reject' && !feedback.trim()}
+              disabled={(actionType === 'reject' && !feedback.trim()) || isProcessingBulk}
               className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >
@@ -239,6 +495,69 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </Button>
           </div>
         </DialogContent>
+      </Dialog>
+
+      {/* Bulk results dialog */}
+      <Dialog open={bulkResultsOpen} onOpenChange={setBulkResultsOpen}>
+        {bulkResultsOpen && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk operation results</DialogTitle>
+              <DialogDescription>
+                {bulkResults.succeeded.length > 0 && <div className="text-sm text-green-700">{bulkResults.succeeded.length} succeeded</div>}
+                {bulkResults.failed.length > 0 && <div className="text-sm text-red-700">{bulkResults.failed.length} failed</div>}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4">
+              {bulkResults.failed.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-700">Failed items:</p>
+                  <ul className="pl-0 text-sm text-gray-600 max-h-52 overflow-auto space-y-2">
+                    {bulkResults.failed.map(f => {
+                      const req = requests.find(r => r.id === f.id);
+                      const label = req ? `${req.facultyName} — ${req.classroomName}` : f.id;
+                      return (
+                        <li key={f.id} className="flex items-start justify-between gap-4 p-2 border rounded">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">{label}</div>
+                            {req && (
+                              <div className="text-xs text-gray-500">
+                                <span>{req.date}</span>
+                                <span className="mx-2">•</span>
+                                <span>{formatTimeRange(convertTo12Hour(req.startTime), convertTo12Hour(req.endTime))}</span>
+                              </div>
+                            )}
+                            {f.error != null && <div className="text-xs text-red-600 mt-1">{String(f.error)}</div>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4">
+              {isProcessingBulk && bulkProgress.total > 0 && (
+                <div>
+                  <div className="text-xs text-gray-600 mb-1">Processing {bulkProgress.processed} of {bulkProgress.total}</div>
+                  <div className="w-full bg-gray-200 rounded h-2 overflow-hidden">
+                    <div className="bg-indigo-600 h-2" style={{ width: `${Math.round((bulkProgress.processed / bulkProgress.total) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end mt-4">
+              <Button variant="secondary" onClick={() => setBulkResultsOpen(false)}>Close</Button>
+              {bulkResults.failed.length > 0 && (
+                <Button onClick={retryFailed} className="ml-2">Retry Failed</Button>
+              )}
+            </div>
+            <DialogContent />
+          </DialogContent>
+        )}
       </Dialog>
     </div>
   );

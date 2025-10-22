@@ -14,7 +14,12 @@ export default function RequestCard({
   onReject,
   onCancelApproved,
   checkConflicts,
-  status
+  status,
+  // New props for selection
+  showSelect,
+  selected,
+  onToggleSelect,
+  disabled,
 }: {
   request: BookingRequest;
   onApprove?: () => void;
@@ -22,6 +27,10 @@ export default function RequestCard({
   onCancelApproved?: (requestId: string) => void;
   checkConflicts?: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
   status: 'pending' | 'approved' | 'rejected' | 'expired';
+  showSelect?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   const [hasConflict, setHasConflict] = useState(false);
 
@@ -69,9 +78,22 @@ export default function RequestCard({
     <Card className={`border-l-4 ${borderColor} transition-shadow hover:shadow-md`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{request.facultyName}</CardTitle>
-            <CardDescription className="text-sm">Request ID: {request.id.slice(0, 8)}</CardDescription>
+          <div className="flex items-start gap-3">
+            {showSelect && (
+              <div className="mt-1">
+                <input
+                  type="checkbox"
+                  aria-label={`Select request ${request.id}`}
+                  checked={!!selected}
+                  onChange={(e) => onToggleSelect?.(e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                />
+              </div>
+            )}
+            <div className="space-y-1">
+              <CardTitle className="text-lg">{request.facultyName}</CardTitle>
+              <CardDescription className="text-sm">Request ID: {request.id.slice(0, 8)}</CardDescription>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {isExpired && (
@@ -154,7 +176,7 @@ export default function RequestCard({
                       <div className="flex-1">
                         <Button
                           onClick={() => onApprove?.()}
-                          disabled
+                          disabled={true || !!disabled}
                           className={`flex-1 bg-gray-200 text-gray-600 cursor-not-allowed`}
                           aria-disabled={true}
                           aria-label="Approve (disabled due to scheduling conflict)"
@@ -170,6 +192,7 @@ export default function RequestCard({
               ) : (
                 <Button
                   onClick={() => onApprove?.()}
+                  disabled={!!disabled}
                   className={`flex-1 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white`}
                   aria-label="Approve request"
                 >
@@ -191,6 +214,7 @@ export default function RequestCard({
                 variant="destructive"
                 className={'flex-1'}
                 aria-label="Reject request"
+                disabled={!!disabled}
               >
                 <XCircle className="h-4 w-4 mr-2" />
                 Reject
@@ -209,6 +233,7 @@ export default function RequestCard({
                 <Button
                   variant="outline"
                   className="flex-1 text-gray-600 hover:text-red-600 border-gray-200 hover:border-red-200 hover:bg-gray-50 transition-all duration-200"
+                  disabled={!!disabled}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Cancel Reservation
