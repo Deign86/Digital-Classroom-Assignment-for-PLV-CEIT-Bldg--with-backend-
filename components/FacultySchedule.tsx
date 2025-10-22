@@ -4,6 +4,7 @@ import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
@@ -23,6 +24,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const { announce } = useAnnouncer();
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
+  const [bulkCancelReason, setBulkCancelReason] = useState('');
+  const [bulkReasonError, setBulkReasonError] = useState<string | null>(null);
 
   // Filter schedules
   const today = new Date();
@@ -308,99 +312,161 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                   <span className="text-sm">Select all ({approvedRequests.length})</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="destructive"
-                    onClick={async () => {
-                      const ids = Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]);
-                      if (!ids.length) return;
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        const ids = Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]);
+                        if (!ids.length) return;
 
-                      // If a parent handler is provided, prefer it (backwards compatibility).
-                      if (typeof onCancelSelected === 'function') {
-                        try {
-                          setIsCancelling(true);
-                          for (const id of ids) {
+                        // If a parent handler is provided, prefer it (backwards compatibility).
+                        if (typeof onCancelSelected === 'function') {
+                          (async () => {
                             try {
-                              await onCancelSelected(id);
-                            } catch (err) {
-                              console.error('onCancelSelected failed for', id, err);
+                              setIsCancelling(true);
+                              for (const id of ids) {
+                                try {
+                                  await onCancelSelected(id);
+                                } catch (err) {
+                                  console.error('onCancelSelected failed for', id, err);
+                                }
+                              }
+                              const message = `Attempted to cancel ${ids.length} reservation(s).`;
+                              toast.success(message);
+                              announce?.(message, 'polite');
+                            } finally {
+                              setIsCancelling(false);
+                              setApprovedSelectedIds({});
                             }
-                          }
-                          const message = `Attempted to cancel ${ids.length} reservation(s).`;
-                          toast.success(message);
-                          announce?.(message, 'polite');
-                        } finally {
-                          setIsCancelling(false);
-                          setApprovedSelectedIds({});
+                          })();
+                          return;
                         }
-                        return;
-                      }
 
-                      // Default bulk flow: cancel schedules (requires admin permission) and then atomically update booking requests.
-                      setIsCancelling(true);
-                      const successfulScheduleCancellations: string[] = [];
-                      const failedScheduleCancellations: Array<{ id: string; error: unknown }> = [];
+                        // Open the bulk cancel dialog to collect an admin reason
+                        setShowBulkCancelDialog(true);
+                      }}
+                      disabled={isCancelling}
+                    >
+                      {isCancelling ? 'Cancelling...' : `Cancel Selected (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
+                    </Button>
 
-                      for (const requestId of ids) {
-                        try {
-                          // Find a corresponding schedule for this booking request
-                          const correspondingSchedule = schedules.find(schedule =>
-                            schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
-                            schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
-                            schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
-                            schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
-                            schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
-                          );
+                    {/* Bulk Cancel Dialog */}
+                    <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Cancel selected reservations</DialogTitle>
+                        </DialogHeader>
+                        <DialogDescription>
+                          Cancelling approved reservations requires an administrator reason. Please enter a brief explanation (max 500 characters) that will be shown to faculty.
+                        </DialogDescription>
 
-                          if (correspondingSchedule) {
-                            await scheduleService.cancelApprovedBooking(correspondingSchedule.id);
-                            successfulScheduleCancellations.push(requestId);
-                          } else {
-                            // No schedule found — still include in booking updates
-                            successfulScheduleCancellations.push(requestId);
-                          }
-                        } catch (err) {
-                          console.error('Failed to cancel schedule for request', requestId, err);
-                          failedScheduleCancellations.push({ id: requestId, error: err });
-                        }
-                      }
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-gray-700">Administrator reason</label>
+                          <textarea
+                            value={bulkCancelReason}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v.length <= 500) {
+                                setBulkCancelReason(v);
+                                setBulkReasonError(null);
+                              }
+                            }}
+                            maxLength={500}
+                            className="mt-2 block w-full rounded-md border p-2"
+                            rows={4}
+                          />
+                          <div className="flex items-center justify-between text-sm text-gray-500 mt-1">
+                            <div>{bulkReasonError ? <span className="text-red-600">{bulkReasonError}</span> : <span>&nbsp;</span>}</div>
+                            <div>{bulkCancelReason.length}/500</div>
+                          </div>
+                        </div>
 
-                      // Prepare booking request updates for all ids that we attempted (mark cancelled and add adminFeedback)
-                      const bookingUpdates = ids.map(id => ({ id, data: { status: 'cancelled' as const, adminFeedback: 'Reservation cancelled by administrator' } }));
+                        <DialogFooter className="mt-4">
+                          <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => { setShowBulkCancelDialog(false); setBulkCancelReason(''); setBulkReasonError(null); }}>Cancel</Button>
+                            <Button
+                              variant="destructive"
+                              onClick={async () => {
+                                const ids = Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]);
+                                if (!ids.length) {
+                                  setShowBulkCancelDialog(false);
+                                  return;
+                                }
 
-                      try {
-                        await bookingRequestService.bulkUpdate(bookingUpdates);
-                      } catch (err) {
-                        console.error('Bulk update of booking requests failed', err);
-                        // If the batch update fails, fall back to per-item updates to maximize success
-                        for (const u of bookingUpdates) {
-                          try {
-                            await bookingRequestService.update(u.id, u.data as Partial<any>);
-                          } catch (innerErr) {
-                            console.error('Fallback per-item update failed for', u.id, innerErr);
-                            failedScheduleCancellations.push({ id: u.id, error: innerErr });
-                          }
-                        }
-                      }
+                                const reason = bulkCancelReason.trim();
+                                if (!reason) {
+                                  setBulkReasonError('A cancellation reason is required.');
+                                  return;
+                                }
 
-                      setIsCancelling(false);
-                      setApprovedSelectedIds({});
+                                setIsCancelling(true);
+                                setShowBulkCancelDialog(false);
 
-                      const successCount = ids.length - failedScheduleCancellations.length;
-                      if (failedScheduleCancellations.length === 0) {
-                        const message = `Successfully cancelled ${successCount} reservation(s).`;
-                        toast.success(message);
-                        announce?.(message, 'polite');
-                      } else {
-                        const message = `Cancelled ${successCount} reservation(s). ${failedScheduleCancellations.length} failed.`;
-                        toast.error(message);
-                        // errors should be assertive
-                        announce?.(message, 'assertive');
-                      }
-                    }}
-                    disabled={isCancelling}
-                  >
-                    {isCancelling ? 'Cancelling...' : `Cancel Selected (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
-                  </Button>
+                                const successfulScheduleCancellations: string[] = [];
+                                const failedScheduleCancellations: Array<{ id: string; error: unknown }> = [];
+
+                                for (const requestId of ids) {
+                                  try {
+                                    const correspondingSchedule = schedules.find(schedule =>
+                                      schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
+                                      schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
+                                      schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
+                                      schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
+                                      schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
+                                    );
+
+                                    if (correspondingSchedule) {
+                                      await scheduleService.cancelApprovedBooking(correspondingSchedule.id, reason);
+                                      successfulScheduleCancellations.push(requestId);
+                                    } else {
+                                      successfulScheduleCancellations.push(requestId);
+                                    }
+                                  } catch (err) {
+                                    console.error('Failed to cancel schedule for request', requestId, err);
+                                    failedScheduleCancellations.push({ id: requestId, error: err });
+                                  }
+                                }
+
+                                // Prepare booking request updates for all ids that we attempted (mark cancelled and add adminFeedback)
+                                const bookingUpdates = ids.map(id => ({ id, data: { status: 'cancelled' as const, adminFeedback: reason } }));
+
+                                try {
+                                  await bookingRequestService.bulkUpdate(bookingUpdates);
+                                } catch (err) {
+                                  console.error('Bulk update of booking requests failed', err);
+                                  for (const u of bookingUpdates) {
+                                    try {
+                                      await bookingRequestService.update(u.id, u.data as Partial<any>);
+                                    } catch (innerErr) {
+                                      console.error('Fallback per-item update failed for', u.id, innerErr);
+                                      failedScheduleCancellations.push({ id: u.id, error: innerErr });
+                                    }
+                                  }
+                                }
+
+                                setIsCancelling(false);
+                                setApprovedSelectedIds({});
+                                setBulkCancelReason('');
+
+                                const successCount = ids.length - failedScheduleCancellations.length;
+                                if (failedScheduleCancellations.length === 0) {
+                                  const message = `Successfully cancelled ${successCount} reservation(s).`;
+                                  toast.success(message);
+                                  announce?.(message, 'polite');
+                                } else {
+                                  const message = `Cancelled ${successCount} reservation(s). ${failedScheduleCancellations.length} failed.`;
+                                  toast.error(message);
+                                  announce?.(message, 'assertive');
+                                }
+                              }}
+                            >
+                              {isCancelling ? 'Cancelling...' : `Confirm Cancel (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
+                            </Button>
+                          </div>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
                 </div>
               </div>
 

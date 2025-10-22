@@ -6,6 +6,7 @@ type ScheduledEventLike = {
   scheduleTime: string;
 };
 import * as admin from 'firebase-admin';
+import type { QueryDocumentSnapshot, Transaction } from 'firebase-admin/firestore';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -30,7 +31,7 @@ export const expirePastPendingBookings = scheduler.onSchedule(
     const batch = db.batch();
     let changed = 0;
 
-    snapshot.forEach(doc => {
+  snapshot.forEach((doc: QueryDocumentSnapshot) => {
       const data = doc.data();
 
       // If explicit timestamp exists, use it
@@ -178,7 +179,7 @@ export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId
       .get();
 
     const batch = admin.firestore().batch();
-    signupRequestsQuery.docs.forEach((doc) => {
+  signupRequestsQuery.docs.forEach((doc: QueryDocumentSnapshot) => {
       batch.delete(doc.ref);
     });
 
@@ -295,7 +296,7 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
     const lockRef = db.collection('deletionLocks').doc(classroomId);
 
     // Acquire lock in a transaction: fail if a recent lock exists
-    await db.runTransaction(async (tx) => {
+  await db.runTransaction(async (tx: Transaction) => {
       const lockSnap = await tx.get(lockRef);
       if (lockSnap.exists) {
         const ld = lockSnap.data() as DeletionLockDoc | undefined;
@@ -313,13 +314,13 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
 
     const toDeleteRefs: admin.firestore.DocumentReference[] = [];
 
-    bookingSnap.docs.forEach((d) => {
+  bookingSnap.docs.forEach((d: QueryDocumentSnapshot) => {
       const data = d.data() as BookingDocData | undefined;
       const lapsed = !data ? false : isLapsed(data.date || '', data.endTime || '');
       if (!lapsed) toDeleteRefs.push(d.ref);
     });
 
-    scheduleSnap.docs.forEach((d) => {
+  scheduleSnap.docs.forEach((d: QueryDocumentSnapshot) => {
       const data = d.data() as BookingDocData | undefined;
       const lapsed = !data ? false : isLapsed(data.date || '', data.endTime || '');
       if (!lapsed) toDeleteRefs.push(d.ref);
