@@ -27,6 +27,8 @@ import SignupApproval from './SignupApproval';
 import ScheduleViewer from './ScheduleViewer';
 import AdminReports from './AdminReports';
 import ProfileSettings from './ProfileSettings';
+import NotificationBell from './NotificationBell';
+import NotificationCenter from './NotificationCenter';
 import type { User, Classroom, BookingRequest, SignupRequest, SignupHistory, Schedule } from '../App';
 
 interface AdminDashboardProps {
@@ -65,6 +67,7 @@ export default function AdminDashboard({
   checkConflicts
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -108,6 +111,9 @@ export default function AdminDashboard({
                 <p className="text-sm font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
                 <p className="text-xs text-gray-500 whitespace-nowrap">{user.email}</p>
               </div>
+              <div className="flex items-center space-x-2">
+                <NotificationBell onOpen={() => setShowNotifications(true)} />
+              </div>
               <div className="transition-transform hover:scale-105 active:scale-95">
                 <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
                   <LogOut className="h-4 w-4 sm:mr-2" />
@@ -118,6 +124,14 @@ export default function AdminDashboard({
           </div>
         </div>
       </header>
+      {showNotifications && (
+        <div className="fixed right-4 top-20 z-50">
+          <NotificationCenter currentUserId={user.id} onClose={() => setShowNotifications(false)} />
+        </div>
+      )}
+
+      {/* Admin notification center (global) */}
+      {/* We show the center when admin clicks the bell — use local state to control visibility */}
 
       <div className="p-4 sm:p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">

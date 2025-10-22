@@ -133,7 +133,7 @@ export default function FacultyDashboard({
               </div>
               {showNotifications && (
                 <div className="fixed right-4 top-20 z-50">
-                  <NotificationCenter userId={user.id} onClose={() => setShowNotifications(false)} />
+                  <NotificationCenter userId={user.id} currentUserId={user.id} onClose={() => setShowNotifications(false)} />
                 </div>
               )}
             </div>
