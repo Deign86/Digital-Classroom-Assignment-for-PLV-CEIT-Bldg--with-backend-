@@ -389,6 +389,123 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
 });
 
 /**
+ * Callable: cancel an approved booking as admin.
+ * Expects data: { scheduleId: string, adminFeedback: string }
+ * Only callable by users with role === 'admin' in `users` collection.
+ */
+export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ scheduleId?: string; adminFeedback?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user data not found');
+  }
+  const callerData = callerDoc.data();
+  // Allow either an admin or the owner (faculty) of the reservation to cancel it.
+  const callerRole = callerData?.role;
+
+  const { scheduleId, adminFeedback } = request.data || {};
+  if (!scheduleId || typeof scheduleId !== 'string') {
+    throw new HttpsError('invalid-argument', 'scheduleId is required and must be a string');
+  }
+  const feedback = typeof adminFeedback === 'string' ? adminFeedback.trim() : '';
+  if (!feedback) {
+    throw new HttpsError('invalid-argument', 'adminFeedback (cancellation reason) is required');
+  }
+
+  try {
+    const ref = admin.firestore().collection('schedules').doc(scheduleId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'Schedule not found');
+    }
+
+    const data = snap.data() as any;
+
+    // Check if schedule has already started/past. Try to use explicit timestamp `startAt` if available,
+    // else fall back to date + startTime parsing conservatively.
+    const now = admin.firestore.Timestamp.now();
+    const parseStart = (): admin.firestore.Timestamp | null => {
+      if (data?.startAt && data.startAt._seconds) return data.startAt as admin.firestore.Timestamp;
+      if (data?.startAt && data.startAt.seconds) return admin.firestore.Timestamp.fromMillis((data.startAt.seconds || 0) * 1000);
+      if (data?.date && data?.startTime) {
+        try {
+          const iso = `${data.date}T${data.startTime}`;
+          const dt = new Date(iso);
+          if (!isNaN(dt.getTime())) return admin.firestore.Timestamp.fromDate(dt);
+        } catch (e) {
+          // ignore
+        }
+      }
+      return null;
+    };
+
+    const startTs = parseStart();
+    if (startTs && startTs.toMillis() <= now.toMillis()) {
+      throw new HttpsError('failed-precondition', 'Cannot cancel a booking that has already started or passed');
+    }
+
+    // Determine if caller is admin or the owner (facultyId must match callerUid)
+    const isOwner = !!data && data.facultyId === callerUid;
+    const isAdmin = callerRole === 'admin';
+    if (!isAdmin && !isOwner) {
+      throw new HttpsError('permission-denied', 'Only admins or the reservation owner can cancel this booking');
+    }
+
+    // Perform the cancellation update
+    await ref.update({
+      status: 'cancelled',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      adminFeedback: feedback,
+    });
+
+    // Also update corresponding bookingRequests (best-effort: find by matching fields)
+    try {
+      const reqs = await admin.firestore().collection('bookingRequests')
+        .where('facultyId', '==', data.facultyId)
+        .where('date', '==', data.date)
+        .where('startTime', '==', data.startTime)
+        .where('endTime', '==', data.endTime)
+        .where('classroomId', '==', data.classroomId)
+        .get();
+
+      const batch = admin.firestore().batch();
+      reqs.docs.forEach(d => {
+        batch.update(d.ref, { status: 'cancelled', adminFeedback: feedback, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      });
+      if (!reqs.empty) await batch.commit();
+    } catch (err) {
+      logger.warn('Failed to update related bookingRequests during cancelApprovedBooking', err);
+    }
+
+    // Create notification for faculty: best-effort
+    try {
+      if (data && data.facultyId) {
+        const message = `Your approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was cancelled.`;
+        await admin.firestore().collection('notifications').add({
+          userId: data.facultyId,
+          type: 'cancelled',
+          message,
+          metadata: { scheduleId, adminFeedback: feedback },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      logger.warn('Failed to create faculty notification in cancelApprovedBooking', err);
+    }
+
+    return { success: true };
+  } catch (error: unknown) {
+    logger.error('Error in cancelApprovedBooking callable:', error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', 'Failed to cancel approved booking');
+  }
+});
+
+/**
  * Tracks failed login attempts and locks accounts after too many failures
  * Called by the client after a failed login attempt
  */

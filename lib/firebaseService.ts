@@ -1873,33 +1873,23 @@ export const scheduleService = {
   },
 
   async cancelApprovedBooking(scheduleId: string, adminFeedback: string): Promise<void> {
-    // Check if user is admin
-    const user = await authService.getCurrentUser();
-    if (!user || user.role !== 'admin') {
-      throw new Error('Only administrators can cancel approved bookings');
-    }
-
-    const database = getDb();
-    const ref = doc(database, COLLECTIONS.SCHEDULES, scheduleId);
-    
-    // Verify the schedule exists
-    const snapshot = await getDoc(ref);
-    if (!snapshot.exists()) {
-      throw new Error('Schedule not found');
-    }
-
-    // adminFeedback is required to explain why the reservation was cancelled
+    // Use callable Cloud Function to perform admin-only cancellation server-side.
+    // This avoids client-side role checks and Firestore rules conflicts.
     const fb = typeof adminFeedback === 'string' ? adminFeedback.trim() : '';
     if (!fb) {
       throw new Error('adminFeedback (cancellation reason) is required when cancelling an approved booking.');
     }
 
-    // Update the schedule status to cancelled and record admin feedback
-    await updateDoc(ref, {
-      status: 'cancelled',
-      updatedAt: nowIso(),
-      adminFeedback: fb,
-    });
+    try {
+      const functions = getFunctions();
+      const fn = httpsCallable(functions, 'cancelApprovedBooking');
+      await fn({ scheduleId, adminFeedback: fb });
+      return;
+    } catch (err: any) {
+      // Surface clearer error messages coming from cloud function
+      const message = err?.message || err?.code || 'Failed to cancel approved booking';
+      throw new Error(message);
+    }
   },
 };
 

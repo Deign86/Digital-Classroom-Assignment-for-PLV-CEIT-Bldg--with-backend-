@@ -313,19 +313,11 @@
     background: rgba(255, 255, 255, 0.3);
   }
 
-  /* iOS-style rounded pill using corner smoothing.
-     This creates a consistent pill corner across the app that mimics Figma's "60% corner smoothing".
-     Use the helper class `rounded-ios` on pill-shaped controls instead of `rounded-full` for more consistent geometry. */
-  --ios-smoothness: 60%;
-
+  /* iOS-style rounded pill helper removed: Rounded smoothing caused cross-browser issues.
+     Use standard `border-radius` utilities (e.g., `rounded-full`) instead. */
   .rounded-ios {
-    /* Use an elliptical border-radius to approximate Figma's 60% corner smoothing without relying on a fixed clip-path.
-       This avoids clipping artifacts on elements with different sizes while giving a smoother pill corner. */
-    --r: 9999px;
-   /* Use !important so the shared Button primitive keeps pill corners even if other utility classes are present.
-     Also keep overflow visible so shadows and focus rings are not clipped. */
-   border-radius: var(--r) / var(--ios-smoothness) !important;
-   overflow: visible !important;
+    border-radius: 9999px !important;
+    overflow: visible !important;
   }
 
   /* Booking conflict indicators */
