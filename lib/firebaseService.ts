@@ -36,6 +36,7 @@ import {
   type User as FirebaseAuthUser,
 } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import notificationServiceImport from './notificationService';
 import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory, User } from '../App';
 import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
 import { isPastBookingTime } from '../utils/timeUtils';
@@ -1638,11 +1639,28 @@ export const bookingRequestService = {
       updatedAt: nowIso(),
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
+
+    // After updating, load the snapshot and optionally create a notification
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) {
       throw new Error('Booking request not found');
     }
     const data = snapshot.data() as FirestoreBookingRequestRecord;
+
+    // If status changed to approved or rejected, create a notification for the faculty
+    if (updatePayload.status === 'approved' || updatePayload.status === 'rejected') {
+      try {
+        await notificationService.createNotification(
+          data.facultyId,
+          updatePayload.status as 'approved' | 'rejected',
+          `Your booking request for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was ${updatePayload.status}.`,
+          { bookingRequestId: snapshot.id, adminFeedback: updatePayload.adminFeedback }
+        );
+      } catch (err) {
+        console.warn('Could not create notification after booking update:', err);
+      }
+    }
+
     return toBookingRequest(snapshot.id, data);
   },
 
@@ -1914,6 +1932,22 @@ export const signupRequestService = {
       throw new Error('Signup request not found');
     }
     const data = snapshot.data() as FirestoreSignupRequestRecord;
+
+    // Notify the user if their signup was approved or rejected
+    if (updatePayload.status === 'approved' || updatePayload.status === 'rejected') {
+      try {
+        await notificationService.createNotification(
+          data.uid,
+          updatePayload.status === 'approved' ? 'approved' : 'rejected',
+          updatePayload.status === 'approved'
+            ? `Your account request has been approved. You can now sign in.`
+            : `Your account request was rejected. Admin feedback: ${updatePayload.adminFeedback || 'No feedback provided.'}`,
+          { adminFeedback: updatePayload.adminFeedback }
+        );
+      } catch (err) {
+        console.warn('Failed to create signup notification:', err);
+      }
+    }
     return toSignupRequest(snapshot.id, data);
   },
 
@@ -1944,6 +1978,18 @@ export const signupRequestService = {
       resolvedAt,
       processedBy: adminUserId,
     });
+
+    // Notify the user that their signup was rejected and account will be removed
+    try {
+      await notificationService.createNotification(
+        request.userId,
+        'rejected',
+        `Your signup request was rejected by an administrator. Feedback: ${feedback}`,
+        { adminFeedback: feedback }
+      );
+    } catch (err) {
+      console.warn('Failed to notify user about signup rejection cleanup:', err);
+    }
 
     try {
       // Use the new Firebase Functions approach for complete account deletion
@@ -2004,6 +2050,9 @@ export const signupRequestService = {
     await bulkUpdateDocs(COLLECTIONS.SIGNUP_REQUESTS, payloads);
   },
 };
+
+// Re-export notification service for consistency with other services
+export const notificationService = notificationServiceImport;
 
 // ============================================
 // SIGNUP HISTORY SERVICE

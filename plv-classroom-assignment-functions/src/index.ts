@@ -474,6 +474,102 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
 });
 
 /**
+ * Callable function to create a notification server-side.
+ * Only callable by admin users.
+ * Expects data: { userId: string, type: 'approved'|'rejected'|'info', message: string, bookingRequestId?: string, adminFeedback?: string }
+ */
+export const createNotification = onCall(async (request: CallableRequest<{ userId?: string; type?: string; message?: string; bookingRequestId?: string; adminFeedback?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Caller must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user data not found');
+  }
+  const callerData = callerDoc.data();
+  if (!callerData || callerData.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admin users may create notifications');
+  }
+
+  const data = request.data || {};
+  const { userId, type, message, bookingRequestId, adminFeedback } = data;
+  if (!userId || typeof userId !== 'string') {
+    throw new HttpsError('invalid-argument', 'userId is required and must be a string');
+  }
+  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info')) {
+    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected' or 'info'");
+  }
+  if (!message || typeof message !== 'string') {
+    throw new HttpsError('invalid-argument', 'message is required and must be a string');
+  }
+
+  const record = {
+    userId,
+    type,
+    message,
+    bookingRequestId: bookingRequestId || null,
+    adminFeedback: adminFeedback || null,
+    acknowledgedBy: null,
+    acknowledgedAt: null,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  try {
+    const ref = await admin.firestore().collection('notifications').add(record);
+    return { success: true, id: ref.id };
+  } catch (err: unknown) {
+    logger.error('Failed to create notification', err);
+    throw new HttpsError('internal', 'Failed to create notification');
+  }
+});
+
+/**
+ * Callable function to acknowledge a notification.
+ * Ensures server-side timestamping and verifies the caller is the recipient.
+ * Expects data: { notificationId: string }
+ */
+export const acknowledgeNotification = onCall(async (request: CallableRequest<{ notificationId?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Caller must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const data = request.data || {};
+  const { notificationId } = data;
+
+  if (!notificationId || typeof notificationId !== 'string') {
+    throw new HttpsError('invalid-argument', 'notificationId is required and must be a string');
+  }
+
+  const notifRef = admin.firestore().collection('notifications').doc(notificationId);
+  const notifSnap = await notifRef.get();
+  if (!notifSnap.exists) {
+    throw new HttpsError('not-found', 'Notification not found');
+  }
+
+  const notif = notifSnap.data() || {};
+  if (notif.userId !== callerUid) {
+    throw new HttpsError('permission-denied', 'Only the notification recipient may acknowledge this notification');
+  }
+
+  try {
+    await notifRef.update({
+      acknowledgedBy: callerUid,
+      acknowledgedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    logger.error('Failed to acknowledge notification', err);
+    throw new HttpsError('internal', 'Failed to acknowledge notification');
+  }
+});
+
+/**
  * Resets failed login attempts and unlocks an account after successful login
  * Called by the client after successful authentication
  */

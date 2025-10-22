@@ -705,6 +705,10 @@ export default function App() {
       
       const updatedRequest = await bookingRequestService.update(requestId, updateData);
 
+      // Notification creation is handled by the bookingRequest service boundary
+      // (it will create a server-side notification when status transitions). Avoid
+      // duplicating the creation here which caused duplicate notifications.
+
       setBookingRequests(prev =>
         prev.map(req => req.id === requestId ? updatedRequest : req)
       );

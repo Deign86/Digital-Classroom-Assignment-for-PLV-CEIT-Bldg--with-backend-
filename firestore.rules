@@ -70,5 +70,41 @@ service cloud.firestore {
       allow read, create: if request.auth != null;
       allow delete: if request.auth != null; // Allow delete for cleanup operations
     }
+
+    // Notifications collection - persistent until acknowledged
+    match /notifications/{notificationId} {
+      // Prevent client-side creation of notification documents. Notifications must be created
+      // via server-side callable functions (createNotification). Callable function writes bypass rules.
+      allow create: if false;
+
+      // A user may read notifications addressed to them; admins may read all
+      // Prefer custom claims (request.auth.token.admin) for admin checks to avoid costly rule reads
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid || request.auth.token.admin == true
+      );
+
+      // Updates are restricted: only the owner (recipient) may acknowledge their notification
+      // Force acknowledgedBy to be the caller and acknowledgedAt to equal server request time
+      // Only allow the acknowledgement fields and updatedAt to change.
+      allow update: if request.auth != null && (
+        resource.data.userId == request.auth.uid &&
+        // Only the acknowledgement fields + updatedAt may be present in the new document
+        request.resource.data.keys().hasOnly(['acknowledgedBy','acknowledgedAt','updatedAt','userId','type','message','bookingRequestId','adminFeedback','createdAt']) &&
+        // acknowledgedBy must be the caller
+        request.resource.data.acknowledgedBy == request.auth.uid &&
+        // acknowledgedAt must be the server request time (prevent client-supplied timestamp)
+        request.resource.data.acknowledgedAt == request.time &&
+        // Ensure immutable core fields are unchanged
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.type == resource.data.type &&
+        request.resource.data.message == resource.data.message &&
+        request.resource.data.bookingRequestId == resource.data.bookingRequestId
+      );
+
+      // Only admins may delete notifications
+      allow delete: if request.auth != null && (
+        request.auth.token.admin == true
+      );
+    }
   }
 }

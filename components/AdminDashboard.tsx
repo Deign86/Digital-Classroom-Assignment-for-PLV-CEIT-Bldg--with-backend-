@@ -76,7 +76,8 @@ export default function AdminDashboard({
   // Statistics
   const totalClassrooms = classrooms.length;
   const availableClassrooms = classrooms.filter(c => c.isAvailable).length;
-  const pendingRequests = bookingRequests.filter(r => r.status === 'pending').length;
+  // Consider a request pending only if its status is 'pending' and its booking time is not already past
+  const pendingRequests = bookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
   const pendingSignups = signupRequests.filter(r => r.status === 'pending').length;
   const todaySchedules = schedules.filter(s => {
     const today = new Date().toISOString().split('T')[0];

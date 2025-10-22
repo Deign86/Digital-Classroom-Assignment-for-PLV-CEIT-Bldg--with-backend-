@@ -61,7 +61,7 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
     const totalRequests = filteredRequests.length;
     const approvedRequests = filteredRequests.filter(r => r.status === 'approved').length;
     const rejectedRequests = filteredRequests.filter(r => r.status === 'rejected').length;
-    const pendingRequests = filteredRequests.filter(r => r.status === 'pending').length;
+  const pendingRequests = filteredRequests.filter(r => r.status === 'pending' && !(new Date(r.date) < new Date())).length;
     
     const approvalRate = totalRequests > 0 ? (approvedRequests / totalRequests * 100).toFixed(1) : '0';
     

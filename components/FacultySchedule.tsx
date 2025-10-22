@@ -8,7 +8,7 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare, X } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
+import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { Schedule, BookingRequest } from '../App';
 
 interface FacultyScheduleProps {
@@ -37,7 +37,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Filter requests
-  const pendingRequests = bookingRequests.filter(r => r.status === 'pending');
+  const pendingRequests = bookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime)));
   const approvedRequests = bookingRequests.filter(r => r.status === 'approved');
   const rejectedRequests = bookingRequests.filter(r => r.status === 'rejected');
 

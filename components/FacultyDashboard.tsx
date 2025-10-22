@@ -18,11 +18,13 @@ import {
   BookOpen,
   Settings
 } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
+import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import RoomBooking from './RoomBooking';
 import RoomSearch from './RoomSearch';
 import FacultySchedule from './FacultySchedule';
 import ProfileSettings from './ProfileSettings';
+import NotificationBell from './NotificationBell';
+import NotificationCenter from './NotificationCenter';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
 interface FacultyDashboardProps {
@@ -63,7 +65,7 @@ export default function FacultyDashboard({
     return scheduleDate >= today && s.status === 'confirmed';
   }).length;
 
-  const pendingRequests = bookingRequests.filter(r => r.status === 'pending').length;
+  const pendingRequests = bookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
   const approvedRequests = bookingRequests.filter(r => r.status === 'approved').length;
   const rejectedRequests = bookingRequests.filter(r => r.status === 'rejected').length;
   const totalRequests = bookingRequests.length;
@@ -98,6 +100,8 @@ export default function FacultyDashboard({
     }
   };
 
+  const [showNotifications, setShowNotifications] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -118,12 +122,20 @@ export default function FacultyDashboard({
                 <p className="text-sm font-medium text-gray-900 truncate max-w-[280px]">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate max-w-[280px]">{user.department} • {user.email}</p>
               </div>
-              <div className="transition-transform hover:scale-105 active:scale-95">
-                <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
-                  <LogOut className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
+              <div className="flex items-center space-x-2">
+                <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} />
+                <div className="transition-transform hover:scale-105 active:scale-95">
+                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
+                    <LogOut className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </Button>
+                </div>
               </div>
+              {showNotifications && (
+                <div className="fixed right-4 top-20 z-50">
+                  <NotificationCenter userId={user.id} onClose={() => setShowNotifications(false)} />
+                </div>
+              )}
             </div>
           </div>
         </div>
