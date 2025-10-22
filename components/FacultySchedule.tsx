@@ -5,6 +5,7 @@ import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger, DialogClose } from './ui/dialog';
+import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
@@ -362,19 +363,25 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                         <div className="mt-4">
                           <label className="block text-sm font-medium text-gray-700">Administrator reason</label>
-                          <textarea
-                            value={bulkCancelReason}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v.length <= 500) {
-                                setBulkCancelReason(v);
-                                setBulkReasonError(null);
-                              }
-                            }}
-                            maxLength={500}
-                            className="mt-2 block w-full rounded-md border p-2"
-                            rows={4}
-                          />
+                          <div className="mt-2">
+                            <Textarea
+                              value={bulkCancelReason}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v.length <= 500) {
+                                  setBulkCancelReason(v);
+                                  setBulkReasonError(null);
+                                }
+                              }}
+                              maxLength={500}
+                              rows={4}
+                              autoFocus
+                              placeholder="Explain why you're cancelling these reservations (required)"
+                              aria-label="Administrator cancellation reason"
+                              aria-invalid={!!bulkReasonError}
+                              className="mt-0"
+                            />
+                          </div>
                           <div className="flex items-center justify-between text-sm text-gray-500 mt-1">
                             <div>{bulkReasonError ? <span className="text-red-600">{bulkReasonError}</span> : <span>&nbsp;</span>}</div>
                             <div>{bulkCancelReason.length}/500</div>
