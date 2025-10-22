@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import type { SignupHistory } from '../App';
 import { Button } from './ui/button';
+import { useAnnouncer } from './Announcer';
 
 interface Props {
   signupHistory: SignupHistory[];
@@ -14,6 +15,7 @@ const formatDate = (d: string) => new Date(d).toLocaleString('en-US', { year: 'n
 export default function SignupHistoryPage({ signupHistory }: Props) {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
+  const { announce } = useAnnouncer();
 
   useEffect(() => {
     if (!id) return;
@@ -22,6 +24,10 @@ export default function SignupHistoryPage({ signupHistory }: Props) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50');
       setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50'), 2500);
+      // Announce to screen readers that we navigated to a specific history item
+      const node = el.querySelector('.font-medium') || el.querySelector('h2') || el;
+      const label = node?.textContent?.trim() ?? `Processed signup ${id}`;
+      announce?.(`Showing signup history for ${label}`, 'polite');
     }
   }, [id, signupHistory]);
 

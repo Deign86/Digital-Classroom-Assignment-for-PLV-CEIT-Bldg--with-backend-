@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -33,6 +34,7 @@ export default function RequestCard({
   disabled?: boolean;
 }) {
   const [hasConflict, setHasConflict] = useState(false);
+  const { announce } = useAnnouncer();
 
   useEffect(() => {
     const checkForConflicts = async () => {
@@ -175,7 +177,11 @@ export default function RequestCard({
                     <TooltipTrigger asChild>
                       <div className="flex-1">
                         <Button
-                          onClick={() => onApprove?.()}
+                          onClick={() => {
+                            // announce why approve is disabled
+                            try { announce('Approve is disabled due to a scheduling conflict.', 'polite'); } catch (e) {}
+                            onApprove?.();
+                          }}
                           disabled={true || !!disabled}
                           className={`flex-1 bg-gray-200 text-gray-600 cursor-not-allowed`}
                           aria-disabled={true}
@@ -191,7 +197,10 @@ export default function RequestCard({
                 </TooltipProvider>
               ) : (
                 <Button
-                  onClick={() => onApprove?.()}
+                  onClick={() => {
+                    try { announce('Approving request', 'polite'); } catch (e) {}
+                    onApprove?.();
+                  }}
                   disabled={!!disabled}
                   className={`flex-1 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white`}
                   aria-label="Approve request"
@@ -210,7 +219,10 @@ export default function RequestCard({
 
             {!isExpired ? (
               <Button
-                onClick={() => onReject?.()}
+                onClick={() => {
+                  try { announce('Rejecting request', 'polite'); } catch (e) {}
+                  onReject?.();
+                }}
                 variant="destructive"
                 className={'flex-1'}
                 aria-label="Reject request"

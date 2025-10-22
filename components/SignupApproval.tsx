@@ -7,6 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { toast } from 'sonner';
+import { useAnnouncer } from './Announcer';
 import {
   CheckCircle,
   XCircle,
@@ -61,6 +62,7 @@ const formatDate = (dateString: string) =>
   });
 
 export default function SignupApproval({ signupRequests = [], signupHistory = [], onSignupApproval }: SignupApprovalProps) {
+  const { announce } = useAnnouncer();
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
@@ -172,11 +174,17 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     const failed = results.length - succeeded;
 
     if (succeeded > 0 && failed === 0) {
-      toast.success(`${succeeded} request(s) processed successfully.`);
+      const message = `${succeeded} request(s) processed successfully.`;
+      toast.success(message);
+      announce?.(message, 'polite');
     } else if (succeeded > 0 && failed > 0) {
-      toast.success(`${succeeded} request(s) processed. ${failed} failed.`);
+      const message = `${succeeded} request(s) processed. ${failed} failed.`;
+      toast.success(message);
+      announce?.(message, 'polite');
     } else {
-      toast.error('Failed to process selected requests.');
+      const message = 'Failed to process selected requests.';
+      toast.error(message);
+      announce?.(message, 'assertive');
     }
 
     clearSelection();
@@ -272,6 +280,17 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   setBulkProgress({ processed: 0, total: 0 });
 
     clearSelection();
+    // Announce summary for screen readers
+    if (succeeded.length > 0 && failed.length === 0) {
+      const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} items processed.`;
+      announce?.(message, 'polite');
+    } else if (succeeded.length > 0 && failed.length > 0) {
+      const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} completed. ${succeeded.length} succeeded, ${failed.length} failed.`;
+      announce?.(message, 'polite');
+    } else if (succeeded.length === 0 && failed.length > 0) {
+      const message = `Bulk ${bulkActionApprove ? 'approval' : 'rejection'} failed for all ${failed.length} items.`;
+      announce?.(message, 'assertive');
+    }
   };
 
   const retryFailed = async () => {

@@ -12,6 +12,7 @@ import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/ti
 import type { BookingRequest } from '../App';
 import RequestCard from './RequestCard';
 import { toast } from 'sonner';
+import { useAnnouncer } from './Announcer';
 
 interface RequestApprovalProps {
   requests: BookingRequest[];
@@ -27,6 +28,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
   const [feedback, setFeedback] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const { announce } = useAnnouncer();
 
   // Consider a request expired if server-marked or if it's still pending but its start time is in the past
   const expiredRequests = requests.filter(r => r.status === 'expired' || (r.status === 'pending' && isPastBookingTime(r.date, convertTo12Hour(r.startTime))));
@@ -204,11 +206,17 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       setSelectedRequest(null);
       setFeedback('');
       if (succeeded.length > 0 && failed.length === 0) {
-        toast.success(`${succeeded.length} request(s) processed successfully.`);
+        const msg = `${succeeded.length} request(s) processed successfully.`;
+        toast.success(msg);
+        try { announce(msg, 'polite'); } catch (e) {}
       } else if (succeeded.length > 0 && failed.length > 0) {
-        toast.success(`${succeeded.length} processed, ${failed.length} failed.`);
+        const msg = `${succeeded.length} processed, ${failed.length} failed.`;
+        toast.success(msg);
+        try { announce(msg, 'polite'); } catch (e) {}
       } else {
-        toast.error('Failed to process selected requests.');
+        const msg = 'Failed to process selected requests.';
+        toast.error(msg);
+        try { announce(msg, 'assertive'); } catch (e) {}
       }
     })();
   };

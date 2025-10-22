@@ -10,6 +10,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCir
 import equipmentIcons, { getIconForEquipment, getPhosphorIcon } from '../lib/equipmentIcons';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
+import { useAnnouncer } from './Announcer';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { generateTimeSlots, convertTo24Hour, convertTo12Hour, getValidEndTimes, isPastBookingTime, isValidSchoolTime, isReasonableBookingDuration } from '../utils/timeUtils';
@@ -43,6 +44,7 @@ const isValidTimeRange = (startTime: string, endTime: string): boolean => {
 };
 
 export default function RoomBooking({ user, classrooms = [], schedules = [], bookingRequests = [], onBookingRequest, checkConflicts }: RoomBookingProps) {
+  const { announce } = useAnnouncer();
   const [formData, setFormData] = useState({
     classroomId: '',
     date: '',
@@ -212,6 +214,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
 
     if (!validate()) {
       toast.error('Please fill in all required fields correctly.');
+      try { announce('Please fill in all required fields correctly.', 'assertive'); } catch (e) {}
       return;
     }
 
@@ -219,11 +222,13 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     try {
       if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
         toast.error('Reservation duration must be between 30 minutes and 8 hours');
+        try { announce('Reservation duration must be between 30 minutes and eight hours.', 'assertive'); } catch (e) {}
         return;
       }
 
       if (isPastBookingTime(formData.date, formData.startTime)) {
         toast.error('Cannot reserve time slots that have already passed');
+        try { announce('Cannot reserve time slots that have already passed.', 'assertive'); } catch (e) {}
         return;
       }
 
@@ -238,6 +243,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
 
       if (hasConflict) {
         toast.error('A conflict was detected. The requested time slot is no longer available.');
+        try { announce('A conflict was detected. The requested time slot is no longer available.', 'assertive'); } catch (e) {}
         // Optionally, you might want to refresh schedules/bookings here
         return;
       }
@@ -269,7 +275,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         endTime: '',
         purpose: ''
       });
-      setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
+  setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
+  try { announce('Booking request submitted. You will be notified when it is approved.', 'polite'); } catch (e) {}
 
     } finally {
       setIsSubmitting(false);

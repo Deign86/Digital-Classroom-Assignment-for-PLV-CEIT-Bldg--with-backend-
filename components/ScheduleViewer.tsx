@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -14,13 +15,9 @@ interface ScheduleViewerProps {
   onCancelSchedule?: (scheduleId: string) => void;
 }
 
-// Helper to check if a schedule has already passed
 const isScheduleLapsed = (schedule: Schedule): boolean => {
   const now = new Date();
-  // The schedule end time is parsed as a date object on the given schedule date
   const scheduleEndDateTime = new Date(`${schedule.date}T${schedule.endTime}`);
-  
-  // The schedule is considered lapsed if the current time is past the schedule's end time
   return now > scheduleEndDateTime;
 }
 
@@ -28,78 +25,56 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClassroom, setSelectedClassroom] = useState<string>('');
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const { announce } = useAnnouncer();
 
-  // Filter schedules based on selections
   const filteredSchedules = schedules.filter(schedule => {
-    if (selectedClassroom && schedule.classroomId !== selectedClassroom) {
-      return false;
-    }
-
-    if (viewMode === 'day') {
-      return schedule.date === selectedDate && schedule.status === 'confirmed';
-    } else {
-      // Week view - get schedules for the week containing selectedDate
-      const selected = new Date(selectedDate);
-      const startOfWeek = new Date(selected);
-      startOfWeek.setDate(selected.getDate() - selected.getDay());
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-      const scheduleDate = new Date(schedule.date);
-      return scheduleDate >= startOfWeek && scheduleDate <= endOfWeek && schedule.status === 'confirmed';
-    }
+    if (selectedClassroom && schedule.classroomId !== selectedClassroom) return false;
+    if (viewMode === 'day') return schedule.date === selectedDate && schedule.status === 'confirmed';
+    const selected = new Date(selectedDate);
+    const startOfWeek = new Date(selected);
+    startOfWeek.setDate(selected.getDate() - selected.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    const scheduleDate = new Date(schedule.date);
+    return scheduleDate >= startOfWeek && scheduleDate <= endOfWeek && schedule.status === 'confirmed';
   });
 
-  // Generate time slots for the day view in 12-hour format
   const timeSlots = generateTimeSlots();
 
-  // Generate dates for week view
   const getWeekDates = (date: string) => {
     const selected = new Date(date);
     const startOfWeek = new Date(selected);
     startOfWeek.setDate(selected.getDate() - selected.getDay());
-    
-    const weekDates = [];
+    const weekDates: string[] = [];
     for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      weekDates.push(date.toISOString().split('T')[0]);
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      weekDates.push(d.toISOString().split('T')[0]);
     }
     return weekDates;
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const current = new Date(selectedDate);
-    if (viewMode === 'day') {
-      current.setDate(current.getDate() + (direction === 'next' ? 1 : -1));
-    } else {
-      current.setDate(current.getDate() + (direction === 'next' ? 7 : -7));
-    }
-    setSelectedDate(current.toISOString().split('T')[0]);
+    if (viewMode === 'day') current.setDate(current.getDate() + (direction === 'next' ? 1 : -1));
+    else current.setDate(current.getDate() + (direction === 'next' ? 7 : -7));
+    const next = current.toISOString().split('T')[0];
+    setSelectedDate(next);
+    try { announce?.(`View changed to ${viewMode === 'day' ? 'date' : 'week'} ${next}`, 'polite'); } catch (e) {}
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const formatDateShort = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
   return (
     <div className="space-y-6">
-      {/* Header Controls */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
@@ -108,7 +83,6 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
               <CardDescription>View classroom schedules and reservations</CardDescription>
             </div>
             <div className="flex items-center space-x-4">
-              {/* View Mode Toggle */}
               <Select value={viewMode} onValueChange={(value: 'day' | 'week') => setViewMode(value)}>
                 <SelectTrigger className="w-24">
                   <SelectValue />
@@ -119,7 +93,6 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
                 </SelectContent>
               </Select>
 
-              {/* Classroom Filter */}
               <Select value={selectedClassroom || 'all'} onValueChange={(value: string) => setSelectedClassroom(value === 'all' ? '' : value)}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="All Rooms" />
@@ -137,17 +110,13 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
           </div>
         </CardHeader>
         <CardContent>
-          {/* Date Navigation */}
           <div className="flex items-center justify-between mb-4">
             <Button variant="outline" size="sm" onClick={() => navigateDate('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-center">
               <h3 className="font-semibold">
-                {viewMode === 'day' 
-                  ? formatDate(selectedDate)
-                  : `Week of ${formatDateShort(getWeekDates(selectedDate)[0])}`
-                }
+                {viewMode === 'day' ? formatDate(selectedDate) : `Week of ${formatDateShort(getWeekDates(selectedDate)[0])}`}
               </h3>
             </div>
             <Button variant="outline" size="sm" onClick={() => navigateDate('next')}>
@@ -155,22 +124,10 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
             </Button>
           </div>
 
-          {/* Schedule Display */}
           {viewMode === 'day' ? (
-            <DayView
-              schedules={filteredSchedules}
-              classrooms={classrooms}
-              timeSlots={timeSlots}
-              selectedDate={selectedDate}
-              onCancelSchedule={onCancelSchedule}
-            />
+            <DayView schedules={filteredSchedules} classrooms={classrooms} timeSlots={timeSlots} selectedDate={selectedDate} onCancelSchedule={onCancelSchedule} announce={announce} />
           ) : (
-            <WeekView
-              schedules={filteredSchedules}
-              classrooms={classrooms}
-              weekDates={getWeekDates(selectedDate)}
-              onCancelSchedule={onCancelSchedule}
-            />
+            <WeekView schedules={filteredSchedules} classrooms={classrooms} weekDates={getWeekDates(selectedDate)} onCancelSchedule={onCancelSchedule} announce={announce} />
           )}
         </CardContent>
       </Card>
@@ -178,20 +135,7 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
   );
 }
 
-// Day View Component
-function DayView({ 
-  schedules, 
-  classrooms, 
-  timeSlots, 
-  selectedDate,
-  onCancelSchedule
-}: { 
-  schedules: Schedule[];
-  classrooms: Classroom[];
-  timeSlots: string[];
-  selectedDate: string;
-  onCancelSchedule?: (scheduleId: string) => void;
-}) {
+function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSchedule, announce }: { schedules: Schedule[]; classrooms: Classroom[]; timeSlots: string[]; selectedDate: string; onCancelSchedule?: (scheduleId: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; }) {
   if (schedules.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed rounded-lg">
@@ -202,7 +146,6 @@ function DayView({
     );
   }
 
-  // Sort schedules by start time
   const sortedSchedules = [...schedules].sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   return (
@@ -220,14 +163,12 @@ function DayView({
                     <span className="font-medium">{formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}</span>
                     <Badge variant="default">Confirmed</Badge>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <MapPin className="h-4 w-4 text-gray-500" />
                     <span>{schedule.classroomName}</span>
                     {classroom && (
-                      <span className="text-sm text-gray-500">
-                        ({classroom.building}, Floor {classroom.floor})
-                      </span>
+                      <span className="text-sm text-gray-500">({classroom.building}, Floor {classroom.floor})</span>
                     )}
                   </div>
 
@@ -238,15 +179,11 @@ function DayView({
 
                   <p className="text-gray-700">{schedule.purpose}</p>
                 </div>
-                
+
                 {onCancelSchedule && !isLapsed && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="outline"
-                        size="sm" 
-                        className="ml-4 text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 min-w-[80px] transition-all duration-200"
-                      >
+                      <Button variant="outline" size="sm" className="ml-4 text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 min-w-[80px] transition-all duration-200">
                         <X className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Cancel</span>
                       </Button>
@@ -254,16 +191,11 @@ function DayView({
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to cancel this reservation? This action cannot be undone.
-                          The faculty member will need to submit a new request if they need this classroom again.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone. The faculty member will need to submit a new request if they need this classroom again.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
-                          Cancel Reservation
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => { try { announce?.('Cancelling reservation', 'polite'); } catch(e){}; onCancelSchedule?.(schedule.id); }} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">Cancel Reservation</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -277,18 +209,7 @@ function DayView({
   );
 }
 
-// Week View Component
-function WeekView({ 
-  schedules, 
-  classrooms, 
-  weekDates,
-  onCancelSchedule
-}: { 
-  schedules: Schedule[];
-  classrooms: Classroom[];
-  weekDates: string[];
-  onCancelSchedule?: (scheduleId: string) => void;
-}) {
+function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce }: { schedules: Schedule[]; classrooms: Classroom[]; weekDates: string[]; onCancelSchedule?: (scheduleId: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; }) {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
@@ -300,11 +221,9 @@ function WeekView({
           <div key={date} className="space-y-2">
             <div className="text-center">
               <h4 className="font-medium">{dayNames[index]}</h4>
-              <p className="text-sm text-gray-500">
-                {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
+              <p className="text-sm text-gray-500">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
             </div>
-            
+
             <div className="space-y-2 min-h-[200px]">
               {daySchedules.length === 0 ? (
                 <div className="text-center py-8 h-full flex items-center justify-center">
@@ -322,30 +241,22 @@ function WeekView({
                           <p className="text-xs text-gray-600">{schedule.classroomName}</p>
                           <p className="text-xs text-gray-600">{schedule.facultyName}</p>
                           <p className="text-xs text-gray-500 truncate">{schedule.purpose}</p>
-                          
+
                           {onCancelSchedule && !isLapsed && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-gray-50 opacity-60 hover:opacity-100 transition-all duration-200"
-                                >
+                                <Button variant="ghost" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-gray-50 opacity-60 hover:opacity-100 transition-all duration-200">
                                   <X className="h-3 w-3" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to cancel this reservation? This action cannot be undone.
-                                  </AlertDialogDescription>
+                                  <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => onCancelSchedule(schedule.id)} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">
-                                    Cancel Reservation
-                                  </AlertDialogAction>
+                                  <AlertDialogAction onClick={() => { try { announce?.('Cancelling reservation', 'polite'); } catch(e){}; onCancelSchedule?.(schedule.id); }} className="bg-gray-900 hover:bg-red-600 transition-colors duration-200">Cancel Reservation</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>

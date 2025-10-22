@@ -8,6 +8,7 @@ const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
 const SignupHistoryPage = React.lazy(() => import('./components/SignupHistoryPage'));
 import Footer from './components/Footer';
+import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
@@ -1189,10 +1190,70 @@ export default function App() {
 
   const activeUser = currentUser!;
 
+  // Simple toggle component to enable/disable screen reader announcements
+  function ToggleAnnouncer() {
+    const { enabled, setEnabled, announce, useTTS, setUseTTS } = useAnnouncer();
+
+    // Track mount so we don't announce the initial state when the component first renders
+    const mountedRef = React.useRef(false);
+
+    React.useEffect(() => { mountedRef.current = true; }, []);
+
+    const onToggleEnabled = () => {
+      // Toggle state first (so the persisted value is updated)
+      setEnabled(!enabled);
+      // Only announce when action is user-initiated after mount
+      if (mountedRef.current) {
+        try {
+          announce(!enabled ? 'Screen reader enabled' : 'Screen reader disabled', 'polite');
+        } catch (e) {}
+      }
+    };
+
+    const onToggleTTS = () => {
+      setUseTTS(!useTTS);
+      if (mountedRef.current) {
+        try {
+          announce(!useTTS ? 'Browser text to speech enabled' : 'Browser text to speech disabled', 'polite');
+        } catch (e) {}
+      }
+    };
+
+    return (
+      // Move to bottom-left as a small, unobtrusive control so it doesn't block header elements
+      <div className="fixed bottom-4 left-4 z-40 flex items-center gap-2">
+        <button
+          onClick={onToggleEnabled}
+          className="bg-white/90 text-xs px-2 py-1 rounded-full border shadow-sm"
+          aria-pressed={!enabled ? 'false' : 'true'}
+          aria-label={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
+          title={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
+        >
+          {enabled ? 'SR: On' : 'SR: Off'}
+        </button>
+
+        {/* TTS toggle - optional built-in speech for users without a screen reader */}
+        <button
+          onClick={onToggleTTS}
+          className="bg-white/90 text-xs px-2 py-1 rounded-full border shadow-sm"
+          aria-pressed={!useTTS ? 'false' : 'true'}
+          aria-label={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
+          title={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
+        >
+          {useTTS ? 'TTS: On' : 'TTS: Off'}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <div className="min-h-screen bg-background flex flex-col">
+      <AnnouncerProvider>
+        <BrowserRouter>
+          {/* Skip link for keyboard users */}
+          <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
+          <div className="min-h-screen bg-background flex flex-col">
+            <ToggleAnnouncer />
           <div className="flex-1">
             <Suspense fallback={
               <div className="p-8 flex items-center justify-center">
@@ -1244,8 +1305,9 @@ export default function App() {
           </AlertDialog>
 
           <Analytics />
-        </div>
-      </BrowserRouter>
+          </div>
+        </BrowserRouter>
+      </AnnouncerProvider>
     </ErrorBoundary>
   );
 }

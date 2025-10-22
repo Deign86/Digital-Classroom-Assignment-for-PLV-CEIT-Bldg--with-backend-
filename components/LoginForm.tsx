@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAnnouncer } from './Announcer';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
 
@@ -51,6 +52,8 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false);
+
+  const { announce } = useAnnouncer();
 
   const departments = ['Civil Engineering', 'Information Technology'];
 
@@ -140,6 +143,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
 
     if (hasErrors) {
       setLoginErrors(errors);
+      try { announce(Object.values(errors).filter(Boolean).join('. '), 'assertive'); } catch (e) {}
       return;
     }
     
@@ -149,6 +153,10 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
       const success = await onLogin(email, cleanedPassword);
       if (!success) {
         setPassword('');
+        // Announce failure to screen reader users (if enabled)
+        try { announce('Login failed. Please check your email and password.', 'assertive'); } catch (e) {}
+      } else {
+        try { announce('Login successful. Redirecting to your dashboard.', 'polite'); } catch (e) {}
       }
     } finally {
       setIsLoading(false);
@@ -198,6 +206,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
         confirmPassword: ''
       });
       // Automatically switch to login tab after successful signup
+      try { announce('Signup request submitted. You will be notified when your account is approved.', 'polite'); } catch (e) {}
       setTimeout(() => {
         setActiveTab('login');
       }, 1500); // Small delay to let user see the success message

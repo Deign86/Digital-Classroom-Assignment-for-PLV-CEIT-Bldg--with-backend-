@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
+import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -19,6 +20,7 @@ interface FacultyScheduleProps {
 
 export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected }: FacultyScheduleProps) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const { announce } = useAnnouncer();
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
   const [isCancelling, setIsCancelling] = useState(false);
 
@@ -323,7 +325,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                               console.error('onCancelSelected failed for', id, err);
                             }
                           }
-                          toast.success(`Attempted to cancel ${ids.length} reservation(s).`);
+                          const message = `Attempted to cancel ${ids.length} reservation(s).`;
+                          toast.success(message);
+                          announce?.(message, 'polite');
                         } finally {
                           setIsCancelling(false);
                           setApprovedSelectedIds({});
@@ -383,9 +387,14 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                       const successCount = ids.length - failedScheduleCancellations.length;
                       if (failedScheduleCancellations.length === 0) {
-                        toast.success(`Successfully cancelled ${successCount} reservation(s).`);
+                        const message = `Successfully cancelled ${successCount} reservation(s).`;
+                        toast.success(message);
+                        announce?.(message, 'polite');
                       } else {
-                        toast.error(`Cancelled ${successCount} reservation(s). ${failedScheduleCancellations.length} failed.`);
+                        const message = `Cancelled ${successCount} reservation(s). ${failedScheduleCancellations.length} failed.`;
+                        toast.error(message);
+                        // errors should be assertive
+                        announce?.(message, 'assertive');
                       }
                     }}
                     disabled={isCancelling}
