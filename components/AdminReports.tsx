@@ -392,7 +392,7 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
             {classroomUtilization.slice(0, 5).map((classroom, index) => (
               <div key={classroom.name} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold">
+                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-ios font-semibold">
                     {index + 1}
                   </div>
                   <div>

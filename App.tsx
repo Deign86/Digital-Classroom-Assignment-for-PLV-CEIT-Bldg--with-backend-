@@ -5,6 +5,8 @@ import LoginForm from './components/LoginForm';
 // Lazy-load heavy dashboard components to reduce initial bundle size
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
+
+// Use a single inline loader (the PLV loader below) as the Suspense fallback.
 import Footer from './components/Footer';
 import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -12,6 +14,7 @@ import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
+import { Button } from './components/ui/button';
 import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import {
@@ -120,6 +123,24 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  // Overlay manager for a single top-level loader shared across init & Suspense
+  const overlayCountRef = React.useRef(0);
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
+
+  const showOverlay = React.useCallback((msg?: string) => {
+    overlayCountRef.current = overlayCountRef.current + 1;
+    setOverlayMessage(msg ?? 'Loading...');
+    setOverlayVisible(true);
+  }, []);
+
+  const hideOverlay = React.useCallback(() => {
+    overlayCountRef.current = Math.max(0, overlayCountRef.current - 1);
+    if (overlayCountRef.current === 0) {
+      setOverlayVisible(false);
+      setOverlayMessage(null);
+    }
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
@@ -159,26 +180,26 @@ export default function App() {
     }
 
     try {
-      setLoadingMessage('Loading dashboard...');
+  setLoadingMessage('Loading...');
       setIsLoading(true);
       
       realtimeService.subscribeToData(user, {
         onClassroomsUpdate: (classrooms) => {
           console.log('📍 Real-time update: Classrooms', classrooms.length);
           setClassrooms(classrooms);
-          setLoadingMessage('Loading classrooms...');
+          setLoadingMessage('Loading...');
         },
         
         onBookingRequestsUpdate: (requests) => {
           console.log('📋 Real-time update: Booking Requests', requests.length);
           setBookingRequests(requests);
-          setLoadingMessage('Loading booking requests...');
+          setLoadingMessage('Loading...');
         },
         
         onSchedulesUpdate: (schedules) => {
           console.log('📅 Real-time update: Schedules', schedules.length);
           setSchedules(schedules);
-          setLoadingMessage('Loading schedules...');
+          setLoadingMessage('Loading...');
         },
         
         onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
@@ -574,6 +595,14 @@ export default function App() {
     setShowSessionWarning(false);
     toast.success('Session extended successfully');
   }, []);
+
+  function SuspenseFallback({ message, show, hide }: { message?: string | null; show: (m?: string) => void; hide: () => void; }) {
+    useEffect(() => {
+      try { show(message ?? 'Loading...'); } catch (e) {}
+      return () => { try { hide(); } catch (e) {} };
+    }, [message, show, hide]);
+    return null;
+  }
 
   // Initialize idle timeout hook (30 minutes = 30 * 60 * 1000 ms)
   const { extendSession } = useIdleTimeout({
@@ -1010,7 +1039,9 @@ export default function App() {
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing app...');
-        setLoadingMessage('Checking authentication...');
+  setLoadingMessage('Loading...');
+  // show the shared overlay while initializing
+  showOverlay('Loading...');
 
         const user = await authService.getCurrentUser();
         
@@ -1020,7 +1051,7 @@ export default function App() {
           
           // Setup real-time listeners if user is authenticated
           console.log('📊 Setting up real-time listeners...');
-          setLoadingMessage('Loading dashboard...');
+          setLoadingMessage('Loading...');
           setupRealtimeListeners(user);
           console.log('✅ Real-time listeners setup');
         } else {
@@ -1038,6 +1069,7 @@ export default function App() {
         setIsAuthChecked(true);
         setIsLoading(false);
         setLoadingMessage(null);
+        hideOverlay();
       }
     };
 
@@ -1157,12 +1189,7 @@ export default function App() {
           </div>
           <h1 className="text-2xl font-bold text-red-800 mb-4">Application Error</h1>
           <p className="text-red-600 mb-6">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Refresh Page
-          </button>
+          <Button variant="destructive" onClick={() => window.location.reload()} className="px-6 py-3 rounded-lg">Refresh Page</Button>
           <Analytics />
         </div>
       </div>
@@ -1250,26 +1277,14 @@ export default function App() {
     return (
       // Move to bottom-left as a small, unobtrusive control so it doesn't block header elements
       <div className="fixed bottom-4 left-4 z-40 flex items-center gap-2">
-        <button
-          onClick={onToggleEnabled}
-          className="bg-white/90 text-xs px-2 py-1 rounded-full border shadow-sm"
-          aria-pressed={!enabled ? 'false' : 'true'}
-          aria-label={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
-          title={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
-        >
+        <Button variant="ghost" size="sm" onClick={onToggleEnabled} className="px-2 py-1 rounded-full" aria-pressed={!enabled ? 'false' : 'true'} aria-label={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'} title={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}>
           {enabled ? 'SR: On' : 'SR: Off'}
-        </button>
+        </Button>
 
         {/* TTS toggle - optional built-in speech for users without a screen reader */}
-        <button
-          onClick={onToggleTTS}
-          className="bg-white/90 text-xs px-2 py-1 rounded-full border shadow-sm"
-          aria-pressed={!useTTS ? 'false' : 'true'}
-          aria-label={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
-          title={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
-        >
+        <Button variant="ghost" size="sm" onClick={onToggleTTS} className="px-2 py-1 rounded-full" aria-pressed={!useTTS ? 'false' : 'true'} aria-label={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'} title={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}>
           {useTTS ? 'TTS: On' : 'TTS: Off'}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -1282,11 +1297,19 @@ export default function App() {
           <div className="min-h-screen bg-background flex flex-col">
             <ToggleAnnouncer />
           <div className="flex-1">
-            <Suspense fallback={
-              <div className="p-8 flex items-center justify-center">
-                <div className="text-gray-600">{loadingMessage ?? 'Loading…'}</div>
+            {/* Top-level shared loader overlay */}
+            {overlayVisible ? (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
+                <div className="text-center">
+                  <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
+                    <div className="text-white text-lg font-bold">PLV</div>
+                  </div>
+                  <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
+                </div>
               </div>
-            }>
+            ) : null}
+
+            <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
               {/* Render the appropriate dashboard directly (react-router removed). */}
               {activeUser.role === 'admin' ? (
                 <AdminDashboard {...adminDashboardProps} />
@@ -1294,6 +1317,7 @@ export default function App() {
                 <FacultyDashboard {...facultyDashboardProps} />
               )}
             </Suspense>
+            {/* Using the single inline PLV loader for Suspense fallback; no portal loader mounted */}
           </div>
           <Footer />
           <SessionTimeoutWarning
@@ -1319,7 +1343,7 @@ export default function App() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel onClick={cancelPendingReject}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmPendingReject} className="ml-2 bg-red-600 text-white">Confirm Delete</AlertDialogAction>
+                <AlertDialogAction variant="destructive" onClick={confirmPendingReject} className="ml-2">Confirm Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

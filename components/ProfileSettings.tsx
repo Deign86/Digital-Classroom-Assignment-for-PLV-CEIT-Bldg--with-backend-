@@ -446,7 +446,7 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleConfirmPasswordChange}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  variant="default"
                 >
                   Yes, Change Password
                 </AlertDialogAction>

@@ -845,8 +845,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   className={`transition-all duration-200 focus:scale-105 ${errors.purpose ? 'border-red-500' : ''}`}
                   maxLength={500}
                 />
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-gray-500">Max 500 characters</p>
+                <div className="flex items-center justify-end mt-1">
                   <p className="text-xs text-gray-500">{formData.purpose.length}/500</p>
                 </div>
                 {errors.purpose && (

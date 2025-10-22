@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { useAnnouncer } from './Announcer';
@@ -9,6 +9,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
+import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare, X } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
@@ -19,10 +20,29 @@ interface FacultyScheduleProps {
   bookingRequests: BookingRequest[];
   initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected';
   onCancelSelected?: (scheduleId: string) => Promise<void> | void;
+  userId?: string;
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected }: FacultyScheduleProps) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, userId }: FacultyScheduleProps) {
+  const STORAGE_KEY_BASE = 'plv:facultySchedule:activeTab';
+  const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
+  const allowed = ['upcoming', 'requests', 'approved', 'cancelled', 'history', 'rejected'] as const;
+  type TabName = typeof allowed[number];
+  const [activeTab, setActiveTab] = useState<TabName>(() => readPreferredTab(STORAGE_KEY, initialTab, Array.from(allowed)) as TabName);
+  // hydrated prevents a visual tab-flash when userId (and storage key) arrives asynchronously
+  const [hydrated, setHydrated] = useState<boolean>(() => typeof window === 'undefined' ? true : false);
+
+  useEffect(() => {
+    try {
+      const valueToStore = (activeTab ?? initialTab) as string;
+      writeStoredTab(STORAGE_KEY, valueToStore);
+      writeTabToHash(valueToStore);
+    } catch (err) {
+      // ignore
+    } finally {
+      try { setHydrated(true); } catch (e) { /* ignore */ }
+    }
+  }, [activeTab, STORAGE_KEY]);
   const { announce } = useAnnouncer();
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
   const [isCancelling, setIsCancelling] = useState(false);
@@ -183,7 +203,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
         </CardHeader>
       </Card>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
+  {hydrated ? (
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
         {/* Desktop Tab Layout */}
         <TabsList className="hidden sm:flex w-full max-w-3xl mx-auto h-12">
           <TabsTrigger value="upcoming" className="flex-1 px-4 py-2">
@@ -270,6 +291,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           )}
         </TabsContent>
 
+          {/* Persist active tab handled by top-level useEffect */}
+
         <TabsContent value="requests" className="space-y-4">
           {pendingRequests.length === 0 ? (
             <Card>
@@ -347,7 +370,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                         // Open the bulk cancel dialog to collect an admin reason
                         setShowBulkCancelDialog(true);
                       }}
-                      disabled={isCancelling}
+                      disabled={isCancelling || Object.values(approvedSelectedIds).filter(Boolean).length === 0}
                     >
                       {isCancelling ? 'Cancelling...' : `Cancel Selected (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
                     </Button>
@@ -359,7 +382,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           <DialogTitle>Cancel selected reservations</DialogTitle>
                         </DialogHeader>
                           <DialogDescription className="text-sm text-muted-foreground">
-                            Cancelling approved reservations requires a reason. Please enter a brief explanation (max 500 characters) that will be shown to the faculty member(s).
+                            Cancelling approved reservations requires a reason. Please enter a brief explanation that will be shown to the faculty member(s).
                           </DialogDescription>
 
                         <div className="mt-4">
@@ -482,6 +505,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                   announce?.(message, 'assertive');
                                 }
                               }}
+                              disabled={isCancelling || bulkCancelReason.trim().length === 0 || Object.values(approvedSelectedIds).filter(Boolean).length === 0}
+                              aria-disabled={isCancelling || bulkCancelReason.trim().length === 0 || Object.values(approvedSelectedIds).filter(Boolean).length === 0}
+                              title={bulkCancelReason.trim().length === 0 ? 'Provide a reason to enable' : Object.values(approvedSelectedIds).filter(Boolean).length === 0 ? 'No selected reservations' : undefined}
                             >
                               {isCancelling ? 'Cancelling...' : `Confirm Cancel (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
                             </Button>
@@ -564,6 +590,29 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           )}
         </TabsContent>
       </Tabs>
+    ) : (
+      <div className="p-4">
+        <div className="h-12 bg-gray-100 rounded animate-pulse" />
+      </div>
+    )}
     </div>
   );
+}
+
+// Helper to remove per-user persisted keys (call this on logout to cleanup stored preferences)
+export function clearFacultyScheduleStorageForUser(userId?: string) {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const base = 'plv:facultySchedule:activeTab';
+    if (userId) {
+      window.localStorage.removeItem(`${base}:${userId}`);
+      console.debug('[FacultySchedule] cleared storage for user', { key: `${base}:${userId}` });
+    } else {
+      // best-effort: remove base key
+      window.localStorage.removeItem(base);
+      console.debug('[FacultySchedule] cleared base storage key', { key: base });
+    }
+  } catch (err) {
+    console.warn('Failed to clear FacultySchedule storage key', err);
+  }
 }

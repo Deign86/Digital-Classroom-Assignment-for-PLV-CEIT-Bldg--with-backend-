@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
@@ -19,10 +20,24 @@ interface RequestApprovalProps {
   onRequestApproval: (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => Promise<void>;
   onCancelApproved?: (requestId: string, reason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
+  userId?: string;
 }
 
-export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts }: RequestApprovalProps) {
-  const [activeTab, setActiveTab] = useState('pending');
+export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts, userId }: RequestApprovalProps) {
+  const STORAGE_KEY_BASE = 'plv:requestApproval:activeTab';
+  const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
+  const allowedTabs = ['pending', 'approved', 'rejected', 'expired'];
+  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'pending', allowedTabs));
+
+  useEffect(() => {
+    try {
+      writeStoredTab(STORAGE_KEY, activeTab);
+      // also reflect to hash for shareability
+      try { writeTabToHash(activeTab); } catch (e) { /* ignore */ }
+    } catch (err) {
+      // ignore
+    }
+  }, [activeTab, STORAGE_KEY]);
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(null);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState('');
@@ -331,7 +346,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="bg-green-600 hover:bg-green-700 text-white">
+                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk}>
                       {isProcessingBulk ? `Processing… (${bulkProgress.processed}/${bulkProgress.total})` : `Approve Selected (${selectedCount})`}
                     </Button>
                     <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk}>
@@ -506,8 +521,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 className="min-h-[100px]"
                 maxLength={500}
               />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-gray-500">Max 500 characters</p>
+              <div className="flex items-center justify-end mt-1">
                 <p className="text-xs text-gray-500">{feedback.length}/500</p>
               </div>
               {feedbackError && <p className="text-xs text-red-600 mt-1">{feedbackError}</p>}
@@ -527,7 +541,6 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             <Button
               onClick={handleConfirm}
               disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
-              className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >
                 {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}

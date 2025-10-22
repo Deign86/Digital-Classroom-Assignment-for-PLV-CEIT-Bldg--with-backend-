@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { storageKeyFor, readStoredTab } from '../utils/tabPersistence';
+import { storageKeyFor, readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -69,14 +69,13 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
   const STORAGE_KEY = storageKeyFor('admin');
 
-  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings'];
-
-  const [activeTab, setActiveTab] = useState<string>(() => readStoredTab(STORAGE_KEY, 'overview', allowedTabs));
+  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings'] as const;
+  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'overview', Array.from(allowedTabs)));
 
   useEffect(() => {
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      window.localStorage.setItem(STORAGE_KEY, activeTab);
+      writeStoredTab(STORAGE_KEY, activeTab);
+      writeTabToHash(activeTab);
     } catch (err) {
       console.warn('Failed to save AdminDashboard active tab', err);
     }
@@ -156,8 +155,8 @@ export default function AdminDashboard({
                 <TabsTrigger value="requests" className="flex items-center justify-center space-x-1 text-sm px-2 py-2 relative">
               <Users className="h-4 w-4 flex-shrink-0" />
               <span>Classroom Requests</span>
-              {pendingRequests > 0 && (
-                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 min-w-[16px] rounded-full">
+                {pendingRequests > 0 && (
+                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 min-w-[16px] rounded-ios">
                   {pendingRequests}
                 </Badge>
               )}
@@ -165,8 +164,8 @@ export default function AdminDashboard({
             <TabsTrigger value="signups" className="flex items-center justify-center space-x-1 text-sm px-2 py-2 relative">
               <UserPlus className="h-4 w-4 flex-shrink-0" />
               <span>Signups</span>
-              {pendingSignups > 0 && (
-                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 min-w-[16px] rounded-full">
+                {pendingSignups > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 min-w-[16px] rounded-ios">
                   {pendingSignups}
                 </Badge>
               )}
@@ -200,7 +199,7 @@ export default function AdminDashboard({
                 <Users className="h-4 w-4 flex-shrink-0" />
                 <span>Classroom Requests</span>
                 {pendingRequests > 0 && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5 min-w-[18px] rounded-full ml-1">
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5 min-w-[18px] rounded-ios ml-1">
                     {pendingRequests}
                   </Badge>
                 )}
@@ -209,7 +208,7 @@ export default function AdminDashboard({
                 <UserPlus className="h-4 w-4 flex-shrink-0" />
                 <span>Signups</span>
                 {pendingSignups > 0 && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5 min-w-[18px] rounded-full ml-1">
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5 min-w-[18px] rounded-ios ml-1">
                     {pendingSignups}
                   </Badge>
                 )}
@@ -408,7 +407,7 @@ export default function AdminDashboard({
                                     <div className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                                       <Button 
                                         size="sm" 
-                                        variant="outline"
+                                        variant="destructive"
                                         onClick={() => onRequestApproval(request.id, false)}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
                                         aria-label={`Reject request ${request.id}`}

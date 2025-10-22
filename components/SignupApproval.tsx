@@ -449,7 +449,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
               <Badge variant="outline" className="text-orange-600 border-orange-200">
                 {pendingRequests.length} pending
               </Badge>
-              <Button onClick={() => openBulkDialog(true)} disabled={selectedCount === 0 || isProcessingBulk} className="bg-green-600 hover:bg-green-700 text-white">
+              <Button onClick={() => openBulkDialog(true)} disabled={selectedCount === 0 || isProcessingBulk}>
                 {isProcessingBulk ? 'Processing…' : `Approve Selected (${selectedCount})`}
               </Button>
               <Button variant="destructive" onClick={() => openBulkDialog(false)} disabled={selectedCount === 0 || isProcessingBulk}>
@@ -512,8 +512,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                       rows={3}
                       maxLength={500}
                     />
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-xs text-gray-500">Max 500 characters</p>
+                    <div className="flex items-center justify-end mt-1">
                       <p className="text-xs text-gray-500">{(feedback[request.id] ?? '').length}/500</p>
                     </div>
                     {feedbackErrors[request.id] && <p className="text-xs text-red-600 mt-1">{feedbackErrors[request.id]}</p>}
@@ -523,7 +522,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                   <div className="flex space-x-2">
                     <Button
                       onClick={() => handleApproval(request.id, true)}
-                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      className="flex-1"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" /> Approve
                     </Button>

@@ -182,14 +182,13 @@ export default function RequestCard({
                       <div className="flex-1">
                         <Button
                           onClick={() => {
-                            // announce why approve is disabled
                             try { announce('Approve is disabled due to a scheduling conflict.', 'polite'); } catch (e) {}
                             onApprove?.();
                           }}
                           disabled={true || !!disabled}
-                          className={`flex-1 bg-gray-200 text-gray-600 cursor-not-allowed`}
                           aria-disabled={true}
                           aria-label="Approve (disabled due to scheduling conflict)"
+                          className="flex-1"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Approve
@@ -206,7 +205,7 @@ export default function RequestCard({
                     onApprove?.();
                   }}
                   disabled={!!disabled}
-                  className={`flex-1 transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white`}
+                  className="flex-1"
                   aria-label="Approve request"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
@@ -248,7 +247,7 @@ export default function RequestCard({
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="flex-1 text-gray-600 hover:text-red-600 border-gray-200 hover:border-red-200 hover:bg-gray-50 transition-all duration-200"
+                  className="flex-1"
                   disabled={!!disabled}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
@@ -293,7 +292,7 @@ export default function RequestCard({
                 <AlertDialogFooter>
                   <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
                   {cancelReason.trim().length === 0 ? (
-                    <Button disabled className="bg-gray-900 opacity-60 cursor-not-allowed text-white">Cancel Reservation</Button>
+                    <Button disabled>Cancel Reservation</Button>
                   ) : (
                     <AlertDialogAction
                       onClick={() => {
@@ -310,7 +309,6 @@ export default function RequestCard({
 
                         onCancelApproved?.(request.id, reason);
                       }}
-                      className="bg-gray-900 hover:bg-red-600 transition-colors duration-200"
                     >
                       Cancel Reservation
                     </AlertDialogAction>

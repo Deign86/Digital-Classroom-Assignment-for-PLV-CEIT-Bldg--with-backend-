@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { storageKeyFor, readStoredTab } from '../utils/tabPersistence';
+import { storageKeyFor, readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -53,16 +53,18 @@ export default function FacultyDashboard({
 }: FacultyDashboardProps) {
   const STORAGE_KEY = storageKeyFor('faculty');
 
-  const allowedTabs = ['overview','booking','search','schedule','settings'];
+  const allowedTabs = ['overview','booking','search','schedule','settings'] as const;
+  type FacultyTab = typeof allowedTabs[number];
 
-  const [activeTab, setActiveTab] = useState<string>(() => readStoredTab(STORAGE_KEY, 'overview', allowedTabs));
+  const [activeTab, setActiveTab] = useState<FacultyTab>(() => readPreferredTab(STORAGE_KEY, 'overview', Array.from(allowedTabs)) as FacultyTab);
 
   const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
 
   useEffect(() => {
     try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      window.localStorage.setItem(STORAGE_KEY, activeTab);
+      const valueToStore = activeTab as string;
+      writeStoredTab(STORAGE_KEY, valueToStore);
+      writeTabToHash(valueToStore);
     } catch (err) {
       console.warn('Failed to save FacultyDashboard active tab', err);
     }
@@ -168,7 +170,7 @@ export default function FacultyDashboard({
       </header>
 
       <div className="p-4 sm:p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FacultyTab)} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Layout */}
           <TabsList className="hidden sm:flex w-full h-12">
             <TabsTrigger value="overview" className="flex-1 px-4 py-2">

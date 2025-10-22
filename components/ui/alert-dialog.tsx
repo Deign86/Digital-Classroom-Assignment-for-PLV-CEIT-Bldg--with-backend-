@@ -135,13 +135,16 @@ function AlertDialogDescription({
   );
 }
 
+type ButtonVariantProps = React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> &
+  import('class-variance-authority').VariantProps<typeof buttonVariants>;
+
 const AlertDialogAction = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Action>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>
->(({ className, ...props }, ref) => (
+  ButtonVariantProps
+>(({ className, variant, ...props }, ref) => (
   <AlertDialogPrimitive.Action
     ref={ref}
-    className={cn(buttonVariants(), className)}
+    className={cn(buttonVariants({ variant }), className)}
     {...props}
   />
 ));
@@ -149,11 +152,11 @@ AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
 
 const AlertDialogCancel = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
->(({ className, ...props }, ref) => (
+  ButtonVariantProps
+>(({ className, variant = 'outline', ...props }, ref) => (
   <AlertDialogPrimitive.Cancel
     ref={ref}
-    className={cn(buttonVariants({ variant: "outline" }), className)}
+    className={cn(buttonVariants({ variant }), className)}
     {...props}
   />
 ));

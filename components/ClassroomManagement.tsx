@@ -186,7 +186,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button variant="solid">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Classroom
                 </Button>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
@@ -34,7 +35,18 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('login');
+  const STORAGE_KEY = 'plv:loginForm:activeTab';
+  const allowed = ['login', 'signup'];
+  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'login', allowed));
+
+  useEffect(() => {
+    try {
+      writeStoredTab(STORAGE_KEY, activeTab);
+      writeTabToHash(activeTab);
+    } catch (e) {
+      // ignore
+    }
+  }, [activeTab]);
   const [loginErrors, setLoginErrors] = useState({
     email: '',
     password: ''
@@ -279,7 +291,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
                     aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showLoginPassword}
                     title={showLoginPassword ? 'Hide password' : 'Show password'}
@@ -306,9 +318,9 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 rounded-xl"
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]"
               disabled={isLoading}
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
@@ -450,7 +462,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   <button
                     type="button"
                     onClick={() => setShowSignupPassword(!showSignupPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
                     aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showSignupPassword}
                     title={showSignupPassword ? 'Hide password' : 'Show password'}
@@ -497,7 +509,7 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
                   <button
                     type="button"
                     onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
                     aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     aria-pressed={showSignupConfirmPassword}
                     title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
@@ -526,9 +538,9 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-green-600 hover:bg-green-700 rounded-xl"
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]"
             >
               Request Faculty Account
             </Button>
