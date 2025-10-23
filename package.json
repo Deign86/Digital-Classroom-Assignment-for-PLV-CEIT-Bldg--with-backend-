@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
   "build": "tsc && npx vite build",
-  "vercel-build": "npm run build",
+  "vercel-build": "npm ci && tsc -p ./tsconfig.json && npx vite build",
   "preview": "vite preview",
   "test": "echo \"Error: no test specified\" && exit 1",
   "verify:textareas": "node ./scripts/verify-textareas.js",
