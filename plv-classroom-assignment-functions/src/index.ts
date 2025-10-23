@@ -878,27 +878,17 @@ export const notifyAdminsOfNewRequest = onCall(async (request: CallableRequest<{
     const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
     if (adminsSnap.empty) return { success: true, notified: 0 };
 
-    const batch = db.batch();
     const shortMessage = `New reservation request from ${facultyName}: ${classroomName} on ${date} ${startTime}-${endTime}.`;
     const longMessage = purpose ? `${shortMessage} Purpose: ${purpose}` : shortMessage;
 
-    adminsSnap.docs.forEach((adoc) => {
-      const notifRef = db.collection('notifications').doc();
-      batch.set(notifRef, {
-        userId: adoc.id,
-        type: 'info',
-        message: longMessage,
-        bookingRequestId,
-        adminFeedback: null,
-        acknowledgedBy: null,
-        acknowledgedAt: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
+    // Persist + send notifications to each admin via shared helper. Pass actorId so actor-exclusion applies.
+    const actorId = request.auth?.uid || null;
+    const results = await Promise.allSettled(
+      adminsSnap.docs.map((adoc) => persistAndSendNotification(adoc.id, 'info', longMessage, { bookingRequestId, adminFeedback: null, actorId }))
+    );
 
-    await batch.commit();
-    return { success: true, notified: adminsSnap.size };
+    const notified = results.reduce((count, r) => (r.status === 'fulfilled' && !(r.value && (r.value as any).skipped) ? count + 1 : count), 0);
+    return { success: true, notified };
   } catch (err) {
     logger.error('Failed to notify admins of new booking request', err);
     throw new HttpsError('internal', 'Failed to notify admins');
@@ -924,25 +914,13 @@ export const notifyAdminsOfNewSignup = onCall(async (request: CallableRequest<{ 
     const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
     if (adminsSnap.empty) return { success: true, notified: 0 };
 
-    const batch = db.batch();
     const msg = `New signup request from ${name} (${email}).`;
-    adminsSnap.docs.forEach((adoc) => {
-      const notifRef = db.collection('notifications').doc();
-      batch.set(notifRef, {
-        userId: adoc.id,
-        type: 'signup',
-        message: msg,
-        bookingRequestId: null,
-        adminFeedback: null,
-        acknowledgedBy: null,
-        acknowledgedAt: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
-
-    await batch.commit();
-    return { success: true, notified: adminsSnap.size };
+    const actorId = request.auth?.uid || null;
+    const results = await Promise.allSettled(
+      adminsSnap.docs.map((adoc) => persistAndSendNotification(adoc.id, 'signup', msg, { bookingRequestId: null, adminFeedback: null, actorId }))
+    );
+    const notified = results.reduce((count, r) => (r.status === 'fulfilled' && !(r.value && (r.value as any).skipped) ? count + 1 : count), 0);
+    return { success: true, notified };
   } catch (err) {
     logger.error('Failed to notify admins of new signup', err);
     throw new HttpsError('internal', 'Failed to notify admins of new signup');
@@ -1079,26 +1057,12 @@ export const bookingRequestOnUpdateNotifyAdmins = onDocumentUpdated('bookingRequ
     const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
     if (adminsSnap.empty) return { success: true, reason: 'no-admins' };
 
-  const batch = db.batch();
-  // If a document contains updatedBy, avoid notifying that same user (they performed the change)
-    adminsSnap.docs.forEach((adoc) => {
-      if (actorId && adoc.id === actorId) return; // skip notifying the actor who made the change
-      const notifRef = db.collection('notifications').doc();
-      batch.set(notifRef, {
-        userId: adoc.id,
-        type: 'info',
-        message: longMessage,
-        bookingRequestId: afterSnap.id || beforeSnap.id || null,
-        adminFeedback: null,
-        acknowledgedBy: null,
-        acknowledgedAt: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
-
-    await batch.commit();
-    return { success: true, notified: adminsSnap.size };
+  // Use the helper to notify each admin individually. Pass actorId so actor-exclusion applies.
+    const results = await Promise.allSettled(
+      adminsSnap.docs.map((adoc) => persistAndSendNotification(adoc.id, 'info', longMessage, { bookingRequestId: afterSnap.id || beforeSnap.id || null, adminFeedback: null, actorId }))
+    );
+    const notified = results.reduce((count, r) => (r.status === 'fulfilled' && !(r.value && (r.value as any).skipped) ? count + 1 : count), 0);
+    return { success: true, notified };
   } catch (err) {
     logger.error('Error in bookingRequestOnUpdateNotifyAdmins trigger:', err);
     return { success: false, error: String(err) };
