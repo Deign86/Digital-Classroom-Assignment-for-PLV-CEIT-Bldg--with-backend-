@@ -516,51 +516,11 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
           // and then attempting to send FCM to registered tokens, but ensure we include actorId to allow other
           // triggers to know who acted. This mirrors the previous behavior while including actor metadata.
 
-          const notifRef = await admin.firestore().collection('notifications').add({
-            userId: data.facultyId,
-            type: 'cancelled',
-            message,
-            bookingRequestId: null,
-            adminFeedback: feedback,
-            acknowledgedBy: null,
-            acknowledgedAt: null,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          // Attempt to send FCM using same token lookup as createNotification
+          // Use shared helper to persist notification and attempt FCM send. Pass actorId
           try {
-            const tokensSnap = await admin.firestore().collection('pushTokens').where('userId', '==', data.facultyId).get();
-            if (!tokensSnap.empty) {
-              const tokens: string[] = [];
-              tokensSnap.docs.forEach(d => {
-                const dt = d.data() as any;
-                if (dt && dt.token) tokens.push(dt.token as string);
-              });
-              if (tokens.length > 0) {
-                const notificationPayload = {
-                  notification: {
-                    title: 'PLV CEIT Notification',
-                    body: message.substring(0, 200),
-                  },
-                  data: {
-                    notificationId: notifRef.id,
-                    message,
-                    type: 'cancelled',
-                  }
-                } as any;
-
-                if (tokens.length === 1) {
-                  const singleMsg: admin.messaging.Message = { ...notificationPayload, token: tokens[0] } as unknown as admin.messaging.Message;
-                  await admin.messaging().send(singleMsg);
-                } else {
-                  const multiMsg: admin.messaging.MulticastMessage = { tokens, ...notificationPayload } as unknown as admin.messaging.MulticastMessage;
-                  await admin.messaging().sendMulticast(multiMsg);
-                }
-              }
-            }
-          } catch (fcmErr) {
-            logger.error('Failed to send FCM on cancelApprovedBooking:', fcmErr);
+            await persistAndSendNotification(data.facultyId, 'cancelled', message, { bookingRequestId: null, adminFeedback: feedback, actorId: callerUid });
+          } catch (helperErr) {
+            logger.warn('Failed to create/send faculty notification via helper in cancelApprovedBooking', helperErr);
           }
         }
       }
@@ -756,79 +716,90 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
     }
   }
 
-  // If the actor is the same as the recipient, skip creating a notification doc and skip FCM
-  const isActorRecipient = actorId && actorId === userId;
+  // Delegate persistence + FCM send to helper to avoid duplication across functions
+  try {
+    const result = await persistAndSendNotification(userId, type as string, finalMessage, {
+      bookingRequestId: bookingRequestId || null,
+      adminFeedback: storedAdminFeedback,
+      actorId: actorId || null,
+    });
 
-  const record = {
+    if (result && result.skipped) return { success: true, id: null, skipped: true };
+    return { success: true, id: result.id };
+  } catch (err) {
+    logger.error('Failed to create notification via helper', err);
+    throw new HttpsError('internal', 'Failed to create notification');
+  }
+});
+
+/**
+ * Helper: persist a notification document and attempt FCM send.
+ * Returns { id } on success or { skipped: true } if actor === recipient.
+ */
+async function persistAndSendNotification(
+  userId: string,
+  type: string,
+  finalMessage: string,
+  options?: { bookingRequestId?: string | null; adminFeedback?: string | null; actorId?: string | null }
+) {
+  const actorId = options?.actorId || null;
+  if (actorId && actorId === userId) {
+    logger.info(`persistAndSendNotification: skipping notification and FCM because actorId === recipient (${actorId})`);
+    return { skipped: true, id: null } as any;
+  }
+
+  const db = admin.firestore();
+  const record: any = {
     userId,
     type,
     message: finalMessage,
-    bookingRequestId: bookingRequestId || null,
-    adminFeedback: storedAdminFeedback,
+    bookingRequestId: options?.bookingRequestId || null,
+    adminFeedback: options?.adminFeedback || null,
     acknowledgedBy: null,
     acknowledgedAt: null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
+  const ref = await db.collection('notifications').add(record);
+
   try {
-    if (isActorRecipient) {
-      // Skip persisting a notification document and skip FCM send
-      logger.info(`createNotification: skipping notification and FCM because actorId === recipient (${actorId})`);
-      return { success: true, id: null, skipped: true };
-    }
+    const tokensSnap = await db.collection('pushTokens').where('userId', '==', userId).get();
+    if (!tokensSnap.empty) {
+      const tokens: string[] = [];
+      tokensSnap.docs.forEach(d => {
+        const data = d.data() as any;
+        if (data && data.token) tokens.push(data.token as string);
+      });
 
-    const ref = await admin.firestore().collection('notifications').add(record);
-
-    // Attempt to send a push notification via FCM to any registered tokens for this user
-    try {
-      const tokensSnap = await admin.firestore().collection('pushTokens').where('userId', '==', userId).get();
-      if (!tokensSnap.empty) {
-        const tokens: string[] = [];
-        tokensSnap.docs.forEach(d => {
-          const data = d.data() as any;
-          if (data && data.token) tokens.push(data.token as string);
-        });
-
-        if (tokens.length > 0) {
-          const notificationPayload = {
-            notification: {
-              title: 'PLV CEIT Notification',
-              body: finalMessage.substring(0, 200),
-            },
-            data: {
-              notificationId: ref.id,
-              message: finalMessage,
-              type: String(type),
-            }
-          };
-
-          // Use send/sendMulticast depending on token count
-          if (tokens.length === 1) {
-            const singleMsg: admin.messaging.Message = {
-              ...notificationPayload,
-              token: tokens[0],
-            } as unknown as admin.messaging.Message;
-            await admin.messaging().send(singleMsg);
-          } else {
-            const multiMsg: admin.messaging.MulticastMessage = {
-              tokens,
-              ...notificationPayload,
-            } as unknown as admin.messaging.MulticastMessage;
-            await admin.messaging().sendMulticast(multiMsg);
+      if (tokens.length > 0) {
+        const notificationPayload = {
+          notification: {
+            title: 'PLV CEIT Notification',
+            body: finalMessage.substring(0, 200),
+          },
+          data: {
+            notificationId: ref.id,
+            message: finalMessage,
+            type: String(type),
           }
+        } as any;
+
+        if (tokens.length === 1) {
+          const singleMsg: admin.messaging.Message = { ...notificationPayload, token: tokens[0] } as unknown as admin.messaging.Message;
+          await admin.messaging().send(singleMsg);
+        } else {
+          const multiMsg: admin.messaging.MulticastMessage = { tokens, ...notificationPayload } as unknown as admin.messaging.MulticastMessage;
+          await admin.messaging().sendMulticast(multiMsg);
         }
       }
-    } catch (fcmErr) {
-      logger.error('Failed to send FCM message on createNotification:', fcmErr);
     }
-
-    return { success: true, id: ref.id };
-  } catch (err: unknown) {
-    logger.error('Failed to create notification', err);
-    throw new HttpsError('internal', 'Failed to create notification');
+  } catch (fcmErr) {
+    logger.error('Failed to send FCM message in helper:', fcmErr);
   }
-});
+
+  return { success: true, id: ref.id } as any;
+}
 
 /**
  * Callable to register a push token for the current authenticated user.
