@@ -14,7 +14,6 @@ import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
-import { Button } from './components/ui/button';
 import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import {
@@ -1189,7 +1188,12 @@ export default function App() {
           </div>
           <h1 className="text-2xl font-bold text-red-800 mb-4">Application Error</h1>
           <p className="text-red-600 mb-6">{error}</p>
-          <Button variant="destructive" onClick={() => window.location.reload()} className="px-6 py-3 rounded-lg">Refresh Page</Button>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Refresh Page
+          </button>
           <Analytics />
         </div>
       </div>
@@ -1277,14 +1281,26 @@ export default function App() {
     return (
       // Move to bottom-left as a small, unobtrusive control so it doesn't block header elements
       <div className="fixed bottom-4 left-4 z-40 flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={onToggleEnabled} className="px-2 py-1 rounded-full" aria-pressed={!enabled ? 'false' : 'true'} aria-label={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'} title={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}>
+        <button
+          onClick={onToggleEnabled}
+          className="bg-white text-xs px-2 py-1 rounded-full border border-gray-200 shadow-sm"
+          aria-pressed={!enabled ? 'false' : 'true'}
+          aria-label={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
+          title={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
+        >
           {enabled ? 'SR: On' : 'SR: Off'}
-        </Button>
+        </button>
 
         {/* TTS toggle - optional built-in speech for users without a screen reader */}
-        <Button variant="ghost" size="sm" onClick={onToggleTTS} className="px-2 py-1 rounded-full" aria-pressed={!useTTS ? 'false' : 'true'} aria-label={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'} title={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}>
+        <button
+          onClick={onToggleTTS}
+          className="bg-white text-xs px-2 py-1 rounded-full border border-gray-200 shadow-sm"
+          aria-pressed={!useTTS ? 'false' : 'true'}
+          aria-label={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
+          title={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
+        >
           {useTTS ? 'TTS: On' : 'TTS: Off'}
-        </Button>
+        </button>
       </div>
     );
   }
@@ -1343,7 +1359,7 @@ export default function App() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel onClick={cancelPendingReject}>Cancel</AlertDialogCancel>
-                <AlertDialogAction variant="destructive" onClick={confirmPendingReject} className="ml-2">Confirm Delete</AlertDialogAction>
+                <AlertDialogAction onClick={confirmPendingReject} className="ml-2 bg-red-600 text-white">Confirm Delete</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
