@@ -25,7 +25,7 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
 };
 
 const registerTokenOnServer = async (token: string): Promise<RegisterResult> => {
-  const functions = getFunctions(getFirebaseApp());
+  const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const fn = httpsCallable(functions, 'registerPushToken');
   const res = await fn({ token });
   const anyRes: any = res;
