@@ -16,10 +16,13 @@ import {
   EyeOff,
   CheckCircle,
   AlertCircle
+  , Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
-import { authService } from '../lib/firebaseService';
+import { authService, userService } from '../lib/firebaseService';
+import { pushService } from '../lib/pushService';
+import { Switch } from './ui/switch';
 
 interface ProfileSettingsProps {
   user: User;
@@ -41,6 +44,9 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     newPassword: '',
     confirmPassword: ''
   });
+  const [pushEnabled, setPushEnabled] = useState<boolean>(() => !!(user as any).pushEnabled);
+  const [pushToken, setPushToken] = useState<string | null>(null);
+  const [isTogglingPush, setIsTogglingPush] = useState(false);
 
   const validatePassword = (): boolean => {
     const newErrors = {
@@ -181,6 +187,38 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     }
   };
 
+  const handleTogglePush = async (enabled: boolean) => {
+    setIsTogglingPush(true);
+    try {
+      if (enabled) {
+        const res = await pushService.enablePush();
+        if (res.success && res.token) {
+          setPushToken(res.token);
+          await userService.update(user.id, { ...(user as any), pushEnabled: true });
+          setPushEnabled(true);
+        } else {
+          throw new Error(res.message || 'Failed to enable push');
+        }
+      } else {
+        // try to get current token if we don't have it
+        const current = pushToken || await pushService.getCurrentToken();
+        if (current) {
+          await pushService.disablePush(current);
+        }
+        await userService.update(user.id, { ...(user as any), pushEnabled: false });
+        setPushEnabled(false);
+        setPushToken(null);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Push toggle error:', msg);
+      // show a toast-like UI feedback
+      toast.error('Push notification change failed');
+    } finally {
+      setIsTogglingPush(false);
+    }
+  };
+
   const getPasswordStrength = (password: string): { strength: string; color: string } => {
     if (password.length === 0) return { strength: '', color: '' };
     
@@ -250,6 +288,35 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 </div>
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Push Notification Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notification Preferences
+          </CardTitle>
+          <CardDescription>
+            Manage browser and device push notifications for important updates
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Browser & Device Push</p>
+              <p className="text-sm text-muted-foreground">Receive push notifications even when the app is closed (via browser/service worker).</p>
+            </div>
+            <div>
+              <Switch
+                checked={pushEnabled}
+                onCheckedChange={(val) => handleTogglePush(!!val)}
+                aria-label="Enable push notifications"
+                disabled={isTogglingPush}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -446,7 +513,7 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleConfirmPasswordChange}
-                  variant="default"
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
                   Yes, Change Password
                 </AlertDialogAction>

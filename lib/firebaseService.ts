@@ -132,6 +132,8 @@ type FirestoreBookingRequestRecord = {
   adminFeedback?: string;
   createdAt?: string;
   updatedAt?: string;
+  // optional actor id who performed the update (used to avoid self-notifications)
+  updatedBy?: string | null;
 };
 
 type FirestoreScheduleRecord = {
@@ -1655,6 +1657,8 @@ export const bookingRequestService = {
     const updatePayload: Partial<FirestoreBookingRequestRecord> = {
       ...cleanedUpdates,
       updatedAt: nowIso(),
+      // Mark who performed this update so server-side triggers can avoid notifying the actor
+      updatedBy: currentUserCache?.id ?? null,
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
 
@@ -1684,7 +1688,7 @@ export const bookingRequestService = {
           data.facultyId,
           notifType,
           message,
-          { bookingRequestId: snapshot.id, adminFeedback: updatePayload.adminFeedback }
+          { bookingRequestId: snapshot.id, adminFeedback: updatePayload.adminFeedback, actorId: currentUserCache?.id }
         );
       } catch (err) {
         console.warn('Could not create notification after booking update:', err);
@@ -1736,7 +1740,9 @@ export const bookingRequestService = {
   // Each update entry should contain the document id and a partial data object.
   async bulkUpdate(updates: Array<{ id: string; data: Partial<BookingRequest> }>): Promise<void> {
     const payloads = updates.map(u => ({ id: u.id, data: u.data as Record<string, unknown> }));
-    await bulkUpdateDocs(COLLECTIONS.BOOKING_REQUESTS, payloads);
+  // Add updatedBy to each update to mark the actor
+  const payloadsWithActor = payloads.map(p => ({ id: p.id, data: { ...p.data, updatedAt: nowIso(), updatedBy: currentUserCache?.id ?? null } }));
+  await bulkUpdateDocs(COLLECTIONS.BOOKING_REQUESTS, payloadsWithActor);
 
     // After the batch commit, create notifications for any requests whose
     // status was changed to approved, rejected, or cancelled. We fetch the
@@ -1765,7 +1771,7 @@ export const bookingRequestService = {
             data.facultyId,
             notifType as any,
             message,
-            { bookingRequestId: snapshot.id, adminFeedback: (u.data as any).adminFeedback }
+            { bookingRequestId: snapshot.id, adminFeedback: (u.data as any).adminFeedback, actorId: currentUserCache?.id }
           );
         } catch (err) {
           console.warn('Failed to create notification after bulk booking update for', u.id, err);
@@ -2006,7 +2012,7 @@ export const signupRequestService = {
           updatePayload.status === 'approved'
             ? `Your account request has been approved. You can now sign in.`
             : `Your account request was rejected. Admin feedback: ${updatePayload.adminFeedback || 'No feedback provided.'}`,
-          { adminFeedback: updatePayload.adminFeedback }
+          { adminFeedback: updatePayload.adminFeedback, actorId: currentUserCache?.id }
         );
       } catch (err) {
         console.warn('Failed to create signup notification:', err);
@@ -2049,7 +2055,7 @@ export const signupRequestService = {
         request.userId,
         'rejected',
         `Your signup request was rejected by an administrator. Feedback: ${feedback}`,
-        { adminFeedback: feedback }
+        { adminFeedback: feedback, actorId: currentUserCache?.id }
       );
     } catch (err) {
       console.warn('Failed to notify user about signup rejection cleanup:', err);

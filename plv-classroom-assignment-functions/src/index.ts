@@ -61,7 +61,10 @@ export const expirePastPendingBookings = scheduler.onSchedule(
           status: 'expired',
           adminFeedback: 'Auto-expired: booking date/time has passed',
           expiredAt: admin.firestore.FieldValue.serverTimestamp(),
-          resolvedAt: admin.firestore.FieldValue.serverTimestamp()
+          resolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+          // Mark server as the actor for audit and to allow triggers to skip notifying a user acting via server
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedBy: 'system',
         });
         changed++;
       }
@@ -474,7 +477,8 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
 
       const batch = admin.firestore().batch();
       reqs.docs.forEach(d => {
-        batch.update(d.ref, { status: 'cancelled', adminFeedback: feedback, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        // Mark updatedBy so server-side triggers can avoid notifying the actor who initiated the cancellation
+        batch.update(d.ref, { status: 'cancelled', adminFeedback: feedback, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: callerUid });
       });
       if (!reqs.empty) await batch.commit();
     } catch (err) {
@@ -482,16 +486,22 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
     }
 
     // Create notification for faculty: best-effort
+    // Skip creating a notification if the caller is the same as the faculty (actor should not be notified)
     try {
       if (data && data.facultyId) {
-        const message = `Your approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was cancelled.`;
-        await admin.firestore().collection('notifications').add({
-          userId: data.facultyId,
-          type: 'cancelled',
-          message,
-          metadata: { scheduleId, adminFeedback: feedback },
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        if (callerUid && callerUid === data.facultyId) {
+          // The owner cancelled their own booking; no notification needed
+          logger.info(`Skipping faculty notification for ${data.facultyId} because they performed the cancellation`);
+        } else {
+          const message = `Your approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime} was cancelled.`;
+          await admin.firestore().collection('notifications').add({
+            userId: data.facultyId,
+            type: 'cancelled',
+            message,
+            metadata: { scheduleId, adminFeedback: feedback },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
       }
     } catch (err) {
       logger.warn('Failed to create faculty notification in cancelApprovedBooking', err);
@@ -641,9 +651,9 @@ export const acknowledgeNotifications = onCall(async (request: CallableRequest<{
 /**
  * Callable function to create a notification server-side.
  * Only callable by admin users.
- * Expects data: { userId: string, type: 'approved'|'rejected'|'info'|'cancelled', message: string, bookingRequestId?: string, adminFeedback?: string }
+ * Expects data: { userId: string, type: 'approved'|'rejected'|'info'|'cancelled', message: string, bookingRequestId?: string, adminFeedback?: string, actorId?: string }
  */
-export const createNotification = onCall(async (request: CallableRequest<{ userId?: string; type?: string; message?: string; bookingRequestId?: string; adminFeedback?: string }>) => {
+export const createNotification = onCall(async (request: CallableRequest<{ userId?: string; type?: string; message?: string; bookingRequestId?: string; adminFeedback?: string; actorId?: string }>) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Caller must be authenticated');
   }
@@ -659,12 +669,12 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
   }
 
   const data = request.data || {};
-  const { userId, type, message, bookingRequestId, adminFeedback } = data;
+  const { userId, type, message, bookingRequestId, adminFeedback, actorId } = data;
   if (!userId || typeof userId !== 'string') {
     throw new HttpsError('invalid-argument', 'userId is required and must be a string');
   }
-  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled')) {
-    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info' or 'cancelled'");
+  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled' && type !== 'signup')) {
+    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info', 'cancelled' or 'signup'");
   }
   if (!message || typeof message !== 'string') {
     throw new HttpsError('invalid-argument', 'message is required and must be a string');
@@ -685,6 +695,9 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
     }
   }
 
+  // If the actor is the same as the recipient, skip creating a notification doc and skip FCM
+  const isActorRecipient = actorId && actorId === userId;
+
   const record = {
     userId,
     type,
@@ -698,11 +711,113 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
   };
 
   try {
+    if (isActorRecipient) {
+      // Skip persisting a notification document and skip FCM send
+      logger.info(`createNotification: skipping notification and FCM because actorId === recipient (${actorId})`);
+      return { success: true, id: null, skipped: true };
+    }
+
     const ref = await admin.firestore().collection('notifications').add(record);
+
+    // Attempt to send a push notification via FCM to any registered tokens for this user
+    try {
+      const tokensSnap = await admin.firestore().collection('pushTokens').where('userId', '==', userId).get();
+      if (!tokensSnap.empty) {
+        const tokens: string[] = [];
+        tokensSnap.docs.forEach(d => {
+          const data = d.data() as any;
+          if (data && data.token) tokens.push(data.token as string);
+        });
+
+        if (tokens.length > 0) {
+          const notificationPayload = {
+            notification: {
+              title: 'PLV CEIT Notification',
+              body: finalMessage.substring(0, 200),
+            },
+            data: {
+              notificationId: ref.id,
+              message: finalMessage,
+              type: String(type),
+            }
+          };
+
+          // Use send/sendMulticast depending on token count
+          if (tokens.length === 1) {
+            const singleMsg: admin.messaging.Message = {
+              ...notificationPayload,
+              token: tokens[0],
+            } as unknown as admin.messaging.Message;
+            await admin.messaging().send(singleMsg);
+          } else {
+            const multiMsg: admin.messaging.MulticastMessage = {
+              tokens,
+              ...notificationPayload,
+            } as unknown as admin.messaging.MulticastMessage;
+            await admin.messaging().sendMulticast(multiMsg);
+          }
+        }
+      }
+    } catch (fcmErr) {
+      logger.error('Failed to send FCM message on createNotification:', fcmErr);
+    }
+
     return { success: true, id: ref.id };
   } catch (err: unknown) {
     logger.error('Failed to create notification', err);
     throw new HttpsError('internal', 'Failed to create notification');
+  }
+});
+
+/**
+ * Callable to register a push token for the current authenticated user.
+ * Expects data: { token: string }
+ */
+export const registerPushToken = onCall(async (request: CallableRequest<{ token?: string }>) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be authenticated');
+  const userId = request.auth.uid;
+  const token = request.data?.token;
+  if (!token || typeof token !== 'string') throw new HttpsError('invalid-argument', 'token is required');
+
+  try {
+    logger.info(`registerPushToken called by ${userId}`);
+    const snap = await admin.firestore().collection('pushTokens').where('token', '==', token).get();
+    if (!snap.empty) {
+      // Update ownership
+      const docRef = snap.docs[0].ref;
+      await docRef.update({ userId, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      return { success: true };
+    }
+
+    await admin.firestore().collection('pushTokens').add({ userId, token, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { success: true };
+  } catch (err) {
+    logger.error('Failed to register push token', err);
+    throw new HttpsError('internal', 'Failed to register push token');
+  }
+});
+
+/**
+ * Callable to unregister a push token.
+ * Expects data: { token: string }
+ */
+export const unregisterPushToken = onCall(async (request: CallableRequest<{ token?: string }>) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be authenticated');
+  const userId = request.auth.uid;
+  const token = request.data?.token;
+  if (!token || typeof token !== 'string') throw new HttpsError('invalid-argument', 'token is required');
+
+  try {
+    logger.info(`unregisterPushToken called by ${userId}`);
+    const snap = await admin.firestore().collection('pushTokens').where('token', '==', token).get();
+    if (snap.empty) return { success: true };
+    const batch = admin.firestore().batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    return { success: true };
+  } catch (err) {
+    logger.error('Failed to unregister push token', err);
+    throw new HttpsError('internal', 'Failed to unregister push token');
   }
 });
 
@@ -759,6 +874,50 @@ export const notifyAdminsOfNewRequest = onCall(async (request: CallableRequest<{
 });
 
 /**
+ * Callable to notify admins about a new signup request
+ * Expects data: { requestId: string; name: string; email: string }
+ */
+export const notifyAdminsOfNewSignup = onCall(async (request: CallableRequest<{ requestId?: string; name?: string; email?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Caller must be authenticated');
+  }
+
+  const { requestId, name, email } = request.data || {};
+  if (!requestId || !name || !email) {
+    throw new HttpsError('invalid-argument', 'requestId, name and email are required');
+  }
+
+  try {
+    const db = admin.firestore();
+    const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
+    if (adminsSnap.empty) return { success: true, notified: 0 };
+
+    const batch = db.batch();
+    const msg = `New signup request from ${name} (${email}).`;
+    adminsSnap.docs.forEach((adoc) => {
+      const notifRef = db.collection('notifications').doc();
+      batch.set(notifRef, {
+        userId: adoc.id,
+        type: 'signup',
+        message: msg,
+        bookingRequestId: null,
+        adminFeedback: null,
+        acknowledgedBy: null,
+        acknowledgedAt: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+    return { success: true, notified: adminsSnap.size };
+  } catch (err) {
+    logger.error('Failed to notify admins of new signup', err);
+    throw new HttpsError('internal', 'Failed to notify admins of new signup');
+  }
+});
+
+/**
  * Callable function to acknowledge a notification.
  * Ensures server-side timestamping and verifies the caller is the recipient.
  * Expects data: { notificationId: string }
@@ -798,6 +957,119 @@ export const acknowledgeNotification = onCall(async (request: CallableRequest<{ 
   } catch (err: unknown) {
     logger.error('Failed to acknowledge notification', err);
     throw new HttpsError('internal', 'Failed to acknowledge notification');
+  }
+});
+
+/**
+ * Firestore trigger: when a bookingRequest document is updated, notify all admins
+ * if the change was performed by a faculty user (i.e. the document has a facultyId)
+ * and the change affects important fields (status, date, startTime, endTime, classroomId, purpose).
+ * This guarantees admins are informed of faculty-initiated edits or cancellations.
+ */
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+
+export const bookingRequestOnUpdateNotifyAdmins = onDocumentUpdated('bookingRequests/{requestId}', async (event) => {
+  try {
+    if (!event.data) return { success: true, reason: 'no-data' };
+    const beforeSnap = event.data.before;
+    const afterSnap = event.data.after;
+    if (!beforeSnap || !afterSnap) return { success: true, reason: 'no-snap' };
+
+    const beforeData = beforeSnap.data() || {};
+    const afterData = afterSnap.data() || {};
+
+    // If there's no facultyId, don't create admin notifications
+    const facultyId = afterData.facultyId || beforeData.facultyId;
+    const facultyName = afterData.facultyName || beforeData.facultyName || 'A faculty member';
+    if (!facultyId) return { success: true, reason: 'no-faculty' };
+
+    // Determine whether a meaningful change occurred. Notify on:
+    // - status changes (pending -> approved/rejected/cancelled/expired)
+    // - changes to date/startTime/endTime/classroomId
+    // - purpose/text edits (optional)
+    const keysToCheck = ['status', 'date', 'startTime', 'endTime', 'classroomId', 'purpose'];
+    let changedKeys: string[] = [];
+    for (const k of keysToCheck) {
+      const a = (afterData as any)[k];
+      const b = (beforeData as any)[k];
+      // treat undefined and null as equal; stringify for comparison to be safe
+      if (JSON.stringify(a) !== JSON.stringify(b)) changedKeys.push(k);
+    }
+
+    if (changedKeys.length === 0) {
+      return { success: true, reason: 'no-meaningful-change' };
+    }
+
+    // Build a human-friendly summary message for admins
+    const classroomName = afterData.classroomName || beforeData.classroomName || 'a classroom';
+    const date = afterData.date || beforeData.date || 'a date';
+    const startTime = afterData.startTime || beforeData.startTime || '';
+    const endTime = afterData.endTime || beforeData.endTime || '';
+
+    const shortChangeSummary = changedKeys.map(k => {
+      if (k === 'status') return `status -> ${afterData.status}`;
+      if (k === 'purpose') return `purpose updated`;
+      return `${k} changed`;
+    }).join(', ');
+
+    // Determine the actor id (if any) so we can attribute actions and avoid self-notifications
+    const actorId = (afterData && afterData.updatedBy) || (beforeData && beforeData.updatedBy) || null;
+
+    // Determine actor info to attribute actions properly (admin vs faculty)
+    const firestoreDb = admin.firestore();
+    let actorName: string | null = null;
+    let actorRole: string | null = null;
+    if (actorId && typeof actorId === 'string') {
+      try {
+        const actorDoc = await firestoreDb.collection('users').doc(actorId).get();
+        if (actorDoc.exists) {
+          const ad = actorDoc.data() as any;
+          actorName = (ad && (ad.name || ad.displayName || ad.fullName)) ? (ad.name || ad.displayName || ad.fullName) : null;
+          actorRole = ad?.role || null;
+        }
+      } catch (e) {
+        logger.warn('Could not fetch actor user doc for attribution:', e);
+      }
+    }
+
+    let shortMessage: string;
+    if (actorRole === 'admin' && actorName) {
+      // Admin performed the action; attribute to admin and mention the affected faculty
+      shortMessage = `Admin ${actorName} updated the request for ${facultyName} (${classroomName} on ${date} ${startTime}${endTime ? `-${endTime}` : ''}): ${shortChangeSummary}`;
+    } else {
+      // Default / faculty-initiated message
+      shortMessage = `${facultyName} updated their request for ${classroomName} on ${date} ${startTime}${endTime ? `-${endTime}` : ''}: ${shortChangeSummary}`;
+    }
+
+    const longMessage = (afterData.purpose || beforeData.purpose) ? `${shortMessage} Purpose: ${(afterData.purpose || beforeData.purpose)}` : shortMessage;
+
+    const db = admin.firestore();
+    const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
+    if (adminsSnap.empty) return { success: true, reason: 'no-admins' };
+
+  const batch = db.batch();
+  // If a document contains updatedBy, avoid notifying that same user (they performed the change)
+    adminsSnap.docs.forEach((adoc) => {
+      if (actorId && adoc.id === actorId) return; // skip notifying the actor who made the change
+      const notifRef = db.collection('notifications').doc();
+      batch.set(notifRef, {
+        userId: adoc.id,
+        type: 'info',
+        message: longMessage,
+        bookingRequestId: afterSnap.id || beforeSnap.id || null,
+        adminFeedback: null,
+        acknowledgedBy: null,
+        acknowledgedAt: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+    return { success: true, notified: adminsSnap.size };
+  } catch (err) {
+    logger.error('Error in bookingRequestOnUpdateNotifyAdmins trigger:', err);
+    return { success: false, error: String(err) };
   }
 });
 

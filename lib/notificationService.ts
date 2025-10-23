@@ -15,7 +15,7 @@ import {
 import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled';
+export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';
 
 export type Notification = {
   id: string;
@@ -66,8 +66,8 @@ export const createNotification = async (
   userId: string,
   type: NotificationType,
   message: string,
-  options?: { bookingRequestId?: string; adminFeedback?: string }
-): Promise<string> => {
+  options?: { bookingRequestId?: string; adminFeedback?: string; actorId?: string }
+): Promise<string | null> => {
   // Use a callable Cloud Function to create notifications server-side
   const app = getFirebaseApp();
   const functions = getFunctions(app);
@@ -78,11 +78,14 @@ export const createNotification = async (
     message,
     bookingRequestId: options?.bookingRequestId,
     adminFeedback: options?.adminFeedback,
+    actorId: options?.actorId,
   };
 
   const result = await fn(payload);
   const anyResult = result as any;
-  const id = anyResult?.data?.id;
+  const id = anyResult?.data?.id ?? null;
+  // If the server skipped creation because actor === recipient, it returns skipped:true and id === null
+  if (anyResult?.data?.skipped) return null;
   if (!id) {
     throw new Error('Notification creation failed: no id returned');
   }

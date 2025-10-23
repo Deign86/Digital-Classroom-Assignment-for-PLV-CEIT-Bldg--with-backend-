@@ -134,7 +134,21 @@ export default function AdminDashboard({
                     <span className="hidden sm:inline">Logout</span>
                   </Button>
                 </div>
+                {showNotifications && (
+                  <div className="fixed right-4 top-20 z-50">
+                    <NotificationCenter
+                      userId={user.id}
+                      onClose={() => setShowNotifications(false)}
+                      onAcknowledgeAll={(newCount) => {
+                        setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                        setTimeout(() => setForceBellUnread(null), 1500);
+                        setShowNotifications(false);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
+              
             </div>
           </div>
         </div>
@@ -251,19 +265,7 @@ export default function AdminDashboard({
                   </CardContent>
                 </Card>
               </div>
-              {showNotifications && (
-                <div className="fixed right-4 top-20 z-50">
-                  <NotificationCenter
-                    userId={user.id}
-                    onClose={() => setShowNotifications(false)}
-                    onAcknowledgeAll={(newCount) => {
-                      setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
-                      setTimeout(() => setForceBellUnread(null), 1500);
-                      setShowNotifications(false);
-                    }}
-                  />
-                </div>
-              )}
+              
 
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 
