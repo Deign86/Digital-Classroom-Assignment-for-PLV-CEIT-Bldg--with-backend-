@@ -48,6 +48,16 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
 
+  // Keep local state in sync when the parent `user` prop updates (for example after refresh)
+  React.useEffect(() => {
+    try {
+      setPushEnabled(!!(user as any).pushEnabled);
+    } catch (err) {
+      // If something odd happens, keep current local state and log for diagnostics
+      console.warn('Failed to sync pushEnabled from user prop:', err);
+    }
+  }, [user?.pushEnabled]);
+
   const validatePassword = (): boolean => {
     const newErrors = {
       currentPassword: '',

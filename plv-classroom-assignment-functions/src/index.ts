@@ -854,6 +854,28 @@ export const unregisterPushToken = onCall(async (request: CallableRequest<{ toke
 });
 
 /**
+ * Callable to set the pushEnabled flag on the authenticated user's Firestore profile.
+ * Expects data: { enabled: boolean }
+ * This avoids allowing client SDKs to write pushEnabled directly when rules are restrictive.
+ */
+export const setPushEnabled = onCall(async (request: CallableRequest<{ enabled?: boolean }>) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be authenticated');
+  const userId = request.auth.uid;
+  const enabled = request.data?.enabled;
+  if (typeof enabled !== 'boolean') throw new HttpsError('invalid-argument', 'enabled (boolean) is required');
+
+  try {
+    logger.info(`setPushEnabled called by ${userId}: ${enabled}`);
+    const userRef = admin.firestore().collection('users').doc(userId);
+    await userRef.update({ pushEnabled: enabled, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    return { success: true, enabled };
+  } catch (err) {
+    logger.error('Failed to set pushEnabled', err);
+    throw new HttpsError('internal', 'Failed to update push preference');
+  }
+});
+
+/**
  * Callable to notify all admins about a new booking request.
  * Expects data: { bookingRequestId: string, facultyId: string, facultyName: string, classroomName: string, date: string, startTime: string, endTime: string, purpose?: string }
  * Callable by any authenticated user (the faculty who created the request will normally call this via the client service).
@@ -924,6 +946,49 @@ export const notifyAdminsOfNewSignup = onCall(async (request: CallableRequest<{ 
   } catch (err) {
     logger.error('Failed to notify admins of new signup', err);
     throw new HttpsError('internal', 'Failed to notify admins of new signup');
+  }
+});
+
+/**
+ * Callable to send a one-off test push to a token that belongs to the caller.
+ * Expects data: { token: string, title?: string, body?: string }
+ * Only allowed to send to tokens recorded for the calling user.
+ */
+export const sendTestPush = onCall(async (request: CallableRequest<{ token?: string; title?: string; body?: string }>) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be authenticated');
+  const callerUid = request.auth.uid;
+  const token = request.data?.token;
+  const title = request.data?.title || 'Test Notification';
+  const body = request.data?.body || 'This is a test push sent from Cloud Functions.';
+
+  if (!token || typeof token !== 'string') throw new HttpsError('invalid-argument', 'token is required');
+
+  try {
+    const snap = await admin.firestore().collection('pushTokens').where('token', '==', token).get();
+    if (snap.empty) {
+      throw new HttpsError('permission-denied', 'Token not found');
+    }
+    // Ensure the token belongs to the caller
+    const owned = snap.docs.some(d => (d.data() as any).userId === callerUid);
+    if (!owned) {
+      throw new HttpsError('permission-denied', 'Token does not belong to caller');
+    }
+
+    const message: admin.messaging.Message = {
+      token,
+      notification: {
+        title,
+        body,
+      },
+      data: { test: 'true' }
+    } as any;
+
+    const res = await admin.messaging().send(message);
+    return { success: true, result: res } as any;
+  } catch (err) {
+    logger.error('Failed to send test push', err);
+    if (err instanceof HttpsError) throw err;
+    throw new HttpsError('internal', 'Failed to send test push');
   }
 });
 

@@ -105,6 +105,7 @@ type FirestoreUserRecord = {
   failedLoginAttempts?: number;
   accountLocked?: boolean;
   lockedUntil?: string;
+  pushEnabled?: boolean;
 };
 
 type FirestoreClassroomRecord = {
@@ -475,6 +476,8 @@ const toUser = (id: string, data: FirestoreUserRecord): User => ({
   failedLoginAttempts: data.failedLoginAttempts || 0,
   accountLocked: data.accountLocked || false,
   lockedUntil: data.lockedUntil,
+  // Carry push preference through to the runtime user object
+  pushEnabled: data.pushEnabled,
 });
 
 const ensureUserData = (snapshot: DocumentSnapshot<DocumentData>): FirestoreUserRecord => {
@@ -1354,6 +1357,10 @@ export const userService = {
 
     if (updates.department !== undefined) {
       payload.department = updates.department;
+    }
+
+    if (typeof (updates as any).pushEnabled === 'boolean') {
+      payload.pushEnabled = (updates as any).pushEnabled;
     }
 
     if (updates.status) {

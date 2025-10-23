@@ -10,8 +10,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 // Register Firebase Messaging service worker for push notifications
 if ('serviceWorker' in navigator) {
-  // Only attempt registration in production to avoid interfering with dev HMR
-  if (import.meta.env.PROD) {
+  // Register in production, or when served locally (localhost) so devs can test background notifications
+  const shouldRegister = import.meta.env.PROD || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (shouldRegister) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
@@ -22,6 +23,6 @@ if ('serviceWorker' in navigator) {
         });
     });
   } else {
-    console.log('Skipping service worker registration in dev mode');
+    console.log('Skipping service worker registration in non-local dev mode');
   }
 }

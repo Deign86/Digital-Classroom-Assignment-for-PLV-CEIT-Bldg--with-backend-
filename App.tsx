@@ -32,7 +32,16 @@ if (import.meta.env.DEV) {
   (window as any).authService = authService;
   (window as any).realtimeService = realtimeService;
   (window as any).classroomService = classroomService;
-  console.log('🛠️ Services exposed to window for debugging');
+  // Expose pushService for test push sending from the console
+  try {
+    // Dynamically import to avoid circular import issues
+    import('./lib/pushService').then((m) => {
+      (window as any).pushService = m.pushService;
+      console.log('🛠️ pushService exposed to window for debugging');
+    }).catch((e) => console.warn('Could not expose pushService to window', e));
+  } catch (err) {
+    console.warn('Could not dynamically load pushService for dev exposure', err);
+  }
 }
 
 // Types
@@ -46,6 +55,8 @@ export interface User {
   failedLoginAttempts?: number;
   accountLocked?: boolean;
   lockedUntil?: string;
+  // Whether the user has enabled browser/service-worker push notifications
+  pushEnabled?: boolean;
 }
 
 export interface SignupRequest {

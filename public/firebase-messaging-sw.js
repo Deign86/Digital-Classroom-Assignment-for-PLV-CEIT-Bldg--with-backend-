@@ -1,84 +1,193 @@
 /* eslint-disable no-undef */
 importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js');
+// IMPORTANT: Do NOT import firebase-messaging-compat until after the service worker's
+// top-level event handlers are registered. The compat layer validates that the
+// 'push', 'pushsubscriptionchange', and 'notificationclick' handlers were added
+// during the initial evaluation of the worker script.
 
-// These values are replaced at build time by Vite environment variables in the index.html meta tags.
-// If your hosting requires a different approach, ensure the firebase config is available here.
-const firebaseConfig = {
-  apiKey: self?.__FIREBASE_CONFIG__?.apiKey || null,
-  authDomain: self?.__FIREBASE_CONFIG__?.authDomain || null,
-  projectId: self?.__FIREBASE_CONFIG__?.projectId || null,
-  storageBucket: self?.__FIREBASE_CONFIG__?.storageBucket || null,
-  messagingSenderId: self?.__FIREBASE_CONFIG__?.messagingSenderId || null,
-  appId: self?.__FIREBASE_CONFIG__?.appId || null,
-};
-
-if (!firebaseConfig.apiKey) {
-  // silent fail in environments where config is not injected
-  console.warn('Firebase config not injected into service worker');
-} else {
-  firebase.initializeApp(firebaseConfig);
-  const messaging = firebase.messaging();
-
-  messaging.onBackgroundMessage(function(payload) {
-    try {
-      const notificationTitle = payload.notification?.title || 'PLV CEIT';
-      const notificationOptions = {
-        body: payload.notification?.body || payload.data?.message || '',
-        icon: '/favicon.ico',
-        // Keep any data passed from server (e.g., notificationId, bookingRequestId, url)
-        data: payload.data || {},
-        // showNotification accepts a `tag` and `renotify` if needed; keep tag small
-        tag: payload.data?.notificationId || undefined,
-        renotify: false,
-      };
-      self.registration.showNotification(notificationTitle, notificationOptions);
-    } catch (err) {
-      console.error('Background message handler error', err);
-    }
-  });
-}
-
-// Handle notification click to deep-link into the app and focus or open the client window
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
-  const data = event.notification.data || {};
-
-  // Determine target URL priority: explicit url -> bookingRequestId -> notification center
-  let target = '/';
-  if (data.url) {
-    target = data.url;
-  } else if (data.bookingRequestId) {
-    target = `/booking/${data.bookingRequestId}`;
-  } else if (data.notificationId) {
-    target = `/notifications`;
-  } else {
-    target = '/';
+// These values are normally injected at build time. If they're not present (for example when
+// deploying to platforms that don't run the same build workflow), attempt to fetch a
+// runtime config from `/firebase-config.json` so the service worker can initialize.
+// This file is public and contains the standard Firebase web config (it's safe to host).
+const buildInjected = self?.__FIREBASE_CONFIG__ || null;
+async function resolveFirebaseConfig() {
+  if (buildInjected && buildInjected.apiKey) {
+    return buildInjected;
   }
 
-  // Attempt to focus an existing client window with same origin, otherwise open a new one
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // Try to find an open window/tab for this origin
-      for (const client of windowClients) {
-        // If client is already open, focus and navigate
-        if (client.url && 'focus' in client) {
-          try {
-            // If the client supports `navigate`, use it. Otherwise we postMessage a navigate intent
-            if (typeof client.navigate === 'function') {
-              client.navigate(target);
-            } else if (client.postMessage) {
-              client.postMessage({ type: 'navigate', url: target });
-            }
-            return client.focus();
-          } catch (e) {
-            // ignore and continue
+  // Fallback: try to fetch a JSON file placed at the site root: /firebase-config.json
+  try {
+    const resp = await fetch('/firebase-config.json', { cache: 'no-store' });
+    if (!resp.ok) {
+      console.warn('Service worker: /firebase-config.json not found (status ' + resp.status + ')');
+      return null;
+    }
+    const cfg = await resp.json();
+    if (cfg && cfg.apiKey) return cfg;
+    console.warn('Service worker: /firebase-config.json missing expected fields');
+    return null;
+  } catch (e) {
+    console.warn('Service worker: error fetching /firebase-config.json', e);
+    return null;
+  }
+}
+
+// --- Early top-level event handlers (must be registered during initial evaluation)
+// These delegate to `handlePushEvent` / `handleNotificationClick` which will be
+// set when Firebase messaging initializes. If events arrive before init, we
+// attempt a conservative default handling so notifications still show.
+
+let handlePushEvent = async (event) => {
+  // Default behavior: try to parse payload and show notification
+  try {
+    let payload = null;
+    try {
+      if (event.data) payload = event.data.json();
+    } catch (e) {
+      try { payload = { notification: { body: event.data && event.data.text ? event.data.text() : '' } }; } catch (_) { payload = null; }
+    }
+
+    if (payload && (payload.notification || payload.data)) {
+      const title = (payload.notification && payload.notification.title) || 'PLV CEIT';
+      const options = {
+        body: (payload.notification && payload.notification.body) || (payload.data && payload.data.message) || '',
+        icon: '/favicon.ico',
+        data: (payload.data) || {},
+        tag: (payload.data && payload.data.notificationId) || undefined,
+        renotify: false,
+      };
+      await self.registration.showNotification(title, options);
+    } else {
+      // No payload we can parse; show a generic notification to surface the event
+      await self.registration.showNotification('PLV CEIT', { body: 'You have a new notification', icon: '/favicon.ico' });
+    }
+  } catch (err) {
+    console.error('Default push handler failed', err);
+  }
+};
+
+let handleNotificationClick = async (event) => {
+  try {
+    event.notification.close();
+    const data = event.notification.data || {};
+    let target = '/';
+    if (data.url) target = data.url;
+    else if (data.bookingRequestId) target = `/booking/${data.bookingRequestId}`;
+    else if (data.notificationId) target = `/notifications`;
+
+    const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of allClients) {
+      if (client.url && 'focus' in client) {
+        try {
+          if (typeof client.navigate === 'function') {
+            client.navigate(target);
+          } else if (client.postMessage) {
+            client.postMessage({ type: 'navigate', url: target });
           }
+          return client.focus();
+        } catch (e) {
+          // ignore and continue
         }
       }
+    }
+    return clients.openWindow(target);
+  } catch (e) {
+    console.error('Default notificationclick handler error', e);
+  }
+};
 
-      // No client to focus, open a new window
-      return clients.openWindow(target);
-    })
-  );
+self.addEventListener('push', function(event) {
+  event.waitUntil((async () => {
+    // If a specialized handler exists, call it; otherwise use default
+    try {
+      return await handlePushEvent(event);
+    } catch (e) {
+      console.error('Error in push event handler', e);
+    }
+  })());
 });
+
+self.addEventListener('pushsubscriptionchange', function(event) {
+  // Best-effort: log, owner may implement re-subscription logic here if desired
+  console.warn('pushsubscriptionchange event fired');
+  // No-op fallback to satisfy browser requirement
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.waitUntil((async () => {
+    try {
+      return await handleNotificationClick(event);
+    } catch (e) {
+      console.error('Error in notificationclick delegate', e);
+    }
+  })());
+});
+
+(async () => {
+  const firebaseConfig = await resolveFirebaseConfig();
+  if (!firebaseConfig || !firebaseConfig.apiKey) {
+    console.warn('Firebase config not injected into service worker and no /firebase-config.json fallback found');
+    return;
+  }
+
+  try {
+    // Import messaging compat AFTER top-level handlers have been registered
+    importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js');
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
+
+    // When Firebase messaging delivers a background message it will call this handler.
+    // We still keep the top-level 'push' listener for spec compliance; here we replace
+    // the default `handlePushEvent` with a Firebase-aware implementation so messages
+    // are handled consistently.
+    const firebaseBackgroundHandler = function(payload) {
+      try {
+        const notificationTitle = payload.notification?.title || 'PLV CEIT';
+        const notificationOptions = {
+          body: payload.notification?.body || payload.data?.message || '',
+          icon: '/favicon.ico',
+          data: payload.data || {},
+          tag: payload.data?.notificationId || undefined,
+          renotify: false,
+        };
+        return self.registration.showNotification(notificationTitle, notificationOptions);
+      } catch (err) {
+        console.error('Background message handler error', err);
+      }
+    };
+
+    // Replace the delegate to route through Firebase's payload parsing when available
+    handlePushEvent = async (event) => {
+      try {
+        // Firebase's messaging.onBackgroundMessage provides a already-parsed payload.
+        // But push event may deliver the raw data — attempt to parse via event.data.json()
+        if (event && event.data) {
+          try {
+            const parsed = event.data.json();
+            // If payload looks like Firebase payload, use Firebase handler
+            if (parsed && (parsed.notification || parsed.data)) {
+              return firebaseBackgroundHandler(parsed);
+            }
+          } catch (e) {
+            // ignore parse errors and fall back to messaging handler
+          }
+        }
+        // If we reach here, rely on messaging's onBackgroundMessage by invoking a no-op
+        // and letting firebase install its own handlers via the compat lib.
+        // Also, call messaging.onBackgroundMessage to ensure firebase registers its own listener.
+        messaging.onBackgroundMessage((payload) => firebaseBackgroundHandler(payload));
+        // Nothing else to await here; return resolved promise
+        return Promise.resolve();
+      } catch (e) {
+        console.error('Error delegating push event to Firebase handler', e);
+        return Promise.resolve();
+      }
+    };
+
+    // Ensure notification click delegate uses same logic (already set above to default)
+  } catch (e) {
+    console.error('Service worker: failed to initialize Firebase messaging', e);
+  }
+})();
+
+// (notificationclick handled above by top-level delegate)

@@ -22,10 +22,10 @@ export function AnnouncerProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabledState] = useState<boolean>(() => {
     try {
       const raw = localStorage.getItem('a11y:screenReaderEnabled');
-      if (raw === null) return true; // enabled by default
+      if (raw === null) return false; // disabled by default
       return raw === 'true';
     } catch {
-      return true;
+      return false;
     }
   });
 
