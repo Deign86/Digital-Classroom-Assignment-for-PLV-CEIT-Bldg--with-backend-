@@ -35,9 +35,18 @@ service cloud.firestore {
 
       // Updates are allowed for authenticated users but clients MUST NOT set status to 'expired'.
       // Only server/cloud-functions or admin agents should write 'expired'.
-      allow update: if request.auth != null &&
-        // If the client is attempting to set status to 'expired', block unless they are an admin
-        !(request.resource.data.status == 'expired' && !(request.auth.token.admin == true));
+      // Additionally, clients are not allowed to spoof the 'updatedBy' field. If the client
+      // includes updatedBy in the update payload, it must equal the caller's uid. Server-side
+      // writes using the Admin SDK bypass these rules so server callables may set updatedBy
+      // to values like 'system' or other user ids as appropriate.
+      allow update: if request.auth != null
+        && !(request.resource.data.status == 'expired' && !(request.auth.token.admin == true))
+        && (
+          // If client is not attempting to set updatedBy, allow the update
+          !(request.resource.data.keys().hasAny(['updatedBy']))
+          // Or, if they are setting updatedBy, it must equal their uid
+          || (request.resource.data.updatedBy == request.auth.uid)
+        );
 
       // Users can delete their own requests.
       allow delete: if request.auth != null && isOwner(resource.data.facultyId);
@@ -105,6 +114,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && (
         request.auth.token.admin == true
       );
+    }
+
+    // Push tokens collection
+    // Push tokens are sensitive and must only be written via server-side callables that use
+    // the Admin SDK (registerPushToken / unregisterPushToken). Deny client-side creates/updates/deletes.
+    match /pushTokens/{tokenId} {
+      // Allow reads for authenticated users only when the token belongs to them so the UI may
+      // optionally check the current token. Writes are forbidden from client SDKs.
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if false;
     }
   }
 }
