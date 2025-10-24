@@ -928,8 +928,12 @@ export default function App() {
       );
 
       if (correspondingSchedule) {
+        // Use server-side callable to cancel the approved booking (server will
+        // update schedules and related bookingRequests and create the faculty
+        // notification). Avoid calling bookingRequestService.update here to
+        // prevent duplicate notifications.
         await scheduleService.cancelApprovedBooking(correspondingSchedule.id, feedback);
-        
+
         setSchedules(prev =>
           prev.map(schedule => 
             schedule.id === correspondingSchedule.id 
@@ -937,18 +941,29 @@ export default function App() {
               : schedule
           )
         );
+
+        // Optimistically update bookingRequests in the UI — the server will
+        // also update Firestore; this local update prevents a visual race.
+        setBookingRequests(prev =>
+          prev.map(request => 
+            request.id === requestId 
+              ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
+              : request
+          )
+        );
+      } else {
+        // No corresponding schedule found: perform a direct booking request update
+        // (this path should create the appropriate notification server-side).
+        await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
+
+        setBookingRequests(prev =>
+          prev.map(request => 
+            request.id === requestId 
+              ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
+              : request
+          )
+        );
       }
-
-      // Update the booking request status to cancelled and record admin feedback
-      await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
-
-      setBookingRequests(prev =>
-        prev.map(request => 
-          request.id === requestId 
-            ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
-            : request
-        )
-      );
 
       toast.success('Approved reservation cancelled!');
     } catch (err) {
