@@ -9,7 +9,7 @@ import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi as LucideWifi 
 import * as Phosphor from '@phosphor-icons/react';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
-import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour } from '../utils/timeUtils';
+import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour, isValidTimeRange, isPastBookingTime, getValidEndTimes } from '../utils/timeUtils';
 import type { Classroom, Schedule, BookingRequest } from '../App';
 
 interface RoomSearchProps {
@@ -71,6 +71,45 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     minCapacity: '',
     equipment: ''
   });
+
+  // Defensive handlers to prevent selecting disabled times (some Select implementations
+  // may still trigger onValueChange in edge cases). These double-check business rules
+  // and ignore selections that should be disabled.
+  const handleStartTimeChange = (value: string) => {
+    if (!value) {
+      setSearchFilters(prev => ({ ...prev, startTime: '' }));
+      return;
+    }
+
+    const conflictType = getTimeSlotConflictType(value, true);
+    const isDisabled = Boolean(searchFilters.date && (conflictType !== 'none' || isPastBookingTime(searchFilters.date, value)));
+    if (isDisabled) return; // ignore disabled selections
+
+    // Clear endTime if it becomes invalid relative to the new startTime
+    setSearchFilters(prev => ({
+      ...prev,
+      startTime: value,
+      endTime: prev.endTime && isValidTimeRange(value, prev.endTime) ? prev.endTime : ''
+    }));
+  };
+
+  const handleEndTimeChange = (value: string) => {
+    if (!value) {
+      setSearchFilters(prev => ({ ...prev, endTime: '' }));
+      return;
+    }
+
+    // If a start time exists, compute valid end times and ignore selections that are not valid
+    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
+    const isDisabled = Boolean(searchFilters.startTime && !validEndTimes.includes(value));
+    if (isDisabled) return;
+
+    // Also ignore end times that cause conflicts across available classrooms
+    const conflictType = getTimeSlotConflictType(value, false);
+    if (conflictType !== 'none') return;
+
+    setSearchFilters(prev => ({ ...prev, endTime: value }));
+  };
 
   // Get minimum date (today) in local timezone to avoid offset issues
   const today = (() => {
