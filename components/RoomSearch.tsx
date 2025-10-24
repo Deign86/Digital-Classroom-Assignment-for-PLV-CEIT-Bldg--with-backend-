@@ -428,8 +428,14 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                   {timeSlots.map((time) => {
                     const conflictType = getTimeSlotConflictType(time, true);
                     const hasConflicts = conflictType !== 'none';
-                    
+
+                    // Mark as past if the selected date makes this time in the past
+                    const isPast = Boolean(searchFilters.date && isPastBookingTime(searchFilters.date, time));
+
+                    const isDisabled = Boolean(hasConflicts || isPast);
+
                     const getBadgeText = () => {
+                      if (isPast) return 'Past';
                       switch (conflictType) {
                         case 'pending': return 'Pending';
                         case 'confirmed': return 'Reserved';
@@ -439,6 +445,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                     };
 
                     const getBadgeClass = () => {
+                      if (isPast) return 'ml-2 text-xs border-gray-300 text-gray-600 bg-gray-50';
                       switch (conflictType) {
                         case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
                         case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
@@ -446,16 +453,17 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         default: return '';
                       }
                     };
-                    
+
                     return (
                       <SelectItem 
                         key={time} 
                         value={time}
-                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                        disabled={isDisabled}
+                        className={isDisabled ? "text-gray-400 opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
-                          {hasConflicts && (
+                          {isDisabled && (
                             <Badge variant="outline" className={getBadgeClass()}>
                               {getBadgeText()}
                             </Badge>
@@ -469,52 +477,55 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-end">End Time</Label>
-              <Select value={searchFilters.endTime} onValueChange={handleEndTimeChange}>
+              <Select value={searchFilters.endTime} onValueChange={handleEndTimeChange} disabled={!searchFilters.startTime}>
                 <SelectTrigger id="search-end">
-                  <SelectValue placeholder="Select end time" />
+                  <SelectValue placeholder={searchFilters.startTime ? 'Select end time' : 'Select start time first'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {timeSlots.map((time) => {
-                    const isDisabled = Boolean(searchFilters.startTime && time <= searchFilters.startTime);
-                    const conflictType = !isDisabled ? getTimeSlotConflictType(time, false) : 'none';
-                    const hasConflicts = conflictType !== 'none';
-                    
-                    const getBadgeText = () => {
-                      switch (conflictType) {
-                        case 'pending': return 'Pending';
-                        case 'confirmed': return 'Reserved';
-                        case 'both': return 'Limited';
-                        default: return '';
-                      }
-                    };
+                  {(() => {
+                    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
+                    return validEndTimes.map((time) => {
+                      const isDisabled = false; // already filtered by validEndTimes
+                      const conflictType = getTimeSlotConflictType(time, false);
+                      const hasConflicts = conflictType !== 'none';
 
-                    const getBadgeClass = () => {
-                      switch (conflictType) {
-                        case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
-                        case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
-                        case 'both': return 'ml-2 text-xs border-orange-300 text-orange-600 bg-orange-50';
-                        default: return '';
-                      }
-                    };
-                    
-                    return (
-                      <SelectItem 
-                        key={time} 
-                        value={time}
-                        disabled={isDisabled}
-                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{time}</span>
-                          {hasConflicts && !isDisabled && (
-                            <Badge variant="outline" className={getBadgeClass()}>
-                              {getBadgeText()}
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
+                      const getBadgeText = () => {
+                        switch (conflictType) {
+                          case 'pending': return 'Pending';
+                          case 'confirmed': return 'Reserved';
+                          case 'both': return 'Limited';
+                          default: return '';
+                        }
+                      };
+
+                      const getBadgeClass = () => {
+                        switch (conflictType) {
+                          case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
+                          case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
+                          case 'both': return 'ml-2 text-xs border-orange-300 text-orange-600 bg-orange-50';
+                          default: return '';
+                        }
+                      };
+
+                      return (
+                        <SelectItem 
+                          key={time} 
+                          value={time}
+                          disabled={isDisabled}
+                          className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{time}</span>
+                            {hasConflicts && (
+                              <Badge variant="outline" className={getBadgeClass()}>
+                                {getBadgeText()}
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    });
+                  })()}
                 </SelectContent>
               </Select>
             </div>
