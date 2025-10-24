@@ -1070,6 +1070,23 @@ export const sendTestPush = onCall(async (request: CallableRequest<{ token?: str
   if (!token || typeof token !== 'string') throw new HttpsError('invalid-argument', 'token is required');
 
   try {
+    // Diagnostic logs: report the installed firebase-admin version and which messaging methods exist.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const adminPkg = require('firebase-admin/package.json');
+      logger.info('firebase-admin package version (runtime):', adminPkg && adminPkg.version ? adminPkg.version : 'unknown');
+    } catch (e) {
+      logger.warn('Could not read firebase-admin/package.json at runtime:', e);
+    }
+    try {
+      const messagingAny = (admin.messaging() as any);
+      logger.info('messaging.sendMulticast type:', typeof messagingAny.sendMulticast);
+      logger.info('messaging.sendAll type:', typeof messagingAny.sendAll);
+      logger.info('messaging.sendToDevice type:', typeof messagingAny.sendToDevice);
+    } catch (e) {
+      logger.warn('Could not inspect admin.messaging() methods:', e);
+    }
+
     const snap = await admin.firestore().collection('pushTokens').where('token', '==', token).get();
     if (snap.empty) {
       throw new HttpsError('permission-denied', 'Token not found');
