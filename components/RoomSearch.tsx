@@ -50,10 +50,18 @@ const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
 const getIconForEquipment = (eq?: string) => {
   if (!eq) return null;
   const rawKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(eq));
-  if (rawKey) return equipmentIcons[rawKey];
+  if (rawKey) {
+    const v = equipmentIcons[rawKey];
+    if (v) return v; // only return if mapping produced an icon
+    // otherwise fall through to try singular/plural and wifi fallback
+  }
+
   const singularAttempt = eq.endsWith('s') ? eq.slice(0, -1) : `${eq}s`;
   const spKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(singularAttempt));
-  if (spKey) return equipmentIcons[spKey];
+  if (spKey) {
+    const v = equipmentIcons[spKey];
+    if (v) return v;
+  }
 
   // wifi fallback (only match 'wifi' to avoid collisions with words like 'whiteboard')
   if (normalize(eq).includes('wifi')) {
