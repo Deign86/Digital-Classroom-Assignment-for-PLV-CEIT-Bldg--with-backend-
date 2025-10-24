@@ -1011,13 +1011,13 @@ export const authService = {
         );
       }
 
-      // Success! Call Cloud Function to reset failed login attempts
+      // Success! Call Cloud Function to reset failed login attempts (with retries)
       try {
         const resetFailedLogins = httpsCallable(functions, 'resetFailedLogins');
-        await resetFailedLogins();
+        await withRetry(() => resetFailedLogins(), { attempts: 3, shouldRetry: isNetworkError });
         console.log('✅ Failed login attempts reset');
       } catch (cloudFunctionError) {
-        console.warn('⚠️ Failed to call resetFailedLogins cloud function:', cloudFunctionError);
+        console.warn('⚠️ Failed to call resetFailedLogins cloud function after retries:', cloudFunctionError);
         // Don't fail login if cloud function fails - try to update directly as fallback
         try {
           const userDocRef = doc(database, COLLECTIONS.USERS, firebaseUser.uid);
@@ -2094,11 +2094,11 @@ export const signupRequestService = {
       // Use the new Firebase Functions approach for complete account deletion
       const app = getFirebaseApp();
       const functions = getFunctions(app);
-      const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
+  const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
       
-      // Call the cloud function to delete the user account completely
-      const result = await deleteUserAccount({ userId: request.userId });
-      console.log('Account deletion result:', result.data);
+  // Call the cloud function to delete the user account completely (with retries)
+  const result = await withRetry(() => deleteUserAccount({ userId: request.userId }), { attempts: 3, shouldRetry: isNetworkError });
+  console.log('Account deletion result:', result.data);
       
       // Delete the signup request from Firestore
       await this.delete(requestId);
@@ -2128,8 +2128,8 @@ export const signupRequestService = {
       const functions = getFunctions(app);
       const bulkCleanup = httpsCallable(functions, 'bulkCleanupRejectedAccounts');
       
-      // Call the cloud function
-      const result = await bulkCleanup({});
+      // Call the cloud function (with retries)
+      const result = await withRetry(() => bulkCleanup({}), { attempts: 3, shouldRetry: isNetworkError });
       return result.data as {
         success: boolean;
         message: string;
