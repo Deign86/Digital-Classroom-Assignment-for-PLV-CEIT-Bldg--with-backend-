@@ -829,12 +829,26 @@ async function persistAndSendNotification(
           const singleMsg: admin.messaging.Message = { ...notificationPayload, token: tokens[0] } as unknown as admin.messaging.Message;
           await admin.messaging().send(singleMsg);
         } else {
-          // Newer firebase-admin versions may prefer sendAll over sendMulticast
-          // Build individual messages and use sendAll which accepts an array of Message
-          const messages: admin.messaging.Message[] = tokens.map(t => ({ token: t, ...notificationPayload } as admin.messaging.Message));
-          // sendAll returns a BatchResponse-like result
-          // Cast to any because types vary between firebase-admin major versions
-          await (admin.messaging() as any).sendAll(messages);
+          // Robust runtime handling for different firebase-admin versions:
+          // Try sendMulticast, then sendAll, then fall back to sendToDevice (older API).
+          const messagingAny = (admin.messaging() as any);
+          try {
+            if (typeof messagingAny.sendMulticast === 'function') {
+              const multiMsg = { tokens, ...notificationPayload } as any;
+              await messagingAny.sendMulticast(multiMsg);
+            } else if (typeof messagingAny.sendAll === 'function') {
+              const messages: any[] = tokens.map((t: string) => ({ token: t, ...notificationPayload }));
+              await messagingAny.sendAll(messages);
+            } else if (typeof messagingAny.sendToDevice === 'function') {
+              // sendToDevice accepts (registrationTokens, payload[, options]) and exists on older SDKs
+              await messagingAny.sendToDevice(tokens, notificationPayload);
+            } else {
+              logger.error('No compatible FCM multicast/sendAll/sendToDevice method available on admin.messaging()');
+            }
+          } catch (sendErr) {
+            // Re-throw / log original FCM send errors with context
+            logger.error('FCM multicast/send fallback failed:', sendErr);
+          }
         }
       }
     }
