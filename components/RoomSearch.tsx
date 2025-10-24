@@ -72,6 +72,45 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     equipment: ''
   });
 
+  // Defensive handlers to prevent selecting disabled times (some Select implementations
+  // may still trigger onValueChange in edge cases). These double-check business rules
+  // and ignore selections that should be disabled.
+  const handleStartTimeChange = (value: string) => {
+    if (!value) {
+      setSearchFilters(prev => ({ ...prev, startTime: '' }));
+      return;
+    }
+
+    const conflictType = getTimeSlotConflictType(value, true);
+    const isDisabled = Boolean(searchFilters.date && (conflictType !== 'none' || isPastBookingTime(searchFilters.date, value)));
+    if (isDisabled) return; // ignore disabled selections
+
+    // Clear endTime if it becomes invalid relative to the new startTime
+    setSearchFilters(prev => ({
+      ...prev,
+      startTime: value,
+      endTime: prev.endTime && isValidTimeRange(value, prev.endTime) ? prev.endTime : ''
+    }));
+  };
+
+  const handleEndTimeChange = (value: string) => {
+    if (!value) {
+      setSearchFilters(prev => ({ ...prev, endTime: '' }));
+      return;
+    }
+
+    // If a start time exists, compute valid end times and ignore selections that are not valid
+    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
+    const isDisabled = Boolean(searchFilters.startTime && !validEndTimes.includes(value));
+    if (isDisabled) return;
+
+    // Also ignore end times that cause conflicts across available classrooms
+    const conflictType = getTimeSlotConflictType(value, false);
+    if (conflictType !== 'none') return;
+
+    setSearchFilters(prev => ({ ...prev, endTime: value }));
+  };
+
   // Get minimum date (today) in local timezone to avoid offset issues
   const today = (() => {
     const now = new Date();
@@ -381,7 +420,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-start">Start Time</Label>
-              <Select value={searchFilters.startTime} onValueChange={(value) => setSearchFilters(prev => ({ ...prev, startTime: value }))}>
+              <Select value={searchFilters.startTime} onValueChange={handleStartTimeChange}>
                 <SelectTrigger id="search-start">
                   <SelectValue placeholder="Select start time" />
                 </SelectTrigger>
@@ -389,13 +428,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                   {timeSlots.map((time) => {
                     const conflictType = getTimeSlotConflictType(time, true);
                     const hasConflicts = conflictType !== 'none';
-
-                    // Disable start times that are in conflict across available classrooms
-                    // or are in the past for the selected date
-                    const isStartDisabled = Boolean(
-                      searchFilters.date && (hasConflicts || isPastBookingTime(searchFilters.date, time))
-                    );
-
+                    
                     const getBadgeText = () => {
                       switch (conflictType) {
                         case 'pending': return 'Pending';
@@ -418,14 +451,13 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                       <SelectItem 
                         key={time} 
                         value={time}
-                        disabled={isStartDisabled}
-                        className={isStartDisabled ? "text-gray-400 opacity-60" : ""}
+                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
-                          {(hasConflicts || (searchFilters.date && isPastBookingTime(searchFilters.date, time))) && (
+                          {hasConflicts && (
                             <Badge variant="outline" className={getBadgeClass()}>
-                              {getBadgeText() || (isPastBookingTime(searchFilters.date, time) ? 'Past' : '')}
+                              {getBadgeText()}
                             </Badge>
                           )}
                         </div>
@@ -437,19 +469,16 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-end">End Time</Label>
-              <Select value={searchFilters.endTime} onValueChange={(value) => setSearchFilters(prev => ({ ...prev, endTime: value }))}>
+              <Select value={searchFilters.endTime} onValueChange={handleEndTimeChange}>
                 <SelectTrigger id="search-end">
                   <SelectValue placeholder="Select end time" />
                 </SelectTrigger>
                 <SelectContent>
                   {timeSlots.map((time) => {
-                    // Compute valid end times based on start time and other business rules
-                    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
-                    const isDisabled = Boolean(searchFilters.startTime && !validEndTimes.includes(time));
-
+                    const isDisabled = Boolean(searchFilters.startTime && time <= searchFilters.startTime);
                     const conflictType = !isDisabled ? getTimeSlotConflictType(time, false) : 'none';
                     const hasConflicts = conflictType !== 'none';
-
+                    
                     const getBadgeText = () => {
                       switch (conflictType) {
                         case 'pending': return 'Pending';
@@ -473,7 +502,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         key={time} 
                         value={time}
                         disabled={isDisabled}
-                        className={(isDisabled || hasConflicts) ? "text-gray-400 opacity-60" : ""}
+                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
