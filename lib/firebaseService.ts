@@ -40,6 +40,7 @@ import notificationServiceImport from './notificationService';
 import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory, User } from '../App';
 import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
 import { isPastBookingTime } from '../utils/timeUtils';
+import withRetry, { isNetworkError } from './withRetry';
 
 const db = () => getFirebaseDb();
 
@@ -1057,15 +1058,15 @@ export const authService = {
           console.log('🔒 Calling trackFailedLogin for:', email);
           
           try {
-            const trackFailedLogin = httpsCallable(functions, 'trackFailedLogin');
-            const result = await trackFailedLogin({ email });
+            const trackFailedLoginFn = httpsCallable(functions, 'trackFailedLogin');
+            const result = await withRetry(() => trackFailedLoginFn({ email }), { attempts: 3, shouldRetry: isNetworkError });
             const data = result.data as { 
               locked?: boolean; 
               attemptsRemaining?: number; 
               message?: string; // This message is now user-facing
               lockedUntil?: string;
             };
-  
+
             console.log('✅ trackFailedLogin response:', data);
 
             if (data.locked) {
@@ -1659,7 +1660,7 @@ export const bookingRequestService = {
       const app = getFirebaseApp();
       const functions = getFunctions(app);
       const fn = httpsCallable(functions, 'notifyAdminsOfNewRequest');
-      await fn({
+      await withRetry(() => fn({
         bookingRequestId: ref.id,
         facultyId: record.facultyId,
         facultyName: record.facultyName,
@@ -1668,7 +1669,7 @@ export const bookingRequestService = {
         startTime: record.startTime,
         endTime: record.endTime,
         purpose: record.purpose,
-      });
+      }), { attempts: 3, shouldRetry: isNetworkError });
     } catch (err) {
       console.warn('Failed to notify admins of new booking request:', err);
     }
