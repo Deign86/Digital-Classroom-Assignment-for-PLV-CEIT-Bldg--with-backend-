@@ -99,6 +99,18 @@ const setPushEnabledOnServer = async (enabled: boolean): Promise<{ success: bool
 };
 
 export const pushService = {
+  // Return whether this runtime environment supports Firebase web messaging and the
+  // Notifications API. Useful for UI to hide/disable controls on unsupported browsers
+  // (for example older Safari or iOS versions that don't support web push).
+  isPushSupported(): boolean {
+    try {
+      if (typeof window === 'undefined') return false;
+      if (!('Notification' in window)) return false;
+      return !!isSupported();
+    } catch (e) {
+      return false;
+    }
+  },
   async enablePush(): Promise<RegisterResult> {
     try {
       console.log('[pushService] enablePush invoked');

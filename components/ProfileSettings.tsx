@@ -47,6 +47,7 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
   const [pushEnabled, setPushEnabled] = useState<boolean>(() => !!(user as any).pushEnabled);
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
+  const [pushSupported, setPushSupported] = useState<boolean>(true);
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
   React.useEffect(() => {
@@ -57,6 +58,16 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
       console.warn('Failed to sync pushEnabled from user prop:', err);
     }
   }, [user?.pushEnabled]);
+
+  // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
+  React.useEffect(() => {
+    try {
+      const supported = pushService.isPushSupported ? pushService.isPushSupported() : true;
+      setPushSupported(!!supported);
+    } catch (e) {
+      setPushSupported(false);
+    }
+  }, []);
 
   const validatePassword = (): boolean => {
     const newErrors = {
@@ -200,6 +211,9 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
   const handleTogglePush = async (enabled: boolean) => {
     setIsTogglingPush(true);
     try {
+      if (!pushSupported) {
+        throw new Error('Push-not-supported');
+      }
       if (enabled) {
         const res = await pushService.enablePush();
         if (res.success && res.token) {
@@ -222,8 +236,14 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Push toggle error:', msg);
-      // show a toast-like UI feedback
-      toast.error('Push notification change failed');
+      if (msg === 'Push-not-supported' || /not supported/i.test(msg)) {
+        toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
+      } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
+        toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
+      } else {
+        // generic fallback
+        toast.error('Push notification change failed');
+      }
     } finally {
       setIsTogglingPush(false);
     }
@@ -324,10 +344,13 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 checked={pushEnabled}
                 onCheckedChange={(val) => handleTogglePush(!!val)}
                 aria-label="Enable push notifications"
-                disabled={isTogglingPush}
+                disabled={isTogglingPush || !pushSupported}
               />
             </div>
           </div>
+          {!pushSupported && (
+            <p className="mt-2 text-xs text-muted-foreground">Push notifications are not supported in this browser or device. On iOS use Safari 16.4+ and enable Web Push in system settings.</p>
+          )}
         </CardContent>
       </Card>
 

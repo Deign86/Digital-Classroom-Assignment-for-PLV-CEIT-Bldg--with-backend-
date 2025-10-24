@@ -156,28 +156,61 @@ self.addEventListener('notificationclick', function(event) {
       }
     };
 
+    // Register a single Firebase background handler once (avoid registering inside each
+    // push event which can cause duplicate handling). The top-level push handler will
+    // delegate to this handler if the payload looks like a Firebase payload.
+    try {
+      messaging.onBackgroundMessage((payload) => firebaseBackgroundHandler(payload));
+    } catch (e) {
+      // Some environments may not need or support this; continue gracefully
+      console.warn('Service worker: could not register messaging.onBackgroundMessage', e);
+    }
+
     // Replace the delegate to route through Firebase's payload parsing when available
     handlePushEvent = async (event) => {
       try {
-        // Firebase's messaging.onBackgroundMessage provides a already-parsed payload.
-        // But push event may deliver the raw data — attempt to parse via event.data.json()
+        // Try to parse the raw push event payload. If it looks like a Firebase payload
+        // (contains notification or data), use the firebaseBackgroundHandler directly.
         if (event && event.data) {
           try {
             const parsed = event.data.json();
-            // If payload looks like Firebase payload, use Firebase handler
             if (parsed && (parsed.notification || parsed.data)) {
+              // Firebase-style payload — show a single notification via our firebase handler
               return firebaseBackgroundHandler(parsed);
             }
           } catch (e) {
-            // ignore parse errors and fall back to messaging handler
+            // ignore parse errors and fall back to default behavior
           }
         }
-        // If we reach here, rely on messaging's onBackgroundMessage by invoking a no-op
-        // and letting firebase install its own handlers via the compat lib.
-        // Also, call messaging.onBackgroundMessage to ensure firebase registers its own listener.
-        messaging.onBackgroundMessage((payload) => firebaseBackgroundHandler(payload));
-        // Nothing else to await here; return resolved promise
-        return Promise.resolve();
+
+        // If we couldn't parse a firebase-like payload, fall back to the default
+        // conservative handler that attempts to present a useful notification.
+        return (async () => {
+          try {
+            let payload = null;
+            try {
+              if (event.data) payload = event.data.json();
+            } catch (e) {
+              try { payload = { notification: { body: event.data && event.data.text ? event.data.text() : '' } }; } catch (_) { payload = null; }
+            }
+
+            if (payload && (payload.notification || payload.data)) {
+              const title = (payload.notification && payload.notification.title) || 'PLV CEIT';
+              const options = {
+                body: (payload.notification && payload.notification.body) || (payload.data && payload.data.message) || '',
+                icon: '/favicon.ico',
+                data: (payload.data) || {},
+                tag: (payload.data && payload.data.notificationId) || undefined,
+                renotify: false,
+              };
+              await self.registration.showNotification(title, options);
+            } else {
+              await self.registration.showNotification('PLV CEIT', { body: 'You have a new notification', icon: '/favicon.ico' });
+            }
+          } catch (err) {
+            console.error('Default push handler failed', err);
+          }
+        })();
       } catch (e) {
         console.error('Error delegating push event to Firebase handler', e);
         return Promise.resolve();
