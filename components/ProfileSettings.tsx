@@ -240,14 +240,9 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
         toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
         toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
-      } else if (/load failed/i.test(msg) || /serviceworker/i.test(msg) || /service worker/i.test(msg) || /not found/i.test(msg)) {
-        // Common SW-related errors: 404 for /firebase-messaging-sw.js, CSP blocking, or fetch failures
-        toast.error('Service worker failed to load. Ensure `/firebase-messaging-sw.js` is reachable (HTTP 200) and the app is served over HTTPS. Check browser console network tab for details.');
-      } else if (/vapid|VAPID/i.test(msg)) {
-        toast.error('Push setup incomplete: missing VAPID key on the client. Check VITE_FIREBASE_VAPID_KEY.');
       } else {
-        // Show specific error message where available to help debugging (falls back to generic text)
-        toast.error(`Push notification change failed${msg ? ': ' + msg : ''}`);
+        // generic fallback
+        toast.error('Push notification change failed');
       }
     } finally {
       setIsTogglingPush(false);

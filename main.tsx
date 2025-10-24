@@ -10,10 +10,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 // Register Firebase Messaging service worker for push notifications
 if ('serviceWorker' in navigator) {
-  // Register in production, when served locally (localhost) or when served over HTTPS.
-  // This lets developers test background notifications on secure dev hosts (ngrok / tunneling) and
-  // enables service worker registration on iOS devices when the page is served over HTTPS.
-  const shouldRegister = import.meta.env.PROD || location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'https:';
+  // Register in production, or when served locally (localhost) so devs can test background notifications
+  const shouldRegister = import.meta.env.PROD || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   if (shouldRegister) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
