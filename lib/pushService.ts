@@ -27,7 +27,13 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   try {
     if ('serviceWorker' in navigator) {
       // navigator.serviceWorker.ready resolves when a service worker controlling the page is active
-      registration = await navigator.serviceWorker.ready;
+      try {
+        registration = await navigator.serviceWorker.ready;
+      } catch (readyErr) {
+        // capture the ready() rejection message to provide better diagnostics upstream
+        (registration as any) = undefined;
+        (registration as any)._readyError = readyErr instanceof Error ? readyErr.message : String(readyErr);
+      }
     }
   } catch (e) {
     // ignore - proceed without explicit registration
@@ -36,14 +42,22 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   // Note whether the browser supports service workers (useful for better error messages below)
   const hasServiceWorkerAPI = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
   console.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
+  let token: string | null = null;
+  try {
+    token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
+  } catch (getTokenErr) {
+    const readyErrMsg = registration && (registration as any)._readyError ? `; serviceWorker.ready error: ${(registration as any)._readyError}` : '';
+    const errMsg = getTokenErr instanceof Error ? getTokenErr.message : String(getTokenErr);
+    // Re-throw with combined context so UI can give actionable guidance
+    throw new Error(`Failed to obtain messaging token. ${errMsg}${readyErrMsg}`);
+  }
   if (!token) {
     // Provide a helpful error message when token acquisition fails. Common causes:
     // - service worker not registered / not controlling the page
     // - page not served over HTTPS (except localhost)
     // - browser does not allow FCM in this environment
     const guidance = hasServiceWorkerAPI && !registration
-      ? 'Service worker not registered or not active. Ensure `/firebase-messaging-sw.js` is registered and the site is served over HTTPS.'
+      ? 'Service worker not registered or not active. Ensure `/firebase-messaging-sw.js` is registered and reachable (200) and the site is served over HTTPS.'
       : 'Failed to obtain messaging token. Ensure notifications are allowed and the environment supports Firebase Messaging.';
     throw new Error(`Failed to obtain messaging token. ${guidance}`);
   }
