@@ -420,7 +420,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-start">Start Time</Label>
-              <Select value={searchFilters.startTime} onValueChange={(value) => setSearchFilters(prev => ({ ...prev, startTime: value }))}>
+              <Select value={searchFilters.startTime} onValueChange={handleStartTimeChange}>
                 <SelectTrigger id="search-start">
                   <SelectValue placeholder="Select start time" />
                 </SelectTrigger>
@@ -469,7 +469,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-end">End Time</Label>
-              <Select value={searchFilters.endTime} onValueChange={(value) => setSearchFilters(prev => ({ ...prev, endTime: value }))}>
+              <Select value={searchFilters.endTime} onValueChange={handleEndTimeChange}>
                 <SelectTrigger id="search-end">
                   <SelectValue placeholder="Select end time" />
                 </SelectTrigger>
