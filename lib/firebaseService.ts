@@ -496,7 +496,7 @@ const fetchUserDocByEmail = async (
   const database = getDb();
   const usersRef = collection(database, COLLECTIONS.USERS);
   const q = query(usersRef, where('emailLower', '==', emailLower));
-  const snapshot = await getDocs(q);
+  const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
 
   if (snapshot.empty) {
     return null;
@@ -510,7 +510,7 @@ const fetchUserDocByEmail = async (
 const fetchUserById = async (id: string): Promise<User | null> => {
   const database = getDb();
   const ref = doc(database, COLLECTIONS.USERS, id);
-  const snapshot = await getDoc(ref);
+  const snapshot = await withRetry(() => getDoc(ref), { attempts: 3, shouldRetry: isNetworkError });
   if (!snapshot.exists()) {
     return null;
   }
@@ -1334,7 +1334,7 @@ export const userService = {
     const database = getDb();
     const usersRef = collection(database, COLLECTIONS.USERS);
     const q = query(usersRef, orderBy('name'));
-    const snapshot = await getDocs(q);
+      const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
     return snapshot.docs.map((docSnapshot) => {
       const record = ensureUserData(docSnapshot);
       return toUser(docSnapshot.id, record);
@@ -1613,8 +1613,8 @@ export const bookingRequestService = {
   async getAll(): Promise<BookingRequest[]> {
     const database = getDb();
     const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
-    const q = query(ref, orderBy('requestDate', 'desc'));
-    const snapshot = await getDocs(q);
+  const q = query(ref, orderBy('requestDate', 'desc'));
+  const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
     return snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreBookingRequestRecord;
       return toBookingRequest(docSnapshot.id, data);
@@ -1624,8 +1624,8 @@ export const bookingRequestService = {
   async getAllForFaculty(facultyId: string): Promise<BookingRequest[]> {
     const database = getDb();
     const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
-    const q = query(ref, where('facultyId', '==', facultyId), orderBy('requestDate', 'desc'));
-    const snapshot = await getDocs(q);
+  const q = query(ref, where('facultyId', '==', facultyId), orderBy('requestDate', 'desc'));
+  const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
     return snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreBookingRequestRecord;
       return toBookingRequest(docSnapshot.id, data);
@@ -1634,8 +1634,8 @@ export const bookingRequestService = {
 
   async getById(id: string): Promise<BookingRequest | null> {
     const database = getDb();
-    const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
-    const snapshot = await getDoc(ref);
+  const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
+  const snapshot = await withRetry(() => getDoc(ref), { attempts: 3, shouldRetry: isNetworkError });
     if (!snapshot.exists()) {
       return null;
     }
@@ -1909,9 +1909,9 @@ export const scheduleService = {
   ): Promise<boolean> {
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SCHEDULES);
-    const snapshot = await getDocs(
+    const snapshot = await withRetry(() => getDocs(
       query(ref, where('classroomId', '==', classroomId), where('date', '==', date))
-    );
+    ), { attempts: 3, shouldRetry: isNetworkError });
 
     return snapshot.docs.some((docSnapshot) => {
       if (excludeId && docSnapshot.id === excludeId) {
@@ -1954,8 +1954,8 @@ export const signupRequestService = {
   async getAll(): Promise<SignupRequest[]> {
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SIGNUP_REQUESTS);
-    const q = query(ref, orderBy('requestDate', 'desc'));
-    const snapshot = await getDocs(q);
+  const q = query(ref, orderBy('requestDate', 'desc'));
+  const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
     return snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreSignupRequestRecord;
       return toSignupRequest(docSnapshot.id, data);
@@ -1964,8 +1964,8 @@ export const signupRequestService = {
 
   async getById(id: string): Promise<SignupRequest | null> {
     const database = getDb();
-    const ref = doc(database, COLLECTIONS.SIGNUP_REQUESTS, id);
-    const snapshot = await getDoc(ref);
+  const ref = doc(database, COLLECTIONS.SIGNUP_REQUESTS, id);
+  const snapshot = await withRetry(() => getDoc(ref), { attempts: 3, shouldRetry: isNetworkError });
     if (!snapshot.exists()) {
       return null;
     }
@@ -1977,8 +1977,8 @@ export const signupRequestService = {
     const emailLower = email.toLowerCase();
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SIGNUP_REQUESTS);
-    const q = query(ref, where('emailLower', '==', emailLower), where('status', '==', 'pending'));
-    const snapshot = await getDocs(q);
+  const q = query(ref, where('emailLower', '==', emailLower), where('status', '==', 'pending'));
+  const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
     if (snapshot.empty) {
       return null;
     }
