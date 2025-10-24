@@ -6,10 +6,58 @@ type ScheduledEventLike = {
   scheduleTime: string;
 };
 import * as admin from 'firebase-admin';
+import * as fs from 'fs';
 import type { QueryDocumentSnapshot, Transaction } from 'firebase-admin/firestore';
 
-admin.initializeApp();
-const db = admin.firestore();
+// Initialize firebase-admin. Prefer an explicit service account when provided via
+// environment to support local runs or pinned credentials. The code supports two
+// inputs:
+// - FIREBASE_ADMIN_SA_JSON: the full service account JSON string
+// - FIREBASE_ADMIN_SA_PATH: a filesystem path to a service account JSON file
+// - GOOGLE_APPLICATION_CREDENTIALS is also respected as a path fallback
+// If none are provided, fall back to the default ADC behavior used by Cloud
+// Functions (recommended in production).
+let db: admin.firestore.Firestore;
+try {
+  const saJson = process.env.FIREBASE_ADMIN_SA_JSON;
+  const saPath = process.env.FIREBASE_ADMIN_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+  if (saJson) {
+    try {
+      const serviceAccount = JSON.parse(saJson) as admin.ServiceAccount;
+      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+      console.info('Initialized firebase-admin using FIREBASE_ADMIN_SA_JSON env var');
+    } catch (e) {
+      console.error('Failed to parse FIREBASE_ADMIN_SA_JSON, falling back to default credentials:', e);
+      admin.initializeApp();
+    }
+  } else if (saPath && fs.existsSync(saPath)) {
+    try {
+      const raw = fs.readFileSync(saPath, 'utf8');
+      const serviceAccount = JSON.parse(raw) as admin.ServiceAccount;
+      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+      console.info(`Initialized firebase-admin using service account file at ${saPath}`);
+    } catch (e) {
+      console.error(`Failed to read/parse service account at ${saPath}, falling back to default credentials:`, e);
+      admin.initializeApp();
+    }
+  } else {
+    // Default ADC (Cloud Functions will use the attached service account)
+    admin.initializeApp();
+    console.info('Initialized firebase-admin using default application credentials');
+  }
+  db = admin.firestore();
+} catch (initErr) {
+  // Extremely defensive: try to initialize with default creds if anything unexpected happens
+  console.error('Unexpected error initializing firebase-admin, attempting default init:', initErr);
+  try {
+    admin.initializeApp();
+    db = admin.firestore();
+  } catch (e) {
+    console.error('Final firebase-admin initialization attempt failed:', e);
+    throw e;
+  }
+}
 
 // Minimal local types to avoid casting to `any` in a few server-side helpers
 type DeletionLockDoc = { locked?: boolean; lockedBy?: string; timestamp?: number };
