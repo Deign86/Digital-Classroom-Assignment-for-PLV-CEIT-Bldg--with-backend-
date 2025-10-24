@@ -9,7 +9,7 @@ import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi as LucideWifi 
 import * as Phosphor from '@phosphor-icons/react';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
-import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour } from '../utils/timeUtils';
+import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour, isValidTimeRange, isPastBookingTime, getValidEndTimes } from '../utils/timeUtils';
 import type { Classroom, Schedule, BookingRequest } from '../App';
 
 interface RoomSearchProps {
@@ -389,7 +389,13 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                   {timeSlots.map((time) => {
                     const conflictType = getTimeSlotConflictType(time, true);
                     const hasConflicts = conflictType !== 'none';
-                    
+
+                    // Disable start times that are in conflict across available classrooms
+                    // or are in the past for the selected date
+                    const isStartDisabled = Boolean(
+                      searchFilters.date && (hasConflicts || isPastBookingTime(searchFilters.date, time))
+                    );
+
                     const getBadgeText = () => {
                       switch (conflictType) {
                         case 'pending': return 'Pending';
@@ -412,13 +418,14 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                       <SelectItem 
                         key={time} 
                         value={time}
-                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                        disabled={isStartDisabled}
+                        className={isStartDisabled ? "text-gray-400 opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
-                          {hasConflicts && (
+                          {(hasConflicts || (searchFilters.date && isPastBookingTime(searchFilters.date, time))) && (
                             <Badge variant="outline" className={getBadgeClass()}>
-                              {getBadgeText()}
+                              {getBadgeText() || (isPastBookingTime(searchFilters.date, time) ? 'Past' : '')}
                             </Badge>
                           )}
                         </div>
@@ -436,10 +443,13 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                 </SelectTrigger>
                 <SelectContent>
                   {timeSlots.map((time) => {
-                    const isDisabled = Boolean(searchFilters.startTime && time <= searchFilters.startTime);
+                    // Compute valid end times based on start time and other business rules
+                    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
+                    const isDisabled = Boolean(searchFilters.startTime && !validEndTimes.includes(time));
+
                     const conflictType = !isDisabled ? getTimeSlotConflictType(time, false) : 'none';
                     const hasConflicts = conflictType !== 'none';
-                    
+
                     const getBadgeText = () => {
                       switch (conflictType) {
                         case 'pending': return 'Pending';
@@ -463,7 +473,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         key={time} 
                         value={time}
                         disabled={isDisabled}
-                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                        className={(isDisabled || hasConflicts) ? "text-gray-400 opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
