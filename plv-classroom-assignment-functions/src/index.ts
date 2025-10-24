@@ -879,6 +879,7 @@ async function persistAndSendNotification(
         } else {
           // Robust runtime handling for different firebase-admin versions:
           // Try sendMulticast, then sendAll, then fall back to sendToDevice (older API).
+          // If none of those exist, fall back to chunked individual sends using admin.messaging().send()
           const messagingAny = (admin.messaging() as any);
           try {
             if (typeof messagingAny.sendMulticast === 'function') {
@@ -891,10 +892,23 @@ async function persistAndSendNotification(
               // sendToDevice accepts (registrationTokens, payload[, options]) and exists on older SDKs
               await messagingAny.sendToDevice(tokens, notificationPayload);
             } else {
-              logger.error('No compatible FCM multicast/sendAll/sendToDevice method available on admin.messaging()');
+              // Fallback: send individual messages in controllable chunks to avoid overloading the runtime
+              logger.warn('No compatible FCM multicast/sendAll/sendToDevice method available on admin.messaging(); falling back to chunked individual sends.');
+              const CHUNK_SIZE = 100;
+              for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
+                const chunk = tokens.slice(i, i + CHUNK_SIZE);
+                const promises = chunk.map((t: string) => {
+                  const msg = { token: t, ...notificationPayload } as any;
+                  return admin.messaging().send(msg).then((r) => ({ ok: true, res: r })).catch((e) => ({ ok: false, err: e }));
+                });
+                const results = await Promise.all(promises);
+                const failures = results.filter(r => !r.ok) as any[];
+                if (failures.length > 0) {
+                  logger.warn(`FCM chunk starting at ${i} had ${failures.length} failures`, failures.map(f => f.err));
+                }
+              }
             }
           } catch (sendErr) {
-            // Re-throw / log original FCM send errors with context
             logger.error('FCM multicast/send fallback failed:', sendErr);
           }
         }

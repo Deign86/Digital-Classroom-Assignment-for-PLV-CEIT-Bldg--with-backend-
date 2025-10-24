@@ -858,7 +858,17 @@ export const authService = {
       };
 
       await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
-      
+
+      // Notify admins about the new signup request using the server callable for consistency and permissions
+      try {
+        const app = getFirebaseApp();
+        const functions = getFunctions(app);
+        const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
+        await fn({ requestId: firebaseUser.uid, name: record.name, email: record.email });
+      } catch (err) {
+        console.warn('Failed to notify admins of new signup:', err);
+      }
+
       await sendEmailVerification(firebaseUser).catch(() => undefined);
 
       return { request: toSignupRequest(firebaseUser.uid, requestRecord) };

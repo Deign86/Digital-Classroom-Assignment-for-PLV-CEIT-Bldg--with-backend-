@@ -14,6 +14,8 @@ import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
+import { buttonVariants } from './components/ui/button';
+import { cn } from './components/ui/utils';
 import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import {
@@ -162,6 +164,7 @@ export default function App() {
     feedback: string;
     requestName: string;
   } | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -1000,6 +1003,7 @@ export default function App() {
   const confirmPendingReject = useCallback(async () => {
     if (!pendingRejectAction || !currentUser) return;
     const { requestId, userId, feedback, requestName } = pendingRejectAction;
+    setIsRejecting(true);
     try {
       const historyRecord = await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback);
 
@@ -1020,6 +1024,8 @@ export default function App() {
       console.error('Failed to reject signup request:', err);
       toast.error('Failed to reject signup request');
     } finally {
+      setIsRejecting(false);
+      // Close dialog after processing completes
       setPendingRejectAction(null);
     }
   }, [pendingRejectAction, currentUser]);
@@ -1374,7 +1380,7 @@ export default function App() {
           <Toaster />
 
           {/* App-styled confirm dialog for destructive signup rejection */}
-          <AlertDialog open={!!pendingRejectAction} onOpenChange={(open) => { if (!open) cancelPendingReject(); }}>
+          <AlertDialog open={!!pendingRejectAction}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Reject and Delete Account?</AlertDialogTitle>
@@ -1384,8 +1390,19 @@ export default function App() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={cancelPendingReject}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmPendingReject} className="ml-2 bg-red-600 text-white">Confirm Delete</AlertDialogAction>
+                <AlertDialogCancel onClick={cancelPendingReject} disabled={isRejecting}>Cancel</AlertDialogCancel>
+                {/* Use a plain button here to avoid Radix auto-closing the dialog before our handler runs.
+                    Apply the same visual style as the AlertDialogCancel by using the shared buttonVariants
+                    with the 'outline' variant so both buttons match visually (pill-shaped, same size).
+                */}
+                <button
+                  type="button"
+                  onClick={confirmPendingReject}
+                  className={cn(buttonVariants({ variant: 'outline' }), 'ml-2')}
+                  disabled={isRejecting}
+                >
+                  {isRejecting ? 'Processing...' : 'Confirm Delete'}
+                </button>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
