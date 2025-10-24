@@ -240,9 +240,11 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
         toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
         toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
+      } else if (/vapid|VAPID/i.test(msg)) {
+        toast.error('Push setup incomplete: missing VAPID key on the client. Check VITE_FIREBASE_VAPID_KEY.');
       } else {
-        // generic fallback
-        toast.error('Push notification change failed');
+        // Show specific error message where available to help debugging (falls back to generic text)
+        toast.error(`Push notification change failed${msg ? ': ' + msg : ''}`);
       }
     } finally {
       setIsTogglingPush(false);

@@ -33,9 +33,20 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
     // ignore - proceed without explicit registration
     registration = undefined;
   }
+  // Note whether the browser supports service workers (useful for better error messages below)
+  const hasServiceWorkerAPI = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
   console.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
   const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
-  if (!token) throw new Error('Failed to obtain messaging token');
+  if (!token) {
+    // Provide a helpful error message when token acquisition fails. Common causes:
+    // - service worker not registered / not controlling the page
+    // - page not served over HTTPS (except localhost)
+    // - browser does not allow FCM in this environment
+    const guidance = hasServiceWorkerAPI && !registration
+      ? 'Service worker not registered or not active. Ensure `/firebase-messaging-sw.js` is registered and the site is served over HTTPS.'
+      : 'Failed to obtain messaging token. Ensure notifications are allowed and the environment supports Firebase Messaging.';
+    throw new Error(`Failed to obtain messaging token. ${guidance}`);
+  }
   console.log('[pushService] Obtained FCM token:', token);
   return token;
 };
