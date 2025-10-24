@@ -11,8 +11,8 @@
   "main": "lib/index.js",
   "dependencies": {
     "digital-classroom-assignment-for-plv-ceit-bldg": "file:..",
-    "firebase-admin": "^11.11.1",
-    "firebase-functions": "^5.0.0"
+  "firebase-admin": "^13.5.0",
+  "firebase-functions": "^6.6.0"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.200",
