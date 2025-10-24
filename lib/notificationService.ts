@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import withRetry, { isNetworkError } from './withRetry';
 
 export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';
 
@@ -81,7 +82,7 @@ export const createNotification = async (
     actorId: options?.actorId,
   };
 
-  const result = await fn(payload);
+  const result = await withRetry(() => fn(payload), { attempts: 3, shouldRetry: isNetworkError });
   const anyResult = result as any;
   const id = anyResult?.data?.id ?? null;
   // If the server skipped creation because actor === recipient, it returns skipped:true and id === null
@@ -97,7 +98,7 @@ export const acknowledgeNotification = async (id: string, acknowledgedBy: string
   const app = getFirebaseApp();
   const functions = getFunctions(app);
   const fn = httpsCallable(functions, 'acknowledgeNotification');
-  const result = await fn({ notificationId: id });
+  const result = await withRetry(() => fn({ notificationId: id }), { attempts: 3, shouldRetry: isNetworkError });
   const anyResult = result as any;
   if (!anyResult?.data?.success) {
     throw new Error('Failed to acknowledge notification');
@@ -109,7 +110,7 @@ export const acknowledgeNotifications = async (ids: string[], acknowledgedBy: st
   const app = getFirebaseApp();
   const functions = getFunctions(app);
   const fn = httpsCallable(functions, 'acknowledgeNotifications');
-  const result = await fn({ notificationIds: ids });
+  const result = await withRetry(() => fn({ notificationIds: ids }), { attempts: 3, shouldRetry: isNetworkError });
   const anyResult = result as any;
   if (!anyResult?.data?.success) {
     throw new Error('Failed to acknowledge notifications');

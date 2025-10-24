@@ -865,7 +865,7 @@ export const authService = {
         const app = getFirebaseApp();
         const functions = getFunctions(app);
         const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
-        await fn({ requestId: firebaseUser.uid, name: record.name, email: record.email });
+        await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
       } catch (err) {
         console.warn('Failed to notify admins of new signup:', err);
       }
@@ -932,7 +932,7 @@ export const authService = {
         const app = getFirebaseApp();
         const functions = getFunctions(app);
         const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
-        await fn({ requestId: firebaseUser.uid, name: record.name, email: record.email });
+        await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
       } catch (err) {
         console.warn('Failed to notify admins of new signup:', err);
       }
@@ -1590,7 +1590,7 @@ export const classroomService = {
     const app = getFirebaseApp();
     const functions = getFunctions(app);
     const deleteClassroomCascade = httpsCallable(functions, 'deleteClassroomCascade');
-    const result = await deleteClassroomCascade({ classroomId: id });
+    const result = await withRetry(() => deleteClassroomCascade({ classroomId: id }), { attempts: 3, shouldRetry: isNetworkError });
     return result.data as { success: boolean; deletedRelated: number };
   },
 };
@@ -1934,9 +1934,9 @@ export const scheduleService = {
     }
 
     try {
-      const functions = getFunctions();
-      const fn = httpsCallable(functions, 'cancelApprovedBooking');
-      await fn({ scheduleId, adminFeedback: fb });
+  const functions = getFunctions();
+  const fn = httpsCallable(functions, 'cancelApprovedBooking');
+  await withRetry(() => fn({ scheduleId, adminFeedback: fb }), { attempts: 3, shouldRetry: isNetworkError });
       return;
     } catch (err: any) {
       // Surface clearer error messages coming from cloud function

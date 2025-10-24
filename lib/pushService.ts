@@ -1,5 +1,6 @@
 import { getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import withRetry, { isNetworkError } from './withRetry';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 type RegisterResult = { success: boolean; token?: string; message?: string };
@@ -45,7 +46,7 @@ const registerTokenOnServer = async (token: string): Promise<RegisterResult> => 
   const fn = httpsCallable(functions, 'registerPushToken');
   try {
     console.log('[pushService] Calling registerPushToken callable');
-    const res = await fn({ token });
+    const res = await withRetry(() => fn({ token }), { attempts: 3, shouldRetry: isNetworkError });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
       console.log('[pushService] registerPushToken succeeded');
@@ -65,7 +66,7 @@ const unregisterTokenOnServer = async (token: string): Promise<RegisterResult> =
   const fn = httpsCallable(functions, 'unregisterPushToken');
   try {
     console.log('[pushService] Calling unregisterPushToken callable');
-    const res = await fn({ token });
+    const res = await withRetry(() => fn({ token }), { attempts: 3, shouldRetry: isNetworkError });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
       console.log('[pushService] unregisterPushToken succeeded');
@@ -84,7 +85,7 @@ const setPushEnabledOnServer = async (enabled: boolean): Promise<{ success: bool
   const fn = httpsCallable(functions, 'setPushEnabled');
   try {
     console.log('[pushService] Calling setPushEnabled callable with', enabled);
-    const res = await fn({ enabled });
+    const res = await withRetry(() => fn({ enabled }), { attempts: 3, shouldRetry: isNetworkError });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
       console.log('[pushService] setPushEnabled succeeded');
@@ -141,7 +142,7 @@ export const pushService = {
     const fn = httpsCallable(functions, 'sendTestPush');
     try {
       console.log('[pushService] Calling sendTestPush callable');
-      const res = await fn({ token, title, body });
+      const res = await withRetry(() => fn({ token, title, body }), { attempts: 3, shouldRetry: isNetworkError });
       const anyRes: any = res;
       if (anyRes?.data?.success) {
         console.log('[pushService] sendTestPush succeeded');
