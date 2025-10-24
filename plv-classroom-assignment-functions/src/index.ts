@@ -761,6 +761,46 @@ async function persistAndSendNotification(
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
+  // Server-side dedupe: avoid creating duplicate notifications for the same
+  // recipient, type and bookingRequestId within a short time window. This is
+  // a best-effort guard against accidental double-creation from different
+  // code paths (client + server) or retried operations.
+  try {
+    const recentSnap = await db
+      .collection('notifications')
+      .where('userId', '==', userId)
+      .where('type', '==', type)
+      .orderBy('createdAt', 'desc')
+      .limit(5)
+      .get();
+
+    const nowMs = Date.now();
+    const WINDOW_MS = 2 * 60 * 1000; // 2 minutes
+
+    for (const doc of recentSnap.docs) {
+      const d = doc.data() as any;
+      // Normalize bookingRequestId values for comparison (null vs undefined)
+      const existingBR = typeof d.bookingRequestId === 'undefined' ? null : d.bookingRequestId;
+      const newBR = typeof options?.bookingRequestId === 'undefined' ? null : options?.bookingRequestId;
+
+      // createdAt may be a Firestore Timestamp; convert to millis safely
+      const createdAtTs = d.createdAt && typeof d.createdAt.toMillis === 'function' ? d.createdAt.toMillis() : 0;
+
+      if (
+        existingBR === newBR &&
+        (!d.acknowledgedAt) &&
+        createdAtTs > 0 &&
+        (nowMs - createdAtTs) <= WINDOW_MS
+      ) {
+        logger.info(`persistAndSendNotification: skipping duplicate notification for user=${userId} type=${type} bookingRequestId=${newBR}`);
+        return { skipped: true, id: null } as any;
+      }
+    }
+  } catch (dedupeErr) {
+    // If dedupe check fails for any reason, proceed to create the notification
+    logger.warn('persistAndSendNotification: dedupe check failed, continuing to create notification', dedupeErr);
+  }
+
   const ref = await db.collection('notifications').add(record);
 
   try {
