@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './ui/table';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from './ui/dialog';
@@ -57,22 +57,26 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>User management</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle>Users</CardTitle>
+        <CardDescription>Manage user accounts, roles, and account actions (lock, disable, delete).</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2 w-full sm:w-1/2">
-            <Input placeholder="Search by name, email or dept" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-col gap-3 mb-4">
+          {/* Search row: full width */}
+            <div className="w-full">
+            <Input aria-label="Search users" className="w-full rounded-full" placeholder="Search by name, email or dept" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
 
-          <div className="flex items-center gap-2">
-            <select className="input" value={filterRole} onChange={(e) => setFilterRole(e.target.value as any)}>
+          {/* Filters on their own row, aligned to the right */}
+          <div className="flex items-center gap-2 justify-end w-full">
+            <label htmlFor="roleFilter" className="sr-only">Filter by role</label>
+            <select id="roleFilter" className="input rounded-full" value={filterRole} onChange={(e) => setFilterRole(e.target.value as any)}>
               <option value="all">All roles</option>
               <option value="admin">Admin</option>
               <option value="faculty">Faculty</option>
             </select>
-            <Button variant="outline" size="sm" onClick={() => { setSearch(''); setFilterRole('all'); }}>Reset</Button>
+            <Button variant="outline" size="sm" className="rounded-full" onClick={() => { setSearch(''); setFilterRole('all'); }}>Reset</Button>
           </div>
         </div>
 
@@ -98,10 +102,10 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                     {onChangeRole && (
                       <div className="ml-2">
                         {u.role !== 'admin' ? (
-                          <Button size="sm" variant="ghost" onClick={() => onChangeRole(u.id, 'admin')}>Make admin</Button>
-                        ) : (
-                          <Button size="sm" variant="ghost" onClick={() => onChangeRole(u.id, 'faculty')}>Make faculty</Button>
-                        )}
+                              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => onChangeRole(u.id, 'admin')}>Make admin</Button>
+                            ) : (
+                              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => onChangeRole(u.id, 'faculty')}>Make faculty</Button>
+                            )}
                       </div>
                     )}
                   </div>
@@ -115,16 +119,16 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {u.accountLocked ? (
-                      <Button size="sm" variant="outline" onClick={() => onUnlockAccount && onUnlockAccount(u.id)}>
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => onUnlockAccount && onUnlockAccount(u.id)}>
                         <Unlock className="h-4 w-4 mr-2" /> Unlock
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => onDisableUser && onDisableUser(u.id)}>
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => onDisableUser && onDisableUser(u.id)}>
                         <UserMinus className="h-4 w-4 mr-2" /> Disable
                       </Button>
                     )}
 
-                    <Button size="sm" variant="destructive" onClick={() => startDelete(u)}>
+                    <Button size="sm" variant="destructive" className="rounded-full" onClick={() => startDelete(u)}>
                       <Trash2 className="h-4 w-4 mr-2" /> Delete
                     </Button>
                   </div>
@@ -149,8 +153,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setSelectedUserToDelete(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={doDelete}>Delete</Button>
+              <Button variant="ghost" className="rounded-full" onClick={() => setSelectedUserToDelete(null)}>Cancel</Button>
+              <Button variant="destructive" className="rounded-full" onClick={doDelete}>Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
