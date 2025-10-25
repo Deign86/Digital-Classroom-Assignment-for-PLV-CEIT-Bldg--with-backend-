@@ -5,6 +5,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from './ui/dialog';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { MoreHorizontal, Trash2, User, UserMinus, UserPlus, Lock, Unlock } from 'lucide-react';
 import type { User as AppUser } from '../App';
@@ -153,9 +155,16 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
             <div className="py-2">
               <p className="text-sm">Type the user's email to confirm deletion:</p>
               <p className="text-xs text-muted-foreground my-2">{selectedUserToDelete?.email}</p>
-              <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="Type email to confirm" />
-              <div className="flex items-center gap-2 mt-2">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={isHardDelete} onChange={(e) => setIsHardDelete(e.target.checked)} /> Hard delete (irreversible)</label>
+              <Input className="rounded-md" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="Type email to confirm" />
+              <div className="flex items-start gap-3 mt-3">
+                <Checkbox checked={isHardDelete} onCheckedChange={(checked) => setIsHardDelete(!!checked)} className="rounded-sm" />
+                <div>
+                  <Label className="text-sm">
+                    <span className="font-medium">Hard delete</span>
+                    <span className="text-xs text-muted-foreground ml-2">(irreversible)</span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">This will permanently remove the user and associated data. Use with caution.</p>
+                </div>
               </div>
             </div>
             <DialogFooter>
