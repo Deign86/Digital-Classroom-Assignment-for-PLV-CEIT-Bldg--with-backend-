@@ -18,6 +18,7 @@ export default function RequestCard({
   onCancelApproved,
   checkConflicts,
   status,
+  onQuickRebook,
   // New props for selection
   showSelect,
   selected,
@@ -34,6 +35,7 @@ export default function RequestCard({
   selected?: boolean;
   onToggleSelect?: (checked: boolean) => void;
   disabled?: boolean;
+  onQuickRebook?: (initialData: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => void;
 }) {
   const [hasConflict, setHasConflict] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -102,17 +104,18 @@ export default function RequestCard({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isExpired && (
+            {isExpired ? (
               <Badge variant="destructive">Expired</Badge>
+            ) : (
+              <Badge variant={
+                status === 'pending' ? 'secondary' :
+                status === 'approved' ? 'default' :
+                status === 'rejected' ? 'destructive' :
+                'destructive'
+              }>
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Badge>
             )}
-            <Badge variant={
-              status === 'pending' ? 'secondary' :
-              status === 'approved' ? 'default' :
-              status === 'rejected' ? 'destructive' :
-              'destructive'
-            }>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Badge>
           </div>
         </div>
       </CardHeader>
@@ -171,7 +174,7 @@ export default function RequestCard({
           </div>
         )}
 
-        {status === 'pending' && (
+  {status === 'pending' && (
           <div className="flex gap-3 pt-3 border-t items-center">
             {!isExpired ? (
               // If there's a conflict, show a tooltip explaining why Approve is disabled
@@ -238,6 +241,24 @@ export default function RequestCard({
               // nothing (no Reject button for expired items)
               <div />
             )}
+                <div className="flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      try { announce('Attempting quick rebook', 'polite'); } catch (e) {}
+                      onQuickRebook?.({
+                        classroomId: request.classroomId,
+                        date: request.date,
+                        startTime: convertTo12Hour(request.startTime),
+                        endTime: convertTo12Hour(request.endTime),
+                        purpose: request.purpose || ''
+                      });
+                    }}
+                  >
+                    Quick Rebook
+                  </Button>
+                </div>
           </div>
         )}
 
