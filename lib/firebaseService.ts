@@ -1437,6 +1437,26 @@ export const userService = {
     const record = ensureUserData(snapshot);
     return toUser(snapshot.id, record);
   },
+  
+  async lockAccount(id: string, minutes = 30): Promise<User> {
+    const database = getDb();
+    const userRef = doc(database, COLLECTIONS.USERS, id);
+    const lockedUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+
+    await updateDoc(userRef, {
+      accountLocked: true,
+      lockedUntil,
+      updatedAt: nowIso(),
+    });
+
+    const snapshot = await getDoc(userRef);
+    if (!snapshot.exists()) {
+      throw new Error('User not found');
+    }
+
+    const record = ensureUserData(snapshot);
+    return toUser(snapshot.id, record);
+  },
 
   async delete(id: string): Promise<void> {
     const database = getDb();
@@ -2333,3 +2353,12 @@ export const importAllData = (): never => {
     'importAllData is not available with the Firebase backend. Use Firestore import tools instead.'
   );
 };
+
+// Admin helper: call server-side deleteUserAccount Cloud Function
+export async function adminDeleteUser(userId: string, hardDelete = false) {
+  const app = getFirebaseApp();
+  const functions = getFunctions(app);
+  const fn = httpsCallable(functions, 'deleteUserAccount');
+  const result = await withRetry(() => fn({ userId, hardDelete }), { attempts: 3, shouldRetry: isNetworkError });
+  return result.data;
+}

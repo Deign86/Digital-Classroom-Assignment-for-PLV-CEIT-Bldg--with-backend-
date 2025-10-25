@@ -30,6 +30,8 @@ import AdminReports from './AdminReports';
 import ProfileSettings from './ProfileSettings';
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import AdminUserManagement from './AdminUserManagement';
+import { userService, adminDeleteUser } from '../lib/firebaseService';
 import type { User, Classroom, BookingRequest, SignupRequest, SignupHistory, Schedule } from '../App';
 
 interface AdminDashboardProps {
@@ -69,7 +71,7 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
   const STORAGE_KEY = storageKeyFor('admin');
 
-  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings'] as const;
+  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management'] as const;
   const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'overview', Array.from(allowedTabs)));
 
   useEffect(() => {
@@ -157,7 +159,7 @@ export default function AdminDashboard({
       <div className="p-4 sm:p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Layout */}
-          <TabsList className="hidden lg:grid w-full grid-cols-7 mx-auto max-w-full gap-1 p-1">
+          <TabsList className="hidden lg:grid w-full grid-cols-8 mx-auto max-w-full gap-1 p-1">
             <TabsTrigger value="overview" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
               <BarChart3 className="h-4 w-4 flex-shrink-0" />
               <span>Overview</span>
@@ -191,6 +193,10 @@ export default function AdminDashboard({
             <TabsTrigger value="reports" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
               <FileText className="h-4 w-4 flex-shrink-0" />
               <span>Reports</span>
+            </TabsTrigger>
+            <TabsTrigger value="user-management" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
+              <Users className="h-4 w-4 flex-shrink-0" />
+              <span>Users</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
               <UserCog className="h-4 w-4 flex-shrink-0" />
@@ -234,6 +240,10 @@ export default function AdminDashboard({
               <TabsTrigger value="reports" className="mobile-tab-item flex items-center space-x-2">
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 <span>Reports</span>
+              </TabsTrigger>
+              <TabsTrigger value="user-management" className="mobile-tab-item flex items-center space-x-2">
+                <Users className="h-4 w-4 flex-shrink-0" />
+                <span>Users</span>
               </TabsTrigger>
               <TabsTrigger value="settings" className="mobile-tab-item flex items-center space-x-2">
                 <UserCog className="h-4 w-4 flex-shrink-0" />
@@ -551,6 +561,24 @@ export default function AdminDashboard({
                 bookingRequests={bookingRequests}
                 schedules={schedules}
                 signupRequests={signupRequests}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="animate-in">
+              <ProfileSettings user={user} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="user-management">
+            <div className="animate-in">
+              <AdminUserManagement users={users}
+                onDisableUser={async (id) => { await userService.lockAccount(id); }}
+                onEnableUser={async (id) => { await userService.unlockAccount(id); }}
+                onDeleteUser={async (id, hard) => { await adminDeleteUser(id, !!hard); }}
+                onChangeRole={async (id, role) => { await userService.update(id, { role }); }}
+                onUnlockAccount={async (id) => { await userService.unlockAccount(id); }}
               />
             </div>
           </TabsContent>
