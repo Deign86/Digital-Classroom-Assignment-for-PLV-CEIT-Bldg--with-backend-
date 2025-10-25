@@ -15,7 +15,7 @@ interface AdminUserManagementProps {
   users?: AppUser[];
   onDisableUser?: (userId: string) => Promise<void>;
   onEnableUser?: (userId: string) => Promise<void>;
-  onDeleteUser?: (userId: string, hard?: boolean) => Promise<void>;
+  onDeleteUser?: (userId: string, hard?: boolean) => Promise<any>;
   onChangeRole?: (userId: string, role: AppUser['role']) => Promise<void>;
   onUnlockAccount?: (userId: string) => Promise<void>;
 }
@@ -49,12 +49,24 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
       return;
     }
     try {
-      if (onDeleteUser) await onDeleteUser(selectedUserToDelete.id, isHardDelete);
-      toast.success('User deletion started');
+      if (onDeleteUser) {
+        const res = await onDeleteUser(selectedUserToDelete.id, isHardDelete);
+        // If server returned a message, show it. Otherwise, show a clearer success message.
+        if (res && res.message) {
+          toast.success(res.message);
+        } else if (res && res.success === true) {
+          toast.success('User deleted');
+        } else {
+          toast.success('Deletion request completed');
+        }
+      } else {
+        toast.error('Delete handler not available');
+      }
       setSelectedUserToDelete(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete user error', err);
-      toast.error('Failed to delete user');
+      const msg = err?.message || (err?.code ? `${err.code}` : null) || 'Failed to delete user';
+      toast.error(msg);
     }
   };
 

@@ -576,7 +576,7 @@ export default function AdminDashboard({
               <AdminUserManagement users={users}
                 onDisableUser={async (id) => { await userService.lockAccount(id); }}
                 onEnableUser={async (id) => { await userService.unlockAccount(id); }}
-                onDeleteUser={async (id, hard) => { await adminDeleteUser(id, !!hard); }}
+                onDeleteUser={async (id, hard) => { const res = await adminDeleteUser(id, !!hard); return res; }}
                 onChangeRole={async (id, role) => { await userService.update(id, { role }); }}
                 onUnlockAccount={async (id) => { await userService.unlockAccount(id); }}
               />
