@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
-import { MoreHorizontal, Trash2, User, UserMinus, UserPlus, Lock, Unlock } from 'lucide-react';
+import { MoreHorizontal, Trash2, User, UserMinus, UserPlus, Lock, Unlock, Loader2 } from 'lucide-react';
 import type { User as AppUser } from '../App';
 
 interface AdminUserManagementProps {
@@ -26,6 +26,12 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<AppUser | null>(null);
   const [confirmText, setConfirmText] = useState('');
   const [isHardDelete, setIsHardDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [pendingPromotionUser, setPendingPromotionUser] = useState<AppUser | null>(null);
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [pendingDemotionUser, setPendingDemotionUser] = useState<AppUser | null>(null);
+  const [isDemoting, setIsDemoting] = useState(false);
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -48,6 +54,7 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
       toast.error('Please type the user email to confirm deletion');
       return;
     }
+    setIsDeleting(true);
     try {
       if (onDeleteUser) {
         const res = await onDeleteUser(selectedUserToDelete.id, isHardDelete);
@@ -67,6 +74,63 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
       console.error('Delete user error', err);
       const msg = err?.message || (err?.code ? `${err.code}` : null) || 'Failed to delete user';
       toast.error(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Per-row action handlers: await parent handlers and surface messages; disable the single row while running
+  const handleDisable = async (user: AppUser) => {
+    setProcessingUserId(user.id);
+    try {
+      if (onDisableUser) {
+        const res: any = await onDisableUser(user.id);
+        if (res && res.message) toast.success(res.message);
+        else toast.success(`${user.name} disabled`);
+      } else {
+        toast.error('Disable handler not available');
+      }
+    } catch (err: any) {
+      console.error('Disable error', err);
+      toast.error(err?.message || 'Failed to disable user');
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleEnable = async (user: AppUser) => {
+    setProcessingUserId(user.id);
+    try {
+      if (onEnableUser) {
+        const res: any = await onEnableUser(user.id);
+        if (res && res.message) toast.success(res.message);
+        else toast.success(`${user.name} enabled`);
+      } else {
+        toast.error('Enable handler not available');
+      }
+    } catch (err: any) {
+      console.error('Enable error', err);
+      toast.error(err?.message || 'Failed to enable user');
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const handleUnlock = async (user: AppUser) => {
+    setProcessingUserId(user.id);
+    try {
+      if (onUnlockAccount) {
+        const res: any = await onUnlockAccount(user.id);
+        if (res && res.message) toast.success(res.message);
+        else toast.success(`${user.name} unlocked`);
+      } else {
+        toast.error('Unlock handler not available');
+      }
+    } catch (err: any) {
+      console.error('Unlock error', err);
+      toast.error(err?.message || 'Failed to unlock user');
+    } finally {
+      setProcessingUserId(null);
     }
   };
 
@@ -122,9 +186,9 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                     {onChangeRole && (
                       <div className="ml-2">
                         {u.role !== 'admin' ? (
-                              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => onChangeRole(u.id, 'admin')}>Make admin</Button>
+                              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setPendingPromotionUser(u)}>Make admin</Button>
                             ) : (
-                              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => onChangeRole(u.id, 'faculty')}>Make faculty</Button>
+                              <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setPendingDemotionUser(u)}>Make faculty</Button>
                             )}
                       </div>
                     )}
@@ -138,19 +202,37 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {u.accountLocked ? (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => onUnlockAccount && onUnlockAccount(u.id)}>
-                        <Unlock className="h-4 w-4 mr-2" /> Unlock
+                      {u.accountLocked ? (
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUnlock(u)} disabled={processingUserId === u.id}>
+                        {processingUserId === u.id ? (
+                          <span className="inline-flex items-center">
+                            <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                            <span className="sr-only">Unlocking {u.name}</span>
+                          </span>
+                        ) : (
+                          <Unlock className="h-4 w-4 mr-2" />
+                        )}
+                        Unlock
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => onDisableUser && onDisableUser(u.id)}>
-                        <UserMinus className="h-4 w-4 mr-2" /> Disable
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleDisable(u)} disabled={processingUserId === u.id}>
+                        {processingUserId === u.id ? (
+                          <span className="inline-flex items-center">
+                            <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                            <span className="sr-only">Disabling {u.name}</span>
+                          </span>
+                        ) : (
+                          <UserMinus className="h-4 w-4 mr-2" />
+                        )}
+                        Disable
                       </Button>
                     )}
 
-                    <Button size="sm" variant="destructive" className="rounded-full" onClick={() => startDelete(u)}>
-                      <Trash2 className="h-4 w-4 mr-2" /> Delete
-                    </Button>
+                      <Button size="sm" variant="destructive" className="rounded-full" onClick={() => startDelete(u)}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        <span className="sr-only">Delete {u.name}</span>
+                        Delete
+                      </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -159,7 +241,7 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
         </Table>
 
         {/* Confirm delete dialog (simple inline dialog) */}
-        <Dialog open={!!selectedUserToDelete} onOpenChange={(open) => { if (!open) setSelectedUserToDelete(null); }}>
+  <Dialog open={!!selectedUserToDelete} onOpenChange={(open) => { if (isDeleting) return; if (!open) setSelectedUserToDelete(null); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Confirm user deletion</DialogTitle>
@@ -168,20 +250,115 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
               <p className="text-sm">Type the user's email to confirm deletion:</p>
               <p className="text-xs text-muted-foreground my-2">{selectedUserToDelete?.email}</p>
               <Input className="rounded-md" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="Type email to confirm" />
-              <div className="flex items-start gap-3 mt-3">
+              <div className="flex items-center gap-3 mt-3">
                 <Checkbox checked={isHardDelete} onCheckedChange={(checked) => setIsHardDelete(!!checked)} className="rounded-sm" />
                 <div>
-                  <Label className="text-sm">
+                  <Label className="text-sm flex items-center gap-2">
                     <span className="font-medium">Hard delete</span>
-                    <span className="text-xs text-muted-foreground ml-2">(irreversible)</span>
+                    <span className="text-xs text-muted-foreground">(irreversible)</span>
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">This will permanently remove the user and associated data. Use with caution.</p>
                 </div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" className="rounded-full" onClick={() => setSelectedUserToDelete(null)}>Cancel</Button>
-              <Button variant="destructive" className="rounded-full" onClick={doDelete}>Delete</Button>
+              <Button variant="ghost" className="rounded-full" onClick={() => { if (!isDeleting) setSelectedUserToDelete(null); }} disabled={isDeleting}>Cancel</Button>
+              <Button variant="destructive" className="rounded-full" onClick={doDelete} disabled={isDeleting}>
+                {isDeleting ? (
+                  <span className="inline-flex items-center">
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    <span className="sr-only">Deleting user</span>
+                  </span>
+                ) : null}
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Promotion confirmation dialog */}
+        <Dialog open={!!pendingPromotionUser} onOpenChange={(open) => { if (isPromoting) return; if (!open) setPendingPromotionUser(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Promote to Admin</DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <p className="text-sm">Are you sure you want to promote <strong>{pendingPromotionUser?.name}</strong> to Admin?</p>
+              <p className="text-xs text-muted-foreground mt-2">Promoting a faculty to admin grants broad privileges. Their reservations will not be auto-deleted. Recommended alternatives: transfer reservation ownership or review and clean up sensitive reservations manually.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" className="rounded-full" onClick={() => { if (!isPromoting) setPendingPromotionUser(null); }} disabled={isPromoting}>Cancel</Button>
+              <Button variant="destructive" className="rounded-full" onClick={async () => {
+                if (!pendingPromotionUser) return;
+                setIsPromoting(true);
+                try {
+                  if (onChangeRole) {
+                    // allow onChangeRole to optionally return a structured response { success, message }
+                    const res: any = await (onChangeRole as any)(pendingPromotionUser.id, 'admin');
+                    if (res && res.message) {
+                      toast.success(res.message);
+                    } else {
+                      toast.success(`${pendingPromotionUser.name} is now an admin.`);
+                    }
+                  }
+                } catch (err: any) {
+                  console.error('Promotion error', err);
+                  toast.error(err?.message || 'Failed to promote user');
+                } finally {
+                  setIsPromoting(false);
+                  setPendingPromotionUser(null);
+                }
+              }} disabled={isPromoting}>
+                {isPromoting ? (
+                  <span className="inline-flex items-center">
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    <span className="sr-only">Promoting {pendingPromotionUser?.name}</span>
+                  </span>
+                ) : null}
+                Promote
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Demotion confirmation dialog (make admin -> faculty) */}
+        <Dialog open={!!pendingDemotionUser} onOpenChange={(open) => { if (isDemoting) return; if (!open) setPendingDemotionUser(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Demote to Faculty</DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <p className="text-sm">Are you sure you want to demote <strong>{pendingDemotionUser?.name}</strong> to Faculty?</p>
+              <p className="text-xs text-muted-foreground mt-2">Demoting an admin will remove broad privileges. Review any delegated responsibilities before proceeding.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" className="rounded-full" onClick={() => { if (!isDemoting) setPendingDemotionUser(null); }} disabled={isDemoting}>Cancel</Button>
+              <Button variant="destructive" className="rounded-full" onClick={async () => {
+                if (!pendingDemotionUser) return;
+                setIsDemoting(true);
+                try {
+                  if (onChangeRole) {
+                    const res: any = await (onChangeRole as any)(pendingDemotionUser.id, 'faculty');
+                    if (res && res.message) {
+                      toast.success(res.message);
+                    } else {
+                      toast.success(`${pendingDemotionUser.name} is now a faculty.`);
+                    }
+                  }
+                } catch (err: any) {
+                  console.error('Demotion error', err);
+                  toast.error(err?.message || 'Failed to demote user');
+                } finally {
+                  setIsDemoting(false);
+                  setPendingDemotionUser(null);
+                }
+              }} disabled={isDemoting}>
+                {isDemoting ? (
+                  <span className="inline-flex items-center">
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    <span className="sr-only">Demoting {pendingDemotionUser?.name}</span>
+                  </span>
+                ) : null}
+                Demote
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

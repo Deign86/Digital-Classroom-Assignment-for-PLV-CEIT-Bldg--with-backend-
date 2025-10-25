@@ -28,6 +28,8 @@ import {
   scheduleService,
   realtimeService
 } from './lib/firebaseService';
+import { getFirebaseDb } from './lib/firebaseConfig';
+import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
 
 // Expose services to window for debugging in development
 if (import.meta.env.DEV) {
@@ -659,7 +661,7 @@ export default function App() {
     }
   }, []);
 
-  const handleBookingRequest = useCallback(async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => {
+  const handleBookingRequest = useCallback(async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => {
     try {
       // Check if the booking time is in the past
       if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
@@ -686,8 +688,10 @@ export default function App() {
       // Submit the booking request
       const newRequest = await bookingRequestService.create(request);
       
-  setBookingRequests(prev => [...prev, newRequest]);
-  toast.success('Reservation request submitted!');
+      setBookingRequests(prev => [...prev, newRequest]);
+      if (!suppressToast) {
+        toast.success('Reservation request submitted!');
+      }
     } catch (err) {
       console.error('Booking request error:', err);
       // Check if it's a duplicate/conflict error from the database
@@ -1180,8 +1184,64 @@ export default function App() {
           duration: 5000
         });
       }
+
+      // Check for account locked notification (set when server/admin forced a lock)
+      if (sessionStorage.getItem('accountLocked') === 'true') {
+        sessionStorage.removeItem('accountLocked');
+        toast.error('Your account has been locked by an administrator', {
+          description: 'You have been signed out. Contact an administrator for assistance.',
+          duration: 8000,
+        });
+      }
     }
   }, [currentUser]);
+
+  // Subscribe to the current user's Firestore document so we can react to admin actions
+  // (e.g., accountLocked). When an admin locks the account we immediately sign the user out
+  // and set a sessionStorage flag so the login page can show an explanatory message.
+  useEffect(() => {
+    if (!currentUser || !currentUser.id) return;
+
+    let unsub: (() => void) | null = null;
+    try {
+      const db = getFirebaseDb();
+      const userRef = fsDoc(db, 'users', currentUser.id);
+      unsub = fsOnSnapshot(userRef, (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data() as any;
+
+        // If accountLocked is true on the server, force local sign-out immediately.
+        if (data?.accountLocked) {
+          console.log('🔒 Detected account lock for current user. Signing out.');
+          // Attempt to sign out via auth service, but proceed to clear state regardless.
+          authService.signOut().catch(() => undefined).finally(() => {
+            // Mark the login page to show the lock notification
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+            // Clear local user state and real-time listeners
+            setCurrentUser(null);
+            realtimeService.cleanup();
+            setClassrooms([]);
+            setBookingRequests([]);
+            setSignupRequests([]);
+            setSchedules([]);
+            setUsers([]);
+          });
+        }
+      }, (error) => {
+        console.error('Error listening to user doc for lock status:', error);
+      });
+    } catch (err) {
+      console.error('Could not create user doc listener for lock status:', err);
+    }
+
+    return () => {
+      try {
+        if (unsub) unsub();
+      } catch (e) {
+        /* ignore */
+      }
+    };
+  }, [currentUser?.id]);
 
   // Expose services after app initialization (for debugging)
   React.useEffect(() => {

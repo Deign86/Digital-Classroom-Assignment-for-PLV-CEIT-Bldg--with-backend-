@@ -20,10 +20,12 @@ interface FacultyScheduleProps {
   bookingRequests: BookingRequest[];
   initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected';
   onCancelSelected?: (scheduleId: string) => Promise<void> | void;
+  // Callback when user chooses to "Quick Rebook" — attempt one-click submission
+  onQuickRebook?: (initialData: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => void;
   userId?: string;
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, userId }: FacultyScheduleProps) {
+export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, onQuickRebook, userId }: FacultyScheduleProps) {
   const STORAGE_KEY_BASE = 'plv:facultySchedule:activeTab';
   const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
   const allowed = ['upcoming', 'requests', 'approved', 'cancelled', 'history', 'rejected'] as const;
@@ -31,22 +33,23 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const [activeTab, setActiveTab] = useState<TabName>(() => readPreferredTab(STORAGE_KEY, initialTab, Array.from(allowed)) as TabName);
   // hydrated prevents a visual tab-flash when userId (and storage key) arrives asynchronously
   const [hydrated, setHydrated] = useState<boolean>(() => typeof window === 'undefined' ? true : false);
-
+  // Mark hydrated on mount to allow client-only tab rendering and avoid a persistent empty state
   useEffect(() => {
-    try {
-      const valueToStore = (activeTab ?? initialTab) as string;
-      writeStoredTab(STORAGE_KEY, valueToStore);
-      writeTabToHash(valueToStore);
-    } catch (err) {
-      // ignore
-    } finally {
-      try { setHydrated(true); } catch (e) { /* ignore */ }
-    }
-  }, [activeTab, STORAGE_KEY]);
+    setHydrated(true);
+  }, []);
   const { announce } = useAnnouncer();
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
   const [isCancelling, setIsCancelling] = useState(false);
   const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
+  // Quick rebook confirmation dialog state
+  const [quickDialogOpen, setQuickDialogOpen] = useState(false);
+  const [quickDialogData, setQuickDialogData] = useState<{ classroomId: string; date: string; startTime: string; endTime: string; purpose?: string } | null>(null);
+
+  const openQuickDialog = (data: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+    setQuickDialogData(data);
+    setQuickDialogOpen(true);
+  };
+  
   const [bulkCancelReason, setBulkCancelReason] = useState('');
   const [bulkReasonError, setBulkReasonError] = useState<string | null>(null);
 
@@ -132,6 +135,24 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               {schedule.status === 'cancelled' && (
                 <p className="text-sm text-red-600 mt-1 italic">This reservation has been cancelled</p>
               )}
+              <div className="mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    try { announce?.('Attempting quick rebook', 'polite'); } catch (e) {}
+                    openQuickDialog({
+                      classroomId: schedule.classroomId,
+                      date: schedule.date,
+                      startTime: convertTo12Hour(schedule.startTime),
+                      endTime: convertTo12Hour(schedule.endTime),
+                      purpose: schedule.purpose || ''
+                    });
+                  }}
+                >
+                  Quick Rebook
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -189,6 +210,24 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               </div>
             </div>
           )}
+          <div className="mt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                try { announce?.('Attempting quick rebook', 'polite'); } catch (e) {}
+                openQuickDialog({
+                  classroomId: request.classroomId,
+                  date: request.date,
+                  startTime: convertTo12Hour(request.startTime),
+                  endTime: convertTo12Hour(request.endTime),
+                  purpose: request.purpose || ''
+                });
+              }}
+            >
+              Quick Rebook
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -202,6 +241,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           <CardDescription>View your confirmed classes and reservation requests</CardDescription>
         </CardHeader>
       </Card>
+      {/* Development diagnostics removed */}
 
   {hydrated ? (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
@@ -291,6 +331,43 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           )}
         </TabsContent>
 
+        {/* Quick Rebook confirmation dialog */}
+        <Dialog open={quickDialogOpen} onOpenChange={(open) => setQuickDialogOpen(open)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Quick Rebook</DialogTitle>
+              <DialogDescription>
+                Please confirm you want to submit a reservation request with the details below. If the request cannot be submitted (conflict or invalid), you'll be taken to the booking form to adjust.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 space-y-2">
+              <p className="text-sm"><strong>Classroom:</strong> {quickDialogData?.classroomId}</p>
+              <p className="text-sm"><strong>Date:</strong> {quickDialogData?.date}</p>
+              <p className="text-sm"><strong>Time:</strong> {quickDialogData ? `${quickDialogData.startTime} - ${quickDialogData.endTime}` : ''}</p>
+              {quickDialogData?.purpose && <p className="text-sm"><strong>Purpose:</strong> {quickDialogData.purpose}</p>}
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button
+                onClick={() => {
+                  if (!quickDialogData) return;
+                  setQuickDialogOpen(false);
+                  // Call parent handler
+                  try {
+                    onQuickRebook?.(quickDialogData);
+                  } catch (e) {
+                    console.error('onQuickRebook handler failed', e);
+                  }
+                }}
+              >
+                Confirm Quick Rebook
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
           {/* Persist active tab handled by top-level useEffect */}
 
         <TabsContent value="requests" className="space-y-4">
@@ -376,7 +453,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                     </Button>
 
                     {/* Bulk Cancel Dialog */}
-                    <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
+                    <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { if (isCancelling) return; setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Cancel selected reservations</DialogTitle>
@@ -446,7 +523,6 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                 }
 
                                 setIsCancelling(true);
-                                setShowBulkCancelDialog(false);
 
                                 const successfulScheduleCancellations: string[] = [];
                                 const failedScheduleCancellations: Array<{ id: string; error: unknown }> = [];
@@ -462,8 +538,19 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                     );
 
                                     if (correspondingSchedule) {
-                                      await scheduleService.cancelApprovedBooking(correspondingSchedule.id, reason);
-                                      successfulScheduleCancellations.push(requestId);
+                                      try {
+                                        if (onCancelSelected) {
+                                          // Delegate cancellation to parent when provided (awaitable)
+                                          await onCancelSelected(correspondingSchedule.id as string);
+                                          successfulScheduleCancellations.push(requestId);
+                                        } else {
+                                          await scheduleService.cancelApprovedBooking(correspondingSchedule.id, reason);
+                                          successfulScheduleCancellations.push(requestId);
+                                        }
+                                      } catch (err) {
+                                        console.error('Failed to cancel schedule for request', requestId, err);
+                                        failedScheduleCancellations.push({ id: requestId, error: err });
+                                      }
                                     } else {
                                       successfulScheduleCancellations.push(requestId);
                                     }
@@ -493,6 +580,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                 setIsCancelling(false);
                                 setApprovedSelectedIds({});
                                 setBulkCancelReason('');
+                                // close dialog after processing completes
+                                setShowBulkCancelDialog(false);
 
                                 const successCount = ids.length - failedScheduleCancellations.length;
                                 if (failedScheduleCancellations.length === 0) {

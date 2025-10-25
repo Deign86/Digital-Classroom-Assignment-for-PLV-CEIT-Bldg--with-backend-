@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -21,7 +21,15 @@ interface RoomBookingProps {
   classrooms?: Classroom[];
   schedules?: Schedule[];
   bookingRequests?: BookingRequest[];
-  onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => void;
+  onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => void;
+  // Optional initial data to pre-fill the booking form (used by "Book Similar")
+  initialData?: {
+    classroomId?: string;
+    date?: string; // ISO YYYY-MM-DD
+    startTime?: string; // 12-hour format (e.g. "7:00 AM") or 24-hour (will be converted)
+    endTime?: string; // 12-hour format or 24-hour
+    purpose?: string;
+  };
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
 }
 
@@ -43,7 +51,7 @@ const isValidTimeRange = (startTime: string, endTime: string): boolean => {
   return endMinutes > startMinutes;
 };
 
-export default function RoomBooking({ user, classrooms = [], schedules = [], bookingRequests = [], onBookingRequest, checkConflicts }: RoomBookingProps) {
+export default function RoomBooking({ user, classrooms = [], schedules = [], bookingRequests = [], onBookingRequest, initialData, checkConflicts }: RoomBookingProps) {
   const { announce } = useAnnouncer();
   const [formData, setFormData] = useState({
     classroomId: '',
@@ -109,6 +117,33 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
       else mq.removeListener(update);
     };
   }, []);
+
+  // If a parent provides initialData (Book Similar), populate the form.
+  // We accept startTime/endTime either as 12-hour strings (e.g. "7:00 AM") or 24-hour HH:mm and convert
+  useEffect(() => {
+    if (!initialData) return;
+
+    const normalizeTime = (t?: string) => {
+      if (!t) return '';
+      // if string already contains AM/PM, assume 12-hour
+      if (/(AM|PM)$/i.test(t.trim())) return t;
+      // otherwise assume 24-hour HH:mm
+      try {
+        return convertTo12Hour(t);
+      } catch (e) {
+        return t;
+      }
+    };
+
+    setFormData({
+      classroomId: initialData.classroomId ?? '',
+      date: initialData.date ?? '',
+      startTime: normalizeTime(initialData.startTime),
+      endTime: normalizeTime(initialData.endTime),
+      purpose: initialData.purpose ?? ''
+    });
+  }, [initialData]);
+
 
   // Clear end time when start time changes to ensure valid selection
   React.useEffect(() => {

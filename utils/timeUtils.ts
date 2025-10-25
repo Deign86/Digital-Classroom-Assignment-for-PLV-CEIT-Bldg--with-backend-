@@ -169,3 +169,17 @@ export function getCurrentTime12Hour(): string {
   
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
+
+// Add days to a YYYY-MM-DD date string and return YYYY-MM-DD (local timezone)
+export function addDaysToDateString(dateString: string, days: number): string {
+  if (!dateString) return dateString;
+  const parts = dateString.split('-').map(Number);
+  if (parts.length < 3) return dateString;
+  const [year, month, day] = parts;
+  const dt = new Date(year, month - 1, day);
+  dt.setDate(dt.getDate() + days);
+  const y = dt.getFullYear();
+  const m = (dt.getMonth() + 1).toString().padStart(2, '0');
+  const d = dt.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}

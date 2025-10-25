@@ -486,7 +486,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </Tabs>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
           <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -531,12 +531,14 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             <Button
               variant="outline"
               onClick={() => {
+                if (isProcessingBulk) return;
                 setIsDialogOpen(false);
                 setSelectedRequest(null);
                 setFeedback('');
               }}
+              disabled={isProcessingBulk}
             >
-              Cancel
+              {isProcessingBulk ? 'Processing…' : 'Cancel'}
             </Button>
             <Button
               onClick={handleConfirm}

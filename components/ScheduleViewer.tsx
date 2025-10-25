@@ -6,6 +6,7 @@ import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Textarea } from './ui/textarea';
+import { toast } from 'sonner';
 import { Label } from './ui/label';
 import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots } from '../utils/timeUtils';
@@ -152,6 +153,7 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
               setCancelReasons={setCancelReasons}
               cancelErrors={cancelErrors}
               setCancelErrors={setCancelErrors}
+              
             />
           )}
         </CardContent>
@@ -161,6 +163,8 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
 }
 
 function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSchedule, announce, cancelReasons, setCancelReasons, cancelErrors, setCancelErrors }: { schedules: Schedule[]; classrooms: Classroom[]; timeSlots: string[]; selectedDate: string; onCancelSchedule?: (scheduleId: string, reason: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; cancelReasons: Record<string, string>; setCancelReasons: React.Dispatch<React.SetStateAction<Record<string, string>>>; cancelErrors: Record<string, string | null>; setCancelErrors: React.Dispatch<React.SetStateAction<Record<string, string | null>>>; }) {
+  const [isCanceling, setIsCanceling] = useState<Record<string, boolean>>({});
+  const [openDialogMap, setOpenDialogMap] = useState<Record<string, boolean>>({});
   if (schedules.length === 0) {
     return (
       <div className="text-center py-12 border-2 border-dashed rounded-lg">
@@ -204,9 +208,9 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                 </div>
 
                 {onCancelSchedule && !isLapsed && (
-                  <AlertDialog>
+                    <AlertDialog open={!!openDialogMap[schedule.id]} onOpenChange={(v) => { if (isCanceling[schedule.id]) return; setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: v })); }}>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="ml-4 min-w-[80px] transition-all duration-200">
+                      <Button variant="outline" size="sm" className="ml-4 min-w-[80px] transition-all duration-200" onClick={() => setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: true }))}>
                         <X className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Cancel</span>
                       </Button>
@@ -246,13 +250,32 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                         {((cancelReasons[schedule.id] || '').trim().length === 0) ? (
                           <Button disabled>Cancel Reservation</Button>
                         ) : (
-                          <AlertDialogAction variant="destructive" onClick={() => {
-                            const reason = (cancelReasons[schedule.id] || '').trim();
-                            if (!reason) { try { announce?.('Please provide a reason for the cancellation.', 'assertive'); } catch(e){}; const el = document.getElementById(`schedule-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); setCancelErrors(prev => ({ ...prev, [schedule.id]: 'Reason is required.' })); return; }
-                            if (cancelErrors[schedule.id]) { const el = document.getElementById(`schedule-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); return; }
-                            try { announce?.('Cancelling reservation', 'polite'); } catch(e){}
-                            onCancelSchedule?.(schedule.id, reason);
-                          }} className="transition-colors duration-200">Cancel Reservation</AlertDialogAction>
+                          <AlertDialogAction
+                            variant="destructive"
+                            onClick={async () => {
+                              const reason = (cancelReasons[schedule.id] || '').trim();
+                              if (!reason) { try { announce?.('Please provide a reason for the cancellation.', 'assertive'); } catch(e){}; const el = document.getElementById(`schedule-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); setCancelErrors(prev => ({ ...prev, [schedule.id]: 'Reason is required.' })); return; }
+                              if (cancelErrors[schedule.id]) { const el = document.getElementById(`schedule-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); return; }
+                              try { announce?.('Cancelling reservation', 'polite'); } catch(e){}
+                              setIsCanceling(prev => ({ ...prev, [schedule.id]: true }));
+                              try {
+                                let res: any = undefined;
+                                if (onCancelSchedule) res = await onCancelSchedule(schedule.id, reason as string);
+                                // If caller returned a server message, surface it here. Otherwise, parent likely already showed a toast.
+                                if (res && res.message) {
+                                  toast.success(res.message);
+                                }
+                              } finally {
+                                setIsCanceling(prev => ({ ...prev, [schedule.id]: false }));
+                                // close the dialog after processing completes
+                                setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: false }));
+                              }
+                            }}
+                            className="transition-colors duration-200"
+                            disabled={!!isCanceling[schedule.id]}
+                          >
+                            {isCanceling[schedule.id] ? 'Cancelling…' : 'Cancel Reservation'}
+                          </AlertDialogAction>
                         )}
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -268,6 +291,8 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
 }
 
 function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce, cancelReasons, setCancelReasons, cancelErrors, setCancelErrors }: { schedules: Schedule[]; classrooms: Classroom[]; weekDates: string[]; onCancelSchedule?: (scheduleId: string, reason: string) => void; announce?: (message: string, mode?: 'polite' | 'assertive') => void; cancelReasons: Record<string, string>; setCancelReasons: React.Dispatch<React.SetStateAction<Record<string, string>>>; cancelErrors: Record<string, string | null>; setCancelErrors: React.Dispatch<React.SetStateAction<Record<string, string | null>>>; }) {
+  const [isCanceling, setIsCanceling] = useState<Record<string, boolean>>({});
+  const [openDialogMap, setOpenDialogMap] = useState<Record<string, boolean>>({});
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
@@ -301,9 +326,9 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                           <p className="text-xs text-gray-500 truncate">{schedule.purpose}</p>
 
                           {onCancelSchedule && !isLapsed && (
-                            <AlertDialog>
+                            <AlertDialog open={!!openDialogMap[schedule.id]} onOpenChange={(v) => { if (isCanceling[schedule.id]) return; setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: v })); }}>
                               <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-600 transition-all duration-200">
+                                <Button variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-600 transition-all duration-200" onClick={() => setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: true }))}>
                                   <X className="h-3 w-3" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -333,14 +358,30 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                     {cancelErrors[schedule.id] && <p className="text-xs text-red-600 mt-1">{cancelErrors[schedule.id]}</p>}
                                   </div>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                                    <AlertDialogAction variant="destructive" onClick={() => {
-                                      const reason = (cancelReasons[schedule.id] || '').trim();
-                                      if (!reason) { try { announce?.('Please provide a reason for the cancellation.', 'assertive'); } catch(e){}; const el = document.getElementById(`schedule-week-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); setCancelErrors(prev => ({ ...prev, [schedule.id]: 'Reason is required.' })); return; }
-                                      if (cancelErrors[schedule.id]) { const el = document.getElementById(`schedule-week-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); return; }
-                                      try { announce?.('Cancelling reservation', 'polite'); } catch(e){}
-                                      onCancelSchedule?.(schedule.id, reason);
-                                    }}>Cancel Reservation</AlertDialogAction>
+                                    <AlertDialogCancel disabled={!!isCanceling[schedule.id]}>Keep Reservation</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      variant="destructive"
+                                      onClick={async () => {
+                                        const reason = (cancelReasons[schedule.id] || '').trim();
+                                        if (!reason) { try { announce?.('Please provide a reason for the cancellation.', 'assertive'); } catch(e){}; const el = document.getElementById(`schedule-week-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); setCancelErrors(prev => ({ ...prev, [schedule.id]: 'Reason is required.' })); return; }
+                                        if (cancelErrors[schedule.id]) { const el = document.getElementById(`schedule-week-cancel-reason-${schedule.id}`) as HTMLTextAreaElement | null; (el as HTMLTextAreaElement | null)?.focus(); return; }
+                                        try { announce?.('Cancelling reservation', 'polite'); } catch(e){}
+                                        setIsCanceling(prev => ({ ...prev, [schedule.id]: true }));
+                                        try {
+                                          let res: any = undefined;
+                                          if (onCancelSchedule) res = await onCancelSchedule(schedule.id, reason as string);
+                                          if (res && res.message) {
+                                            toast.success(res.message);
+                                          }
+                                        } finally {
+                                          setIsCanceling(prev => ({ ...prev, [schedule.id]: false }));
+                                          setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: false }));
+                                        }
+                                      }}
+                                      disabled={!!isCanceling[schedule.id]}
+                                    >
+                                      {isCanceling[schedule.id] ? 'Cancelling…' : 'Cancel Reservation'}
+                                    </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>

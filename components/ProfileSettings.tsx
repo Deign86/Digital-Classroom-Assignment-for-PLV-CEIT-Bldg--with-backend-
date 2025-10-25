@@ -15,8 +15,9 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  AlertCircle
-  , Bell
+  AlertCircle,
+  Loader2,
+  Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
@@ -346,6 +347,12 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 aria-label="Enable push notifications"
                 disabled={isTogglingPush || !pushSupported}
               />
+              {isTogglingPush && (
+                <span className="inline-flex items-center">
+                  <Loader2 className="h-4 w-4 inline-block ml-2 text-gray-500 animate-spin" />
+                  <span className="sr-only">Updating push preference</span>
+                </span>
+              )}
             </div>
           </div>
           {!pushSupported && (
@@ -519,7 +526,7 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
             </div>
           </form>
 
-          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <AlertDialog open={showConfirmDialog} onOpenChange={(v) => { if (isChangingPassword) return; setShowConfirmDialog(v); }}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
@@ -543,12 +550,13 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
+                <AlertDialogCancel disabled={isChangingPassword}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
                   onClick={handleConfirmPasswordChange}
                   className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isChangingPassword}
                 >
-                  Yes, Change Password
+                  {isChangingPassword ? 'Updating…' : 'Yes, Change Password'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

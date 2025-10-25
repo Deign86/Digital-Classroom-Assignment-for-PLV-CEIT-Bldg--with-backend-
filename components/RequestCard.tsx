@@ -8,6 +8,7 @@ import { Label } from './ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 
@@ -39,6 +40,8 @@ export default function RequestCard({
   const [cancelReason, setCancelReason] = useState('');
   const [cancelError, setCancelError] = useState<string | null>(null);
   const { announce } = useAnnouncer();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const checkForConflicts = async () => {
@@ -102,17 +105,18 @@ export default function RequestCard({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isExpired && (
+            {isExpired ? (
               <Badge variant="destructive">Expired</Badge>
+            ) : (
+              <Badge variant={
+                status === 'pending' ? 'secondary' :
+                status === 'approved' ? 'default' :
+                status === 'rejected' ? 'destructive' :
+                'secondary'
+              }>
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Badge>
             )}
-            <Badge variant={
-              status === 'pending' ? 'secondary' :
-              status === 'approved' ? 'default' :
-              status === 'rejected' ? 'destructive' :
-              'destructive'
-            }>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Badge>
           </div>
         </div>
       </CardHeader>
@@ -242,8 +246,8 @@ export default function RequestCard({
         )}
 
         {status === 'approved' && onCancelApproved && (
-            <div className="flex gap-3 pt-3 border-t">
-              <AlertDialog>
+          <div className="flex gap-3 pt-3 border-t">
+            <AlertDialog open={isDialogOpen} onOpenChange={(v) => { if (isCancelling) return; setIsDialogOpen(v); }}>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
@@ -282,6 +286,7 @@ export default function RequestCard({
                       maxLength={500}
                       rows={4}
                       className="w-full mt-0"
+                      disabled={isCancelling}
                     />
                   </div>
                   <div className="flex items-center justify-end mt-1">
@@ -290,29 +295,43 @@ export default function RequestCard({
                   {cancelError && <p role="alert" className="text-xs text-red-600 mt-1">{cancelError}</p>}
                 </div>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-                  {cancelReason.trim().length === 0 ? (
-                    <Button disabled>Cancel Reservation</Button>
-                  ) : (
-                    <AlertDialogAction
-                      onClick={() => {
-                        const reason = cancelReason.trim();
-                        if (!reason) {
-                          try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) {}
-                          setCancelError('Please provide a reason for the cancellation.');
-                          return;
-                        }
-                        if (reason.length > 500) {
-                          setCancelError('Reason must be 500 characters or less.');
-                          return;
-                        }
+                  <AlertDialogCancel disabled={isCancelling} onClick={() => { if (isCancelling) return; setIsDialogOpen(false); setCancelReason(''); setCancelError(null); }}>Keep Reservation</AlertDialogCancel>
+                  <Button
+                    disabled={isCancelling || cancelReason.trim().length === 0}
+                    onClick={async () => {
+                      const reason = cancelReason.trim();
+                      if (!reason) {
+                        try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) { }
+                        setCancelError('Please provide a reason for the cancellation.');
+                        return;
+                      }
+                      if (reason.length > 500) {
+                        setCancelError('Reason must be 500 characters or less.');
+                        return;
+                      }
 
-                        onCancelApproved?.(request.id, reason);
-                      }}
-                    >
-                      Cancel Reservation
-                    </AlertDialogAction>
-                  )}
+                      try {
+                        setIsCancelling(true);
+                        // await parent handler; parent is responsible for showing success toasts where appropriate
+                        await Promise.resolve(onCancelApproved(request.id, reason));
+                        setIsDialogOpen(false);
+                        setCancelReason('');
+                        setCancelError(null);
+                        try { announce('Reservation cancelled', 'polite'); } catch (e) { }
+                        toast.success('Reservation cancelled');
+                      } catch (err: any) {
+                        console.error('Failed to cancel reservation', err);
+                        const msg = err?.message || 'Failed to cancel reservation. Please try again.';
+                        setCancelError(msg);
+                        toast.error(msg);
+                      } finally {
+                        setIsCancelling(false);
+                      }
+                    }}
+                    variant="destructive"
+                  >
+                    {isCancelling ? 'Cancelling…' : 'Cancel Reservation'}
+                  </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

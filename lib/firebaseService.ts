@@ -1455,6 +1455,18 @@ export const userService = {
     }
 
     const record = ensureUserData(snapshot);
+    // Attempt to revoke refresh tokens for the user so currently-signed-in sessions are invalidated.
+    try {
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const fn = httpsCallable(functions, 'revokeUserTokens');
+      // best-effort: do not fail the lock operation if the callable is unavailable
+      const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
+      console.log('revokeUserTokens response:', resp?.data);
+    } catch (revErr) {
+      // Log but don't throw - lock state was already set in Firestore
+      console.warn('Failed to call revokeUserTokens callable after locking account:', revErr);
+    }
     return toUser(snapshot.id, record);
   },
 

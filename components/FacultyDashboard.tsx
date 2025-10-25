@@ -19,7 +19,8 @@ import {
   BookOpen,
   Settings
 } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
+import { convertTo12Hour, convertTo24Hour, formatTimeRange, isPastBookingTime, isReasonableBookingDuration, addDaysToDateString } from '../utils/timeUtils';
+import { toast } from 'sonner';
 import RoomBooking from './RoomBooking';
 import RoomSearch from './RoomSearch';
 import FacultySchedule from './FacultySchedule';
@@ -36,7 +37,7 @@ interface FacultyDashboardProps {
   bookingRequests: BookingRequest[];
   allBookingRequests: BookingRequest[];
   onLogout: () => void;
-  onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => void;
+  onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
 
@@ -59,6 +60,82 @@ export default function FacultyDashboard({
   const [activeTab, setActiveTab] = useState<FacultyTab>(() => readPreferredTab(STORAGE_KEY, 'overview', Array.from(allowedTabs)) as FacultyTab);
 
   const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
+
+  // When user clicks "Book Similar", we store initial data and switch to booking tab
+  const [bookingInitialData, setBookingInitialData] = useState<{
+    classroomId?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    purpose?: string;
+  } | null>(null);
+
+  // Quick rebook: attempt to submit immediately, otherwise fall back to opening the booking form with prefill
+  const handleQuickRebook = async (initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+    if (!initial || !initial.classroomId || !initial.date || !initial.startTime || !initial.endTime) {
+      toast.error('Missing booking information for quick rebook.');
+      setBookingInitialData(initial);
+      toast('Form pre-filled with available information. Please review and submit.');
+      setActiveTab('booking');
+      return;
+    }
+
+    // For quick rebook, shift the booking to the same weekday next week to avoid immediate conflicts
+    const targetDate = addDaysToDateString(initial.date, 7);
+
+    // Basic validations (use the shifted date)
+    if (isPastBookingTime(targetDate, initial.startTime)) {
+      toast.error('Cannot quick-rebook a past time. Opening the booking form for adjustments.');
+      setBookingInitialData({ ...initial, date: targetDate });
+      toast('Form pre-filled with the previous booking — please review and submit.');
+      setActiveTab('booking');
+      return;
+    }
+
+    if (!isReasonableBookingDuration(initial.startTime, initial.endTime)) {
+      toast.error('Requested duration is invalid (min 30 minutes, max 8 hours). Opening form to adjust.');
+      setBookingInitialData(initial);
+      toast('Form pre-filled with the previous booking — please review and submit.');
+      setActiveTab('booking');
+      return;
+    }
+
+  const start24 = convertTo24Hour(initial.startTime);
+  const end24 = convertTo24Hour(initial.endTime);
+
+    try {
+      const conflict = await Promise.resolve(checkConflicts(initial.classroomId, targetDate, start24, end24, true));
+      if (conflict) {
+        toast.error('Time slot is no longer available. Opening booking form so you can choose another time.');
+        setBookingInitialData({ ...initial, date: targetDate });
+        toast('Form pre-filled with the previous booking — please review and submit.');
+        setActiveTab('booking');
+        return;
+      }
+
+      // Build request payload
+      const request = {
+        facultyId: user.id,
+        facultyName: user.name,
+        classroomId: initial.classroomId,
+        classroomName: (classrooms.find(c => c.id === initial.classroomId)?.name) || '',
+        date: targetDate,
+        startTime: start24,
+        endTime: end24,
+        purpose: initial.purpose || ''
+      } as Omit<BookingRequest, 'id' | 'requestDate' | 'status'>;
+
+    // Suppress the default booking toast and show a specialized quick-rebook toast
+    await Promise.resolve(onBookingRequest(request, true));
+    toast.success('Reservation request submitted (Quick Rebook).');
+    } catch (err) {
+      console.error('Quick rebook failed', err);
+      toast.error('Failed to submit quick rebook. Opening booking form for manual retry.');
+      setBookingInitialData(initial);
+      toast('Form pre-filled with the previous booking — please review and submit.');
+      setActiveTab('booking');
+    }
+  };
 
   useEffect(() => {
     try {
@@ -530,6 +607,7 @@ export default function FacultyDashboard({
                 schedules={allSchedules}
                 bookingRequests={allBookingRequests}
                 onBookingRequest={onBookingRequest}
+                initialData={bookingInitialData ?? undefined}
                 user={user}
                 checkConflicts={checkConflicts}
               />
@@ -553,6 +631,9 @@ export default function FacultyDashboard({
                 bookingRequests={bookingRequests}
                 initialTab={scheduleInitialTab}
                 userId={user?.id}
+                onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+                  void handleQuickRebook(initial);
+                }}
               />
             </div>
           </TabsContent>

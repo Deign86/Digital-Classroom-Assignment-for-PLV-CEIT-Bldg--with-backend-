@@ -18,8 +18,10 @@ import {
   Building2,
   FileText,
   UserPlus,
-  UserCog
+  UserCog,
+  Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import ClassroomManagement from './ClassroomManagement';
@@ -84,6 +86,7 @@ export default function AdminDashboard({
   }, [activeTab, STORAGE_KEY]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   
 
   // Scroll to top when component mounts
@@ -92,6 +95,27 @@ export default function AdminDashboard({
   }, []);
 
   // (Hash-based deep-linking removed — navigation now uses react-router)
+
+  // Unlock handler for locked accounts card — disables the single row while processing
+  const handleUnlockLockedUser = async (userId: string) => {
+    setProcessingUserId(userId);
+    try {
+      if (onUnlockAccount) {
+        const res: any = await onUnlockAccount(userId);
+        if (res && res.message) toast.success(res.message);
+        else toast.success('Account unlocked');
+      } else {
+        // Fallback to direct service call
+        await userService.unlockAccount(userId);
+        toast.success('Account unlocked');
+      }
+    } catch (err: any) {
+      console.error('Unlock account error', err);
+      toast.error(err?.message || 'Failed to unlock account');
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
 
   // Statistics
   const totalClassrooms = classrooms.length;
@@ -495,14 +519,22 @@ export default function AdminDashboard({
                                 Failed attempts: {lockedUser.failedLoginAttempts || 0}
                               </p>
                             </div>
-                            <Button 
-                              size="sm" 
-                              onClick={() => onUnlockAccount && onUnlockAccount(lockedUser.id)}
-                              className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Unlock Account
-                            </Button>
+                                    <Button 
+                                      size="sm" 
+                                      onClick={() => handleUnlockLockedUser(lockedUser.id)}
+                                      className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
+                                      disabled={processingUserId === lockedUser.id}
+                                    >
+                                      {processingUserId === lockedUser.id ? (
+                                        <span className="inline-flex items-center">
+                                          <Loader2 className="animate-spin mr-1 h-4 w-4" />
+                                          <span className="sr-only">Unlocking {lockedUser.name}</span>
+                                        </span>
+                                      ) : (
+                                        <CheckCircle className="h-4 w-4 mr-1" />
+                                      )}
+                                      Unlock Account
+                                    </Button>
                           </div>
                         );
                       })}
@@ -574,11 +606,43 @@ export default function AdminDashboard({
           <TabsContent value="user-management">
             <div className="animate-in">
               <AdminUserManagement users={users}
-                onDisableUser={async (id) => { await userService.lockAccount(id); }}
-                onEnableUser={async (id) => { await userService.unlockAccount(id); }}
+                onDisableUser={async (id) => {
+                  try {
+                    const res: any = await userService.lockAccount(id);
+                    return res || { success: true, message: 'Account locked' };
+                  } catch (err: any) {
+                    console.error('Lock account error', err);
+                    return { success: false, message: err?.message || 'Failed to lock account' };
+                  }
+                }}
+                onEnableUser={async (id) => {
+                  try {
+                    const res: any = await userService.unlockAccount(id);
+                    return res || { success: true, message: 'Account enabled' };
+                  } catch (err: any) {
+                    console.error('Enable account error', err);
+                    return { success: false, message: err?.message || 'Failed to enable account' };
+                  }
+                }}
                 onDeleteUser={async (id, hard) => { const res = await adminDeleteUser(id, !!hard); return res; }}
-                onChangeRole={async (id, role) => { await userService.update(id, { role }); }}
-                onUnlockAccount={async (id) => { await userService.unlockAccount(id); }}
+                onChangeRole={async (id, role) => {
+                  try {
+                    const res: any = await userService.update(id, { role });
+                    return res || { success: true, message: 'Role updated' };
+                  } catch (err: any) {
+                    console.error('Change role error', err);
+                    return { success: false, message: err?.message || 'Failed to change role' };
+                  }
+                }}
+                onUnlockAccount={async (id) => {
+                  try {
+                    const res: any = await userService.unlockAccount(id);
+                    return res || { success: true, message: 'Account unlocked' };
+                  } catch (err: any) {
+                    console.error('Unlock user error', err);
+                    return { success: false, message: err?.message || 'Failed to unlock account' };
+                  }
+                }}
               />
             </div>
           </TabsContent>

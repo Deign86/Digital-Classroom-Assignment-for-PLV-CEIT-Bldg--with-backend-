@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch'; // Assuming you have a Checkbox component
 import { Checkbox } from './ui/checkbox';
-import { Plus, Edit, Trash2, Users, MapPin, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, MapPin, AlertCircle, Loader2 } from 'lucide-react';
 import equipmentIcons, { getIconForEquipment, getPhosphorIcon } from '../lib/equipmentIcons';
 import { toast } from 'sonner';
 import type { Classroom } from '../App';
@@ -52,6 +52,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [processingClassroomId, setProcessingClassroomId] = useState<string | null>(null);
 
   const resetForm = () => {
     setFormData({
@@ -145,20 +147,24 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
   const handleDeleteConfirm = async () => {
     if (!classroomToDelete) return;
+    setIsDeleting(true);
     try {
       const result = await classroomService.deleteCascade(classroomToDelete.id);
       const updatedClassrooms = await classroomService.getAll();
       onClassroomUpdate(updatedClassrooms);
-    toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future reservation(s)/schedules removed.`);
+      toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future reservation(s)/schedules removed.`);
+      setDeleteDialogOpen(false);
+      setClassroomToDelete(null);
     } catch (err) {
       console.error('Error deleting classroom (cascade):', err);
       toast.error('Error deleting classroom. See console for details.');
+    } finally {
+      setIsDeleting(false);
     }
-    setDeleteDialogOpen(false);
-    setClassroomToDelete(null);
   };
 
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
+    setProcessingClassroomId(classroomId);
     try {
       await classroomService.update(classroomId, { isAvailable });
       const updatedClassrooms = await classroomService.getAll();
@@ -166,6 +172,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
     } catch (err) {
       toast.error('Error updating availability');
+    } finally {
+      setProcessingClassroomId(null);
     }
   };
 
@@ -390,7 +398,14 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           <Switch
                             checked={classroom.isAvailable}
                             onCheckedChange={(checked: boolean) => handleAvailabilityToggle(classroom.id, checked)}
+                            disabled={processingClassroomId === classroom.id}
                           />
+                          {processingClassroomId === classroom.id && (
+                            <span className="inline-flex items-center">
+                              <Loader2 className="h-4 w-4 ml-2 text-gray-500 animate-spin" />
+                              <span className="sr-only">Updating availability for {classroom.name}</span>
+                            </span>
+                          )}
                           <Badge variant={classroom.isAvailable ? 'default' : 'secondary'}>
                             {classroom.isAvailable ? 'Available' : 'Disabled'}
                           </Badge>
@@ -429,7 +444,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         </CardContent>
       </Card>
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(v) => { if (isDeleting) return; setDeleteDialogOpen(v); }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Delete Classroom</DialogTitle>
@@ -438,11 +453,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setClassroomToDelete(null); }}>
-              Cancel
+            <Button variant="outline" onClick={() => { if (isDeleting) return; setDeleteDialogOpen(false); setClassroomToDelete(null); }} disabled={isDeleting}>
+              {isDeleting ? 'Processing…' : 'Cancel'}
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Deleting…' : 'Delete'}
             </Button>
           </div>
         </DialogContent>

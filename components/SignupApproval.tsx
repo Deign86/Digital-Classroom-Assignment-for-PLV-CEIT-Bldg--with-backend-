@@ -253,9 +253,9 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       return;
     }
 
-    // Execute bulk operations in parallel and summarize the results
-    setBulkDialogOpen(false);
-    setIsProcessingBulk(true);
+  // Execute bulk operations in parallel and summarize the results.
+  // Keep the dialog open while processing and disable closing/actions.
+  setIsProcessingBulk(true);
 
     // Build tasks
     const tasks = ids.map(id => async () => onSignupApproval(id, bulkActionApprove, bulkFeedback.trim() || undefined, true));
@@ -293,6 +293,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   }
   setIsProcessingBulk(false);
   setBulkProgress({ processed: 0, total: 0 });
+  // Close the dialog after processing completes
+  setBulkDialogOpen(false);
 
     clearSelection();
     // Announce summary for screen readers
@@ -550,7 +552,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       )}
 
       {/* Bulk action dialog for collect admin feedback when rejecting */}
-      <Dialog open={isBulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+      <Dialog open={isBulkDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setBulkDialogOpen(v); }}>
         {isBulkDialogOpen && (
           <DialogContent>
             <DialogHeader>
@@ -589,10 +591,12 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
             </div>
 
             <DialogFooter>
-              <Button variant="secondary" onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
-              <Button onClick={confirmBulkAction} className="ml-2">{bulkActionApprove ? 'Approve Selected' : 'Reject Selected'}</Button>
+              <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
+              <Button onClick={confirmBulkAction} className="ml-2" disabled={isProcessingBulk}>
+                {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
+              </Button>
             </DialogFooter>
-            <DialogClose />
+            {!isProcessingBulk && <DialogClose />}
           </DialogContent>
         )}
       </Dialog>

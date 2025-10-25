@@ -671,6 +671,61 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
 });
 
 /**
+ * Callable: revoke refresh tokens for a user (forces sign-out on other sessions).
+ * Only callable by admin users.
+ * Note: revoking refresh tokens prevents new ID tokens from being minted from existing refresh tokens.
+ * Existing ID tokens remain valid until they expire (typically up to 1 hour).
+ */
+export const revokeUserTokens = onCall(async (request: CallableRequest<{ userId?: string; reason?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Caller must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user data not found');
+  }
+  const callerData = callerDoc.data();
+  if (!callerData || callerData.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admin users may revoke tokens');
+  }
+
+  const { userId, reason } = request.data || {};
+  if (!userId || typeof userId !== 'string') {
+    throw new HttpsError('invalid-argument', 'userId is required and must be a string');
+  }
+
+  try {
+    logger.info(`Admin ${callerUid} requested token revocation for user ${userId}`);
+
+    // Revoke refresh tokens for the target user
+    await admin.auth().revokeRefreshTokens(userId);
+
+    // Optionally write an audit record for transparency
+    try {
+      await admin.firestore().collection('tokenRevocations').add({
+        userId,
+        revokedBy: callerUid,
+        reason: reason || null,
+        revokedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (auditErr) {
+      logger.warn('Failed to write token revocation audit record:', auditErr);
+    }
+
+    return {
+      success: true,
+      message: 'Revoked refresh tokens. Existing ID tokens will expire naturally; users may be signed out within an hour.',
+    };
+  } catch (err) {
+    logger.error('Error revoking tokens for user', userId, err);
+    if (err instanceof HttpsError) throw err;
+    throw new HttpsError('internal', `Failed to revoke tokens for user ${userId}`);
+  }
+});
+
+/**
  * Acknowledge multiple notifications in a single callable.
  * Expects request.data.notificationIds: string[]
  * Returns { success: true, unreadCount: number }
