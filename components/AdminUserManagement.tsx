@@ -3,6 +3,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from './ui/dialog';
 import { toast } from 'sonner';
 import { MoreHorizontal, Trash2, User, UserMinus, UserPlus, Lock, Unlock } from 'lucide-react';
@@ -71,11 +72,16 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
           {/* Filters on their own row, aligned to the right */}
           <div className="flex items-center gap-2 justify-end w-full">
             <label htmlFor="roleFilter" className="sr-only">Filter by role</label>
-            <select id="roleFilter" className="input rounded-full" value={filterRole} onChange={(e) => setFilterRole(e.target.value as any)}>
-              <option value="all">All roles</option>
-              <option value="admin">Admin</option>
-              <option value="faculty">Faculty</option>
-            </select>
+            <Select value={filterRole} onValueChange={(value) => setFilterRole(value as any)}>
+              <SelectTrigger id="roleFilter" className="w-36 rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg">
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="faculty">Faculty</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" className="rounded-full" onClick={() => { setSearch(''); setFilterRole('all'); }}>Reset</Button>
           </div>
         </div>
