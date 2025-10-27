@@ -168,7 +168,16 @@ export const setupNotificationsListener = (
     },
     (error) => {
       console.error('Notifications listener error (snapshot):', error);
-      errorCallback?.(error instanceof Error ? error : new Error(String(error)));
+      // If permissions are missing (user signed out or rules changed), unsubscribe to avoid repeated errors
+      try {
+        // unsubscribe is the function returned by onSnapshot
+        unsubscribe();
+      } catch (e) {
+        // ignore
+      }
+      // Surface a clearer error to callers
+      const err = error instanceof Error ? error : new Error(String(error));
+      errorCallback?.(err);
     }
   );
 

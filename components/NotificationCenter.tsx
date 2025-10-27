@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { notificationService, type Notification } from '../lib/notificationService';
 import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
@@ -66,6 +66,7 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
 export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll }) => {
   const [items, setItems] = useState<Notification[]>([]);
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-hide notifications on mobile when the user scrolls down.
   // Use a small cumulative downward-scroll threshold so brief accidental nudges don't close the panel.
@@ -101,6 +102,30 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
     return () => window.removeEventListener('scroll', onScroll);
   }, [onClose]);
 
+  // Close when user clicks/taps outside the panel or presses Escape.
+  useEffect(() => {
+    if (!onClose) return;
+
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!rootRef.current) return;
+      if (target && !rootRef.current.contains(target)) {
+        onClose();
+      }
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('pointerdown', onPointer, { passive: true });
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
   useEffect(() => {
     if (!userId) return;
     const unsub = notificationService.setupNotificationsListener((list) => {
@@ -128,7 +153,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   }, [userId]);
 
   return (
-  <div className="relative">
+  <div className="relative" ref={rootRef}>
     {/* small rotated square to act as a popover arrow pointing to the bell */}
     <div className="absolute right-6 -top-2 w-3 h-3 bg-white rotate-45 shadow-sm hidden sm:block" aria-hidden />
     <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96 transform transition-all duration-200 ease-out">
