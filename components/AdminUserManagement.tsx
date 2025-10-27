@@ -18,9 +18,12 @@ interface AdminUserManagementProps {
   onDeleteUser?: (userId: string, hard?: boolean) => Promise<any>;
   onChangeRole?: (userId: string, role: AppUser['role']) => Promise<void>;
   onUnlockAccount?: (userId: string) => Promise<void>;
+  // Optional externally-managed processing indicator (parent can pass this to show
+  // inline loaders when it performs the network action).
+  processingUserId?: string | null;
 }
 
-export default function AdminUserManagement({ users = [], onDisableUser, onEnableUser, onDeleteUser, onChangeRole, onUnlockAccount }: AdminUserManagementProps) {
+export default function AdminUserManagement({ users = [], onDisableUser, onEnableUser, onDeleteUser, onChangeRole, onUnlockAccount, processingUserId: externalProcessingUserId }: AdminUserManagementProps) {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | AppUser['role']>('all');
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<AppUser | null>(null);
@@ -32,6 +35,9 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   const [pendingDemotionUser, setPendingDemotionUser] = useState<AppUser | null>(null);
   const [isDemoting, setIsDemoting] = useState(false);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  // If a parent supplies an externalProcessingUserId, prefer it for rendering
+  // inline loaders and disabling buttons. Otherwise use local state.
+  const effectiveProcessingUserId = externalProcessingUserId ?? processingUserId;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -81,7 +87,7 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
 
   // Per-row action handlers: await parent handlers and surface messages; disable the single row while running
   const handleDisable = async (user: AppUser) => {
-    setProcessingUserId(user.id);
+  setProcessingUserId(user.id);
     try {
       if (onDisableUser) {
         const res: any = await onDisableUser(user.id);
@@ -99,7 +105,7 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   };
 
   const handleEnable = async (user: AppUser) => {
-    setProcessingUserId(user.id);
+  setProcessingUserId(user.id);
     try {
       if (onEnableUser) {
         const res: any = await onEnableUser(user.id);
@@ -117,7 +123,7 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   };
 
   const handleUnlock = async (user: AppUser) => {
-    setProcessingUserId(user.id);
+  setProcessingUserId(user.id);
     try {
       if (onUnlockAccount) {
         const res: any = await onUnlockAccount(user.id);
@@ -204,7 +210,7 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                   <div className="flex items-center gap-2">
                       {u.accountLocked ? (
                       <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUnlock(u)} disabled={processingUserId === u.id}>
-                        {processingUserId === u.id ? (
+                        {effectiveProcessingUserId === u.id ? (
                           <span className="inline-flex items-center">
                             <Loader2 className="animate-spin mr-2 h-4 w-4" />
                             <span className="sr-only">Unlocking {u.name}</span>
@@ -215,8 +221,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                         Unlock
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleDisable(u)} disabled={processingUserId === u.id}>
-                        {processingUserId === u.id ? (
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleDisable(u)} disabled={effectiveProcessingUserId === u.id}>
+                        {effectiveProcessingUserId === u.id ? (
                           <span className="inline-flex items-center">
                             <Loader2 className="animate-spin mr-2 h-4 w-4" />
                             <span className="sr-only">Disabling {u.name}</span>

@@ -27,9 +27,10 @@ import { Switch } from './ui/switch';
 
 interface ProfileSettingsProps {
   user: User;
+  onTogglePush?: (enabled: boolean) => Promise<any> | void;
 }
 
-export default function ProfileSettings({ user }: ProfileSettingsProps) {
+export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsProps) {
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -215,6 +216,25 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
       if (!pushSupported) {
         throw new Error('Push-not-supported');
       }
+
+      // Prefer parent handler when present (await it). Parent may handle push token lifecycle and update user record.
+      if (typeof onTogglePush === 'function') {
+        const res: any = await onTogglePush(enabled);
+        // If parent handler returns an object with explicit failure, surface it
+        if (res && res.success === false) {
+          throw new Error(res.message || 'Failed to change push preference');
+        }
+        // If parent provided an updated pushEnabled value, use it
+        if (res && typeof res.pushEnabled === 'boolean') {
+          setPushEnabled(res.pushEnabled);
+        } else {
+          // best-effort: assume success and set local flag
+          setPushEnabled(!!enabled);
+        }
+        return;
+      }
+
+      // Local fallback behaviour: manage push tokens and update user via userService
       if (enabled) {
         const res = await pushService.enablePush();
         if (res.success && res.token) {

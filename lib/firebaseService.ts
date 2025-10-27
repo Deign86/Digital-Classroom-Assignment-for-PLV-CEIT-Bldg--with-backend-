@@ -1056,37 +1056,53 @@ export const authService = {
         // Track any auth-related error
         if (code?.startsWith('auth/')) {
           console.log('🔒 Calling trackFailedLogin for:', email);
-          
+
+          // Optimisation: do the tracking call in the background so we can
+          // return control to the UI immediately. In some environments the
+          // callable or network retries can take a long time which blocks the
+          // sign-in error propagation and delays any UI reaction (such as
+          // opening the account-locked modal). We set a lightweight
+          // sessionStorage placeholder so the UI can open a modal immediately
+          // and update it when the callable returns.
           try {
-            const trackFailedLoginFn = httpsCallable(functions, 'trackFailedLogin');
-            const result = await withRetry(() => trackFailedLoginFn({ email }), { attempts: 3, shouldRetry: isNetworkError });
-            const data = result.data as { 
-              locked?: boolean; 
-              attemptsRemaining?: number; 
-              message?: string; // This message is now user-facing
-              lockedUntil?: string;
-            };
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+            try { sessionStorage.setItem('accountLockedMessage', 'Checking account status...'); } catch (_) {}
+          } catch (_) {}
 
-            console.log('✅ trackFailedLogin response:', data);
+          // Fire-and-forget the callable. Update sessionStorage when the
+          // callable completes so the UI can show the server-provided message.
+          (async () => {
+            try {
+              const trackFailedLoginFn = httpsCallable(functions, 'trackFailedLogin');
+              const result = await withRetry(() => trackFailedLoginFn({ email }), { attempts: 3, shouldRetry: isNetworkError });
+              const data = result.data as {
+                locked?: boolean;
+                attemptsRemaining?: number;
+                message?: string;
+                lockedUntil?: string;
+              };
 
-            if (data.locked) {
-              throw new Error(data.message || 'Account locked due to too many failed login attempts. Please try again in 30 minutes.');
-            } else if (data.message) {
-              // Show warning about remaining attempts
-              throw new Error(data.message);
+              console.log('✅ trackFailedLogin response (background):', data);
+
+              if (data.message) {
+                try { sessionStorage.setItem('accountLockedMessage', data.message); } catch (_) {}
+              }
+
+              if (data.locked) {
+                // If the server explicitly locked the account, keep the flag
+                // and set the message. The UI will already have opened the
+                // modal because we set the sessionStorage above.
+                try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+              } else {
+                // If not locked, remove the placeholder flag so UI can clear
+                // the modal if desired.
+                try { sessionStorage.removeItem('accountLocked'); } catch (_) {}
+                try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
+              }
+            } catch (bgErr) {
+              console.error('❌ trackFailedLogin background error:', bgErr);
             }
-          } catch (trackError) {
-            console.error('❌ trackFailedLogin error:', trackError);
-            
-            // If tracking fails or throws our custom error, handle it
-            if (trackError instanceof Error && 
-                (trackError.message.includes('Account locked') || 
-                 trackError.message.includes('attempts remaining'))) {
-              throw trackError;
-            }
-            console.warn('⚠️ Failed to track login attempt:', trackError);
-            // Continue with normal error handling
-          }
+          })();
         }
       }
       
