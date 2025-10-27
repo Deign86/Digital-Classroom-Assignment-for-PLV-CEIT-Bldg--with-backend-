@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from './ui/textarea';
 import { toast } from 'sonner';
 import { Label } from './ui/label';
-import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Filter, X, Loader2 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots } from '../utils/timeUtils';
 import type { Schedule, Classroom } from '../App';
 
@@ -274,7 +274,12 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                             className="transition-colors duration-200"
                             disabled={!!isCanceling[schedule.id]}
                           >
-                            {isCanceling[schedule.id] ? 'Cancelling…' : 'Cancel Reservation'}
+                              {isCanceling[schedule.id] ? (
+                                <span className="inline-flex items-center">
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Cancelling…
+                                </span>
+                              ) : 'Cancel Reservation'}
                           </AlertDialogAction>
                         )}
                       </AlertDialogFooter>
@@ -380,7 +385,12 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                       }}
                                       disabled={!!isCanceling[schedule.id]}
                                     >
-                                      {isCanceling[schedule.id] ? 'Cancelling…' : 'Cancel Reservation'}
+                                        {isCanceling[schedule.id] ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Cancelling…
+                                          </span>
+                                        ) : 'Cancel Reservation'}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { notificationService, type Notification } from '../lib/notificationService';
 import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus } from '@phosphor-icons/react';
+import { Loader2 } from 'lucide-react';
 
 type Props = {
   userId: string;
@@ -44,7 +45,14 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
               className="text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"
               disabled={acknowledging}
             >
-              {acknowledging ? 'Acknowledging...' : 'Acknowledge'}
+              {acknowledging ? (
+                <span className="inline-flex items-center">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Acknowledging...
+                </span>
+              ) : (
+                'Acknowledge'
+              )}
             </button>
           ) : (
             <div className="text-xs text-gray-500">Acknowledged</div>

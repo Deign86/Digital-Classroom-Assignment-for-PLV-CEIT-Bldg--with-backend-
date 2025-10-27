@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
-import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle, Loader2 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 import RequestCard from './RequestCard';
@@ -371,10 +371,24 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
 
                   <div className="flex items-center gap-2">
                     <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk}>
-                      {isProcessingBulk ? `Processing… (${bulkProgress.processed}/${bulkProgress.total})` : `Approve Selected (${selectedCount})`}
+                      {isProcessingBulk ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {`Processing… (${bulkProgress.processed}/${bulkProgress.total})`}
+                        </span>
+                      ) : (
+                        `Approve Selected (${selectedCount})`
+                      )}
                     </Button>
                     <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk}>
-                      {isProcessingBulk ? 'Processing…' : `Reject Selected (${selectedCount})`}
+                      {isProcessingBulk ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing…
+                        </span>
+                      ) : (
+                        `Reject Selected (${selectedCount})`
+                      )}
                     </Button>
                   </div>
                 </div>
