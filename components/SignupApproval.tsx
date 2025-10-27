@@ -17,6 +17,7 @@ import {
   Building,
   Calendar,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
 import type { SignupRequest, SignupHistory } from '../App';
 
@@ -66,6 +67,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  // Per-request processing indicator to show loader on specific approve/reject actions
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds(prev => ({ ...prev, [id]: checked }));
@@ -151,11 +154,14 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     }
 
     try {
+      setProcessingId(requestId);
       await onSignupApproval(requestId, approved, approved ? feedbackText || undefined : feedbackText);
       setFeedback((prev) => ({ ...prev, [requestId]: '' }));
     } catch (err) {
       console.error('Signup approval error:', err);
       toast.error('Failed to process signup request');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -525,15 +531,35 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                     <Button
                       onClick={() => handleApproval(request.id, true)}
                       className="flex-1"
+                      disabled={processingId === request.id}
+                      aria-busy={processingId === request.id}
                     >
-                      <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                      {processingId === request.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving…
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                        </>
+                      )}
                     </Button>
                     <Button
                       onClick={() => handleApproval(request.id, false)}
                       variant="destructive"
                       className="flex-1"
+                      disabled={processingId === request.id}
+                      aria-busy={processingId === request.id}
                     >
-                      <XCircle className="h-4 w-4 mr-2" /> Reject
+                      {processingId === request.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Rejecting…
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 mr-2" /> Reject
+                        </>
+                      )}
                     </Button>
                   </div>
                 </CardContent>
