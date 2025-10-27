@@ -18,12 +18,14 @@ interface AdminUserManagementProps {
   onDeleteUser?: (userId: string, hard?: boolean) => Promise<any>;
   onChangeRole?: (userId: string, role: AppUser['role']) => Promise<void>;
   onUnlockAccount?: (userId: string) => Promise<void>;
+  // Optional: send a notification (in-app/email) to a user (e.g., ask them to re-login)
+  onNotifyUser?: (userId: string, payload?: { title?: string; body?: string }) => Promise<void>;
   // Optional externally-managed processing indicator (parent can pass this to show
   // inline loaders when it performs the network action).
   processingUserId?: string | null;
 }
 
-export default function AdminUserManagement({ users = [], onDisableUser, onEnableUser, onDeleteUser, onChangeRole, onUnlockAccount, processingUserId: externalProcessingUserId }: AdminUserManagementProps) {
+export default function AdminUserManagement({ users = [], onDisableUser, onEnableUser, onDeleteUser, onChangeRole, onUnlockAccount, processingUserId: externalProcessingUserId, onNotifyUser }: AdminUserManagementProps) {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | AppUser['role']>('all');
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<AppUser | null>(null);
@@ -35,6 +37,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   const [pendingDemotionUser, setPendingDemotionUser] = useState<AppUser | null>(null);
   const [isDemoting, setIsDemoting] = useState(false);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  const [notifyTargetUser, setNotifyTargetUser] = useState<AppUser | null>(null);
+  const [isNotifying, setIsNotifying] = useState(false);
   // If a parent supplies an externalProcessingUserId, prefer it for rendering
   // inline loaders and disabling buttons. Otherwise use local state.
   const effectiveProcessingUserId = externalProcessingUserId ?? processingUserId;
@@ -295,6 +299,49 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
             </DialogFooter>
           </DialogContent>
         </Dialog>
+          {/* Notify user dialog - appears after role change when backend indicates the user may be logged in */}
+          <Dialog open={!!notifyTargetUser} onOpenChange={(open) => { if (isNotifying) return; if (!open) setNotifyTargetUser(null); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Notify user to re-login</DialogTitle>
+              </DialogHeader>
+              <div className="py-2">
+                <p className="text-sm">You changed the role for <strong>{notifyTargetUser?.name}</strong>.</p>
+                <p className="text-sm mt-2">If this user is currently logged in, they need to re-login to apply the new role and permissions. You can send them a quick notice to prompt a re-login.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" className="rounded-full" onClick={() => { if (!isNotifying) setNotifyTargetUser(null); }} disabled={isNotifying}>Close</Button>
+                <Button variant="secondary" className="rounded-full" onClick={async () => {
+                  if (!notifyTargetUser) return;
+                  if (!onNotifyUser) {
+                    // Fallback: simply show guidance if notification mechanism isn't available
+                    toast.info('Notification handler not configured. Please ask the user to re-login or send an external message.');
+                    setNotifyTargetUser(null);
+                    return;
+                  }
+                  setIsNotifying(true);
+                  try {
+                    await onNotifyUser(notifyTargetUser.id, { title: 'Account role changed', body: 'Your account role was changed by an administrator. Please sign out and sign in again to apply the new changes.' });
+                    toast.success('User has been notified to re-login.');
+                  } catch (err: any) {
+                    console.error('Notify user error', err);
+                    toast.error(err?.message || 'Failed to notify user');
+                  } finally {
+                    setIsNotifying(false);
+                    setNotifyTargetUser(null);
+                  }
+                }} disabled={isNotifying}>
+                  {isNotifying ? (
+                    <span className="inline-flex items-center">
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      <span className="sr-only">Notifying user</span>
+                    </span>
+                  ) : null}
+                  Notify user
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         {/* Promotion confirmation dialog */}
         <Dialog open={!!pendingPromotionUser} onOpenChange={(open) => { if (isPromoting) return; if (!open) setPendingPromotionUser(null); }}>
           <DialogContent>
@@ -312,12 +359,15 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                 setIsPromoting(true);
                 try {
                   if (onChangeRole) {
-                    // allow onChangeRole to optionally return a structured response { success, message }
+                    // allow onChangeRole to optionally return a structured response { success, message, notifyCurrentlyLoggedIn }
                     const res: any = await (onChangeRole as any)(pendingPromotionUser.id, 'admin');
                     if (res && res.message) {
                       toast.success(res.message);
                     } else {
                       toast.success(`${pendingPromotionUser.name} is now an admin.`);
+                    }
+                    if (res && res.notifyCurrentlyLoggedIn) {
+                      setNotifyTargetUser(pendingPromotionUser);
                     }
                   }
                 } catch (err: any) {
@@ -361,6 +411,9 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                       toast.success(res.message);
                     } else {
                       toast.success(`${pendingDemotionUser.name} is now a faculty.`);
+                    }
+                    if (res && res.notifyCurrentlyLoggedIn) {
+                      setNotifyTargetUser(pendingDemotionUser);
                     }
                   }
                 } catch (err: any) {
