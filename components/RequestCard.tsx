@@ -345,22 +345,11 @@ export default function RequestCard({
                 </AlertDialogContent>
               </AlertDialog>
             ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex-1">
-                      <Button variant="outline" className="flex-1" disabled>
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancel Reservation
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    This reservation has already started or passed and cannot be cancelled.
-                  </TooltipContent>
-                </Tooltip>
-                <p className="text-xs text-muted-foreground mt-2">Cannot cancel — reservation has already started or passed.</p>
-              </TooltipProvider>
+              // Hide the Cancel button entirely for lapsed bookings to match backend enforcement.
+              // Keep an sr-only message for screen reader users so the state remains accessible.
+              <div className="flex-1">
+                <p className="sr-only" aria-hidden={false}>This reservation has already started or passed and cannot be cancelled.</p>
+              </div>
             )}
           </div>
         )}
