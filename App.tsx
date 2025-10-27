@@ -1,5 +1,5 @@
 import './styles/globals.css';
-import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
 // Lazy-load heavy dashboard components to reduce initial bundle size
@@ -187,7 +187,14 @@ export default function App() {
 
   // Setup real-time data listeners based on user role and permissions
   const setupRealtimeListeners = useCallback((user: User | null) => {
-    console.log('🔄 Setting up real-time data listeners...');
+    // Track which user we've already logged setup for to avoid noisy duplicate logs
+    const lastLoggedRealtimeUserIdRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null> | undefined;
+    if (!lastLoggedRealtimeUserIdRef) {
+      (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef = { current: null } as React.MutableRefObject<string | null>;
+    }
+    const lastLoggedRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>;
+    const shouldLogSetup = Boolean(user && lastLoggedRef.current !== user.id);
+    if (shouldLogSetup) console.log('🔄 Setting up real-time data listeners...');
     
     if (!user) {
       // Clear data when no user
@@ -197,6 +204,7 @@ export default function App() {
       setBookingRequests([]);
       setSchedules([]);
       realtimeService.cleanup();
+      try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = null; } catch (_) {}
       return;
     }
 
@@ -273,7 +281,10 @@ export default function App() {
           });
       }
       
-      console.log('✅ Real-time listeners setup complete');
+      if (shouldLogSetup) {
+        console.log('✅ Real-time listeners setup complete');
+        try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) {}
+      }
       } catch (err) {
       console.error('❌ Failed to setup real-time listeners:', err);
       toast.error('Failed to setup real-time data sync');
