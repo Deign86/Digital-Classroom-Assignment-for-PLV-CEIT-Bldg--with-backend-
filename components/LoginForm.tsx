@@ -22,9 +22,10 @@ interface LoginFormProps {
   ) => boolean | Promise<boolean>;
   users: User[];
   isLocked?: boolean;
+  accountLockedMessage?: string | null;
 }
 
-export default function LoginForm({ onLogin, onSignup, users, isLocked = false }: LoginFormProps) {
+export default function LoginForm({ onLogin, onSignup, users, isLocked = false, accountLockedMessage = null }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signupData, setSignupData] = useState({
@@ -135,7 +136,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false }
     // prevent any submission attempt (defends against races or manual JS triggers).
     if (isLocked) {
       try {
-        toast.error('Your account is currently locked. Please contact your administrator or support.');
+        if (accountLockedMessage) toast.error(accountLockedMessage);
+        else toast.error('Your account is currently locked. Please contact your administrator or support.');
       } catch (toastErr) {
         /* swallow toast errors */
       }
@@ -331,7 +333,13 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false }
             </div>
 
             {isLocked && (
-              <div className="mb-3 text-sm text-red-600">Your account is locked. You cannot sign in until an administrator unlocks your account or you dismiss the notice.</div>
+              <div className="mb-3 text-sm text-red-600">
+                {accountLockedMessage ? (
+                  <span className="font-medium">{accountLockedMessage}</span>
+                ) : (
+                  'Your account is locked. You cannot sign in while the account is locked. Please contact your administrator or support.'
+                )}
+              </div>
             )}
 
             <Button

@@ -1403,7 +1403,7 @@ export default function App() {
             </div>
             
               <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
-                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} />
+                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} accountLockedMessage={accountLockedMessage} />
               </div>
           </div>
         </div>
