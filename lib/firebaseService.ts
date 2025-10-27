@@ -986,20 +986,31 @@ export const authService = {
       const user = toUser(firebaseUser.uid, record);
 
       // Check if account is locked (after authentication but before allowing login)
-      if (user.accountLocked && user.lockedUntil) {
-        const lockedUntilDate = new Date(user.lockedUntil);
+      if (user.accountLocked) {
         const now = new Date();
-        
-        if (now < lockedUntilDate) {
-          // Account is still locked - sign them out
+
+        // If locked by admin, prevent login until an admin explicitly unlocks
+        if (user.lockedByAdmin) {
           await firebaseSignOut(auth);
           currentUserCache = null;
           notifyAuthListeners(null);
-          
-          const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
-          throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
-        } else {
-          // Lockout period has expired, will be unlocked below in success handler
+          throw new Error('Your account has been disabled by an administrator. Please contact your administrator to re-enable this account.');
+        }
+
+        // Otherwise, treat it as a system lockout (time-bound)
+        if (user.lockedUntil) {
+          const lockedUntilDate = new Date(user.lockedUntil);
+          if (now < lockedUntilDate) {
+            // Account is still locked - sign them out
+            await firebaseSignOut(auth);
+            currentUserCache = null;
+            notifyAuthListeners(null);
+
+            const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
+            throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
+          } else {
+            // Lockout period has expired, will be unlocked below in success handler
+          }
         }
       }
 

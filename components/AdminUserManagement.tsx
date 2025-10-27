@@ -202,8 +202,32 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span>{u.status}</span>
-                    {u.accountLocked ? <Lock className="h-4 w-4 text-red-500" /> : null}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span>{u.status}</span>
+                        {u.accountLocked ? <Lock className="h-4 w-4 text-red-500" /> : null}
+                      </div>
+                      {u.accountLocked && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {u.lockedByAdmin ? (
+                            <span className="text-orange-600">Disabled by administrator</span>
+                          ) : u.lockedUntil ? (
+                            (() => {
+                              const lockedUntil = new Date(u.lockedUntil);
+                              const now = new Date();
+                              const mins = Math.max(0, Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000));
+                              return mins > 0 ? (
+                                <span className="text-red-600">Auto-unlock in {mins} minute{mins !== 1 ? 's' : ''}</span>
+                              ) : (
+                                <span className="text-orange-600">Lockout period expired - will unlock on next login attempt</span>
+                              );
+                            })()
+                          ) : (
+                            <span className="text-orange-600">Disabled by administrator</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
