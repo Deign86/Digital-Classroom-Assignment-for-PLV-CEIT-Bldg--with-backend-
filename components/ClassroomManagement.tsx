@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch';
-import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Classroom } from '../App';
 
@@ -41,6 +41,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
+  const [loadingRows, setLoadingRows] = useState<Record<string, boolean>>({});
 
   const resetForm = () => {
     setFormData({
@@ -128,6 +129,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   };
 
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
+    // show per-row loader while updating
+    setLoadingRows(prev => ({ ...prev, [classroomId]: true }));
     try {
       await classroomService.update(classroomId, { isAvailable });
       const updatedClassrooms = await classroomService.getAll();
@@ -135,6 +138,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
     } catch (err) {
       toast.error('Error updating availability');
+    } finally {
+      setLoadingRows(prev => {
+        const copy = { ...prev };
+        delete copy[classroomId];
+        return copy;
+      });
     }
   };
 
@@ -316,8 +325,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         <div className="flex items-center space-x-2">
                           <Switch
                             checked={classroom.isAvailable}
+                            disabled={!!loadingRows[classroom.id]}
                             onCheckedChange={(checked: boolean) => handleAvailabilityToggle(classroom.id, checked)}
                           />
+                          {loadingRows[classroom.id] && (
+                            <span className="inline-flex items-center">
+                              <Loader2 className="animate-spin mr-2 h-4 w-4 text-gray-500" />
+                              <span className="sr-only">Updating availability</span>
+                            </span>
+                          )}
                           <Badge variant={classroom.isAvailable ? 'default' : 'secondary'}>
                             {classroom.isAvailable ? 'Available' : 'Disabled'}
                           </Badge>
