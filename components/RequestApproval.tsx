@@ -357,10 +357,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
 
                 {/* Mobile: horizontal sidescroll list; Desktop/tablet: vertical stack */}
                 <div className="sm:hidden">
-                  <div className="overflow-x-auto -mx-2 px-2">
-                    <div className="flex gap-4">
-                      {pendingRequests.map((request) => (
-                        <div key={request.id} className="min-w-[280px] flex-shrink-0">
+                  <div className="overflow-x-auto -mx-4 px-4 snap-x snap-mandatory">
+                      <div className="flex gap-4">
+                        {pendingRequests.map((request) => (
+                          <div key={request.id} className="min-w-[320px] flex-shrink-0 snap-start">
                           <RequestCard
                             request={request}
                             onApprove={() => handleAction(request, 'approve')}
@@ -438,10 +438,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
 
                 {/* Mobile: horizontal sidescroll for approved */}
                 <div className="sm:hidden">
-                  <div className="overflow-x-auto -mx-2 px-2">
+                  <div className="overflow-x-auto -mx-4 px-4 snap-x snap-mandatory">
                     <div className="flex gap-4">
                       {approvedRequests.map((request) => (
-                        <div key={request.id} className="min-w-[280px] flex-shrink-0">
+                        <div key={request.id} className="min-w-[320px] flex-shrink-0 snap-start">
                           <RequestCard
                             request={request}
                             onApprove={() => {}}
@@ -521,10 +521,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               <div className="space-y-4">
                 {/* Mobile: horizontal sidescroll for rejected */}
                 <div className="sm:hidden">
-                  <div className="overflow-x-auto -mx-2 px-2">
+                  <div className="overflow-x-auto -mx-4 px-4 snap-x snap-mandatory">
                     <div className="flex gap-4">
                       {rejectedRequests.map((request) => (
-                        <div key={request.id} className="min-w-[280px] flex-shrink-0">
+                        <div key={request.id} className="min-w-[320px] flex-shrink-0 snap-start">
                           <RequestCard
                             request={request}
                             onApprove={() => {}}
