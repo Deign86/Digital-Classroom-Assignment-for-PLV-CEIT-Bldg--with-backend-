@@ -17,6 +17,7 @@ import {
   Building,
   Calendar,
   MessageSquare,
+  Loader2,
 } from 'lucide-react';
 import type { SignupRequest, SignupHistory } from '../App';
 
@@ -66,6 +67,9 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string | null>>({});
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  // Per-request processing indicators to show loader on specific approve/reject actions
+  // Use a Set so multiple per-item operations can run concurrently without stomping each other.
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds(prev => ({ ...prev, [id]: checked }));
@@ -151,44 +155,69 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     }
 
     try {
+      setProcessingIds(prev => {
+        const s = new Set(prev);
+        s.add(requestId);
+        return s;
+      });
       await onSignupApproval(requestId, approved, approved ? feedbackText || undefined : feedbackText);
       setFeedback((prev) => ({ ...prev, [requestId]: '' }));
     } catch (err) {
       console.error('Signup approval error:', err);
       toast.error('Failed to process signup request');
+    } finally {
+      setProcessingIds(prev => {
+        const s = new Set(prev);
+        s.delete(requestId);
+        return s;
+      });
+    }
+  };
+  const showBulkSummary = (succeeded: string[], failed: { id: string; error?: unknown }[]) => {
+    setBulkResults({ succeeded, failed });
+    if (succeeded.length > 0 && failed.length === 0) {
+      const msg = `${succeeded.length} request(s) processed successfully.`;
+      toast.success(msg);
+      try { announce(msg, 'polite'); } catch (e) {}
+    } else if (succeeded.length > 0 && failed.length > 0) {
+      const msg = `${succeeded.length} processed, ${failed.length} failed.`;
+      toast.success(msg);
+      try { announce(msg, 'polite'); } catch (e) {}
+    } else {
+      const msg = 'Failed to process selected requests.';
+      toast.error(msg);
+      try { announce(msg, 'assertive'); } catch (e) {}
     }
   };
 
   const startBulkApproval = async (approved: boolean) => {
-    // This function is now the low-level executor; UI should open the dialog to collect
-    // bulkFeedback for the selected items and then call this. Keep it here for reuse.
     const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
     if (ids.length === 0) return;
-    // Run all bulk ops in parallel but collect results so we can surface a summary
-    const promises = ids.map((id) => {
+
+    setIsProcessingBulk(true);
+    setBulkProgress({ processed: 0, total: ids.length });
+
+    const tasks = ids.map(id => async () => {
       const feedbackText = (feedback[id] ?? '').trim();
       return onSignupApproval(id, approved, approved ? feedbackText || undefined : feedbackText, true);
     });
 
-    const results = await Promise.allSettled(promises);
-    const succeeded = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.length - succeeded;
+    const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
-    // show a single summary toast instead of opening a bulk results dialog
-    if (succeeded > 0 && failed === 0) {
-      const message = `${succeeded} reservation(s) processed successfully.`;
-      toast.success(message);
-      announce?.(message, 'polite');
-    } else if (succeeded > 0 && failed > 0) {
-      const message = `${succeeded} reservation(s) processed. ${failed} failed.`;
-      toast.success(message);
-      announce?.(message, 'polite');
-    } else {
-      const message = 'Failed to process selected requests.';
-      toast.error(message);
-      announce?.(message, 'assertive');
-    }
+    const succeeded: string[] = [];
+    const failed: { id: string; error?: unknown }[] = [];
 
+    results.forEach((res, idx) => {
+      const id = ids[idx];
+      if (res?.status === 'fulfilled') succeeded.push(id);
+      else failed.push({ id, error: res?.reason });
+    });
+
+    setBulkResults({ succeeded, failed });
+    showBulkSummary(succeeded, failed);
+
+    setIsProcessingBulk(false);
+    setBulkProgress({ processed: 0, total: 0 });
     clearSelection();
   };
 
@@ -200,6 +229,16 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
   const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
+
+  // Whether the confirm button should be enabled. For approvals feedback is optional;
+  // for rejections feedback is required and must be non-empty and not exceed length limits.
+  const canConfirmBulk = (() => {
+    if (isProcessingBulk) return false;
+    if (bulkActionApprove === null) return false;
+    if (bulkActionApprove) return true;
+    // rejecting: require non-empty feedback and no validation error
+    return bulkFeedback.trim().length > 0 && !bulkFeedbackError;
+  })();
 
   // Throttled worker runner - processes promises with limited concurrency
   const runWithConcurrency = async <T,>(
@@ -525,15 +564,35 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                     <Button
                       onClick={() => handleApproval(request.id, true)}
                       className="flex-1"
+                      disabled={processingIds.has(request.id)}
+                      aria-busy={processingIds.has(request.id)}
                     >
-                      <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                      {processingIds.has(request.id) ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving…
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                        </>
+                      )}
                     </Button>
                     <Button
                       onClick={() => handleApproval(request.id, false)}
                       variant="destructive"
                       className="flex-1"
+                      disabled={processingIds.has(request.id)}
+                      aria-busy={processingIds.has(request.id)}
                     >
-                      <XCircle className="h-4 w-4 mr-2" /> Reject
+                      {processingIds.has(request.id) ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Rejecting…
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 mr-2" /> Reject
+                        </>
+                      )}
                     </Button>
                   </div>
                 </CardContent>
@@ -583,8 +642,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 className="min-h-[120px] p-3 mt-0"
                 maxLength={500}
               />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-gray-500">Max 500 characters</p>
+              {/* Keep a compact live character counter (per request) */}
+              <div className="flex items-center justify-end mt-1">
                 <p className="text-xs text-gray-500">{bulkFeedback.length}/500</p>
               </div>
               {bulkFeedbackError && <p className="text-xs text-red-600 mt-1">{bulkFeedbackError}</p>}
@@ -592,7 +651,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
             <DialogFooter>
               <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
-              <Button onClick={confirmBulkAction} className="ml-2" disabled={isProcessingBulk}>
+              <Button onClick={confirmBulkAction} className="ml-2" disabled={!canConfirmBulk}>
                 {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
               </Button>
             </DialogFooter>
