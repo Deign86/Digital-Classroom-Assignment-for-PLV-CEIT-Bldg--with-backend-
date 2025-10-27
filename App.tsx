@@ -59,6 +59,8 @@ export interface User {
   failedLoginAttempts?: number;
   accountLocked?: boolean;
   lockedUntil?: string;
+  // If true, the account was manually disabled by an admin and should remain locked until an admin unlocks it.
+  lockedByAdmin?: boolean;
   // Whether the user has enabled browser/service-worker push notifications
   pushEnabled?: boolean;
 }

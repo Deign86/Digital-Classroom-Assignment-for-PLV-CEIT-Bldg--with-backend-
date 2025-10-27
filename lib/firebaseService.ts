@@ -106,6 +106,9 @@ type FirestoreUserRecord = {
   failedLoginAttempts?: number;
   accountLocked?: boolean;
   lockedUntil?: string;
+  // Indicates the account was explicitly disabled by an administrator (manual lock).
+  // When true, the account should not auto-unlock — an admin must re-enable it.
+  lockedByAdmin?: boolean;
   pushEnabled?: boolean;
 };
 
@@ -477,6 +480,8 @@ const toUser = (id: string, data: FirestoreUserRecord): User => ({
   failedLoginAttempts: data.failedLoginAttempts || 0,
   accountLocked: data.accountLocked || false,
   lockedUntil: data.lockedUntil,
+  // carry admin-lock indicator to client runtime
+  lockedByAdmin: !!data.lockedByAdmin,
   // Carry push preference through to the runtime user object
   pushEnabled: data.pushEnabled,
 });
@@ -1442,6 +1447,7 @@ export const userService = {
       failedLoginAttempts: 0,
       accountLocked: false,
       lockedUntil: null,
+      lockedByAdmin: false,
       updatedAt: nowIso(),
     });
 
@@ -1462,6 +1468,7 @@ export const userService = {
     await updateDoc(userRef, {
       accountLocked: true,
       lockedUntil,
+      lockedByAdmin: false,
       updatedAt: nowIso(),
     });
 
@@ -1483,6 +1490,41 @@ export const userService = {
       // Log but don't throw - lock state was already set in Firestore
       console.warn('Failed to call revokeUserTokens callable after locking account:', revErr);
     }
+    return toUser(snapshot.id, record);
+  },
+
+  // Admin-triggered account disable: mark as locked by admin and do NOT set a timed lockedUntil.
+  // This prevents auto-unlock behavior; an admin must explicitly call unlockAccount to re-enable.
+  async lockAccountByAdmin(id: string): Promise<User> {
+    const database = getDb();
+    const userRef = doc(database, COLLECTIONS.USERS, id);
+
+    await updateDoc(userRef, {
+      accountLocked: true,
+      lockedUntil: null,
+      lockedByAdmin: true,
+      updatedAt: nowIso(),
+    });
+
+    const snapshot = await getDoc(userRef);
+    if (!snapshot.exists()) {
+      throw new Error('User not found');
+    }
+
+    const record = ensureUserData(snapshot);
+    // Attempt to revoke refresh tokens for the user so currently-signed-in sessions are invalidated.
+    try {
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const fn = httpsCallable(functions, 'revokeUserTokens');
+      // best-effort: do not fail the lock operation if the callable is unavailable
+      const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
+      console.log('revokeUserTokens response:', resp?.data);
+    } catch (revErr) {
+      // Log but don't throw - lock state was already set in Firestore
+      console.warn('Failed to call revokeUserTokens callable after locking account (admin):', revErr);
+    }
+
     return toUser(snapshot.id, record);
   },
 

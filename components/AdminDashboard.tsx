@@ -521,15 +521,18 @@ export default function AdminDashboard({
             {users && users.filter(u => u.accountLocked).length > 0 && (
               <div className="animate-in" style={{ animationDelay: '0.4s' }}>
                 <Card className="border-red-200 bg-red-50 transition-shadow duration-200 hover:shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-red-800">
-                      <AlertTriangle className="h-5 w-5 mr-2" />
-                      Locked Accounts
-                    </CardTitle>
-                    <CardDescription className="text-red-700">
-                      These accounts are locked due to failed login attempts
-                    </CardDescription>
-                  </CardHeader>
+                        <CardHeader>
+                          <CardTitle className="flex items-center text-red-800">
+                            <AlertTriangle className="h-5 w-5 mr-2" />
+                            Locked Accounts
+                          </CardTitle>
+                          {/* Show contextual description depending on whether any locks were admin-triggered */}
+                          <CardDescription className="text-red-700">
+                            {users.filter(u => u.accountLocked && u.lockedByAdmin).length > 0
+                              ? 'These accounts were disabled by an administrator and will remain locked until an admin unlocks them.'
+                              : 'These accounts are locked due to failed login attempts'}
+                          </CardDescription>
+                        </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {users.filter(u => u.accountLocked).map((lockedUser, index) => {
@@ -537,6 +540,7 @@ export default function AdminDashboard({
                         const now = new Date();
                         const isStillLocked = lockedUntil && lockedUntil > now;
                         const minutesRemaining = lockedUntil ? Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000) : 0;
+                        const isAdminLocked = !!lockedUser.lockedByAdmin;
                         
                         return (
                           <div 
@@ -553,7 +557,11 @@ export default function AdminDashboard({
                               </div>
                               <p className="text-sm text-gray-600">{lockedUser.email}</p>
                               <p className="text-sm text-gray-600">{lockedUser.department || 'N/A'}</p>
-                              {isStillLocked ? (
+                              {isAdminLocked ? (
+                                <p className="text-xs text-orange-600 mt-1">
+                                  Disabled by administrator — will remain locked until an administrator unlocks this account.
+                                </p>
+                              ) : isStillLocked ? (
                                 <p className="text-xs text-red-600 mt-1">
                                   Auto-unlock in {minutesRemaining} minute{minutesRemaining !== 1 ? 's' : ''}
                                 </p>
@@ -654,14 +662,16 @@ export default function AdminDashboard({
             <div className="animate-in">
               <AdminUserManagement users={users} processingUserId={processingUserId}
                 onDisableUser={async (id) => {
+                  // Use admin-specific lock so the account is marked as admin-disabled
+                  // and does not auto-unlock.
                   setProcessingUserId(id);
                   try {
-                    const res: any = await userService.lockAccount(id);
-                    const out = res || { success: true, message: 'Account locked' };
+                    const res: any = await userService.lockAccountByAdmin(id);
+                    const out = res || { success: true, message: 'Account locked by admin' };
                     if (out?.message) toast.success(out.message);
                     return out;
                   } catch (err: any) {
-                    console.error('Lock account error', err);
+                    console.error('Lock account (admin) error', err);
                     const msg = err?.message || 'Failed to lock account';
                     toast.error(msg);
                     return { success: false, message: msg };
