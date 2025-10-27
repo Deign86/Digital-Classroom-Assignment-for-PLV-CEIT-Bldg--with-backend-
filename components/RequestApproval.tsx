@@ -355,21 +355,45 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                   </div>
                 </div>
 
-                <div className="grid gap-4">
-                  {pendingRequests.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      onApprove={() => handleAction(request, 'approve')}
-                      onReject={() => handleAction(request, 'reject')}
-                      checkConflicts={checkConflicts}
-                      status="pending"
-                      showSelect
-                      selected={!!selectedIds[request.id]}
-                      onToggleSelect={(checked) => toggleSelect(request.id, checked)}
-                      disabled={isProcessingBulk}
-                    />
-                  ))}
+                {/* Mobile: horizontal sidescroll list; Desktop/tablet: vertical stack */}
+                <div className="sm:hidden">
+                  <div className="overflow-x-auto -mx-2 px-2">
+                    <div className="flex gap-4">
+                      {pendingRequests.map((request) => (
+                        <div key={request.id} className="min-w-[280px] flex-shrink-0">
+                          <RequestCard
+                            request={request}
+                            onApprove={() => handleAction(request, 'approve')}
+                            onReject={() => handleAction(request, 'reject')}
+                            checkConflicts={checkConflicts}
+                            status="pending"
+                            showSelect
+                            selected={!!selectedIds[request.id]}
+                            onToggleSelect={(checked) => toggleSelect(request.id, checked)}
+                            disabled={isProcessingBulk}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="grid gap-4">
+                    {pendingRequests.map((request) => (
+                      <RequestCard
+                        key={request.id}
+                        request={request}
+                        onApprove={() => handleAction(request, 'approve')}
+                        onReject={() => handleAction(request, 'reject')}
+                        checkConflicts={checkConflicts}
+                        status="pending"
+                        showSelect
+                        selected={!!selectedIds[request.id]}
+                        onToggleSelect={(checked) => toggleSelect(request.id, checked)}
+                        disabled={isProcessingBulk}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -412,22 +436,47 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                   </div>
                 </div>
 
-                <div className="grid gap-4">
-                  {approvedRequests.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      onApprove={() => {}}
-                      onReject={() => {}}
-                      onCancelApproved={onCancelApproved}
-                      checkConflicts={checkConflicts}
-                      status="approved"
-                      showSelect
-                      selected={!!approvedSelectedIds[request.id]}
-                      onToggleSelect={(checked) => toggleApprovedSelect(request.id, checked)}
-                      disabled={isProcessingBulk}
-                    />
-                  ))}
+                {/* Mobile: horizontal sidescroll for approved */}
+                <div className="sm:hidden">
+                  <div className="overflow-x-auto -mx-2 px-2">
+                    <div className="flex gap-4">
+                      {approvedRequests.map((request) => (
+                        <div key={request.id} className="min-w-[280px] flex-shrink-0">
+                          <RequestCard
+                            request={request}
+                            onApprove={() => {}}
+                            onReject={() => {}}
+                            onCancelApproved={onCancelApproved}
+                            checkConflicts={checkConflicts}
+                            status="approved"
+                            showSelect
+                            selected={!!approvedSelectedIds[request.id]}
+                            onToggleSelect={(checked) => toggleApprovedSelect(request.id, checked)}
+                            disabled={isProcessingBulk}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="grid gap-4">
+                    {approvedRequests.map((request) => (
+                      <RequestCard
+                        key={request.id}
+                        request={request}
+                        onApprove={() => {}}
+                        onReject={() => {}}
+                        onCancelApproved={onCancelApproved}
+                        checkConflicts={checkConflicts}
+                        status="approved"
+                        showSelect
+                        selected={!!approvedSelectedIds[request.id]}
+                        onToggleSelect={(checked) => toggleApprovedSelect(request.id, checked)}
+                        disabled={isProcessingBulk}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -469,17 +518,39 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {rejectedRequests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onApprove={() => {}}
-                    onReject={() => {}}
-                    checkConflicts={checkConflicts}
-                    status="rejected"
-                  />
-                ))}
+              <div className="space-y-4">
+                {/* Mobile: horizontal sidescroll for rejected */}
+                <div className="sm:hidden">
+                  <div className="overflow-x-auto -mx-2 px-2">
+                    <div className="flex gap-4">
+                      {rejectedRequests.map((request) => (
+                        <div key={request.id} className="min-w-[280px] flex-shrink-0">
+                          <RequestCard
+                            request={request}
+                            onApprove={() => {}}
+                            onReject={() => {}}
+                            checkConflicts={checkConflicts}
+                            status="rejected"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="grid gap-4">
+                    {rejectedRequests.map((request) => (
+                      <RequestCard
+                        key={request.id}
+                        request={request}
+                        onApprove={() => {}}
+                        onReject={() => {}}
+                        checkConflicts={checkConflicts}
+                        status="rejected"
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </TabsContent>
