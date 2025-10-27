@@ -402,6 +402,14 @@
     min-height: fit-content;
   }
 
+  /* Force mobile tab list to flow left-to-right and allow scrolling when items overflow */
+  .mobile-tab-scroll {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    width: 100%;
+  }
+
   .mobile-tab-scroll::-webkit-scrollbar {
     display: none;
   }
@@ -426,6 +434,14 @@
     min-width: fit-content;
     font-size: 0.875rem;
     font-weight: 500;
+  }
+
+  /* Ensure tab triggers don't stretch on small screens */
+  @media (max-width: 640px) {
+    .mobile-tab-item {
+      display: inline-flex !important;
+      flex-shrink: 0 !important;
+    }
   }
 
   /* Better mobile tab spacing */
