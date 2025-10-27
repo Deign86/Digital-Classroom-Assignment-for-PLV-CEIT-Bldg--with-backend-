@@ -37,6 +37,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [signupIsLoading, setSignupIsLoading] = useState(false);
   const STORAGE_KEY = 'plv:loginForm:activeTab';
   const allowed = ['login', 'signup'];
   const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'login', allowed));
@@ -215,12 +216,18 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     }
 
     const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
-    const success = await onSignup(
-      signupData.email,
-      fullName,
-      signupData.department,
-      signupData.password
-    );
+    setSignupIsLoading(true);
+    let success = false;
+    try {
+      success = await onSignup(
+        signupData.email,
+        fullName,
+        signupData.department,
+        signupData.password
+      );
+    } finally {
+      setSignupIsLoading(false);
+    }
 
     if (success) {
       setSignupData({
@@ -344,8 +351,13 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
             <Button
               type="submit"
-              className="w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]"
               disabled={isLoading || isLocked}
+              aria-busy={isLoading}
+              className={
+                isLoading
+                  ? 'w-full h-12 rounded-full px-6 bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+              }
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
@@ -564,9 +576,15 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
             <Button
               type="submit"
-              className="w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]"
+              disabled={signupIsLoading}
+              aria-busy={signupIsLoading}
+              className={
+                signupIsLoading
+                  ? 'w-full h-12 rounded-full px-6 bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+              }
             >
-              Request Faculty Account
+              {signupIsLoading ? 'Requesting...' : 'Request Faculty Account'}
             </Button>
           </form>
         </TabsContent>

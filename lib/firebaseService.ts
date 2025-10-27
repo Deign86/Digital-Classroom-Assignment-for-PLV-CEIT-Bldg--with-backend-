@@ -487,6 +487,8 @@ const toUser = (id: string, data: FirestoreUserRecord): User => ({
   lockedByAdmin: !!data.lockedByAdmin,
   // Carry push preference through to the runtime user object
   pushEnabled: data.pushEnabled,
+  // Expose lastSignInAt so callers can infer recent activity (used to prompt re-login)
+  lastSignInAt: data.lastSignInAt,
 });
 
 const ensureUserData = (snapshot: DocumentSnapshot<DocumentData>): FirestoreUserRecord => {
