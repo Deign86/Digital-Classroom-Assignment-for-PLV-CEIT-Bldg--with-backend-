@@ -74,6 +74,9 @@ export default function RequestCard({
 
   const isServerExpired = request.status === 'expired';
   const isExpired = isServerExpired || (status === 'pending' && isPastBookingTime(request.date, convertTo12Hour(request.startTime)));
+  // For approved bookings, determine if the reservation has already started or passed.
+  // The backend already rejects cancellations for already-started/past bookings, so reflect that in the UI.
+  const isLapsedBooking = isServerExpired || isPastBookingTime(request.date, convertTo12Hour(request.startTime));
 
   const borderColor = status === 'pending'
     ? (hasConflict ? 'border-l-red-500' : 'border-l-orange-500')
@@ -247,99 +250,118 @@ export default function RequestCard({
 
         {status === 'approved' && onCancelApproved && (
           <div className="flex gap-3 pt-3 border-t">
-            <AlertDialog open={isDialogOpen} onOpenChange={(v) => { if (isCancelling) return; setIsDialogOpen(v); }}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  disabled={!!disabled}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cancel Reservation
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to cancel this approved reservation? This action cannot be undone.
-                    The faculty member will need to submit a new request if they need this classroom again.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="mt-4 w-full">
-                  <Label className="block">Reason (required)</Label>
-                  <div className="mt-2">
-                    <Textarea
-                      id={`cancel-reason-${request.id}`}
-                      aria-label="Cancellation reason"
-                      value={cancelReason}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val.length <= 500) {
-                          setCancelReason(val);
-                          setCancelError(null);
-                        } else {
+            {/* If booking has already started or is expired, disable cancel in UI to match backend behavior */}
+            {!isLapsedBooking ? (
+              <AlertDialog open={isDialogOpen} onOpenChange={(v) => { if (isCancelling) return; setIsDialogOpen(v); }}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    disabled={!!disabled}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Reservation
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel this approved reservation? This action cannot be undone.
+                      The faculty member will need to submit a new request if they need this classroom again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="mt-4 w-full">
+                    <Label className="block">Reason (required)</Label>
+                    <div className="mt-2">
+                      <Textarea
+                        id={`cancel-reason-${request.id}`}
+                        aria-label="Cancellation reason"
+                        value={cancelReason}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val.length <= 500) {
+                            setCancelReason(val);
+                            setCancelError(null);
+                          } else {
+                            setCancelError('Reason must be 500 characters or less.');
+                          }
+                        }}
+                        placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
+                        maxLength={500}
+                        rows={4}
+                        className="w-full mt-0"
+                        disabled={isCancelling}
+                      />
+                    </div>
+                    <div className="flex items-center justify-end mt-1">
+                      <p className="text-xs text-gray-500">{cancelReason.length}/500</p>
+                    </div>
+                    {cancelError && <p role="alert" className="text-xs text-red-600 mt-1">{cancelError}</p>}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isCancelling} onClick={() => { if (isCancelling) return; setIsDialogOpen(false); setCancelReason(''); setCancelError(null); }}>Keep Reservation</AlertDialogCancel>
+                    <Button
+                      disabled={isCancelling || cancelReason.trim().length === 0}
+                      onClick={async () => {
+                        const reason = cancelReason.trim();
+                        if (!reason) {
+                          try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) { }
+                          setCancelError('Please provide a reason for the cancellation.');
+                          return;
+                        }
+                        if (reason.length > 500) {
                           setCancelError('Reason must be 500 characters or less.');
+                          return;
+                        }
+
+                        try {
+                          setIsCancelling(true);
+                          // await parent handler; parent is responsible for showing success toasts where appropriate
+                          await Promise.resolve(onCancelApproved(request.id, reason));
+                          setIsDialogOpen(false);
+                          setCancelReason('');
+                          setCancelError(null);
+                          try { announce('Reservation cancelled', 'polite'); } catch (e) { }
+                        } catch (err: any) {
+                          console.error('Failed to cancel reservation', err);
+                          const msg = err?.message || 'Failed to cancel reservation. Please try again.';
+                          setCancelError(msg);
+                          toast.error(msg);
+                        } finally {
+                          setIsCancelling(false);
                         }
                       }}
-                      placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
-                      maxLength={500}
-                      rows={4}
-                      className="w-full mt-0"
-                      disabled={isCancelling}
-                    />
-                  </div>
-                  <div className="flex items-center justify-end mt-1">
-                    <p className="text-xs text-gray-500">{cancelReason.length}/500</p>
-                  </div>
-                  {cancelError && <p role="alert" className="text-xs text-red-600 mt-1">{cancelError}</p>}
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isCancelling} onClick={() => { if (isCancelling) return; setIsDialogOpen(false); setCancelReason(''); setCancelError(null); }}>Keep Reservation</AlertDialogCancel>
-                  <Button
-                    disabled={isCancelling || cancelReason.trim().length === 0}
-                    onClick={async () => {
-                      const reason = cancelReason.trim();
-                      if (!reason) {
-                        try { announce('Please provide a reason for the cancellation.', 'assertive'); } catch (e) { }
-                        setCancelError('Please provide a reason for the cancellation.');
-                        return;
-                      }
-                      if (reason.length > 500) {
-                        setCancelError('Reason must be 500 characters or less.');
-                        return;
-                      }
-
-                      try {
-                        setIsCancelling(true);
-                        // await parent handler; parent is responsible for showing success toasts where appropriate
-                        await Promise.resolve(onCancelApproved(request.id, reason));
-                        setIsDialogOpen(false);
-                        setCancelReason('');
-                        setCancelError(null);
-                        try { announce('Reservation cancelled', 'polite'); } catch (e) { }
-                        toast.success('Reservation cancelled');
-                      } catch (err: any) {
-                        console.error('Failed to cancel reservation', err);
-                        const msg = err?.message || 'Failed to cancel reservation. Please try again.';
-                        setCancelError(msg);
-                        toast.error(msg);
-                      } finally {
-                        setIsCancelling(false);
-                      }
-                    }}
-                    variant="destructive"
-                  >
-                    {isCancelling ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Cancelling…
-                      </>
-                    ) : 'Cancel Reservation'}
-                  </Button>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                      variant="destructive"
+                    >
+                      {isCancelling ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Cancelling…
+                        </>
+                      ) : 'Cancel Reservation'}
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex-1">
+                      <Button variant="outline" className="flex-1" disabled>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Cancel Reservation
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    This reservation has already started or passed and cannot be cancelled.
+                  </TooltipContent>
+                </Tooltip>
+                <p className="text-xs text-muted-foreground mt-2">Cannot cancel — reservation has already started or passed.</p>
+              </TooltipProvider>
+            )}
           </div>
         )}
       </CardContent>
