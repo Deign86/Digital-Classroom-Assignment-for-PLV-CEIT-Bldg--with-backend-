@@ -156,6 +156,10 @@ export default function App() {
     }
   }, []);
   const [error, setError] = useState<string | null>(null);
+  const [showAccountLockedDialog, setShowAccountLockedDialog] = useState(false);
+  const [accountLockedMessage, setAccountLockedMessage] = useState<string | null>(null);
+  // Use Vite's import.meta.env in the browser. Fall back to a sensible default.
+  const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL ?? import.meta.env.REACT_APP_SUPPORT_EMAIL ?? 'it-support@plv.edu.ph') as string;
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
   // Pending destructive reject action (replaces window.confirm)
@@ -311,6 +315,70 @@ export default function App() {
       const user = await loginPromise;
       return !!user;
     } catch (err) {
+      // If the sign-in failed due to an account lock (tracked server-side),
+      // surface the blocking account-locked dialog immediately by setting
+      // sessionStorage flags and local state. This covers the case where the
+      // user attempted to sign in but the server-side lock prevented sign-in
+      // (so the Firestore snapshot listener won't run because there's no
+      // authenticated session yet).
+      try {
+        if (err instanceof Error) {
+          const msg = err.message || '';
+          if (msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining')) {
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
+            setAccountLockedMessage(msg);
+
+            const ts = Date.now();
+            // Record a lightweight debug event and log timestamps (dev only)
+            try {
+              if (import.meta.env.DEV) {
+                console.debug(`DEBUG[lock] set sessionStorage at ${new Date(ts).toISOString()} for`, email, { msg });
+              }
+              try {
+                (window as any).__loginLockDebug = (window as any).__loginLockDebug || [];
+                (window as any).__loginLockDebug.push({ event: 'sessionSet', ts, email, msg });
+              } catch (_) {}
+            } catch (_) {}
+
+            // Defer opening the modal slightly so the LoginForm submit
+            // lifecycle can finish. This also helps if the form is controlling
+            // focus or preventing new modals from stealing focus immediately.
+            // A short delay reduces the "modal only appears on second
+            // attempt" race observed in some browsers/environments.
+            setTimeout(() => setShowAccountLockedDialog(true), 50);
+
+            // Dev-only debug helpers: log to console and show a short toast so
+            // we can verify this code path executed on the first failed attempt.
+            if (import.meta.env.DEV) {
+              try {
+                console.debug('DEBUG: accountLocked scheduled dialog for', email, 'message:', msg);
+                toast(`${msg} (debug: lock dialog scheduled)`, { duration: 5000 });
+              } catch (e) {
+                console.warn('Could not show debug toast for account lock:', e);
+              }
+
+              // Force-open fallback: if the modal hasn't opened after 5s,
+              // open it and log a warning (dev only). This reduces the
+              // perceived wait while we diagnose the underlying race.
+              setTimeout(() => {
+                try {
+                  if (!showAccountLockedDialog) {
+                    console.warn('DEBUG[lock] fallback forced opening of account-locked dialog after 5s');
+                    setShowAccountLockedDialog(true);
+                    try { (window as any).__loginLockDebug.push({ event: 'fallbackOpen', ts: Date.now(), email }); } catch (_) {}
+                  }
+                } catch (e) {
+                  console.warn('DEBUG[lock] fallback open failed:', e);
+                }
+              }, 5000);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not set accountLocked session flag:', e);
+      }
+
       // Error is already handled by the toast.promise, but we need to return false for the form.
       return false;
     }
@@ -1187,11 +1255,16 @@ export default function App() {
 
       // Check for account locked notification (set when server/admin forced a lock)
       if (sessionStorage.getItem('accountLocked') === 'true') {
-        sessionStorage.removeItem('accountLocked');
-        toast.error('Your account has been locked by an administrator', {
-          description: 'You have been signed out. Contact an administrator for assistance.',
-          duration: 8000,
-        });
+        // Keep the flag in sessionStorage until the user dismisses the dialog so
+        // it can be shown persistently on the login page. We'll show a blocking
+        // AlertDialog to make the lock state explicit and actionable.
+        setShowAccountLockedDialog(true);
+        try {
+          const msg = sessionStorage.getItem('accountLockedMessage');
+          if (msg) setAccountLockedMessage(msg);
+        } catch (_) {
+          // ignore
+        }
       }
     }
   }, [currentUser]);
@@ -1327,13 +1400,56 @@ export default function App() {
               </p>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
-              <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} />
-            </div>
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
+                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} />
+              </div>
           </div>
         </div>
         <Footer />
         <Toaster />
+
+        {/* Account locked AlertDialog — blocking modal shown on login when sessionStorage.accountLocked is set */}
+        <AlertDialog open={showAccountLockedDialog} onOpenChange={(open) => {
+          // Only update the controlled open state here. Don't clear sessionStorage
+          // automatically on open-change events — the Dismiss button should be
+          // the explicit user action that clears the stored flag. This avoids
+          // library-internal focus/open lifecycle events from removing the flag
+          // prematurely (which caused the dialog to flash and close on some devices).
+          setShowAccountLockedDialog(open);
+        }}>
+          <AlertDialogContent className="sm:max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Your account has been locked</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription>
+              {accountLockedMessage ? (
+                <div className="space-y-2">
+                  <p className="font-medium">{accountLockedMessage}</p>
+                  <p className="text-sm text-muted-foreground">You were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+                </div>
+              ) : (
+                <p>Your account was locked by an administrator and you were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+              )}
+            </AlertDialogDescription>
+            <div className="mt-4 flex gap-2 justify-end">
+              <a href={`mailto:${supportEmail}`} className={buttonVariants({ variant: 'outline' })}>
+                Contact Administrator
+              </a>
+              <AlertDialogAction asChild>
+                <button className={buttonVariants({ variant: 'destructive' })} onClick={() => {
+                  // ensure removal of both flags when dismissed
+                  try { sessionStorage.removeItem('accountLocked'); } catch (_) {}
+                  try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
+                  setShowAccountLockedDialog(false);
+                  setAccountLockedMessage(null);
+                }}>
+                  Dismiss
+                </button>
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Analytics />
       </div>
     );

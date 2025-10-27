@@ -21,9 +21,10 @@ interface LoginFormProps {
     password: string
   ) => boolean | Promise<boolean>;
   users: User[];
+  isLocked?: boolean;
 }
 
-export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) {
+export default function LoginForm({ onLogin, onSignup, users, isLocked = false }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signupData, setSignupData] = useState({
@@ -130,6 +131,17 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Defensive guard: if the app has flagged this account as locked,
+    // prevent any submission attempt (defends against races or manual JS triggers).
+    if (isLocked) {
+      try {
+        toast.error('Your account is currently locked. Please contact your administrator or support.');
+      } catch (toastErr) {
+        /* swallow toast errors */
+      }
+      try { announce('Account locked. Sign in is disabled.'); } catch (e) {}
+      return;
+    }
     
     // Clear previous errors
     setLoginErrors({ email: '', password: '' });
@@ -318,10 +330,14 @@ export default function LoginForm({ onLogin, onSignup, users }: LoginFormProps) 
               </div>
             </div>
 
+            {isLocked && (
+              <div className="mb-3 text-sm text-red-600">Your account is locked. You cannot sign in until an administrator unlocks your account or you dismiss the notice.</div>
+            )}
+
             <Button
               type="submit"
               className="w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]"
-              disabled={isLoading}
+              disabled={isLoading || isLocked}
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>

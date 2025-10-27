@@ -19,6 +19,10 @@ import type { Classroom } from '../App';
 interface ClassroomManagementProps {
   classrooms: Classroom[];
   onClassroomUpdate: (classrooms: Classroom[]) => void;
+  onCreateClassroom?: (data: Omit<Classroom, 'id'>) => Promise<any> | void;
+  onUpdateClassroom?: (id: string, data: Partial<Classroom>) => Promise<any> | void;
+  onDeleteClassroom?: (id: string) => Promise<any> | void;
+  onToggleAvailability?: (id: string, isAvailable: boolean) => Promise<any> | void;
 }
 
 // Use shared equipmentIcons and helpers from lib/equipmentIcons
@@ -33,7 +37,7 @@ const allEquipment = [
   if (!equipmentIcons[a] && equipmentIcons[b]) return 1;
   return a.localeCompare(b);
 });
-export default function ClassroomManagement({ classrooms, onClassroomUpdate }: ClassroomManagementProps) {
+export default function ClassroomManagement({ classrooms, onClassroomUpdate, onCreateClassroom, onUpdateClassroom, onDeleteClassroom, onToggleAvailability }: ClassroomManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingClassroom, setEditingClassroom] = useState<Classroom | null>(null);
   const [formData, setFormData] = useState({
@@ -53,6 +57,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [processingClassroomId, setProcessingClassroomId] = useState<string | null>(null);
 
   const resetForm = () => {
@@ -93,16 +98,28 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       toast.error('Please correct the errors before submitting.');
       return;
     }
+    setIsSaving(true);
     try {
       if (editingClassroom) {
-        await classroomService.update(editingClassroom.id, {
+        const updatePayload: Partial<Classroom> = {
           name: formData.name,
           capacity: parseInt(formData.capacity),
           equipment: formData.selectedEquipment,
           building: formData.building,
           floor: parseInt(formData.floor),
           isAvailable: formData.isAvailable
-        });
+        };
+        // Prefer parent handler when provided
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        if (typeof onUpdateClassroom === 'function') {
+          const res: any = await onUpdateClassroom(editingClassroom.id, updatePayload);
+          if (res && Array.isArray(res)) {
+            onClassroomUpdate(res as Classroom[]);
+          }
+        } else {
+          await classroomService.update(editingClassroom.id, updatePayload as any);
+        }
         toast.success('Classroom updated successfully');
       } else {
         const newClassroom: Omit<Classroom, 'id'> = {
@@ -113,16 +130,31 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           floor: parseInt(formData.floor),
           isAvailable: formData.isAvailable
         };
-        await classroomService.create(newClassroom);
+        if (typeof onCreateClassroom === 'function') {
+          const res: any = await onCreateClassroom(newClassroom);
+          if (res && Array.isArray(res)) {
+            onClassroomUpdate(res as Classroom[]);
+          }
+        } else {
+          await classroomService.create(newClassroom);
+        }
         toast.success('Classroom added successfully');
       }
-      const updatedClassrooms = await classroomService.getAll();
-      onClassroomUpdate(updatedClassrooms);
+      // Refresh list if parent didn't provide updated list
+      try {
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+      } catch (e) {
+        // If parent handler already provided update, this may be unnecessary; ignore errors here
+      }
       resetForm();
       setIsAddDialogOpen(false);
       setEditingClassroom(null);
     } catch (err) {
+      console.error('Error saving classroom', err);
       toast.error('Error saving classroom');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -148,11 +180,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const handleDeleteConfirm = async () => {
     if (!classroomToDelete) return;
     setIsDeleting(true);
+    setProcessingClassroomId(classroomToDelete.id);
     try {
-      const result = await classroomService.deleteCascade(classroomToDelete.id);
-      const updatedClassrooms = await classroomService.getAll();
-      onClassroomUpdate(updatedClassrooms);
-      toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future reservation(s)/schedules removed.`);
+      if (typeof onDeleteClassroom === 'function') {
+        const res: any = await onDeleteClassroom(classroomToDelete.id);
+        if (res && Array.isArray(res)) {
+          onClassroomUpdate(res as Classroom[]);
+        }
+      } else {
+        const result = await classroomService.deleteCascade(classroomToDelete.id);
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+        toast.success(`Classroom deleted. ${result.deletedRelated ?? 0} related future reservation(s)/schedules removed.`);
+      }
       setDeleteDialogOpen(false);
       setClassroomToDelete(null);
     } catch (err) {
@@ -160,17 +200,26 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       toast.error('Error deleting classroom. See console for details.');
     } finally {
       setIsDeleting(false);
+      setProcessingClassroomId(null);
     }
   };
 
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
     setProcessingClassroomId(classroomId);
     try {
-      await classroomService.update(classroomId, { isAvailable });
-      const updatedClassrooms = await classroomService.getAll();
-      onClassroomUpdate(updatedClassrooms);
+      if (typeof onToggleAvailability === 'function') {
+        const res: any = await onToggleAvailability(classroomId, isAvailable);
+        if (res && Array.isArray(res)) {
+          onClassroomUpdate(res as Classroom[]);
+        }
+      } else {
+        await classroomService.update(classroomId, { isAvailable });
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+      }
       toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
     } catch (err) {
+      console.error('Error updating availability', err);
       toast.error('Error updating availability');
     } finally {
       setProcessingClassroomId(null);
@@ -178,6 +227,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   };
 
   const closeDialog = () => {
+    if (isSaving) return;
     setIsAddDialogOpen(false);
     setEditingClassroom(null);
     resetForm();
@@ -192,7 +242,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               <CardTitle>Classroom Management</CardTitle>
               <CardDescription>Manage CEIT classroom inventory and availability</CardDescription>
             </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={(v) => { if (isSaving) return; setIsAddDialogOpen(v); if (!v) { setEditingClassroom(null); resetForm(); } }}>
               <DialogTrigger asChild>
                 <Button variant="solid">
                   <Plus className="h-4 w-4 mr-2" />
@@ -326,11 +376,16 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
-                    <Button type="button" variant="outline" onClick={closeDialog}>
-                      Cancel
+                    <Button type="button" variant="outline" onClick={closeDialog} disabled={isSaving}>
+                      {isSaving ? 'Processing…' : 'Cancel'}
                     </Button>
-                    <Button type="submit">
-                      {editingClassroom ? 'Update Classroom' : 'Add Classroom'}
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 text-gray-500 animate-spin" />
+                          <span className="sr-only">Saving classroom</span>
+                        </span>
+                      ) : (editingClassroom ? 'Update Classroom' : 'Add Classroom')}
                     </Button>
                   </div>
                 </form>
@@ -417,6 +472,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(classroom)}
+                            disabled={processingClassroomId === classroom.id || isSaving || isDeleting}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -424,8 +480,16 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteClick(classroom)}
+                            disabled={processingClassroomId === classroom.id || isSaving || isDeleting}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {processingClassroomId === classroom.id && isDeleting ? (
+                              <span className="inline-flex items-center">
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                <span className="sr-only">Deleting {classroom.name}</span>
+                              </span>
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                       </TableCell>

@@ -11,7 +11,7 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
 import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare, X, Loader2 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { Schedule, BookingRequest } from '../App';
 
@@ -41,6 +41,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
   const [isCancelling, setIsCancelling] = useState(false);
   const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
+  // Per-request cancellation processing map to show per-item loaders during bulk ops
+  const [processingCancelIds, setProcessingCancelIds] = useState<Record<string, boolean>>({});
   // Quick rebook confirmation dialog state
   const [quickDialogOpen, setQuickDialogOpen] = useState(false);
   const [quickDialogData, setQuickDialogData] = useState<{ classroomId: string; date: string; startTime: string; endTime: string; purpose?: string } | null>(null);
@@ -529,6 +531,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                                 for (const requestId of ids) {
                                   try {
+                                    // mark this request as processing (for per-item UI)
+                                    setProcessingCancelIds(prev => ({ ...prev, [requestId]: true }));
                                     const correspondingSchedule = schedules.find(schedule =>
                                       schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
                                       schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
@@ -557,6 +561,13 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                   } catch (err) {
                                     console.error('Failed to cancel schedule for request', requestId, err);
                                     failedScheduleCancellations.push({ id: requestId, error: err });
+                                  } finally {
+                                    // clear processing state for this request
+                                    setProcessingCancelIds(prev => {
+                                      const copy = { ...prev };
+                                      delete copy[requestId];
+                                      return copy;
+                                    });
                                   }
                                 }
 
@@ -598,7 +609,15 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                               aria-disabled={isCancelling || bulkCancelReason.trim().length === 0 || Object.values(approvedSelectedIds).filter(Boolean).length === 0}
                               title={bulkCancelReason.trim().length === 0 ? 'Provide a reason to enable' : Object.values(approvedSelectedIds).filter(Boolean).length === 0 ? 'No selected reservations' : undefined}
                             >
-                              {isCancelling ? 'Cancelling...' : `Confirm Cancel (${Object.values(approvedSelectedIds).filter(Boolean).length})`}
+                              {isCancelling ? (
+                                <span className="inline-flex items-center">
+                                  <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                                  <span className="sr-only">Cancelling selected reservations</span>
+                                  Cancelling...
+                                </span>
+                              ) : (
+                                `Confirm Cancel (${Object.values(approvedSelectedIds).filter(Boolean).length})`
+                              )}
                             </Button>
                           </div>
                         </DialogFooter>
@@ -613,7 +632,20 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                   .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
                   .map((request) => (
                     <div key={request.id} className="flex items-start gap-3">
-                      <input type="checkbox" checked={!!approvedSelectedIds[request.id]} onChange={(e) => setApprovedSelectedIds(prev => ({ ...prev, [request.id]: e.target.checked }))} className="h-4 w-4 text-indigo-600 rounded border-gray-300 mt-3" />
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!!approvedSelectedIds[request.id]}
+                          onChange={(e) => setApprovedSelectedIds(prev => ({ ...prev, [request.id]: e.target.checked }))}
+                          className="h-4 w-4 text-indigo-600 rounded border-gray-300 mt-3"
+                        />
+                        {processingCancelIds[request.id] && (
+                          <span className="inline-flex items-center ml-2">
+                            <Loader2 className="animate-spin h-4 w-4 text-gray-500" />
+                            <span className="sr-only">Cancelling reservation</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="flex-1">
                         <RequestCard request={request} />
                       </div>

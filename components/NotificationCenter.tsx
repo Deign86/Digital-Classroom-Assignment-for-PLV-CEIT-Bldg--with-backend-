@@ -86,7 +86,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   }, [userId]);
 
   return (
-    <div className="p-4 bg-white shadow-2xl rounded-lg w-96">
+  <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Notifications</h3>

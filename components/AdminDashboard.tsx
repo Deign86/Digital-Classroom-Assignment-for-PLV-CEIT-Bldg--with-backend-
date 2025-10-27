@@ -87,6 +87,8 @@ export default function AdminDashboard({
   const [showNotifications, setShowNotifications] = useState(false);
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  // Per-request processing id to prevent double-approve/reject clicks
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   
 
   // Scroll to top when component mounts
@@ -161,17 +163,37 @@ export default function AdminDashboard({
                   </Button>
                 </div>
                 {showNotifications && (
-                  <div className="fixed right-4 top-20 z-50">
-                    <NotificationCenter
-                      userId={user.id}
-                      onClose={() => setShowNotifications(false)}
-                      onAcknowledgeAll={(newCount) => {
-                        setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
-                        setTimeout(() => setForceBellUnread(null), 1500);
-                        setShowNotifications(false);
-                      }}
-                    />
-                  </div>
+                  <>
+                    {/* Desktop / larger screens: anchored dropdown near header */}
+                    <div className="hidden sm:block fixed right-4 top-20 z-50">
+                      <NotificationCenter
+                        userId={user.id}
+                        onClose={() => setShowNotifications(false)}
+                        onAcknowledgeAll={(newCount) => {
+                          setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                          setTimeout(() => setForceBellUnread(null), 1500);
+                          setShowNotifications(false);
+                        }}
+                      />
+                    </div>
+
+                    {/* Mobile: show a bottom-sheet style panel so it isn't 'sticky' and fits the viewport */}
+                    <div className="sm:hidden fixed inset-0 z-50 flex items-end">
+                      <div className="w-full p-4">
+                        <div className="mx-auto max-w-full">
+                          <NotificationCenter
+                            userId={user.id}
+                            onClose={() => setShowNotifications(false)}
+                            onAcknowledgeAll={(newCount) => {
+                              setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                              setTimeout(() => setForceBellUnread(null), 1500);
+                              setShowNotifications(false);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
               
@@ -241,7 +263,7 @@ export default function AdminDashboard({
               </TabsTrigger>
               <TabsTrigger value="requests" className="mobile-tab-item flex items-center space-x-2 relative">
                 <Users className="h-4 w-4 flex-shrink-0" />
-                <span>Classroom Requests</span>
+                <span>Requests</span>
                 {pendingRequests > 0 && (
                   <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-5 min-w-[18px] rounded-full ml-1">
                     {pendingRequests}
@@ -432,24 +454,60 @@ export default function AdminDashboard({
                                       <Button 
                                         size="sm" 
                                         variant="outline"
-                                        onClick={() => onRequestApproval(request.id, true)}
+                                        onClick={async () => {
+                                          try {
+                                            setProcessingRequestId(request.id);
+                                            await onRequestApproval(request.id, true);
+                                            toast.success('Request approved');
+                                          } catch (err) {
+                                            console.error('Approve request failed', err);
+                                            toast.error('Failed to approve request');
+                                          } finally {
+                                            setProcessingRequestId(null);
+                                          }
+                                        }}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
                                         aria-label={`Approve request ${request.id}`}
+                                        disabled={processingRequestId === request.id}
                                       >
-                                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                        Approve
+                                        {processingRequestId === request.id ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="animate-spin mr-1 h-3 w-3" />
+                                            <span className="sr-only">Approving request {request.id}</span>
+                                          </span>
+                                        ) : (
+                                          <><CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Approve</>
+                                        )}
                                       </Button>
                                     </div>
                                     <div className="transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto">
                                       <Button 
                                         size="sm" 
                                         variant="outline"
-                                        onClick={() => onRequestApproval(request.id, false)}
+                                        onClick={async () => {
+                                          try {
+                                            setProcessingRequestId(request.id);
+                                            await onRequestApproval(request.id, false);
+                                            toast.success('Request rejected');
+                                          } catch (err) {
+                                            console.error('Reject request failed', err);
+                                            toast.error('Failed to reject request');
+                                          } finally {
+                                            setProcessingRequestId(null);
+                                          }
+                                        }}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
                                         aria-label={`Reject request ${request.id}`}
+                                        disabled={processingRequestId === request.id}
                                       >
-                                        <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                                        Reject
+                                        {processingRequestId === request.id ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="animate-spin mr-1 h-3 w-3" />
+                                            <span className="sr-only">Rejecting request {request.id}</span>
+                                          </span>
+                                        ) : (
+                                          <><XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Reject</>
+                                        )}
                                       </Button>
                                     </div>
                                   </>
@@ -605,42 +663,85 @@ export default function AdminDashboard({
 
           <TabsContent value="user-management">
             <div className="animate-in">
-              <AdminUserManagement users={users}
+              <AdminUserManagement users={users} processingUserId={processingUserId}
                 onDisableUser={async (id) => {
+                  setProcessingUserId(id);
                   try {
                     const res: any = await userService.lockAccount(id);
-                    return res || { success: true, message: 'Account locked' };
+                    const out = res || { success: true, message: 'Account locked' };
+                    if (out?.message) toast.success(out.message);
+                    return out;
                   } catch (err: any) {
                     console.error('Lock account error', err);
-                    return { success: false, message: err?.message || 'Failed to lock account' };
+                    const msg = err?.message || 'Failed to lock account';
+                    toast.error(msg);
+                    return { success: false, message: msg };
+                  } finally {
+                    setProcessingUserId(null);
                   }
                 }}
                 onEnableUser={async (id) => {
+                  setProcessingUserId(id);
                   try {
                     const res: any = await userService.unlockAccount(id);
-                    return res || { success: true, message: 'Account enabled' };
+                    const out = res || { success: true, message: 'Account enabled' };
+                    if (out?.message) toast.success(out.message);
+                    return out;
                   } catch (err: any) {
                     console.error('Enable account error', err);
-                    return { success: false, message: err?.message || 'Failed to enable account' };
+                    const msg = err?.message || 'Failed to enable account';
+                    toast.error(msg);
+                    return { success: false, message: msg };
+                  } finally {
+                    setProcessingUserId(null);
                   }
                 }}
-                onDeleteUser={async (id, hard) => { const res = await adminDeleteUser(id, !!hard); return res; }}
+                onDeleteUser={async (id, hard) => {
+                  setProcessingUserId(id);
+                  try {
+                    const res = await adminDeleteUser(id, !!hard);
+                    const out = res as any;
+                    if (out?.message) toast.success(out.message);
+                    return out;
+                  } catch (err: any) {
+                    console.error('Delete user error', err);
+                    const msg = err?.message || 'Failed to delete user';
+                    toast.error(msg);
+                    return { success: false, message: msg };
+                  } finally {
+                    setProcessingUserId(null);
+                  }
+                }}
                 onChangeRole={async (id, role) => {
+                  setProcessingUserId(id);
                   try {
                     const res: any = await userService.update(id, { role });
-                    return res || { success: true, message: 'Role updated' };
+                    const out = res || { success: true, message: 'Role updated' };
+                    if (out?.message) toast.success(out.message);
+                    return out;
                   } catch (err: any) {
                     console.error('Change role error', err);
-                    return { success: false, message: err?.message || 'Failed to change role' };
+                    const msg = err?.message || 'Failed to change role';
+                    toast.error(msg);
+                    return { success: false, message: msg };
+                  } finally {
+                    setProcessingUserId(null);
                   }
                 }}
                 onUnlockAccount={async (id) => {
+                  setProcessingUserId(id);
                   try {
                     const res: any = await userService.unlockAccount(id);
-                    return res || { success: true, message: 'Account unlocked' };
+                    const out = res || { success: true, message: 'Account unlocked' };
+                    if (out?.message) toast.success(out.message);
+                    return out;
                   } catch (err: any) {
                     console.error('Unlock user error', err);
-                    return { success: false, message: err?.message || 'Failed to unlock account' };
+                    const msg = err?.message || 'Failed to unlock account';
+                    toast.error(msg);
+                    return { success: false, message: msg };
+                  } finally {
+                    setProcessingUserId(null);
                   }
                 }}
               />
