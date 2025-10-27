@@ -296,20 +296,20 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mobile-tab-scroll bg-background/80 backdrop-blur-lg border rounded-lg sm:grid sm:w-full sm:grid-cols-4 sm:h-12 sm:gap-1 sm:p-1">
-            <TabsTrigger value="pending" className="mobile-tab-item desktop-tab-item flex items-center gap-2">
+          <TabsList className="mobile-tab-scroll whitespace-nowrap bg-background/80 backdrop-blur-lg border rounded-lg sm:grid sm:w-full sm:grid-cols-4 sm:h-12 sm:gap-1 sm:p-1">
+            <TabsTrigger value="pending" className="mobile-tab-item desktop-tab-item inline-flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Pending ({pendingRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="approved" className="mobile-tab-item desktop-tab-item flex items-center gap-2">
+            <TabsTrigger value="approved" className="mobile-tab-item desktop-tab-item inline-flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
               Approved ({approvedRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="mobile-tab-item desktop-tab-item flex items-center gap-2">
+            <TabsTrigger value="rejected" className="mobile-tab-item desktop-tab-item inline-flex items-center gap-2">
               <XCircle className="h-4 w-4" />
               Rejected ({rejectedRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="expired" className="mobile-tab-item desktop-tab-item flex items-center gap-2">
+            <TabsTrigger value="expired" className="mobile-tab-item desktop-tab-item inline-flex items-center gap-2">
               <Clock className="h-4 w-4 text-gray-500" />
               Expired ({expiredRequests.length})
             </TabsTrigger>
