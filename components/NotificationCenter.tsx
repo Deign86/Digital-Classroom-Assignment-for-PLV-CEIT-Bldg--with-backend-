@@ -67,6 +67,29 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   const [items, setItems] = useState<Notification[]>([]);
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
 
+  // Auto-hide notifications on mobile when the user scrolls down.
+  // This prevents the notifications panel from remaining "sticky" on small screens.
+  useEffect(() => {
+    if (!onClose) return;
+    if (typeof window === 'undefined' || !('matchMedia' in window)) return;
+
+    const isMobile = window.matchMedia('(max-width: 639px)').matches; // tailwind `sm` breakpoint
+    if (!isMobile) return;
+
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      // if user scrolled down more than a small threshold, close the panel
+      if (y > lastY + 10) {
+        onClose();
+      }
+      lastY = y;
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [onClose]);
+
   useEffect(() => {
     if (!userId) return;
     const unsub = notificationService.setupNotificationsListener((list) => {
