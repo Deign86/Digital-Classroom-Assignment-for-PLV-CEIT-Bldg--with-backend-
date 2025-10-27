@@ -2252,7 +2252,24 @@ export const signupRequestService = {
 };
 
 // Re-export notification service for consistency with other services
-export const notificationService = notificationServiceImport;
+// Wrap the setupNotificationsListener so that unsubscribes are tracked
+// by the central `activeUnsubscribes` array and can be cleaned up on sign-out.
+const _notificationServiceWrapped = {
+  ...notificationServiceImport,
+  setupNotificationsListener: (
+    callback: (items: any[]) => void,
+    errorCallback?: (error: Error) => void,
+    userId?: string
+  ) => {
+    const unsub = notificationServiceImport.setupNotificationsListener(callback as any, errorCallback, userId);
+    if (typeof unsub === 'function') {
+      activeUnsubscribes.push(unsub as Unsubscribe);
+    }
+    return unsub;
+  },
+};
+
+export const notificationService = _notificationServiceWrapped as typeof notificationServiceImport;
 
 // ============================================
 // SIGNUP HISTORY SERVICE
