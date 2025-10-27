@@ -296,24 +296,48 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-12">
-            <TabsTrigger value="pending" className="flex items-center gap-2">
+          {/* Desktop: regular grid tabs (visible on sm+) */}
+          <TabsList className="hidden sm:grid w-full grid-cols-4 h-12">
+            <TabsTrigger value="pending" className="flex items-center justify-center gap-2">
               <Clock className="h-4 w-4" />
               Pending ({pendingRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="approved" className="flex items-center gap-2">
+            <TabsTrigger value="approved" className="flex items-center justify-center gap-2">
               <CheckCircle className="h-4 w-4" />
               Approved ({approvedRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center gap-2">
+            <TabsTrigger value="rejected" className="flex items-center justify-center gap-2">
               <XCircle className="h-4 w-4" />
               Rejected ({rejectedRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="expired" className="flex items-center gap-2">
+            <TabsTrigger value="expired" className="flex items-center justify-center gap-2">
               <Clock className="h-4 w-4 text-gray-500" />
               Expired ({expiredRequests.length})
             </TabsTrigger>
           </TabsList>
+
+          {/* Mobile: scrollable tab pills */}
+          <div className="sm:hidden mobile-tab-container">
+            <TabsList className="mobile-tab-scroll bg-background/80 backdrop-blur-lg border rounded-lg">
+              <TabsTrigger value="pending" className="mobile-tab-item flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Pending ({pendingRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="approved" className="mobile-tab-item flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Approved ({approvedRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="mobile-tab-item flex items-center gap-2">
+                <XCircle className="h-4 w-4" />
+                Rejected ({rejectedRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="expired" className="mobile-tab-item flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                Expired ({expiredRequests.length})
+              </TabsTrigger>
+            </TabsList>
+            <div className="tab-scroll-indicator" />
+          </div>
 
           <TabsContent value="pending" className="mt-6">
             {pendingRequests.length === 0 ? (
