@@ -166,21 +166,17 @@ export default function AdminDashboard({
                       />
                     </div>
 
-                    {/* Mobile: show a bottom-sheet style panel so it isn't 'sticky' and fits the viewport */}
-                    <div className="sm:hidden fixed inset-0 z-50 flex items-end">
-                      <div className="w-full p-4">
-                        <div className="mx-auto max-w-full">
-                          <NotificationCenter
-                            userId={user.id}
-                            onClose={() => setShowNotifications(false)}
-                            onAcknowledgeAll={(newCount) => {
-                              setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
-                              setTimeout(() => setForceBellUnread(null), 1500);
-                              setShowNotifications(false);
-                            }}
-                          />
-                        </div>
-                      </div>
+                    {/* Mobile: anchor near the header bell (top-right) so it appears close to the trigger */}
+                    <div className="sm:hidden fixed right-4 top-4 z-50">
+                      <NotificationCenter
+                        userId={user.id}
+                        onClose={() => setShowNotifications(false)}
+                        onAcknowledgeAll={(newCount) => {
+                          setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                          setTimeout(() => setForceBellUnread(null), 1500);
+                          setShowNotifications(false);
+                        }}
+                      />
                     </div>
                   </>
                 )}
