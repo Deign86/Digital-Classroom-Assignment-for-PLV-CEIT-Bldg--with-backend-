@@ -499,48 +499,6 @@
     }
   }
 
-  /* Mobile safe-area helpers to avoid clipping by bottom browser UI or
-    floating toolbars (e.g., mobile bottom nav, floating accessibility
-    widgets). These apply only on narrow viewports so desktop layout
-    remains unchanged. */
-  @media (max-width: 640px) {
-   /* Add extra bottom padding to main page containers to avoid
-     content being obscured by mobile browser UI / floating toolbars. */
-   .min-h-screen {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 16px));
-    /* Also nudge content right to account for right-side floating
-      affordances (if present). Keep small so it doesn't break layout. */
-    padding-right: calc(48px + env(safe-area-inset-right, 0px));
-   }
-
-   /* Slightly lift mobile tab container so the indicator and pills don't
-     collide with the header or floating elements. */
-   .mobile-tab-container {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-   }
-
-   /* Make the tab scroll indicator clearly visible above floating
-     overlays (but don't intrude on layout). */
-   .tab-scroll-indicator {
-    bottom: -0.6rem;
-    z-index: 30;
-   }
-
-   /* Helper for floating action buttons: position them with safe-area
-     insets so they avoid bottom/right overlays on modern phones. Use
-     the class `fab-safe` on any FABs that must float above content. */
-   .fab-safe {
-    position: fixed !important;
-    right: calc(12px + env(safe-area-inset-right, 8px));
-    bottom: calc(12px + env(safe-area-inset-bottom, 8px));
-    z-index: 40;
-    /* Provide a small hit area offset so the button doesn't overlay
-      the very edge of the viewport on iOS. */
-    transform: translateZ(0);
-   }
-  }
-
   /* Improve mobile card spacing */
   @media (max-width: 640px) {
     .grid {
