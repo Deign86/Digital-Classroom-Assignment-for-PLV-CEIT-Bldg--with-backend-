@@ -306,9 +306,8 @@ export default function App() {
           // This case should ideally be handled by the error part, but as a fallback:
           return 'Login failed. Please check your credentials.';
         }
-        // Set user and setup listeners after success
-        setCurrentUser(user);
-        setupRealtimeListeners(user);
+  // Set current user; the auth state listener will set up listeners
+  setCurrentUser(user);
 
         const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
         return `${greeting}, ${user.name}!`;
@@ -410,8 +409,8 @@ export default function App() {
           duration: 4000,
         });
         
-        // Setup real-time listeners after successful login
-        setupRealtimeListeners(user);
+  // Real-time listeners will be set up by the auth state listener
+  // to centralize lifecycle handling and avoid duplicates.
         
         return true;
       }
@@ -1164,12 +1163,11 @@ export default function App() {
         if (user) {
           console.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
-          
-          // Setup real-time listeners if user is authenticated
-          console.log('📊 Setting up real-time listeners...');
-          setLoadingMessage('Loading...');
-          setupRealtimeListeners(user);
-          console.log('✅ Real-time listeners setup');
+
+          // Do NOT set up real-time listeners here. The auth state listener
+          // centralizes real-time lifecycle management and will perform setup
+          // so we avoid duplicate registrations from multiple code paths.
+          console.log('📊 Authenticated session found; deferring real-time listener setup to auth state handler');
         } else {
           console.log('ℹ️ No valid session found');
         }
