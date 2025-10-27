@@ -7,7 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
@@ -330,7 +330,12 @@ export default function RequestCard({
                     }}
                     variant="destructive"
                   >
-                    {isCancelling ? 'Cancelling…' : 'Cancel Reservation'}
+                    {isCancelling ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Cancelling…
+                      </>
+                    ) : 'Cancel Reservation'}
                   </Button>
                 </AlertDialogFooter>
               </AlertDialogContent>

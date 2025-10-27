@@ -63,15 +63,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
     setIsDeleting(true);
     try {
       if (onDeleteUser) {
-        const res = await onDeleteUser(selectedUserToDelete.id, isHardDelete);
-        // If server returned a message, show it. Otherwise, show a clearer success message.
-        if (res && res.message) {
-          toast.success(res.message);
-        } else if (res && res.success === true) {
-          toast.success('User deleted');
-        } else {
-          toast.success('Deletion request completed');
-        }
+        // Delegate to parent; parent will surface any user-visible messages/toasts.
+        await onDeleteUser(selectedUserToDelete.id, isHardDelete);
       } else {
         toast.error('Delete handler not available');
       }
@@ -90,9 +83,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   setProcessingUserId(user.id);
     try {
       if (onDisableUser) {
-        const res: any = await onDisableUser(user.id);
-        if (res && res.message) toast.success(res.message);
-        else toast.success(`${user.name} disabled`);
+        // Delegate to parent; parent will handle any toasts/messages.
+        await onDisableUser(user.id);
       } else {
         toast.error('Disable handler not available');
       }
@@ -108,9 +100,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   setProcessingUserId(user.id);
     try {
       if (onEnableUser) {
-        const res: any = await onEnableUser(user.id);
-        if (res && res.message) toast.success(res.message);
-        else toast.success(`${user.name} enabled`);
+        // Delegate to parent; parent will handle any toasts/messages.
+        await onEnableUser(user.id);
       } else {
         toast.error('Enable handler not available');
       }
@@ -126,9 +117,8 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
   setProcessingUserId(user.id);
     try {
       if (onUnlockAccount) {
-        const res: any = await onUnlockAccount(user.id);
-        if (res && res.message) toast.success(res.message);
-        else toast.success(`${user.name} unlocked`);
+        // Delegate to parent; parent will handle any toasts/messages.
+        await onUnlockAccount(user.id);
       } else {
         toast.error('Unlock handler not available');
       }
@@ -202,8 +192,32 @@ export default function AdminUserManagement({ users = [], onDisableUser, onEnabl
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span>{u.status}</span>
-                    {u.accountLocked ? <Lock className="h-4 w-4 text-red-500" /> : null}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span>{u.status}</span>
+                        {u.accountLocked ? <Lock className="h-4 w-4 text-red-500" /> : null}
+                      </div>
+                      {u.accountLocked && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {u.lockedByAdmin ? (
+                            <span className="text-orange-600">Disabled by administrator</span>
+                          ) : u.lockedUntil ? (
+                            (() => {
+                              const lockedUntil = new Date(u.lockedUntil);
+                              const now = new Date();
+                              const mins = Math.max(0, Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000));
+                              return mins > 0 ? (
+                                <span className="text-red-600">Auto-unlock in {mins} minute{mins !== 1 ? 's' : ''}</span>
+                              ) : (
+                                <span className="text-orange-600">Lockout period expired - will unlock on next login attempt</span>
+                              );
+                            })()
+                          ) : (
+                            <span className="text-orange-600">Disabled by administrator</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>

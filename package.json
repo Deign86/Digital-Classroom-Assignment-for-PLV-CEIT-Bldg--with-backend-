@@ -6,12 +6,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-  "build": "tsc && node ./node_modules/vite/bin/vite.js build",
-  "vercel-build": "npm ci && tsc -p ./tsconfig.json && ./node_modules/.bin/vite build",
-  "preview": "vite preview",
-  "test": "echo \"Error: no test specified\" && exit 1",
-  "verify:textareas": "node ./scripts/verify-textareas.js",
-  "predeploy": "npm run build"
+    "build": "tsc && node ./node_modules/vite/bin/vite.js build",
+    "vercel-build": "npm ci && tsc -p ./tsconfig.json && ./node_modules/.bin/vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "verify:textareas": "node ./scripts/verify-textareas.js",
+    "predeploy": "npm run build"
   },
   "keywords": [],
   "author": "",

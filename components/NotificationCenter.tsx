@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { notificationService, type Notification } from '../lib/notificationService';
 import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus } from '@phosphor-icons/react';
+import { Loader2 } from 'lucide-react';
 
 type Props = {
   userId: string;
@@ -44,7 +45,14 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
               className="text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"
               disabled={acknowledging}
             >
-              {acknowledging ? 'Acknowledging...' : 'Acknowledge'}
+              {acknowledging ? (
+                <span className="inline-flex items-center">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Acknowledging...
+                </span>
+              ) : (
+                'Acknowledge'
+              )}
             </button>
           ) : (
             <div className="text-xs text-gray-500">Acknowledged</div>
@@ -58,6 +66,65 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
 export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll }) => {
   const [items, setItems] = useState<Notification[]>([]);
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-hide notifications on mobile when the user scrolls down.
+  // Use a small cumulative downward-scroll threshold so brief accidental nudges don't close the panel.
+  useEffect(() => {
+    if (!onClose) return;
+    if (typeof window === 'undefined' || !('matchMedia' in window)) return;
+
+    const isMobile = window.matchMedia('(max-width: 639px)').matches; // tailwind `sm` breakpoint
+    if (!isMobile) return;
+
+    let lastY = window.scrollY;
+    let accumulatedDown = 0; // accumulate consecutive downward scroll delta
+    const CLOSE_THRESHOLD = 50; // px of downward scroll required to close
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - lastY;
+      if (dy > 0) {
+        accumulatedDown += dy;
+      } else if (dy < 0) {
+        // reset accumulation when user scrolls up
+        accumulatedDown = 0;
+      }
+
+      if (accumulatedDown >= CLOSE_THRESHOLD) {
+        onClose();
+      }
+
+      lastY = y;
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [onClose]);
+
+  // Close when user clicks/taps outside the panel or presses Escape.
+  useEffect(() => {
+    if (!onClose) return;
+
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!rootRef.current) return;
+      if (target && !rootRef.current.contains(target)) {
+        onClose();
+      }
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('pointerdown', onPointer, { passive: true });
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
 
   useEffect(() => {
     if (!userId) return;
@@ -86,7 +153,10 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   }, [userId]);
 
   return (
-  <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96">
+  <div className="relative" ref={rootRef}>
+    {/* small rotated square to act as a popover arrow pointing to the bell */}
+    <div className="absolute right-6 -top-2 w-3 h-3 bg-white rotate-45 shadow-sm hidden sm:block" aria-hidden />
+    <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96 transform transition-all duration-200 ease-out">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Notifications</h3>
@@ -136,6 +206,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
         ))}
       </ul>
     </div>
+  </div>
   );
 };
 

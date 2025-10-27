@@ -1,5 +1,5 @@
 import './styles/globals.css';
-import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
 // Lazy-load heavy dashboard components to reduce initial bundle size
@@ -59,6 +59,8 @@ export interface User {
   failedLoginAttempts?: number;
   accountLocked?: boolean;
   lockedUntil?: string;
+  // If true, the account was manually disabled by an admin and should remain locked until an admin unlocks it.
+  lockedByAdmin?: boolean;
   // Whether the user has enabled browser/service-worker push notifications
   pushEnabled?: boolean;
 }
@@ -185,7 +187,14 @@ export default function App() {
 
   // Setup real-time data listeners based on user role and permissions
   const setupRealtimeListeners = useCallback((user: User | null) => {
-    console.log('🔄 Setting up real-time data listeners...');
+    // Track which user we've already logged setup for to avoid noisy duplicate logs
+    const lastLoggedRealtimeUserIdRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null> | undefined;
+    if (!lastLoggedRealtimeUserIdRef) {
+      (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef = { current: null } as React.MutableRefObject<string | null>;
+    }
+    const lastLoggedRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>;
+    const shouldLogSetup = Boolean(user && lastLoggedRef.current !== user.id);
+    if (shouldLogSetup) console.log('🔄 Setting up real-time data listeners...');
     
     if (!user) {
       // Clear data when no user
@@ -195,6 +204,7 @@ export default function App() {
       setBookingRequests([]);
       setSchedules([]);
       realtimeService.cleanup();
+      try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = null; } catch (_) {}
       return;
     }
 
@@ -271,7 +281,10 @@ export default function App() {
           });
       }
       
-      console.log('✅ Real-time listeners setup complete');
+      if (shouldLogSetup) {
+        console.log('✅ Real-time listeners setup complete');
+        try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) {}
+      }
       } catch (err) {
       console.error('❌ Failed to setup real-time listeners:', err);
       toast.error('Failed to setup real-time data sync');
@@ -293,9 +306,8 @@ export default function App() {
           // This case should ideally be handled by the error part, but as a fallback:
           return 'Login failed. Please check your credentials.';
         }
-        // Set user and setup listeners after success
-        setCurrentUser(user);
-        setupRealtimeListeners(user);
+  // Set current user; the auth state listener will set up listeners
+  setCurrentUser(user);
 
         const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
         return `${greeting}, ${user.name}!`;
@@ -397,8 +409,8 @@ export default function App() {
           duration: 4000,
         });
         
-        // Setup real-time listeners after successful login
-        setupRealtimeListeners(user);
+  // Real-time listeners will be set up by the auth state listener
+  // to centralize lifecycle handling and avoid duplicates.
         
         return true;
       }
@@ -1151,12 +1163,11 @@ export default function App() {
         if (user) {
           console.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
-          
-          // Setup real-time listeners if user is authenticated
-          console.log('📊 Setting up real-time listeners...');
-          setLoadingMessage('Loading...');
-          setupRealtimeListeners(user);
-          console.log('✅ Real-time listeners setup');
+
+          // Do NOT set up real-time listeners here. The auth state listener
+          // centralizes real-time lifecycle management and will perform setup
+          // so we avoid duplicate registrations from multiple code paths.
+          console.log('📊 Authenticated session found; deferring real-time listener setup to auth state handler');
         } else {
           console.log('ℹ️ No valid session found');
         }
@@ -1401,7 +1412,7 @@ export default function App() {
             </div>
             
               <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
-                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} />
+                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} accountLockedMessage={accountLockedMessage} />
               </div>
           </div>
         </div>

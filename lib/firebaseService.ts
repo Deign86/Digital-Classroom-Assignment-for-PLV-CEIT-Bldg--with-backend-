@@ -106,6 +106,9 @@ type FirestoreUserRecord = {
   failedLoginAttempts?: number;
   accountLocked?: boolean;
   lockedUntil?: string;
+  // Indicates the account was explicitly disabled by an administrator (manual lock).
+  // When true, the account should not auto-unlock — an admin must re-enable it.
+  lockedByAdmin?: boolean;
   pushEnabled?: boolean;
 };
 
@@ -200,6 +203,8 @@ const dataListeners = {
 };
 
 let activeUnsubscribes: Unsubscribe[] = [];
+// Tracks which user's listeners are currently registered to avoid redundant setups
+let currentRealtimeUserId: string | null = null;
 
 const unsubscribeAllListeners = () => {
   console.log(`Unsubscribing from ${activeUnsubscribes.length} real-time listeners.`);
@@ -211,6 +216,7 @@ const unsubscribeAllListeners = () => {
     }
   });
   activeUnsubscribes = [];
+  currentRealtimeUserId = null;
 };
 
 // Real-time data notification helpers
@@ -477,6 +483,8 @@ const toUser = (id: string, data: FirestoreUserRecord): User => ({
   failedLoginAttempts: data.failedLoginAttempts || 0,
   accountLocked: data.accountLocked || false,
   lockedUntil: data.lockedUntil,
+  // carry admin-lock indicator to client runtime
+  lockedByAdmin: !!data.lockedByAdmin,
   // Carry push preference through to the runtime user object
   pushEnabled: data.pushEnabled,
 });
@@ -981,20 +989,31 @@ export const authService = {
       const user = toUser(firebaseUser.uid, record);
 
       // Check if account is locked (after authentication but before allowing login)
-      if (user.accountLocked && user.lockedUntil) {
-        const lockedUntilDate = new Date(user.lockedUntil);
+      if (user.accountLocked) {
         const now = new Date();
-        
-        if (now < lockedUntilDate) {
-          // Account is still locked - sign them out
+
+        // If locked by admin, prevent login until an admin explicitly unlocks
+        if (user.lockedByAdmin) {
           await firebaseSignOut(auth);
           currentUserCache = null;
           notifyAuthListeners(null);
-          
-          const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
-          throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
-        } else {
-          // Lockout period has expired, will be unlocked below in success handler
+          throw new Error('Your account has been disabled by an administrator. Please contact your administrator to re-enable this account.');
+        }
+
+        // Otherwise, treat it as a system lockout (time-bound)
+        if (user.lockedUntil) {
+          const lockedUntilDate = new Date(user.lockedUntil);
+          if (now < lockedUntilDate) {
+            // Account is still locked - sign them out
+            await firebaseSignOut(auth);
+            currentUserCache = null;
+            notifyAuthListeners(null);
+
+            const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
+            throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
+          } else {
+            // Lockout period has expired, will be unlocked below in success handler
+          }
         }
       }
 
@@ -1442,6 +1461,7 @@ export const userService = {
       failedLoginAttempts: 0,
       accountLocked: false,
       lockedUntil: null,
+      lockedByAdmin: false,
       updatedAt: nowIso(),
     });
 
@@ -1462,6 +1482,7 @@ export const userService = {
     await updateDoc(userRef, {
       accountLocked: true,
       lockedUntil,
+      lockedByAdmin: false,
       updatedAt: nowIso(),
     });
 
@@ -1483,6 +1504,41 @@ export const userService = {
       // Log but don't throw - lock state was already set in Firestore
       console.warn('Failed to call revokeUserTokens callable after locking account:', revErr);
     }
+    return toUser(snapshot.id, record);
+  },
+
+  // Admin-triggered account disable: mark as locked by admin and do NOT set a timed lockedUntil.
+  // This prevents auto-unlock behavior; an admin must explicitly call unlockAccount to re-enable.
+  async lockAccountByAdmin(id: string): Promise<User> {
+    const database = getDb();
+    const userRef = doc(database, COLLECTIONS.USERS, id);
+
+    await updateDoc(userRef, {
+      accountLocked: true,
+      lockedUntil: null,
+      lockedByAdmin: true,
+      updatedAt: nowIso(),
+    });
+
+    const snapshot = await getDoc(userRef);
+    if (!snapshot.exists()) {
+      throw new Error('User not found');
+    }
+
+    const record = ensureUserData(snapshot);
+    // Attempt to revoke refresh tokens for the user so currently-signed-in sessions are invalidated.
+    try {
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const fn = httpsCallable(functions, 'revokeUserTokens');
+      // best-effort: do not fail the lock operation if the callable is unavailable
+      const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
+      console.log('revokeUserTokens response:', resp?.data);
+    } catch (revErr) {
+      // Log but don't throw - lock state was already set in Firestore
+      console.warn('Failed to call revokeUserTokens callable after locking account (admin):', revErr);
+    }
+
     return toUser(snapshot.id, record);
   },
 
@@ -2199,7 +2255,24 @@ export const signupRequestService = {
 };
 
 // Re-export notification service for consistency with other services
-export const notificationService = notificationServiceImport;
+// Wrap the setupNotificationsListener so that unsubscribes are tracked
+// by the central `activeUnsubscribes` array and can be cleaned up on sign-out.
+const _notificationServiceWrapped = {
+  ...notificationServiceImport,
+  setupNotificationsListener: (
+    callback: (items: any[]) => void,
+    errorCallback?: (error: Error) => void,
+    userId?: string
+  ) => {
+    const unsub = notificationServiceImport.setupNotificationsListener(callback as any, errorCallback, userId);
+    if (typeof unsub === 'function') {
+      activeUnsubscribes.push(unsub as Unsubscribe);
+    }
+    return unsub;
+  },
+};
+
+export const notificationService = _notificationServiceWrapped as typeof notificationServiceImport;
 
 // ============================================
 // SIGNUP HISTORY SERVICE
@@ -2312,8 +2385,14 @@ export const realtimeService = {
   ) {
     console.log('🔄 Setting up real-time listeners for user:', user?.email);
     
-    // Clean up any existing listeners first
-    this.cleanup();
+      // If we've already set up listeners for this exact user, skip re-setup
+      if (user?.id && currentRealtimeUserId === user.id && activeUnsubscribes.length > 0) {
+        console.log('⚠️ Real-time listeners already active for this user, skipping re-registration');
+        return;
+      }
+
+      // Clean up any existing listeners first
+      this.cleanup();
 
     const { 
       onClassroomsUpdate, 
@@ -2350,6 +2429,9 @@ export const realtimeService = {
         setupBookingRequestsListener(onBookingRequestsUpdate, onError, user.id);
         setupSchedulesListener(onSchedulesUpdate, onError, user.id);
       }
+
+      // Mark which user these listeners belong to so we can avoid redundant setups
+      currentRealtimeUserId = user?.id ?? null;
 
       console.log(`✅ Real-time listeners setup complete for ${user?.role || 'anonymous'} user`);
     } catch (error) {
