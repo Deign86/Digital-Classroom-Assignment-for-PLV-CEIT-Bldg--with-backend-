@@ -203,6 +203,8 @@ const dataListeners = {
 };
 
 let activeUnsubscribes: Unsubscribe[] = [];
+// Tracks which user's listeners are currently registered to avoid redundant setups
+let currentRealtimeUserId: string | null = null;
 
 const unsubscribeAllListeners = () => {
   console.log(`Unsubscribing from ${activeUnsubscribes.length} real-time listeners.`);
@@ -214,6 +216,7 @@ const unsubscribeAllListeners = () => {
     }
   });
   activeUnsubscribes = [];
+  currentRealtimeUserId = null;
 };
 
 // Real-time data notification helpers
@@ -2382,8 +2385,14 @@ export const realtimeService = {
   ) {
     console.log('🔄 Setting up real-time listeners for user:', user?.email);
     
-    // Clean up any existing listeners first
-    this.cleanup();
+      // If we've already set up listeners for this exact user, skip re-setup
+      if (user?.id && currentRealtimeUserId === user.id && activeUnsubscribes.length > 0) {
+        console.log('⚠️ Real-time listeners already active for this user, skipping re-registration');
+        return;
+      }
+
+      // Clean up any existing listeners first
+      this.cleanup();
 
     const { 
       onClassroomsUpdate, 
@@ -2420,6 +2429,9 @@ export const realtimeService = {
         setupBookingRequestsListener(onBookingRequestsUpdate, onError, user.id);
         setupSchedulesListener(onSchedulesUpdate, onError, user.id);
       }
+
+      // Mark which user these listeners belong to so we can avoid redundant setups
+      currentRealtimeUserId = user?.id ?? null;
 
       console.log(`✅ Real-time listeners setup complete for ${user?.role || 'anonymous'} user`);
     } catch (error) {
