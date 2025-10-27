@@ -318,7 +318,6 @@ export default function RequestCard({
                         setCancelReason('');
                         setCancelError(null);
                         try { announce('Reservation cancelled', 'polite'); } catch (e) { }
-                        toast.success('Reservation cancelled');
                       } catch (err: any) {
                         console.error('Failed to cancel reservation', err);
                         const msg = err?.message || 'Failed to cancel reservation. Please try again.';

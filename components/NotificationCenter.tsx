@@ -41,7 +41,8 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
         <div className="ml-auto flex flex-col items-end">
           {!n.acknowledgedAt ? (
             <button
-              onClick={() => onAcknowledge(n.id)}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAcknowledge(n.id); }}
               className="text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"
               disabled={acknowledging}
             >
@@ -66,65 +67,8 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
 export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll }) => {
   const [items, setItems] = useState<Notification[]>([]);
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
-  const rootRef = useRef<HTMLDivElement | null>(null);
-
-  // Auto-hide notifications on mobile when the user scrolls down.
-  // Use a small cumulative downward-scroll threshold so brief accidental nudges don't close the panel.
-  useEffect(() => {
-    if (!onClose) return;
-    if (typeof window === 'undefined' || !('matchMedia' in window)) return;
-
-    const isMobile = window.matchMedia('(max-width: 639px)').matches; // tailwind `sm` breakpoint
-    if (!isMobile) return;
-
-    let lastY = window.scrollY;
-    let accumulatedDown = 0; // accumulate consecutive downward scroll delta
-    const CLOSE_THRESHOLD = 50; // px of downward scroll required to close
-
-    const onScroll = () => {
-      const y = window.scrollY;
-      const dy = y - lastY;
-      if (dy > 0) {
-        accumulatedDown += dy;
-      } else if (dy < 0) {
-        // reset accumulation when user scrolls up
-        accumulatedDown = 0;
-      }
-
-      if (accumulatedDown >= CLOSE_THRESHOLD) {
-        onClose();
-      }
-
-      lastY = y;
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [onClose]);
-
-  // Close when user clicks/taps outside the panel or presses Escape.
-  useEffect(() => {
-    if (!onClose) return;
-
-    const onPointer = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      if (!rootRef.current) return;
-      if (target && !rootRef.current.contains(target)) {
-        onClose();
-      }
-    };
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-
-    document.addEventListener('pointerdown', onPointer, { passive: true });
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
+  const [globalAcking, setGlobalAcking] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -139,9 +83,28 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
     return () => unsub?.();
   }, [userId]);
 
+  // close on Escape or when the user scrolls (avoid pointerdown outside checks to keep
+  // inner buttons reliably clickable — we intentionally do not close on pointerdown)
+  useEffect(() => {
+    if (!onClose) return;
+    const handleKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') onClose();
+    };
+    const handleScroll = () => onClose();
+
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [onClose]);
+
   const handleAcknowledge = useCallback(async (id: string) => {
-    // optimistic UI: mark pending locally
+    // optimistic UI: mark pending locally and show global loader
     setAckPending((s) => ({ ...s, [id]: true }));
+    setGlobalAcking(true);
     try {
       // Make server call; server will emit updated doc via listener
       await notificationService.acknowledgeNotification(id, userId);
@@ -149,14 +112,22 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
       console.error('Acknowledge error', err);
     } finally {
       setAckPending((s) => ({ ...s, [id]: false }));
+      setGlobalAcking(false);
     }
   }, [userId]);
 
+  const isAnyAcking = globalAcking || Object.values(ackPending).some(Boolean);
+
   return (
-  <div className="relative" ref={rootRef}>
-    {/* small rotated square to act as a popover arrow pointing to the bell */}
-    <div className="absolute right-6 -top-2 w-3 h-3 bg-white rotate-45 shadow-sm hidden sm:block" aria-hidden />
-    <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96 transform transition-all duration-200 ease-out">
+  <div ref={wrapperRef} className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96 relative">
+      {isAnyAcking && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/70 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Loader2 className="animate-spin h-5 w-5 text-gray-700" />
+            <span className="text-sm text-gray-700">Acknowledging...</span>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Notifications</h3>
@@ -164,9 +135,11 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={async () => {
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
               // acknowledge all unread notifications optimistically
-                    const unread = items.filter(i => !i.acknowledgedAt).map(i => i.id);
+              const unread = items.filter(i => !i.acknowledgedAt).map(i => i.id);
               if (!unread.length) {
                 onClose?.();
                 return;
@@ -174,20 +147,23 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
               // optimistically mark as acknowledging
               const prev = items;
               setItems(prev.map(it => unread.includes(it.id) ? { ...it, acknowledgedAt: new Date().toISOString() } : it));
+              setGlobalAcking(true);
               try {
-                      // prefer batch acknowledge if supported by service
-                      if (typeof notificationService.acknowledgeNotifications === 'function') {
-                        const newUnread = await notificationService.acknowledgeNotifications(unread, userId);
-                        // notify parent about new unread count so the bell can update immediately
-                        onAcknowledgeAll?.(typeof newUnread === 'number' ? newUnread : null);
-                      } else {
-                        await Promise.all(unread.map(id => notificationService.acknowledgeNotification(id, userId)));
-                        // parent can refresh via listener; we don't know the final unread count here
-                        onAcknowledgeAll?.(0);
-                      }
+                // prefer batch acknowledge if supported by service
+                if (typeof notificationService.acknowledgeNotifications === 'function') {
+                  const newUnread = await notificationService.acknowledgeNotifications(unread, userId);
+                  // notify parent about new unread count so the bell can update immediately
+                  onAcknowledgeAll?.(typeof newUnread === 'number' ? newUnread : null);
+                } else {
+                  await Promise.all(unread.map(id => notificationService.acknowledgeNotification(id, userId)));
+                  // parent can refresh via listener; we don't know the final unread count here
+                  onAcknowledgeAll?.(0);
+                }
               } catch (err) {
                 console.error('Failed to acknowledge all notifications', err);
                 // revert the optimistic update by re-triggering listener (listener will correct state)
+              } finally {
+                setGlobalAcking(false);
               }
               onClose?.();
             }}
@@ -206,7 +182,6 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
         ))}
       </ul>
     </div>
-  </div>
   );
 };
 
