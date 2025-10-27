@@ -68,7 +68,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
 
   // Auto-hide notifications on mobile when the user scrolls down.
-  // This prevents the notifications panel from remaining "sticky" on small screens.
+  // Use a small cumulative downward-scroll threshold so brief accidental nudges don't close the panel.
   useEffect(() => {
     if (!onClose) return;
     if (typeof window === 'undefined' || !('matchMedia' in window)) return;
@@ -77,12 +77,23 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
     if (!isMobile) return;
 
     let lastY = window.scrollY;
+    let accumulatedDown = 0; // accumulate consecutive downward scroll delta
+    const CLOSE_THRESHOLD = 50; // px of downward scroll required to close
+
     const onScroll = () => {
       const y = window.scrollY;
-      // if user scrolled down more than a small threshold, close the panel
-      if (y > lastY + 10) {
+      const dy = y - lastY;
+      if (dy > 0) {
+        accumulatedDown += dy;
+      } else if (dy < 0) {
+        // reset accumulation when user scrolls up
+        accumulatedDown = 0;
+      }
+
+      if (accumulatedDown >= CLOSE_THRESHOLD) {
         onClose();
       }
+
       lastY = y;
     };
 
@@ -117,7 +128,10 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   }, [userId]);
 
   return (
-  <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96">
+  <div className="relative">
+    {/* small rotated square to act as a popover arrow pointing to the bell */}
+    <div className="absolute right-6 -top-2 w-3 h-3 bg-white rotate-45 shadow-sm hidden sm:block" aria-hidden />
+    <div className="p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96 transform transition-all duration-200 ease-out">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">Notifications</h3>
@@ -167,6 +181,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
         ))}
       </ul>
     </div>
+  </div>
   );
 };
 
