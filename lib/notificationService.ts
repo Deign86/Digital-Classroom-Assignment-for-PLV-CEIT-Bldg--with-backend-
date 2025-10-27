@@ -12,6 +12,7 @@ import {
   type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
@@ -152,6 +153,19 @@ export const setupNotificationsListener = (
     q = query(notificationsRef, orderBy('createdAt', 'desc'));
   }
 
+  // Log the project and current auth user to help diagnose local vs prod permission issues
+  try {
+    const app = getFirebaseApp();
+    try {
+      const auth = getAuth(app);
+      console.log('setupNotificationsListener registering', { projectId: app.options?.projectId, currentUser: auth.currentUser?.uid ?? null });
+    } catch (e) {
+      console.log('setupNotificationsListener: unable to read auth currentUser', e);
+    }
+  } catch (e) {
+    console.log('setupNotificationsListener: unable to read firebase app info', e);
+  }
+
   const unsubscribe = onSnapshot(
     q,
     (snapshot: QuerySnapshot) => {
@@ -168,14 +182,10 @@ export const setupNotificationsListener = (
     },
     (error) => {
       console.error('Notifications listener error (snapshot):', error);
-      // If permissions are missing (user signed out or rules changed), unsubscribe to avoid repeated errors
-      try {
-        // unsubscribe is the function returned by onSnapshot
-        unsubscribe();
-      } catch (e) {
-        // ignore
-      }
-      // Surface a clearer error to callers
+      // Do NOT call unsubscribe() from inside the SDK error callback — calling
+      // the returned unsubscribe here can cause internal SDK race conditions
+      // and assertions. Forward the error to the caller and let the higher
+      // level (or central listener manager) handle teardown.
       const err = error instanceof Error ? error : new Error(String(error));
       errorCallback?.(err);
     }
