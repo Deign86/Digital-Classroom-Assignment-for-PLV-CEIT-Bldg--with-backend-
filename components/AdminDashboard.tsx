@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { storageKeyFor, readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
+// Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -71,19 +71,8 @@ export default function AdminDashboard({
   onUnlockAccount,
   checkConflicts
 }: AdminDashboardProps) {
-  const STORAGE_KEY = storageKeyFor('admin');
-
   const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management'] as const;
-  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'overview', Array.from(allowedTabs)));
-
-  useEffect(() => {
-    try {
-      writeStoredTab(STORAGE_KEY, activeTab);
-      writeTabToHash(activeTab);
-    } catch (err) {
-      console.warn('Failed to save AdminDashboard active tab', err);
-    }
-  }, [activeTab, STORAGE_KEY]);
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [showNotifications, setShowNotifications] = useState(false);
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);

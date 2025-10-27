@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { storageKeyFor, readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
+// Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -52,12 +52,11 @@ export default function FacultyDashboard({
   onBookingRequest,
   checkConflicts
 }: FacultyDashboardProps) {
-  const STORAGE_KEY = storageKeyFor('faculty');
-
   const allowedTabs = ['overview','booking','search','schedule','settings'] as const;
   type FacultyTab = typeof allowedTabs[number];
 
-  const [activeTab, setActiveTab] = useState<FacultyTab>(() => readPreferredTab(STORAGE_KEY, 'overview', Array.from(allowedTabs)) as FacultyTab);
+  // Default to overview; don't persist last-active tab across logout/login.
+  const [activeTab, setActiveTab] = useState<FacultyTab>('overview');
 
   const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
 
@@ -137,15 +136,7 @@ export default function FacultyDashboard({
     }
   };
 
-  useEffect(() => {
-    try {
-      const valueToStore = activeTab as string;
-      writeStoredTab(STORAGE_KEY, valueToStore);
-      writeTabToHash(valueToStore);
-    } catch (err) {
-      console.warn('Failed to save FacultyDashboard active tab', err);
-    }
-  }, [activeTab, STORAGE_KEY]);
+  // Tab persistence removed: no storage side-effects for active tab
 
   // Scroll to top when component mounts
   useEffect(() => {
