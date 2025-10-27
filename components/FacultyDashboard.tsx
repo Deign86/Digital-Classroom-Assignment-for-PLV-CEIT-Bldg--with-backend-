@@ -218,33 +218,19 @@ export default function FacultyDashboard({
                 </div>
               </div>
               {showNotifications && (
-                <>
-                  {/* Desktop / larger screens */}
-                  <div className="hidden sm:block fixed right-4 top-20 z-50">
-                    <NotificationCenter
-                      userId={user.id}
-                      onClose={() => setShowNotifications(false)}
-                      onAcknowledgeAll={(newCount) => {
-                        setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
-                        setTimeout(() => setForceBellUnread(null), 1500);
-                        setShowNotifications(false);
-                      }}
-                    />
-                  </div>
-
-                  {/* Mobile: place near top-right so it opens close to the bell */}
-                  <div className="sm:hidden fixed right-4 top-4 z-50">
-                    <NotificationCenter
-                      userId={user.id}
-                      onClose={() => setShowNotifications(false)}
-                      onAcknowledgeAll={(newCount) => {
-                        setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
-                        setTimeout(() => setForceBellUnread(null), 1500);
-                        setShowNotifications(false);
-                      }}
-                    />
-                  </div>
-                </>
+                <div className="fixed right-4 top-20 z-50">
+                  <NotificationCenter
+                    userId={user.id}
+                    onClose={() => setShowNotifications(false)}
+                    onAcknowledgeAll={(newCount) => {
+                      // Immediately show the new unread count on the bell. If null, force to 0.
+                      setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                      // Clear the forced value after 1.5s so the real-time listener resumes control
+                      setTimeout(() => setForceBellUnread(null), 1500);
+                      setShowNotifications(false);
+                    }}
+                  />
+                </div>
               )}
             </div>
           </div>

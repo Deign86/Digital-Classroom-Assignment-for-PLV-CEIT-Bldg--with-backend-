@@ -63,6 +63,8 @@ export interface User {
   lockedByAdmin?: boolean;
   // Whether the user has enabled browser/service-worker push notifications
   pushEnabled?: boolean;
+  // ISO timestamp of the user's last sign-in. Used to infer recent activity sessions.
+  lastSignInAt?: string;
 }
 
 export interface SignupRequest {

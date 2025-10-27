@@ -34,6 +34,7 @@ import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
 import AdminUserManagement from './AdminUserManagement';
 import { userService, adminDeleteUser } from '../lib/firebaseService';
+import { notificationService } from '../lib/notificationService';
 import type { User, Classroom, BookingRequest, SignupRequest, SignupHistory, Schedule } from '../App';
 
 interface AdminDashboardProps {
@@ -713,7 +714,24 @@ export default function AdminDashboard({
                     const res: any = await userService.update(id, { role });
                     const out = res || { success: true, message: 'Role updated' };
                     if (out?.message) toast.success(out.message);
-                    return out;
+
+                    // Infer whether the target user has a recent sign-in (active session).
+                    // If their lastSignInAt is within the last 60 minutes, flag them as likely logged in.
+                    let notifyCurrentlyLoggedIn = false;
+                    try {
+                      const last = (out as any)?.lastSignInAt;
+                      if (last) {
+                        const lastDate = new Date(last);
+                        if (!isNaN(lastDate.getTime())) {
+                          const mins = (Date.now() - lastDate.getTime()) / 60000;
+                          if (mins < 60) notifyCurrentlyLoggedIn = true;
+                        }
+                      }
+                    } catch (e) {
+                      // swallow
+                    }
+
+                    return { ...out, notifyCurrentlyLoggedIn };
                   } catch (err: any) {
                     console.error('Change role error', err);
                     const msg = err?.message || 'Failed to change role';
@@ -721,6 +739,18 @@ export default function AdminDashboard({
                     return { success: false, message: msg };
                   } finally {
                     setProcessingUserId(null);
+                  }
+                }}
+                onNotifyUser={async (targetUserId, payload) => {
+                  // Use notificationService to create an in-app notification (server-side)
+                  // Do not show a toast here — AdminUserManagement will surface the success message.
+                  try {
+                    const message = payload?.body || payload?.title || 'Your account role was changed by an administrator. Please sign out and sign in again to apply the new changes.';
+                    await notificationService.createNotification(targetUserId, 'info', message, { actorId: user.id });
+                  } catch (err) {
+                    console.error('onNotifyUser failed', err);
+                    // Re-throw so the caller can show an error toast
+                    throw err;
                   }
                 }}
                 onUnlockAccount={async (id) => {
