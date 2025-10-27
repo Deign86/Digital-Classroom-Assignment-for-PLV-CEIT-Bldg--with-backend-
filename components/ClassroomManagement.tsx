@@ -234,7 +234,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate, onC
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pr-4 sm:pr-0">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -394,110 +394,160 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate, onC
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Room Name</TableHead>
-                  <TableHead>Building & Floor</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Equipment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {classrooms.length === 0 ? (
+          <div className="rounded-md border pr-6 sm:pr-0">
+            {/* Desktop/tablet: show table on sm+ */}
+            <div className="hidden sm:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      No classrooms added yet
-                    </TableCell>
+                    <TableHead>Room Name</TableHead>
+                    <TableHead>Building & Floor</TableHead>
+                    <TableHead>Capacity</TableHead>
+                    <TableHead>Equipment</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  classrooms.map((classroom) => (
-                    <TableRow key={classroom.id}>
-                      <TableCell className="font-medium">{classroom.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          <span>{classroom.building}, {classroom.floor}F</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          <span>{classroom.capacity}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {classroom.equipment.length === 0 ? (
-                            <span className="text-gray-400 text-sm">None</span>
-                          ) : (
-                            classroom.equipment.slice(0, 3).map((eq, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
-                                {getIconForEquipment(eq) && <span>{getIconForEquipment(eq)}</span>}
-                                <span>{eq}</span>
-                              </Badge>
-                            ))
-                          )}
-                          {classroom.equipment.length > 3 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{classroom.equipment.length - 3} more
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            checked={classroom.isAvailable}
-                            onCheckedChange={(checked: boolean) => handleAvailabilityToggle(classroom.id, checked)}
-                            disabled={processingClassroomId === classroom.id}
-                          />
-                          {processingClassroomId === classroom.id && (
-                            <span className="inline-flex items-center">
-                              <Loader2 className="h-4 w-4 ml-2 text-gray-500 animate-spin" />
-                              <span className="sr-only">Updating availability for {classroom.name}</span>
-                            </span>
-                          )}
-                          <Badge variant={classroom.isAvailable ? 'default' : 'secondary'}>
-                            {classroom.isAvailable ? 'Available' : 'Disabled'}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(classroom)}
-                            disabled={processingClassroomId === classroom.id || isSaving || isDeleting}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteClick(classroom)}
-                            disabled={processingClassroomId === classroom.id || isSaving || isDeleting}
-                          >
-                            {processingClassroomId === classroom.id && isDeleting ? (
-                              <span className="inline-flex items-center">
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                <span className="sr-only">Deleting {classroom.name}</span>
-                              </span>
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {classrooms.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        No classrooms added yet
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    classrooms.map((classroom) => (
+                      <TableRow key={classroom.id}>
+                        <TableCell className="font-medium">{classroom.name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="h-4 w-4 text-gray-400" />
+                            <span>{classroom.building}, {classroom.floor}F</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <Users className="h-4 w-4 text-gray-400" />
+                            <span>{classroom.capacity}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {classroom.equipment.length === 0 ? (
+                              <span className="text-gray-400 text-sm">None</span>
+                            ) : (
+                              classroom.equipment.slice(0, 3).map((eq, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
+                                  {getIconForEquipment(eq) && <span>{getIconForEquipment(eq)}</span>}
+                                  <span>{eq}</span>
+                                </Badge>
+                              ))
+                            )}
+                            {classroom.equipment.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{classroom.equipment.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={classroom.isAvailable}
+                              onCheckedChange={(checked: boolean) => handleAvailabilityToggle(classroom.id, checked)}
+                              disabled={processingClassroomId === classroom.id}
+                            />
+                            {processingClassroomId === classroom.id && (
+                              <span className="inline-flex items-center">
+                                <Loader2 className="h-4 w-4 ml-2 text-gray-500 animate-spin" />
+                                <span className="sr-only">Updating availability for {classroom.name}</span>
+                              </span>
+                            )}
+                            <Badge variant={classroom.isAvailable ? 'default' : 'secondary'}>
+                              {classroom.isAvailable ? 'Available' : 'Disabled'}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(classroom)}
+                              disabled={processingClassroomId === classroom.id || isSaving || isDeleting}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteClick(classroom)}
+                              disabled={processingClassroomId === classroom.id || isSaving || isDeleting}
+                            >
+                              {processingClassroomId === classroom.id && isDeleting ? (
+                                <span className="inline-flex items-center">
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  <span className="sr-only">Deleting {classroom.name}</span>
+                                </span>
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile: stack as cards */}
+            <div className="sm:hidden space-y-4 p-2 pr-6">
+              {classrooms.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">No classrooms added yet</div>
+              ) : (
+                classrooms.map((classroom) => (
+                  <Card key={classroom.id} className="border">
+                    <CardContent>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-lg font-medium">{classroom.name}</div>
+                            <Badge variant="secondary" className="text-xs">{classroom.isAvailable ? 'Available' : 'Disabled'}</Badge>
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">{classroom.building}, {classroom.floor}F • {classroom.capacity} seats</div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {classroom.equipment.length === 0 ? (
+                              <span className="text-gray-400 text-sm">None</span>
+                            ) : (
+                              classroom.equipment.map((eq, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {eq}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <div>
+                            <Switch checked={classroom.isAvailable} onCheckedChange={(v: boolean) => handleAvailabilityToggle(classroom.id, v)} disabled={processingClassroomId === classroom.id} />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleEdit(classroom)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteClick(classroom)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
 
           {classrooms.length > 0 && (

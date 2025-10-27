@@ -424,6 +424,12 @@
     display: none;
   }
 
+  /* Reserve space for scrollbars to avoid content being covered by overlay scrollbars
+     (prevents items from visually clipping under the scrollbar on some mobile/desktop browsers) */
+  .scrollbar-gutter-stable {
+    scrollbar-gutter: stable both-edges;
+  }
+
   .mobile-tab-item {
     scroll-snap-align: center;
     flex-shrink: 0;
