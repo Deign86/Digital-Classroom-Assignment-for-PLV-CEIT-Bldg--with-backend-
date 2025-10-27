@@ -230,6 +230,16 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
   const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
 
+  // Whether the confirm button should be enabled. For approvals feedback is optional;
+  // for rejections feedback is required and must be non-empty and not exceed length limits.
+  const canConfirmBulk = (() => {
+    if (isProcessingBulk) return false;
+    if (bulkActionApprove === null) return false;
+    if (bulkActionApprove) return true;
+    // rejecting: require non-empty feedback and no validation error
+    return bulkFeedback.trim().length > 0 && !bulkFeedbackError;
+  })();
+
   // Throttled worker runner - processes promises with limited concurrency
   const runWithConcurrency = async <T,>(
     tasks: Array<() => Promise<T>>,
@@ -632,8 +642,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 className="min-h-[120px] p-3 mt-0"
                 maxLength={500}
               />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-gray-500">Max 500 characters</p>
+              {/* Keep a compact live character counter (per request) */}
+              <div className="flex items-center justify-end mt-1">
                 <p className="text-xs text-gray-500">{bulkFeedback.length}/500</p>
               </div>
               {bulkFeedbackError && <p className="text-xs text-red-600 mt-1">{bulkFeedbackError}</p>}
@@ -641,7 +651,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
             <DialogFooter>
               <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
-              <Button onClick={confirmBulkAction} className="ml-2" disabled={isProcessingBulk}>
+              <Button onClick={confirmBulkAction} className="ml-2" disabled={!canConfirmBulk}>
                 {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
               </Button>
             </DialogFooter>
