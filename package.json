@@ -5,8 +5,10 @@
   "description": "A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology.",
   "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && node ./node_modules/vite/bin/vite.js build",
+  "dev": "vite",
+  "images:convert": "node ./scripts/convert-images.js ./public",
+  "images:manifest": "node ./scripts/generate-image-manifest.js ./public ./public/image-manifest.json",
+  "build": "npm run images:convert && npm run images:manifest && tsc && node ./node_modules/vite/bin/vite.js build",
     "vercel-build": "npm ci && tsc -p ./tsconfig.json && ./node_modules/.bin/vite build",
     "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1",

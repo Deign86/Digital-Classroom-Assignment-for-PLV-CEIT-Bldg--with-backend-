@@ -7,10 +7,15 @@ import { useAnnouncer } from '../Announcer';
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
-  const { announce } = useAnnouncer();
+  const { announce, enabled, useTTS } = useAnnouncer();
 
   useEffect(() => {
-    if (!announce || !sonnerToast) return;
+  // Only forward toast messages into the Announcer when the Announcer is
+  // configured to use TTS. Sonner already exposes accessible live regions
+  // for screen readers, so announcing via both the toaster and our live
+  // regions causes double-reading. Restrict to TTS mode to avoid duplicates.
+  const shouldAnnounceViaAnnouncer = !!announce && !!enabled && !!useTTS;
+  if (!shouldAnnounceViaAnnouncer || !sonnerToast) return;
 
   const originalSuccess = sonnerToast.success?.bind(sonnerToast) ?? null;
   const originalError = sonnerToast.error?.bind(sonnerToast) ?? null;

@@ -21,6 +21,14 @@ if ('serviceWorker' in navigator) {
         .catch((err) => {
           console.warn('Service Worker registration failed:', err);
         });
+      // Register a minimal app service worker for caching/navigation fallback
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('Service Worker registered for app runtime caching:', registration.scope);
+        })
+        .catch((err) => {
+          console.warn('App Service Worker registration failed:', err);
+        });
     });
   } else {
     console.log('Skipping service worker registration in non-local dev mode');
