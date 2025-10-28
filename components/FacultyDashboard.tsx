@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+/* spinner removed by request; fallbacks reverted to text */
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -21,10 +22,11 @@ import {
 } from 'lucide-react';
 import { convertTo12Hour, convertTo24Hour, formatTimeRange, isPastBookingTime, isReasonableBookingDuration, addDaysToDateString } from '../utils/timeUtils';
 import { toast } from 'sonner';
-import RoomBooking from './RoomBooking';
-import RoomSearch from './RoomSearch';
-import FacultySchedule from './FacultySchedule';
-import ProfileSettings from './ProfileSettings';
+// Lazy-load heavier, non-critical components to reduce initial bundle size.
+const RoomBooking = React.lazy(() => import('./RoomBooking'));
+const RoomSearch = React.lazy(() => import('./RoomSearch'));
+const FacultySchedule = React.lazy(() => import('./FacultySchedule'));
+const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
@@ -593,45 +595,53 @@ export default function FacultyDashboard({
 
           <TabsContent value="booking">
             <div className="animate-in">
-              <RoomBooking
-                classrooms={classrooms}
-                schedules={allSchedules}
-                bookingRequests={allBookingRequests}
-                onBookingRequest={onBookingRequest}
-                initialData={bookingInitialData ?? undefined}
-                user={user}
-                checkConflicts={checkConflicts}
-              />
+              <Suspense fallback={<div className="p-4">Loading booking form…</div>}>
+                <RoomBooking
+                  classrooms={classrooms}
+                  schedules={allSchedules}
+                  bookingRequests={allBookingRequests}
+                  onBookingRequest={onBookingRequest}
+                  initialData={bookingInitialData ?? undefined}
+                  user={user}
+                  checkConflicts={checkConflicts}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="search">
             <div className="animate-in">
-              <RoomSearch
-                classrooms={classrooms}
-                schedules={allSchedules}
-                bookingRequests={allBookingRequests}
-              />
+              <Suspense fallback={<div className="p-4">Loading search…</div>}>
+                <RoomSearch
+                  classrooms={classrooms}
+                  schedules={allSchedules}
+                  bookingRequests={allBookingRequests}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="schedule">
             <div className="animate-in">
-              <FacultySchedule
-                schedules={schedules}
-                bookingRequests={bookingRequests}
-                initialTab={scheduleInitialTab}
-                userId={user?.id}
-                onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
-                  void handleQuickRebook(initial);
-                }}
-              />
+              <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
+                <FacultySchedule
+                  schedules={schedules}
+                  bookingRequests={bookingRequests}
+                  initialTab={scheduleInitialTab}
+                  userId={user?.id}
+                  onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+                    void handleQuickRebook(initial);
+                  }}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="settings">
             <div className="animate-in">
-              <ProfileSettings user={user} />
+              <Suspense fallback={<div className="p-4">Loading settings…</div>}>
+                <ProfileSettings user={user} />
+              </Suspense>
             </div>
           </TabsContent>
         </Tabs>

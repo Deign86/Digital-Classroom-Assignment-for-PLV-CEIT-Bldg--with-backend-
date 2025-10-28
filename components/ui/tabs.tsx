@@ -50,6 +50,30 @@ const TabsList = React.forwardRef<
       }
     };
 
+    // Also scroll into view when a child receives focus (keyboard navigation)
+    const onFocusIn = (ev: FocusEvent) => {
+      try {
+        const target = ev.target as Element | null;
+        if (!target || !shouldAutoRef.current) return;
+        // If the focused element is a tab trigger (role="tab") or a Radix Trigger (data-state attr), scroll it
+        if (target.getAttribute && (target.getAttribute('role') === 'tab' || target.getAttribute('data-state') !== null)) {
+          scrollNodeIntoView(target);
+          return;
+        }
+        // Otherwise, walk up to nearest tab trigger
+        let p: Element | null = target;
+        while (p && p !== el) {
+          if (p.getAttribute && (p.getAttribute('role') === 'tab' || p.getAttribute('data-state') !== null)) {
+            scrollNodeIntoView(p);
+            return;
+          }
+          p = p.parentElement;
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
     // initial compute and scroll to active
     recomputeShouldAuto();
     const initialActive = el.querySelector('[data-state="active"]');
@@ -71,7 +95,9 @@ const TabsList = React.forwardRef<
       }
     });
 
-    mo.observe(el, { attributes: true, attributeFilter: ['data-state'], subtree: true, childList: true });
+  mo.observe(el, { attributes: true, attributeFilter: ['data-state'], subtree: true, childList: true });
+  // listen for focusin events to handle keyboard navigation (focus) so the focused tab slides into view
+  el.addEventListener('focusin', onFocusIn as EventListener, true);
 
     // also watch for resize changes to recompute overflow behavior
     let ro: ResizeObserver | null = null;
@@ -86,6 +112,7 @@ const TabsList = React.forwardRef<
     return () => {
       mo.disconnect();
       if (ro) try { ro.disconnect(); } catch {}
+      try { el.removeEventListener('focusin', onFocusIn as EventListener, true); } catch (e) {}
     };
   }, []);
 

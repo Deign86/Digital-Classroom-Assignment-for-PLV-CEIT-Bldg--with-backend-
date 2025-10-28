@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -24,15 +24,17 @@ import {
 import { toast } from 'sonner';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
-import ClassroomManagement from './ClassroomManagement';
-import RequestApproval from './RequestApproval';
-import SignupApproval from './SignupApproval';
-import ScheduleViewer from './ScheduleViewer';
-import AdminReports from './AdminReports';
-import ProfileSettings from './ProfileSettings';
+// Lazy-load heavier admin panels to reduce initial bundle size
+const ClassroomManagement = React.lazy(() => import('./ClassroomManagement'));
+const RequestApproval = React.lazy(() => import('./RequestApproval'));
+const SignupApproval = React.lazy(() => import('./SignupApproval'));
+const ScheduleViewer = React.lazy(() => import('./ScheduleViewer'));
+const AdminReports = React.lazy(() => import('./AdminReports'));
+const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
-import AdminUserManagement from './AdminUserManagement';
+const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
+/* spinner removed by request; fallbacks reverted to text */
 import { userService, adminDeleteUser } from '../lib/firebaseService';
 import { notificationService } from '../lib/notificationService';
 import type { User, Classroom, BookingRequest, SignupRequest, SignupHistory, Schedule } from '../App';
@@ -603,53 +605,63 @@ export default function AdminDashboard({
 
           <TabsContent value="classrooms">
             <div className="animate-in">
-              <ClassroomManagement
-                classrooms={classrooms}
-                onClassroomUpdate={onClassroomUpdate}
-              />
+              <Suspense fallback={<div className="p-4">Loading classrooms…</div>}>
+                <ClassroomManagement
+                  classrooms={classrooms}
+                  onClassroomUpdate={onClassroomUpdate}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="requests">
             <div className="animate-in">
-              <RequestApproval
-                requests={bookingRequests}
-                onRequestApproval={onRequestApproval}
-                onCancelApproved={onCancelApprovedBooking}
-                checkConflicts={checkConflicts}
-                userId={user?.id}
-              />
+              <Suspense fallback={<div className="p-4">Loading requests…</div>}>
+                <RequestApproval
+                  requests={bookingRequests}
+                  onRequestApproval={onRequestApproval}
+                  onCancelApproved={onCancelApprovedBooking}
+                  checkConflicts={checkConflicts}
+                  userId={user?.id}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="signups">
             <div className="animate-in">
-              <SignupApproval
-                signupRequests={signupRequests}
-                signupHistory={signupHistory}
-                onSignupApproval={onSignupApproval}
-              />
+              <Suspense fallback={<div className="p-4">Loading signups…</div>}>
+                <SignupApproval
+                  signupRequests={signupRequests}
+                  signupHistory={signupHistory}
+                  onSignupApproval={onSignupApproval}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="schedule">
             <div className="animate-in">
-              <ScheduleViewer
-                schedules={schedules}
-                classrooms={classrooms}
-                onCancelSchedule={onCancelSchedule}
-              />
+              <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
+                <ScheduleViewer
+                  schedules={schedules}
+                  classrooms={classrooms}
+                  onCancelSchedule={onCancelSchedule}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="reports">
             <div className="animate-in">
-              <AdminReports
-                classrooms={classrooms}
-                bookingRequests={bookingRequests}
-                schedules={schedules}
-                signupRequests={signupRequests}
-              />
+              <Suspense fallback={<div className="p-4">Loading reports…</div>}>
+                <AdminReports
+                  classrooms={classrooms}
+                  bookingRequests={bookingRequests}
+                  schedules={schedules}
+                  signupRequests={signupRequests}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
@@ -657,7 +669,8 @@ export default function AdminDashboard({
 
           <TabsContent value="user-management">
             <div className="animate-in">
-              <AdminUserManagement users={users} processingUserId={processingUserId}
+              <Suspense fallback={<div className="p-4">Loading user management…</div>}>
+                <AdminUserManagement users={users} processingUserId={processingUserId}
                 onDisableUser={async (id) => {
                   // Use admin-specific lock so the account is marked as admin-disabled
                   // and does not auto-unlock.
@@ -769,13 +782,16 @@ export default function AdminDashboard({
                     setProcessingUserId(null);
                   }
                 }}
-              />
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="settings">
             <div className="animate-in">
-              <ProfileSettings user={user} />
+              <Suspense fallback={<div className="p-4">Loading settings…</div>}>
+                <ProfileSettings user={user} />
+              </Suspense>
             </div>
           </TabsContent>
         </Tabs>
