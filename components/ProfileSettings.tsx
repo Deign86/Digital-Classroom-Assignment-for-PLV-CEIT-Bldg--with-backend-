@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -52,7 +52,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [pushSupported, setPushSupported] = useState<boolean>(true);
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       setPushEnabled(!!(user as any).pushEnabled);
     } catch (err) {
@@ -62,7 +62,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   }, [user?.pushEnabled]);
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       const supported = pushService.isPushSupported ? pushService.isPushSupported() : true;
       setPushSupported(!!supported);
@@ -217,42 +217,60 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         throw new Error('Push-not-supported');
       }
 
-      // Prefer parent handler when present (await it). Parent may handle push token lifecycle and update user record.
-      if (typeof onTogglePush === 'function') {
-        const res: any = await onTogglePush(enabled);
-        // If parent handler returns an object with explicit failure, surface it
-        if (res && res.success === false) {
-          throw new Error(res.message || 'Failed to change push preference');
-        }
-        // If parent provided an updated pushEnabled value, use it
-        if (res && typeof res.pushEnabled === 'boolean') {
-          setPushEnabled(res.pushEnabled);
-        } else {
-          // best-effort: assume success and set local flag
-          setPushEnabled(!!enabled);
-        }
-        return;
-      }
+      // Show a helpful toast while waiting for service worker
+      const loadingToast = toast.loading(
+        enabled 
+          ? 'Initializing push notifications...' 
+          : 'Disabling push notifications...'
+      );
 
-      // Local fallback behaviour: manage push tokens and update user via userService
-      if (enabled) {
-        const res = await pushService.enablePush();
-        if (res.success && res.token) {
-          setPushToken(res.token);
-          await userService.update(user.id, { ...(user as any), pushEnabled: true });
-          setPushEnabled(true);
+      try {
+        // Prefer parent handler when present (await it). Parent may handle push token lifecycle and update user record.
+        if (typeof onTogglePush === 'function') {
+          const res: any = await onTogglePush(enabled);
+          // If parent handler returns an object with explicit failure, surface it
+          if (res && res.success === false) {
+            throw new Error(res.message || 'Failed to change push preference');
+          }
+          // If parent provided an updated pushEnabled value, use it
+          if (res && typeof res.pushEnabled === 'boolean') {
+            setPushEnabled(res.pushEnabled);
+          } else {
+            // best-effort: assume success and set local flag
+            setPushEnabled(!!enabled);
+          }
+          toast.dismiss(loadingToast);
+          toast.success(enabled ? 'Push notifications enabled!' : 'Push notifications disabled');
+          return;
+        }
+
+        // Local fallback behaviour: manage push tokens and update user via userService
+        if (enabled) {
+          const res = await pushService.enablePush();
+          if (res.success && res.token) {
+            setPushToken(res.token);
+            await userService.update(user.id, { ...(user as any), pushEnabled: true });
+            setPushEnabled(true);
+            toast.dismiss(loadingToast);
+            toast.success('Push notifications enabled!');
+          } else {
+            throw new Error(res.message || 'Failed to enable push');
+          }
         } else {
-          throw new Error(res.message || 'Failed to enable push');
+          // try to get current token if we don't have it
+          const current = pushToken || await pushService.getCurrentToken();
+          if (current) {
+            await pushService.disablePush(current);
+          }
+          await userService.update(user.id, { ...(user as any), pushEnabled: false });
+          setPushEnabled(false);
+          setPushToken(null);
+          toast.dismiss(loadingToast);
+          toast.success('Push notifications disabled');
         }
-      } else {
-        // try to get current token if we don't have it
-        const current = pushToken || await pushService.getCurrentToken();
-        if (current) {
-          await pushService.disablePush(current);
-        }
-        await userService.update(user.id, { ...(user as any), pushEnabled: false });
-        setPushEnabled(false);
-        setPushToken(null);
+      } catch (err) {
+        toast.dismiss(loadingToast);
+        throw err; // Re-throw to be caught by outer catch
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -261,9 +279,21 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
         toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
+      } else if (/service worker|still initializing/i.test(msg)) {
+        toast.error('Service worker is still starting up', {
+          description: 'Please wait a few seconds and try again. The page will be ready shortly.',
+          duration: 5000
+        });
+      } else if (/ready timeout|no active service worker|subscription failed/i.test(msg)) {
+        toast.error('Unable to enable push notifications', {
+          description: 'Please refresh the page and try again in a moment.',
+          duration: 5000
+        });
       } else {
         // generic fallback
-        toast.error('Push notification change failed');
+        toast.error('Push notification change failed', {
+          description: msg.length < 100 ? msg : 'An unexpected error occurred'
+        });
       }
     } finally {
       setIsTogglingPush(false);

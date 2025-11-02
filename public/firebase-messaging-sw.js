@@ -132,7 +132,21 @@ self.addEventListener('notificationclick', function(event) {
 
   try {
     // Import messaging compat AFTER top-level handlers have been registered
-    importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js');
+    // Use a try-catch for importScripts since it can fail if network is slow or blocked
+    try {
+      importScripts('https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js');
+    } catch (importError) {
+      console.error('Service worker: failed to import firebase-messaging-compat.js', importError);
+      // If the import fails, we can't initialize Firebase Messaging but the service worker
+      // can still handle push events with the default handler registered above
+      return;
+    }
+
+    if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+      console.error('Service worker: firebase object not available after importScripts');
+      return;
+    }
+
     firebase.initializeApp(firebaseConfig);
     const messaging = firebase.messaging();
 

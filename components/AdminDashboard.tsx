@@ -89,6 +89,27 @@ export default function AdminDashboard({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Trigger page refresh when switching to settings tab (fixes push notification service worker init)
+  useEffect(() => {
+    const hasRefreshedForSettings = sessionStorage.getItem('settingsTabRefreshed');
+    
+    if (activeTab === 'settings' && !hasRefreshedForSettings) {
+      console.log('[AdminDashboard] First time opening settings tab, refreshing page for service worker init...');
+      sessionStorage.setItem('settingsTabRefreshed', 'true');
+      sessionStorage.setItem('returnToTab', 'settings');
+      window.location.reload();
+    }
+  }, [activeTab]);
+
+  // Restore tab after refresh
+  useEffect(() => {
+    const returnToTab = sessionStorage.getItem('returnToTab');
+    if (returnToTab && allowedTabs.includes(returnToTab as any)) {
+      setActiveTab(returnToTab);
+      sessionStorage.removeItem('returnToTab');
+    }
+  }, []);
+
   // (Hash-based deep-linking removed — navigation now uses react-router)
 
   // Unlock handler for locked accounts card — disables the single row while processing

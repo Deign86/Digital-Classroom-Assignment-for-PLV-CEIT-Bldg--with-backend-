@@ -7,6 +7,94 @@ type RegisterResult = { success: boolean; token?: string; message?: string };
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
 
+/**
+ * Wait for service worker to be ready with a timeout.
+ * On first page load, SW registration may be in progress; this ensures we don't
+ * attempt to subscribe before the SW is active.
+ */
+const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<ServiceWorkerRegistration | undefined> => {
+  if (!('serviceWorker' in navigator)) return undefined;
+
+  try {
+    // First check if there's already an active controller
+    if (navigator.serviceWorker.controller) {
+      console.log('[pushService] Service worker controller already active');
+      return await navigator.serviceWorker.ready;
+    }
+
+    // Wait for SW to become ready with timeout
+    console.log('[pushService] Waiting for service worker to become ready...');
+    
+    // Poll for service worker registration with exponential backoff
+    const startTime = Date.now();
+    let attempt = 0;
+    while (Date.now() - startTime < timeoutMs) {
+      attempt++;
+      
+      // Check if a registration exists
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      console.log(`[pushService] Attempt ${attempt}: Found ${registrations.length} registration(s)`);
+      
+      if (registrations.length > 0) {
+        const registration = registrations[0];
+        
+        // Check if registration has an active or activating worker
+        if (registration.active) {
+          console.log('[pushService] Service worker is active and ready');
+          return registration;
+        }
+        
+        if (registration.installing) {
+          console.log('[pushService] Service worker is installing, waiting for activation...');
+          // Wait for the installing worker to become active
+          await new Promise<void>((resolve) => {
+            const checkState = () => {
+              if (registration.active) {
+                resolve();
+              } else if (registration.installing) {
+                registration.installing.addEventListener('statechange', function handler() {
+                  if (this.state === 'activated') {
+                    this.removeEventListener('statechange', handler);
+                    resolve();
+                  }
+                });
+              } else {
+                // Fallback: just resolve after a short delay
+                setTimeout(resolve, 500);
+              }
+            };
+            checkState();
+            // Safety timeout
+            setTimeout(resolve, 3000);
+          });
+          
+          // Re-check if active now
+          if (registration.active) {
+            console.log('[pushService] Service worker activated successfully');
+            return registration;
+          }
+        }
+      }
+      
+      // Wait before next attempt (exponential backoff: 100ms, 200ms, 400ms, 800ms, then 1s)
+      const delay = Math.min(100 * Math.pow(2, attempt - 1), 1000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    // Timeout reached - try one last time with navigator.serviceWorker.ready
+    console.warn('[pushService] Polling timed out, attempting navigator.serviceWorker.ready as fallback...');
+    const readyPromise = navigator.serviceWorker.ready;
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Service worker ready timeout after 15 seconds')), 5000)
+    );
+    
+    return await Promise.race([readyPromise, timeoutPromise]);
+  } catch (e) {
+    console.warn('[pushService] Error waiting for service worker:', e);
+    throw new Error('Service worker is still initializing. Please wait a moment and try again.');
+  }
+};
+
 const requestPermissionAndGetToken = async (): Promise<string> => {
   if (!('Notification' in window)) throw new Error('Notifications are not supported in this browser');
   console.log('[pushService] Requesting notification permission');
@@ -22,18 +110,11 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
 
   const app = getFirebaseApp();
   const messaging = getMessaging(app);
-  // If a service worker is registered, associate the token with that registration so
-  // background messages are delivered to the service worker (when the page is closed).
-  let registration = undefined;
-  try {
-    if ('serviceWorker' in navigator) {
-      // navigator.serviceWorker.ready resolves when a service worker controlling the page is active
-      registration = await navigator.serviceWorker.ready;
-    }
-  } catch (e) {
-    // ignore - proceed without explicit registration
-    registration = undefined;
-  }
+  
+  // Wait for service worker to be ready before attempting to get token
+  // This prevents "no active Service Worker" errors on first page load
+  const registration = await waitForServiceWorkerReady();
+  
   console.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
   const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
   if (!token) throw new Error('Failed to obtain messaging token');
@@ -162,21 +243,15 @@ export const pushService = {
       const app = getFirebaseApp();
       const messaging = getMessaging(app);
       if (!VAPID_KEY) return null;
-      // Try to use an existing service worker registration if available so the returned
-      // token is tied to the SW (necessary for background delivery).
-      let registration = undefined;
-      try {
-        if ('serviceWorker' in navigator) {
-          registration = await navigator.serviceWorker.ready;
-        }
-      } catch (_) {
-        registration = undefined;
-      }
+      
+      // Wait for service worker to be ready to ensure background notifications work
+      const registration = await waitForServiceWorkerReady();
 
       const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
       console.log('[pushService] getCurrentToken returned', token);
       return token ?? null;
     } catch (err) {
+      console.warn('[pushService] getCurrentToken error:', err);
       return null;
     }
   },
