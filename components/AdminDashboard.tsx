@@ -77,6 +77,35 @@ export default function AdminDashboard({
   const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management'] as const;
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = React.useRef<HTMLDivElement | null>(null);
+  const [mobileAnchorStyle, setMobileAnchorStyle] = useState<React.CSSProperties | null>(null);
+  // compute position to anchor NotificationCenter near the bell on small screens
+  React.useEffect(() => {
+    if (!showNotifications) return;
+    const compute = () => {
+      const el = bellRef.current;
+      if (!el) {
+        setMobileAnchorStyle(null);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const panelMaxWidth = 320; // match NotificationCenter max-w-md
+      const panelWidth = Math.min(panelMaxWidth, window.innerWidth - 16);
+      // center panel horizontally on the bell, but keep margins
+      const left = Math.min(Math.max(8, rect.left + rect.width / 2 - panelWidth / 2), window.innerWidth - panelWidth - 8);
+      // place panel above the bell (anchor upwards). bottom distance from viewport bottom
+      const bottom = Math.max(8, window.innerHeight - rect.top + 8);
+      setMobileAnchorStyle({ position: 'fixed', left: Math.round(left) + 'px', bottom: Math.round(bottom) + 'px', width: panelWidth + 'px', zIndex: 60 } as React.CSSProperties);
+    };
+
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, { passive: true });
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute);
+    };
+  }, [showNotifications]);
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   // Per-request processing id to prevent double-approve/reject clicks
@@ -147,7 +176,9 @@ export default function AdminDashboard({
                 <p className="text-xs text-gray-500 whitespace-nowrap">{user.email}</p>
               </div>
               <div className="flex items-center space-x-2">
-                <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                <div ref={bellRef} className="relative">
+                  <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                </div>
                 <div className="transition-transform hover:scale-105 active:scale-95">
                   <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
                     <LogOut className="h-4 w-4 sm:mr-2" />
@@ -169,22 +200,36 @@ export default function AdminDashboard({
                       />
                     </div>
 
-                    {/* Mobile: show a bottom-sheet style panel so it isn't 'sticky' and fits the viewport */}
-                    <div className="sm:hidden fixed inset-0 z-50 flex items-end">
-                      <div className="w-full p-4">
-                        <div className="mx-auto max-w-full">
-                          <NotificationCenter
-                            userId={user.id}
-                            onClose={() => setShowNotifications(false)}
-                            onAcknowledgeAll={(newCount) => {
-                              setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
-                              setTimeout(() => setForceBellUnread(null), 1500);
-                              setShowNotifications(false);
-                            }}
-                          />
+                    {/* Mobile: anchor the panel near the bell when possible, otherwise fall back to bottom-sheet */}
+                    {mobileAnchorStyle ? (
+                      <div className="sm:hidden" style={mobileAnchorStyle}>
+                        <NotificationCenter
+                          userId={user.id}
+                          onClose={() => setShowNotifications(false)}
+                          onAcknowledgeAll={(newCount) => {
+                            setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                            setTimeout(() => setForceBellUnread(null), 1500);
+                            setShowNotifications(false);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="sm:hidden fixed inset-0 z-50 flex items-end">
+                        <div className="w-full p-4">
+                          <div className="mx-auto max-w-full">
+                            <NotificationCenter
+                              userId={user.id}
+                              onClose={() => setShowNotifications(false)}
+                              onAcknowledgeAll={(newCount) => {
+                                setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                                setTimeout(() => setForceBellUnread(null), 1500);
+                                setShowNotifications(false);
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
               </div>
