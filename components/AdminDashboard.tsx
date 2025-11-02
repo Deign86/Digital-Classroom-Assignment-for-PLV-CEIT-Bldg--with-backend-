@@ -655,7 +655,7 @@ export default function AdminDashboard({
             <div className="animate-in">
               <Suspense fallback={<div className="p-4">Loading user management…</div>}>
                 <AdminUserManagement users={users} processingUserId={processingUserId}
-                onDisableUser={async (id) => {
+                onDisableUser={async (id: string) => {
                   // Use admin-specific lock so the account is marked as admin-disabled
                   // and does not auto-unlock.
                   setProcessingUserId(id);
@@ -673,7 +673,7 @@ export default function AdminDashboard({
                     setProcessingUserId(null);
                   }
                 }}
-                onEnableUser={async (id) => {
+                onEnableUser={async (id: string) => {
                   setProcessingUserId(id);
                   try {
                     const res: any = await userService.unlockAccount(id);
@@ -689,7 +689,7 @@ export default function AdminDashboard({
                     setProcessingUserId(null);
                   }
                 }}
-                onDeleteUser={async (id, hard) => {
+                onDeleteUser={async (id: string, hard?: boolean) => {
                   setProcessingUserId(id);
                   try {
                     const res = await adminDeleteUser(id, !!hard);
@@ -705,7 +705,7 @@ export default function AdminDashboard({
                     setProcessingUserId(null);
                   }
                 }}
-                onChangeRole={async (id, role) => {
+                onChangeRole={async (id: string, role: string) => {
                   setProcessingUserId(id);
                   try {
                     const res: any = await userService.update(id, { role });
@@ -738,7 +738,7 @@ export default function AdminDashboard({
                     setProcessingUserId(null);
                   }
                 }}
-                onNotifyUser={async (targetUserId, payload) => {
+                onNotifyUser={async (targetUserId: string, payload: any) => {
                   // Use notificationService to create an in-app notification (server-side)
                   // Do not show a toast here — AdminUserManagement will surface the success message.
                   try {
@@ -750,7 +750,7 @@ export default function AdminDashboard({
                     throw err;
                   }
                 }}
-                onUnlockAccount={async (id) => {
+                onUnlockAccount={async (id: string) => {
                   setProcessingUserId(id);
                   try {
                     const res: any = await userService.unlockAccount(id);
