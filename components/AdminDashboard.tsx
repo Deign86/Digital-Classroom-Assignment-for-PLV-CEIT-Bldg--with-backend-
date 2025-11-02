@@ -705,7 +705,7 @@ export default function AdminDashboard({
                     setProcessingUserId(null);
                   }
                 }}
-                onChangeRole={async (id: string, role: string) => {
+                onChangeRole={async (id: string, role: 'admin' | 'faculty' | undefined) => {
                   setProcessingUserId(id);
                   try {
                     const res: any = await userService.update(id, { role });
