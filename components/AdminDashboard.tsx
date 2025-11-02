@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/enhanced-tabs';
+import ThemeToggle from '../components/ThemeToggle';
 import { 
   Settings, 
   Users, 
@@ -149,12 +150,15 @@ export default function AdminDashboard({
               </div>
               <div className="flex items-center space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                <ThemeToggle compact />  
                 <div className="transition-transform hover:scale-105 active:scale-95">
                   <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
                     <LogOut className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Logout</span>
                   </Button>
                 </div>
+                <div className="flex items-center space-x-2">
+              </div>
                 {showNotifications && (
                   <>
                     {/* Fixed top-right panel (same as FacultyDashboard) */}

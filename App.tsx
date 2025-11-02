@@ -30,6 +30,10 @@ import {
 } from './lib/firebaseService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
+// Theme: keep imports with other imports
+import ThemeProvider from './hooks/themeContext';
+import ThemeToggle from './components/ThemeToggle';
+import NotificationBell from './components/NotificationBell';
 
 // Expose services to window for debugging in development
 if (import.meta.env.DEV) {
@@ -653,12 +657,17 @@ export default function App() {
   // Idle timeout handlers
   const handleIdleTimeout = useCallback(async () => {
     console.log('🕒 Session expired due to inactivity');
-    
+
     try {
-      await authService.signOutDueToIdleTimeout();
-      
-      // Set flag for login page to show session timeout notification
-      sessionStorage.setItem('sessionExpired', 'true');
+      // Prefer specialized idle sign-out if available, otherwise fall back to regular signOut
+      if (typeof (authService as any).signOutDueToIdleTimeout === 'function') {
+        await (authService as any).signOutDueToIdleTimeout();
+      } else {
+        await authService.signOut();
+      }
+
+      // Mark session expired for the login page and clear local state
+      try { sessionStorage.setItem('sessionExpired', 'true'); } catch (_) {}
 
       setCurrentUser(null);
       setClassrooms([]);
@@ -670,7 +679,7 @@ export default function App() {
     } catch (err) {
       console.error('❌ Idle timeout logout error:', err);
       // Force logout even if service fails
-      sessionStorage.setItem('sessionExpired', 'true');
+      try { sessionStorage.setItem('sessionExpired', 'true'); } catch (_) {}
       setCurrentUser(null);
       setShowSessionWarning(false);
     }
@@ -680,10 +689,10 @@ export default function App() {
     console.log(`⚠️ Session warning - ${Math.ceil(timeRemaining / 1000)}s remaining`);
     setSessionTimeRemaining(timeRemaining);
     setShowSessionWarning(true);
-    
+
     toast.warning('Session Expiring Soon', {
       description: `Your session will expire in ${Math.ceil(timeRemaining / 60000)} minutes due to inactivity`,
-      duration: 8000
+      duration: 8000,
     });
   }, []);
 
@@ -1528,23 +1537,43 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <AnnouncerProvider>
-          {/* Skip link for keyboard users */}
-          <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
+           {/* Skip link for keyboard users */}
+           <a
+             href="#main"
+             className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow"
+           >
+             Skip to main
+           </a>
+
           <div className="min-h-screen bg-background flex flex-col">
-            <ToggleAnnouncer />
-          <div className="flex-1">
-            {/* Top-level shared loader overlay */}
-            {overlayVisible ? (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
-                <div className="text-center">
-                  <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
-                    <div className="text-white text-lg font-bold">PLV</div>
-                  </div>
-                  <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
-                </div>
+            {/* Header: use original container layout (px-4 sm:px-6 py-4).
+                Place notification bell and theme toggle at the right side. */}
+            <div className="w-full header-border flex items-center justify-between">
+              {/* Left side: logo / title / other controls (NO notification bell here) */}
+              <div className="flex items-center gap-3">
+                {/* keep any existing left-hand content here; do NOT add NotificationBell */}
+                <div className="sr-only">PLV header</div>
               </div>
-            ) : null}
+
+              {/* Right side: single notification bell + compact theme toggle */}
+              
+            </div>
+
+            <ToggleAnnouncer />
+            <div className="flex-1">
+              {/* Top-level shared loader overlay */}
+              {overlayVisible ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
+                  <div className="text-center">
+                    <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
+                      <div className="text-white text-lg font-bold">PLV</div>
+                    </div>
+                    <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
+                  </div>
+                </div>
+              ) : null}
 
             <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
               {/* Render the appropriate dashboard directly (react-router removed). */}
@@ -1599,6 +1628,7 @@ export default function App() {
           <Analytics />
           </div>
       </AnnouncerProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

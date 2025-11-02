@@ -30,6 +30,7 @@ const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
+import ThemeToggle from './ThemeToggle';
 
 interface FacultyDashboardProps {
   user: User;
@@ -212,6 +213,7 @@ export default function FacultyDashboard({
               </div>
               <div className="flex items-center space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                <ThemeToggle compact />
                 <div className="transition-transform hover:scale-105 active:scale-95">
                   <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
                     <LogOut className="h-4 w-4 sm:mr-2" />
