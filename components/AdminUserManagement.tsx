@@ -36,8 +36,12 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
   // only on the specific button that was pressed, while disabling other
   // actions for that user.
   const [processingActions, setProcessingActions] = useState<Record<string, string | null>>({});
+  const [pendingPromotionUser, setPendingPromotionUser] = useState<AppUser | null>(null);
 
   const setProcessingFor = (id: string, action: string | null) => setProcessingActions(prev => ({ ...prev, [id]: action }));
+
+  // If any user has an active action, this is the id of that user.
+  const activeUserId = Object.keys(processingActions).find(k => !!processingActions[k]) || null;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -250,6 +254,7 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
               const last = parts[parts.length - 1] || '';
               const displayName = sortBy === 'last' ? `${last}${first ? ', ' + first : ''}` : name;
               const currentAction = processingActions[u.id] || null;
+              const isOtherRowDisabled = activeUserId !== null && activeUserId !== u.id;
               return (
                 <TableRow key={u.id}>
                   <TableCell className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> {displayName}</TableCell>
@@ -261,11 +266,12 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
                     {onChangeRole && (
                       <div className="ml-2">
                           {u.role !== 'admin' ? (
-                                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => handleChangeRole(u.id, 'admin')} disabled={!!currentAction}>
+                                // Open confirmation modal before promoting to admin
+                                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setPendingPromotionUser(u)} disabled={!!currentAction || isOtherRowDisabled}>
                                   {currentAction === 'changeRole:admin' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null} Make admin
                                 </Button>
                               ) : (
-                                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => handleChangeRole(u.id, 'faculty')} disabled={!!currentAction}>
+                                <Button size="sm" variant="ghost" className="rounded-full" onClick={() => handleChangeRole(u.id, 'faculty')} disabled={!!currentAction || isOtherRowDisabled}>
                                   {currentAction === 'changeRole:faculty' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null} Make faculty
                                 </Button>
                               )}
@@ -282,16 +288,16 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {u.accountLocked ? (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUnlockAccount(u.id)} disabled={!!currentAction}>
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUnlockAccount(u.id)} disabled={!!currentAction || isOtherRowDisabled}>
                         {currentAction === 'unlock' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Unlock className="h-4 w-4 mr-2" />} Unlock
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleDisableUser(u.id)} disabled={!!currentAction}>
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleDisableUser(u.id)} disabled={!!currentAction || isOtherRowDisabled}>
                         {currentAction === 'disable' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <UserMinus className="h-4 w-4 mr-2" />} Disable
                       </Button>
                     )}
 
-                    <Button size="sm" variant="destructive" className="rounded-full" onClick={() => startDelete(u)} disabled={!!currentAction}>
+                    <Button size="sm" variant="destructive" className="rounded-full" onClick={() => startDelete(u)} disabled={!!currentAction || isOtherRowDisabled}>
                       {currentAction === 'delete' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />} Delete
                     </Button>
                   </div>
@@ -326,6 +332,35 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
             <DialogFooter>
               <Button variant="ghost" className="rounded-full" onClick={() => setSelectedUserToDelete(null)}>Cancel</Button>
               <Button variant="destructive" className="rounded-full" onClick={doDelete}>Delete</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Promote to admin confirmation dialog */}
+        <Dialog open={!!pendingPromotionUser} onOpenChange={(open) => { if (!open) setPendingPromotionUser(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Promote to Admin</DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <p className="text-sm">Are you sure you want to promote <strong>{pendingPromotionUser?.name}</strong> to Admin?</p>
+              <p className="text-xs text-muted-foreground my-3">Promoting a faculty to admin grants broad privileges. Their reservations will not be auto-deleted and administrative actions may affect or remove their existing reservations or associated data. Recommended alternatives: transfer reservation ownership or review and clean up sensitive reservations manually before promoting.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" className="rounded-full" onClick={() => setPendingPromotionUser(null)}>Cancel</Button>
+              <Button
+                className="rounded-full"
+                onClick={async () => {
+                  if (!pendingPromotionUser) return;
+                  // Call the same helper so processing state is shown on the user's row/button
+                  await handleChangeRole(pendingPromotionUser.id, 'admin');
+                  // close modal after the operation completes
+                  setPendingPromotionUser(null);
+                }}
+                disabled={!pendingPromotionUser || !!activeUserId && activeUserId !== pendingPromotionUser.id}
+              >
+                {pendingPromotionUser && processingActions[pendingPromotionUser.id] === 'changeRole:admin' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null} Promote
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
