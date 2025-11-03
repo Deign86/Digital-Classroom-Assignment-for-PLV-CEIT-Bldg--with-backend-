@@ -585,42 +585,28 @@
 
   /* Tiny mobile fixes: constrain popovers/calendars on very small screens (<=320px) */
   @media (max-width: 320px) {
-    /* Make popover content use the full viewport width minus padding */
-    /* Exclude select dropdowns from these fixed positioning rules */
-    [data-slot="popover-content"]:not([data-slot="select-content"]),
-    [data-radix-popover-content]:not([data-radix-select-content]),
-    .calendar-popover:not([data-radix-select-content]),
-    [data-radix-popper-content-wrapper]:not([data-radix-select-content]) {
-      position: fixed !important;
-      left: 8px !important;
-      right: 8px !important;
-      top: auto !important;
-      bottom: 72px !important; /* leave space for bottom nav / safe area */
-      max-width: calc(100vw - 16px) !important;
-      width: calc(100vw - 16px) !important;
-      max-height: calc(100vh - 160px) !important;
-      overflow: auto !important;
-      border-radius: 8px !important;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25) !important;
-    }
-
-    /* Ensure calendar grid scales down a bit on very small screens */
-    .calendar-popover .rdp {
-      font-size: 13px;
-    }
-
-    /* Ensure Select dropdowns work properly on 320px screens */
-    /* Target both the portal container and content */
-    [data-radix-select-portal] {
+    /* UNIFIED FIX FOR ALL RADIX PORTAL-BASED DROPDOWNS AT 320PX */
+    /* This applies to Select, Popover, Dialog, AlertDialog, etc. */
+    
+    /* Target all Radix portals */
+    [data-radix-select-portal],
+    [data-radix-popover-portal],
+    [data-radix-dialog-portal],
+    [data-radix-alert-dialog-portal] {
       position: fixed !important;
       z-index: 99999 !important;
       pointer-events: none !important;
     }
 
-    [data-radix-select-portal] > * {
+    /* Allow pointer events on portal children */
+    [data-radix-select-portal] > *,
+    [data-radix-popover-portal] > *,
+    [data-radix-dialog-portal] > *,
+    [data-radix-alert-dialog-portal] > * {
       pointer-events: auto !important;
     }
 
+    /* Select dropdowns: auto-width, visible, properly positioned */
     [data-radix-popper-content-wrapper][data-radix-select-content-wrapper],
     [data-slot="select-content"],
     [data-radix-select-content] {
@@ -635,9 +621,53 @@
       inset: auto !important;
     }
 
-    /* Ensure the viewport inside select content is visible */
+    /* Calendar popovers: full-width at bottom */
+    [data-slot="popover-content"]:has(.calendar-popover),
+    [data-radix-popover-content]:has(.calendar-popover),
+    .calendar-popover {
+      position: fixed !important;
+      left: 8px !important;
+      right: 8px !important;
+      top: auto !important;
+      bottom: 72px !important; /* leave space for bottom nav / safe area */
+      max-width: calc(100vw - 16px) !important;
+      width: calc(100vw - 16px) !important;
+      max-height: calc(100vh - 160px) !important;
+      overflow: auto !important;
+      border-radius: 8px !important;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25) !important;
+      z-index: 99999 !important;
+    }
+
+    /* Ensure calendar grid scales down */
+    .calendar-popover .rdp {
+      font-size: 13px;
+    }
+
+    /* Dialogs and alert dialogs: centered, responsive width */
+    [data-radix-dialog-content],
+    [data-radix-alert-dialog-content],
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"] {
+      position: fixed !important;
+      max-width: calc(100vw - 32px) !important;
+      width: calc(100vw - 32px) !important;
+      max-height: calc(100vh - 64px) !important;
+      z-index: 99999 !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      display: flex !important;
+    }
+
+    /* Ensure all portal content children are visible */
     [data-slot="select-content"] > *,
-    [data-radix-select-content] > * {
+    [data-radix-select-content] > *,
+    [data-slot="popover-content"] > *,
+    [data-radix-popover-content] > *,
+    [data-slot="dialog-content"] > *,
+    [data-radix-dialog-content] > *,
+    [data-slot="alert-dialog-content"] > *,
+    [data-radix-alert-dialog-content] > * {
       visibility: visible !important;
       opacity: 1 !important;
     }
