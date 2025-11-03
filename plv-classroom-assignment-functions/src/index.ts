@@ -1456,3 +1456,234 @@ export const resetFailedLogins = onCall(async (request: CallableRequest) => {
       `Failed to reset login attempts: ${err.message}`);
   }
 });
+
+/**
+ * Sets custom claims for a user based on their role in Firestore.
+ * This is called when a user's role is changed to sync the JWT token claims.
+ * Only callable by admin users.
+ */
+export const setUserCustomClaims = onCall(async (request: CallableRequest<{ userId?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user data not found');
+  }
+
+  const callerData = callerDoc.data();
+  if (!callerData || callerData.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admin users can set custom claims');
+  }
+
+  const { userId } = request.data || {};
+  if (!userId || typeof userId !== 'string') {
+    throw new HttpsError('invalid-argument', 'userId is required and must be a string');
+  }
+
+  try {
+    // Get the target user's role from Firestore
+    const targetDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!targetDoc.exists) {
+      throw new HttpsError('not-found', 'Target user not found');
+    }
+
+    const targetData = targetDoc.data();
+    const role = targetData?.role;
+
+    // Set custom claims based on role
+    const claims: { admin?: boolean; role?: string } = {
+      role: role || 'faculty',
+    };
+
+    if (role === 'admin') {
+      claims.admin = true;
+    }
+
+    await admin.auth().setCustomUserClaims(userId, claims);
+    
+    logger.info(`Custom claims updated for user ${userId} by admin ${callerUid}. Role: ${role}`);
+
+    return { 
+      success: true, 
+      message: 'Custom claims updated successfully. User must sign out and sign in again for changes to take effect.',
+      claims 
+    };
+  } catch (err: any) {
+    logger.error('Error setting custom claims:', err);
+    
+    if (err instanceof HttpsError) {
+      throw err;
+    }
+
+    throw new HttpsError('internal', `Failed to set custom claims: ${err.message}`);
+  }
+});
+
+/**
+ * Firestore trigger: Automatically update custom claims when a user's role changes.
+ * This ensures JWT tokens stay in sync with Firestore role data.
+ */
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+
+export const syncUserRoleClaims = onDocumentWritten('users/{userId}', async (event) => {
+  const userId = event.params.userId;
+  const after = event.data?.after;
+  const before = event.data?.before;
+
+  // If document was deleted, remove custom claims
+  if (!after?.exists) {
+    try {
+      await admin.auth().setCustomUserClaims(userId, {});
+      logger.info(`Removed custom claims for deleted user ${userId}`);
+    } catch (err) {
+      logger.error(`Failed to remove custom claims for deleted user ${userId}:`, err);
+    }
+    return;
+  }
+
+  const afterData = after.data();
+  const beforeData = before?.exists ? before.data() : null;
+
+  const newRole = afterData?.role;
+  const oldRole = beforeData?.role;
+
+  // Only update claims if role actually changed
+  if (newRole === oldRole) {
+    return;
+  }
+
+  try {
+    const claims: { admin?: boolean; role?: string } = {
+      role: newRole || 'faculty',
+    };
+
+    if (newRole === 'admin') {
+      claims.admin = true;
+    }
+
+    await admin.auth().setCustomUserClaims(userId, claims);
+    
+    logger.info(`Auto-synced custom claims for user ${userId}. Old role: ${oldRole}, New role: ${newRole}`);
+  } catch (err) {
+    logger.error(`Failed to sync custom claims for user ${userId}:`, err);
+  }
+});
+
+/**
+ * Callable function to change a user's role.
+ * Only callable by admin users.
+ * Automatically triggers custom claims update via the Firestore trigger.
+ */
+export const changeUserRole = onCall(async (request: CallableRequest<{ userId?: string; newRole?: 'admin' | 'faculty' }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection('users').doc(callerUid).get();
+  
+  if (!callerDoc.exists) {
+    throw new HttpsError('permission-denied', 'Caller user data not found');
+  }
+
+  const callerData = callerDoc.data();
+  if (!callerData || callerData.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'Only admin users can change roles');
+  }
+
+  const { userId, newRole } = request.data || {};
+  
+  if (!userId || typeof userId !== 'string') {
+    throw new HttpsError('invalid-argument', 'userId is required and must be a string');
+  }
+
+  if (!newRole || (newRole !== 'admin' && newRole !== 'faculty')) {
+    throw new HttpsError('invalid-argument', 'newRole must be either "admin" or "faculty"');
+  }
+
+  // Prevent demoting yourself
+  if (userId === callerUid && newRole === 'faculty') {
+    throw new HttpsError('permission-denied', 'Admins cannot demote themselves');
+  }
+
+  try {
+    const targetDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!targetDoc.exists) {
+      throw new HttpsError('not-found', 'Target user not found');
+    }
+
+    // Update the role in Firestore (this will trigger syncUserRoleClaims)
+    await admin.firestore().collection('users').doc(userId).update({
+      role: newRole,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`User ${userId} role changed to ${newRole} by admin ${callerUid}`);
+
+    return { 
+      success: true, 
+      message: `Role updated to ${newRole}. User must sign out and sign in again for changes to take effect.`,
+      newRole 
+    };
+  } catch (err: any) {
+    logger.error('Error changing user role:', err);
+    
+    if (err instanceof HttpsError) {
+      throw err;
+    }
+
+    throw new HttpsError('internal', `Failed to change user role: ${err.message}`);
+  }
+});
+
+/**
+ * Utility callable to force refresh custom claims for a user (can be called by the user themselves).
+ * This is useful after role changes to immediately reflect updated permissions.
+ */
+export const refreshMyCustomClaims = onCall(async (request: CallableRequest) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const userId = request.auth.uid;
+
+  try {
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new HttpsError('not-found', 'User data not found');
+    }
+
+    const userData = userDoc.data();
+    const role = userData?.role;
+
+    const claims: { admin?: boolean; role?: string } = {
+      role: role || 'faculty',
+    };
+
+    if (role === 'admin') {
+      claims.admin = true;
+    }
+
+    await admin.auth().setCustomUserClaims(userId, claims);
+    
+    logger.info(`Custom claims refreshed for user ${userId}. Role: ${role}`);
+
+    return { 
+      success: true, 
+      message: 'Custom claims refreshed. Please sign out and sign in again to apply changes.',
+      claims 
+    };
+  } catch (err: any) {
+    logger.error('Error refreshing custom claims:', err);
+    
+    if (err instanceof HttpsError) {
+      throw err;
+    }
+
+    throw new HttpsError('internal', `Failed to refresh custom claims: ${err.message}`);
+  }
+});

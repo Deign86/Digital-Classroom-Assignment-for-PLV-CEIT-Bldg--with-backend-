@@ -754,17 +754,30 @@ export default function AdminDashboard({
                   }
                 }}
                 onChangeRole={async (id: string, role: 'admin' | 'faculty' | undefined) => {
+                  if (!role) {
+                    toast.error('Invalid role');
+                    return { success: false, message: 'Invalid role' };
+                  }
+                  
                   setProcessingUserId(id);
                   try {
-                    const res: any = await userService.update(id, { role });
-                    const out = res || { success: true, message: 'Role updated' };
-                    if (out?.message) toast.success(out.message);
+                    // Import the custom claims service
+                    const { customClaimsService } = await import('../lib/customClaimsService');
+                    
+                    // Use the new changeUserRole function which automatically updates custom claims
+                    const result = await customClaimsService.changeUserRole(id, role);
+                    
+                    if (result.success) {
+                      toast.success(result.message);
+                    }
 
                     // Infer whether the target user has a recent sign-in (active session).
                     // If their lastSignInAt is within the last 60 minutes, flag them as likely logged in.
                     let notifyCurrentlyLoggedIn = false;
                     try {
-                      const last = (out as any)?.lastSignInAt;
+                      // Fetch user data to check last sign in
+                      const userData = await userService.getById(id);
+                      const last = userData?.lastSignInAt;
                       if (last) {
                         const lastDate = new Date(last);
                         if (!isNaN(lastDate.getTime())) {
@@ -776,7 +789,7 @@ export default function AdminDashboard({
                       // swallow
                     }
 
-                    return { ...out, notifyCurrentlyLoggedIn };
+                    return { ...result, notifyCurrentlyLoggedIn };
                   } catch (err: any) {
                     console.error('Change role error', err);
                     const msg = err?.message || 'Failed to change role';
