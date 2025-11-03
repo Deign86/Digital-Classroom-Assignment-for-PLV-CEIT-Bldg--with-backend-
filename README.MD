@@ -12,8 +12,10 @@ A comprehensive web-based classroom reservation and management system for **Pama
 - Firebase Authentication with email/password
 - Role-based access control (Admin/Faculty)
 - Admin approval system for faculty signups
-- Secure session management with idle timeout
-- Password reset functionality
+- **Brute Force Protection**: Account lockout after 5 failed login attempts (30-minute timeout)
+- **Session Management**: Automatic idle timeout (30 minutes) with 5-minute warning
+- **Password Security**: Comprehensive password validation and secure reset functionality
+- **Account Lock Management**: Admin-controlled manual lock/unlock capabilities
 
 ### 👨‍💼 **Admin Dashboard**
 - **Classroom Management**: Full CRUD operations for classroom inventory
@@ -23,12 +25,14 @@ A comprehensive web-based classroom reservation and management system for **Pama
 - **Comprehensive Reports**: Generate utilization, reservation, and analytics reports
 - **Real-time Updates**: Live updates of all system activities
 
--### 👨‍🏫 **Faculty Dashboard**
+### 👨‍🏫 **Faculty Dashboard**
 - **Smart Room Reservation**: Reserve classrooms with intelligent availability checking
 - **Advanced Search**: Filter classrooms by date, time, capacity, and equipment
 - **Schedule Management**: View personal schedules and all classroom schedules
 - **Request Tracking**: Real-time status updates on reservation requests
-- **Profile Settings**: Update personal information and account preferences
+- **Real-time Notifications**: Instant updates on request approvals/rejections with notification bell
+- **Push Notifications**: Browser and device push notifications (FCM) for important updates
+- **Profile Settings**: Update personal information, change password, and manage notification preferences
 
 ### 🏢 **Classroom & Schedule Management**
 - Complete classroom inventory with capacity and equipment tracking
@@ -37,12 +41,14 @@ A comprehensive web-based classroom reservation and management system for **Pama
 - Equipment tracking (TV, Projector, Whiteboard, Computer, Audio, AC)
 - Building and floor organization
 
--### 📊 **Real-time Features**
-- Live reservation status updates
-- Instant conflict detection
-- Real-time schedule synchronization
-- Push notifications for request approvals
-- Live dashboard updates
+### 📊 **Real-time Features**
+- **Live Notifications**: Real-time notification center with read/unread tracking
+- **Push Notifications**: Firebase Cloud Messaging (FCM) for browser and device alerts
+- **Live Updates**: Instant reservation status changes and conflict detection
+- **Real-time Synchronization**: Live schedule updates across all clients
+- **Notification Management**: Acknowledge individual or all notifications with one click
+- **Auto-expiration**: Scheduled Cloud Function to automatically expire past pending bookings
+- **Live Dashboard**: Real-time activity updates for admins and faculty
 
 ## 🚀 Quick Start
 
@@ -91,6 +97,7 @@ A comprehensive web-based classroom reservation and management system for **Pama
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
    VITE_FIREBASE_ADMIN_EMAILS=admin@plv.edu.ph,another@plv.edu.ph
+   VITE_FIREBASE_VAPID_KEY=your_vapid_key_for_fcm
    ```
 
 5. **Run Development Server**
@@ -121,9 +128,12 @@ A comprehensive web-based classroom reservation and management system for **Pama
 
 ### Backend & Database
 - **Firebase 12.3.0** - Complete backend-as-a-service platform
-  - **Firebase Auth** - Secure user authentication and session management
+  - **Firebase Auth** - Secure user authentication with brute force protection
   - **Firestore** - NoSQL real-time database with offline support
+  - **Cloud Functions** - Server-side logic for security and notifications
+  - **Firebase Cloud Messaging (FCM)** - Push notifications for web and mobile
   - **Real-time Listeners** - Live data synchronization across all clients
+  - **Security Rules** - Role-based access control at database level
 
 ### Development Tools
 - **React Hook Form** - Performant forms with easy validation
@@ -153,34 +163,42 @@ A comprehensive web-based classroom reservation and management system for **Pama
 ├── 📂 components/
 │   ├── 👨‍💼 AdminDashboard.tsx          # Complete admin interface
 │   ├── 📊 AdminReports.tsx            # Analytics and reporting
+│   ├── 👥 AdminUserManagement.tsx     # User account management
 │   ├── 🏢 ClassroomManagement.tsx     # Classroom CRUD operations
 │   ├── 👨‍🏫 FacultyDashboard.tsx       # Faculty interface
 │   ├── 📅 FacultySchedule.tsx         # Schedule viewing component
-│   ├── 🔑 LoginForm.tsx               # Authentication interface
+│   ├── 🔑 LoginForm.tsx               # Authentication with brute force protection
+│   ├── 🔔 NotificationBell.tsx        # Real-time notification indicator
+│   ├── 📬 NotificationCenter.tsx      # Notification management interface
 │   ├── 🔒 PasswordResetPage.tsx       # Password reset functionality
-│   ├── ⚙️ ProfileSettings.tsx         # User profile management
+│   ├── ⚙️ ProfileSettings.tsx         # User profile & push notification settings
 │   ├── ✅ RequestApproval.tsx         # Reservation request approval
 │   ├── 📝 RoomBooking.tsx             # Reservation form with validation
 │   ├── 🔍 RoomSearch.tsx              # Advanced classroom search
 │   ├── 📋 ScheduleViewer.tsx          # Schedule visualization
 │   ├── 👥 SignupApproval.tsx          # Faculty signup approval
-│   ├── ⚠️ SessionTimeoutWarning.tsx   # Security session management
+│   ├── ⏰ SessionTimeoutWarning.tsx   # Idle timeout warning dialog
 │   ├── 🎨 animations/
 │   │   └── AppleMotion.tsx             # Apple-inspired animations
 │   └── 🧩 ui/                         # 40+ Shadcn/ui components
 │       ├── button.tsx, card.tsx, dialog.tsx
 │       ├── form.tsx, input.tsx, select.tsx
+│       ├── switch.tsx, badge.tsx, alert.tsx
 │       ├── table.tsx, tabs.tsx, toast.tsx
 │       └── ... (complete UI component library)
 ├── 
 ├── 📂 lib/
 │   ├── 🔥 firebaseConfig.ts           # Firebase initialization with error handling
-│   ├── 🔄 firebaseService.ts         # Complete Firebase service layer
-│   └── 💾 localStorageService.ts     # Client-side storage utilities
+│   ├── 🔄 firebaseService.ts          # Complete Firebase service layer
+│   ├── 🔔 notificationService.ts      # Real-time notification management
+│   ├── 📱 pushService.ts              # Firebase Cloud Messaging (FCM) integration
+│   ├── 🔁 withRetry.ts                # Network retry logic with exponential backoff
+│   ├── 📝 errorLogger.ts              # Centralized error logging
+│   └── 💾 localStorageService.ts      # Client-side storage utilities
 ├── 
 ├── 📂 hooks/
-│   ├── ⏰ useIdleTimeout.ts           # Security session timeout
-│   └── 📜 useScrollTrigger.ts        # Smooth scroll animations
+│   ├── ⏰ useIdleTimeout.ts           # Idle session timeout with activity detection
+│   └── 📜 useScrollTrigger.ts         # Smooth scroll animations
 ├── 
 ├── 📂 utils/
 │   ├── 🎭 animation.ts                # Framer Motion utilities
@@ -189,7 +207,30 @@ A comprehensive web-based classroom reservation and management system for **Pama
 ├── 📂 styles/
 │   └── 🎨 globals.css                # Tailwind CSS 4 with custom styles
 ├── 
-├── 📂 email-templates/               # HTML email templates
+├── 📂 plv-classroom-assignment-functions/  # Firebase Cloud Functions
+│   ├── 📄 DEPLOYMENT_GUIDE.md         # Cloud Functions deployment instructions
+│   ├── 📄 CHANGELOG.md                # Cloud Functions version history
+│   ├── ⚙️ package.json                # Cloud Functions dependencies
+│   └── 📂 src/
+│       └── index.ts                    # Cloud Functions implementation
+│           ├── 🔒 trackFailedLogin      # Brute force protection
+│           ├── 🔓 resetFailedLogins     # Login counter reset
+│           ├── 🔔 createNotification    # Server-side notifications
+│           ├── ✅ acknowledgeNotification # Notification acknowledgment
+│           ├── 📱 registerPushToken     # FCM token registration
+│           ├── 🔕 unregisterPushToken   # FCM token removal
+│           ├── ⚙️ setPushEnabled        # Push preference toggle
+│           ├── 📤 sendTestPush          # Test notification sender
+│           ├── ⏰ expirePastPendingBookings  # Scheduled cleanup
+│           ├── 🗑️ deleteUserAccount     # Account deletion
+│           └── 🧹 bulkCleanupRejectedAccounts # Bulk cleanup
+├── 
+├── 📂 public/
+│   ├── 🔥 firebase-config.json        # Public Firebase configuration
+│   ├── 👷 firebase-messaging-sw.js   # FCM service worker for push notifications
+│   └── 👷 sw.js                       # General service worker
+├── 
+├── 📂 email-templates/                # HTML email templates
 │   ├── email-verification-template.html
 │   ├── password-reset-template-FIXED.html
 │   └── email-change-template.html
@@ -208,12 +249,19 @@ A comprehensive web-based classroom reservation and management system for **Pama
 #### `users`
 ```typescript
 {
-  id: string;           // Auto-generated document ID
-  email: string;        // User email (unique)
-  name: string;         // Full name
+  id: string;                    // Auto-generated document ID
+  email: string;                 // User email (unique)
+  name: string;                  // Full name
   role: 'admin' | 'faculty';
-  department?: string;  // Faculty department
+  department?: string;           // Faculty department
   status: 'pending' | 'approved' | 'rejected';
+  // Brute Force Protection Fields
+  failedLoginAttempts?: number;  // Counter for failed login attempts
+  accountLocked?: boolean;       // Auto-lock after 5 failed attempts
+  lockedUntil?: string;          // ISO timestamp for auto-unlock
+  lockedByAdmin?: boolean;       // Manual admin lock (prevents auto-unlock)
+  // Push Notification Fields
+  pushEnabled?: boolean;         // User's push notification preference
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -246,10 +294,11 @@ A comprehensive web-based classroom reservation and management system for **Pama
   startTime: string;    // 24-hour format
   endTime: string;      // 24-hour format
   purpose: string;      // Booking purpose/description
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   requestDate: string;  // ISO timestamp
   adminFeedback?: string; // Optional admin comments
   resolvedAt?: Timestamp; // Approval/rejection timestamp
+  updatedBy?: string;   // User ID who last updated (or 'system')
 }
 ```
 
@@ -284,25 +333,62 @@ A comprehensive web-based classroom reservation and management system for **Pama
 }
 ```
 
+#### `notifications`
+```typescript
+{
+  id: string;              // Auto-generated document ID
+  userId: string;          // Recipient user ID (faculty or admin)
+  type: 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';
+  message: string;         // Notification message
+  bookingRequestId?: string; // Optional reference to booking request
+  adminFeedback?: string;  // Optional admin feedback
+  acknowledgedBy?: string; // User ID who acknowledged
+  acknowledgedAt?: string; // ISO timestamp of acknowledgment
+  createdAt: string;       // ISO timestamp
+  updatedAt: string;       // ISO timestamp
+}
+```
+
+#### `pushTokens`
+```typescript
+{
+  id: string;              // Auto-generated document ID (the FCM token itself)
+  userId: string;          // User ID who owns this token
+  createdAt: Timestamp;    // When token was registered
+}
+```
+
 ## 🔒 Security Features
 
 ### Firebase Security Rules
-- Role-based access control at database level
-- User-specific data access restrictions
-- Admin-only operations protection
-- Real-time security rule validation
+- **Role-based Access Control**: Database-level permissions enforcement
+- **User-specific Data Access**: Users can only access their own data
+- **Admin-only Operations**: Protected administrative actions
+- **Real-time Security Validation**: Security rules enforced on every operation
+- **Notification Protection**: Client-side notification creation blocked (Cloud Functions only)
+- **Status Protection**: Clients cannot set bookings to 'expired' status (server-only)
 
 ### Authentication Security
-- Secure session management with automatic timeout
-- Password reset with email verification
-- Admin email verification for elevated permissions
-- Client-side and server-side validation
+- **Brute Force Protection**: Cloud Functions track failed attempts and lock accounts
+  - 5 failed attempts trigger 30-minute lockout
+  - Auto-unlock after timeout expires
+  - Manual admin lock/unlock capability
+  - Attempts counter reset on successful login
+- **Session Management**: Automatic idle timeout with activity detection
+  - 30-minute idle timeout (configurable)
+  - 5-minute warning before logout
+  - User activity (mouse, keyboard, scroll) resets timer
+- **Password Security**: Comprehensive password validation and strength indicators
+- **Password Reset**: Secure email-based password reset flow
+- **Admin Verification**: Environment-based admin email validation
 
 ### Data Protection
-- Input sanitization and validation
-- XSS protection with React's built-in escaping
-- CSRF protection through Firebase security
-- Secure environment variable handling
+- **Input Sanitization**: All user inputs validated and sanitized
+- **Password Sanitization**: Removes hidden characters, line breaks, and whitespace
+- **XSS Protection**: React's built-in escaping prevents injection attacks
+- **CSRF Protection**: Firebase security tokens prevent cross-site attacks
+- **Secure Environment Variables**: Sensitive config in environment variables only
+- **Network Retry Logic**: Exponential backoff for failed network requests
 
 ## 📊 System Workflows
 
@@ -378,7 +464,17 @@ A comprehensive web-based classroom reservation and management system for **Pama
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
    VITE_FIREBASE_ADMIN_EMAILS=admin@plv.edu.ph
+   VITE_FIREBASE_VAPID_KEY=your_vapid_key_for_fcm
    ```
+
+4. **Deploy Cloud Functions**
+   ```bash
+   cd plv-classroom-assignment-functions
+   npm install
+   npm run build
+   npm run deploy
+   ```
+   > 📖 **Cloud Functions Guide**: See [`plv-classroom-assignment-functions/DEPLOYMENT_GUIDE.md`](plv-classroom-assignment-functions/DEPLOYMENT_GUIDE.md) for detailed instructions.
 
 ### Deploy to Firebase Hosting (Alternative)
 
@@ -397,11 +493,22 @@ A comprehensive web-based classroom reservation and management system for **Pama
    # Set up automatic builds: No (handled by GitHub Actions)
    ```
 
-3. **Deploy**
+3. **Deploy Cloud Functions First**
+   ```bash
+   cd plv-classroom-assignment-functions
+   npm install
+   npm run build
+   firebase deploy --only functions
+   cd ..
+   ```
+
+4. **Deploy Hosting**
    ```bash
    npm run build
-   firebase deploy
+   firebase deploy --only hosting
    ```
+
+> 💡 **Important**: Always deploy Cloud Functions before hosting to ensure backend functionality is available.
 
 ## 🛠️ Development
 
@@ -468,23 +575,29 @@ npm run predeploy    # Automated pre-deployment build
 ### Getting Help
 - 📖 **Documentation**: [`guidelines/`](guidelines/) folder contains comprehensive guides
 - 🔥 **Firebase Issues**: [`FIREBASE_TROUBLESHOOTING.md`](guidelines/FIREBASE_TROUBLESHOOTING.md)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
+- � **Security Features**: [`BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md`](BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md)
+- ☁️ **Cloud Functions**: [`plv-classroom-assignment-functions/DEPLOYMENT_GUIDE.md`](plv-classroom-assignment-functions/DEPLOYMENT_GUIDE.md)
+- �🐛 **Bug Reports**: [GitHub Issues](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
 - 💡 **Feature Requests**: Open an issue with enhancement label
 
 ## 📈 Performance Features
 
 ### Optimization Techniques
 - **Code Splitting**: Automatic route-based code splitting with Vite
+- **Lazy Loading**: Heavy components (dashboards, forms) loaded on demand
 - **Tree Shaking**: Dead code elimination for minimal bundle size
 - **Image Optimization**: Automatic image compression and format conversion
 - **Caching Strategy**: Aggressive caching with proper cache invalidation
 - **CDN Integration**: Global content delivery through Vercel Edge Network
+- **Service Worker**: PWA-ready with FCM service worker for offline capability
 
 ### Real-time Performance
 - **Optimistic Updates**: Instant UI feedback before server confirmation
 - **Efficient Queries**: Firestore query optimization with proper indexing
-- **Connection Management**: Smart WebSocket connection handling
+- **Connection Management**: Smart WebSocket connection handling with retry logic
 - **Offline Resilience**: Firestore offline persistence with sync queue
+- **Network Retry**: Exponential backoff for failed requests (3 attempts default)
+- **Debounced Listeners**: Optimized real-time subscription management
 
 ## 🤝 Contributing
 
@@ -567,12 +680,39 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 
 ---
 
+## 🆕 Latest Updates (v2.1.0)
+
+### New Features
+- ✅ **Brute Force Protection** - Cloud Functions-based account lockout system
+- ✅ **Push Notifications** - Firebase Cloud Messaging (FCM) integration
+- ✅ **Real-time Notifications** - Notification bell and center with acknowledgment
+- ✅ **Session Timeout** - Idle detection with customizable timeout and warning
+- ✅ **Auto-expiration** - Scheduled Cloud Function for past pending bookings
+- ✅ **Enhanced Security** - Improved Firestore security rules and password sanitization
+- ✅ **Network Retry Logic** - Automatic retry for failed requests with exponential backoff
+- ✅ **Admin User Management** - Account lock/unlock and manual controls
+
+### Cloud Functions
+- `trackFailedLogin` - Track and lock accounts after failed attempts
+- `resetFailedLogins` - Reset counter on successful login
+- `createNotification` - Server-side notification creation
+- `acknowledgeNotification` - Mark notifications as read
+- `registerPushToken` - FCM token registration
+- `unregisterPushToken` - FCM token cleanup
+- `setPushEnabled` - Toggle push notifications
+- `sendTestPush` - Test push notification sender
+- `expirePastPendingBookings` - Hourly cleanup of expired bookings
+- `deleteUserAccount` - Admin account deletion
+- `bulkCleanupRejectedAccounts` - Bulk cleanup operations
+
+---
+
 <div align="center">
 
 **⭐ Star this repository if you find it helpful!**
 
-**Last Updated**: October 4, 2025  
-**Version**: 2.0.0 (Firebase Edition) - Production Ready  
+**Last Updated**: November 3, 2025  
+**Version**: 2.1.0 (Firebase Edition) - Production Ready  
 **Status**: ✅ Actively Maintained
 
 Built with ❤️ for PLV CEIT by [Deign](https://github.com/Deign86)
