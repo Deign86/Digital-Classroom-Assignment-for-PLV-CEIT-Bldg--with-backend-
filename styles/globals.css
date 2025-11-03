@@ -610,13 +610,36 @@
     }
 
     /* Ensure Select dropdowns work properly on 320px screens */
+    /* Target both the portal container and content */
+    [data-radix-select-portal] {
+      position: fixed !important;
+      z-index: 99999 !important;
+      pointer-events: none !important;
+    }
+
+    [data-radix-select-portal] > * {
+      pointer-events: auto !important;
+    }
+
+    [data-radix-popper-content-wrapper][data-radix-select-content-wrapper],
     [data-slot="select-content"],
     [data-radix-select-content] {
       position: fixed !important;
-      max-width: calc(100vw - 16px) !important;
+      max-width: calc(100vw - 32px) !important;
       width: auto !important;
       min-width: 8rem !important;
-      z-index: 9999 !important;
+      z-index: 99999 !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      display: block !important;
+      inset: auto !important;
+    }
+
+    /* Ensure the viewport inside select content is visible */
+    [data-slot="select-content"] > *,
+    [data-radix-select-content] > * {
+      visibility: visible !important;
+      opacity: 1 !important;
     }
   }
 
