@@ -18,20 +18,30 @@ export default function SessionTimeoutWarning({
 }: SessionTimeoutWarningProps) {
   const [countdown, setCountdown] = useState(Math.ceil(timeRemaining / 1000));
 
+  // Update initial countdown when dialog opens or timeRemaining changes
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      setCountdown(Math.ceil(timeRemaining / 1000));
+    }
+  }, [isOpen, timeRemaining]);
+
+  // Countdown timer that decrements every second
+  useEffect(() => {
+    if (!isOpen || countdown <= 0) return;
 
     const interval = setInterval(() => {
-      const remaining = Math.ceil(timeRemaining / 1000);
-      setCountdown(remaining);
-      
-      if (remaining <= 0) {
-        onLogout();
-      }
+      setCountdown((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          onLogout();
+          return 0;
+        }
+        return next;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen, timeRemaining, onLogout]);
+  }, [isOpen, countdown, onLogout]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);

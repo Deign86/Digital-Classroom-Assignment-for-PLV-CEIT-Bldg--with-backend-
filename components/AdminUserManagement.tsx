@@ -17,7 +17,7 @@ interface AdminUserManagementProps {
   onDisableUser?: (userId: string) => Promise<void>;
   onEnableUser?: (userId: string) => Promise<void>;
   onDeleteUser?: (userId: string, hard?: boolean) => Promise<any>;
-  onChangeRole?: (userId: string, role: AppUser['role']) => Promise<void>;
+  onChangeRole?: (userId: string, role: AppUser['role']) => Promise<{ success: boolean; message: string; notifyCurrentlyLoggedIn?: boolean }>;
   onUnlockAccount?: (userId: string) => Promise<void>;
   onNotifyUser?: (targetUserId: string, payload: any) => Promise<void>;
 }
@@ -118,8 +118,19 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
     if (!onChangeRole) return;
     setProcessingFor(userId, `changeRole:${role}`);
     try {
-      await onChangeRole(userId, role);
-      toast.success('Role updated');
+      const result = await onChangeRole(userId, role);
+      if (result.success) {
+        toast.success(result.message);
+        
+        // If the user is currently logged in, show an additional warning
+        if (result.notifyCurrentlyLoggedIn) {
+          toast.warning('User may need to sign out and sign in again for changes to take effect', {
+            duration: 5000,
+          });
+        }
+      } else {
+        toast.error(result.message);
+      }
     } catch (err: any) {
       const msg = err?.message || 'Failed to update role';
       toast.error(msg);
