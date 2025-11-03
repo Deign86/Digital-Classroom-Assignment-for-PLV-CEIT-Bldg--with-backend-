@@ -37,10 +37,10 @@ if (import.meta.env.DEV) {
   (window as any).realtimeService = realtimeService;
   (window as any).classroomService = classroomService;
   // Expose pushService for test push sending from the console
-  try {
+    try {
     // Dynamically import to avoid circular import issues
-    import('./lib/pushService').then((m) => {
-      (window as any).pushService = m.pushService;
+    import('./lib/pushService').then((mod) => {
+      (window as any).pushService = mod.pushService;
       console.log('🛠️ pushService exposed to window for debugging');
     }).catch((e) => console.warn('Could not expose pushService to window', e));
   } catch (err) {
@@ -175,6 +175,20 @@ export default function App() {
     requestName: string;
   } | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
+  // State to support undoing a recently submitted booking
+  const [recentlySubmittedBooking, setRecentlySubmittedBooking] = useState<{
+    id: string;
+    draft: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>;
+  } | null>(null);
+  const undoTimerRef = React.useRef<number | null>(null);
+  // External prefill passed to FacultyDashboard to open the booking tab and prefill the form
+  const [externalBookingPrefill, setExternalBookingPrefill] = useState<{
+    classroomId?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    purpose?: string;
+  } | null>(null);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -693,7 +707,7 @@ export default function App() {
     toast.success('Session extended successfully');
   }, []);
 
-  function SuspenseFallback({ message, show, hide }: { message?: string | null; show: (m?: string) => void; hide: () => void; }) {
+  function SuspenseFallback({ message, show, hide }: { message?: string | null; show: (msg?: string) => void; hide: () => void; }) {
     useEffect(() => {
       try { show(message ?? 'Loading...'); } catch (e) {}
       return () => { try { hide(); } catch (e) {} };
@@ -771,8 +785,62 @@ export default function App() {
       const newRequest = await bookingRequestService.create(request);
       
       setBookingRequests(prev => [...prev, newRequest]);
+      // Track recent submission so the user can undo for a short window
+      try {
+        setRecentlySubmittedBooking({ id: newRequest.id, draft: request });
+        // Clear any existing timer
+        if (undoTimerRef.current) {
+          window.clearTimeout(undoTimerRef.current);
+          undoTimerRef.current = null;
+        }
+        // 5s undo window
+        undoTimerRef.current = window.setTimeout(() => {
+          setRecentlySubmittedBooking(null);
+          undoTimerRef.current = null;
+        }, 5000);
+      } catch (e) {
+        console.warn('Failed to set undo state for booking:', e);
+      }
       if (!suppressToast) {
-        toast.success('Reservation request submitted!');
+        // Provide an undo action in the toast that will delete the just-created request
+        toast.success('Reservation request submitted!', {
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              try {
+                // Delete the request we just created (captured in this closure)
+                await bookingRequestService.delete(newRequest.id);
+                setBookingRequests(prev => prev.filter(r => r.id !== newRequest.id));
+                // Prefill the booking form with the original inputs
+                setExternalBookingPrefill(request);
+                // Clear undo state and timer if they exist
+                setRecentlySubmittedBooking(null);
+                if (undoTimerRef.current) {
+                  window.clearTimeout(undoTimerRef.current);
+                  undoTimerRef.current = null;
+                }
+                toast('Reservation undone — form pre-filled');
+              } catch (err) {
+                console.error('Undo failed:', err);
+                // If client-side delete is blocked by security rules, try server callable
+                try {
+                  await bookingRequestService.cancelWithCallable(newRequest.id);
+                  setBookingRequests(prev => prev.filter(r => r.id !== newRequest.id));
+                  setExternalBookingPrefill(request);
+                  setRecentlySubmittedBooking(null);
+                  if (undoTimerRef.current) {
+                    window.clearTimeout(undoTimerRef.current);
+                    undoTimerRef.current = null;
+                  }
+                  toast('Reservation undone — form pre-filled');
+                } catch (err2) {
+                  console.error('Server-side undo failed:', err2);
+                  toast.error('Could not undo reservation');
+                }
+              }
+            }
+          }
+        });
       }
     } catch (err) {
       console.error('Booking request error:', err);
@@ -1149,8 +1217,11 @@ export default function App() {
     allBookingRequests: bookingRequests,
     onLogout: handleLogout,
     onBookingRequest: handleBookingRequest,
-    checkConflicts
-  }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, checkConflicts]);
+    checkConflicts,
+    // External prefill support: FacultyDashboard will consume this and then call back
+    externalInitialData: externalBookingPrefill,
+    onExternalInitialDataConsumed: () => setExternalBookingPrefill(null),
+  }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, checkConflicts, externalBookingPrefill]);
 
   useEffect(() => {
     const initializeApp = async () => {

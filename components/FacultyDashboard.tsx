@@ -41,6 +41,15 @@ interface FacultyDashboardProps {
   onLogout: () => void;
   onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
+  // Optional external prefill data (e.g., when user undoes a recent booking)
+  externalInitialData?: {
+    classroomId?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    purpose?: string;
+  } | null;
+  onExternalInitialDataConsumed?: () => void;
 }
 
 export default function FacultyDashboard({
@@ -52,7 +61,9 @@ export default function FacultyDashboard({
   allBookingRequests,
   onLogout,
   onBookingRequest,
-  checkConflicts
+  checkConflicts,
+  externalInitialData,
+  onExternalInitialDataConsumed
 }: FacultyDashboardProps) {
   const allowedTabs = ['overview','booking','search','schedule','settings'] as const;
   type FacultyTab = typeof allowedTabs[number];
@@ -70,6 +81,20 @@ export default function FacultyDashboard({
     endTime?: string;
     purpose?: string;
   } | null>(null);
+
+  // If App provides external prefill data (e.g., undo action), consume it and open booking tab
+  useEffect(() => {
+    if (externalInitialData) {
+      setBookingInitialData(externalInitialData);
+      setActiveTab('booking');
+      // Let parent know we've consumed it so it can clear the payload
+      try {
+        onExternalInitialDataConsumed?.();
+      } catch (e) {
+        console.warn('Error calling onExternalInitialDataConsumed:', e);
+      }
+    }
+  }, [externalInitialData, onExternalInitialDataConsumed]);
 
   // Quick rebook: attempt to submit immediately, otherwise fall back to opening the booking form with prefill
   const handleQuickRebook = async (initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {

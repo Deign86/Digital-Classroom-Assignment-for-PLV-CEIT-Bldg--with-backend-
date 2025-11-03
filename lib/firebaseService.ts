@@ -1839,6 +1839,19 @@ export const bookingRequestService = {
     await deleteDoc(ref);
   },
 
+  // Fallback: call server-side callable to cancel a booking request when client-side delete is blocked by rules
+  async cancelWithCallable(id: string): Promise<void> {
+    try {
+      const app = getFirebaseApp();
+      const functions = getFunctions(app);
+      const fn = httpsCallable(functions, 'cancelBookingRequest');
+      await withRetry(() => fn({ bookingRequestId: id }), { attempts: 3, shouldRetry: isNetworkError });
+    } catch (err) {
+      // Re-throw so callers can handle errors
+      throw err;
+    }
+  },
+
   async checkConflicts(
     classroomId: string,
     date: string,

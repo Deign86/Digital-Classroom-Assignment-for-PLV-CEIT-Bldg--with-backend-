@@ -261,6 +261,86 @@ export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId
 });
 
 /**
+ * Callable: cancelBookingRequest
+ * Allows the owner (faculty) of a booking request to cancel/delete it within a short undo window.
+ * Validates caller is authenticated and owns the request. The request must be in 'pending' state and
+ * must have been created within the last UNDO_WINDOW_MS milliseconds.
+ */
+export const cancelBookingRequest = onCall(async (request: CallableRequest<{ bookingRequestId?: string }>) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const callerUid = request.auth.uid;
+  const bookingRequestId = request.data?.bookingRequestId;
+  if (!bookingRequestId || typeof bookingRequestId !== 'string') {
+    throw new HttpsError('invalid-argument', 'bookingRequestId is required and must be a string');
+  }
+
+  const UNDO_WINDOW_MS = 5 * 1000; // 5 seconds undo window
+
+  try {
+    const docRef = admin.firestore().collection('bookingRequests').doc(bookingRequestId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError('not-found', 'Booking request not found');
+    }
+
+    const data = snap.data() as Record<string, any> | undefined;
+    if (!data) {
+      throw new HttpsError('not-found', 'Booking request data missing');
+    }
+
+    // Only the owner can cancel
+    if (data.facultyId !== callerUid) {
+      logger.warn(`User ${callerUid} attempted to cancel booking ${bookingRequestId} owned by ${data.facultyId}`);
+      throw new HttpsError('permission-denied', 'Only the booking owner may cancel this request');
+    }
+
+    // Only allow cancel for pending requests
+    if (data.status && data.status !== 'pending') {
+      throw new HttpsError('failed-precondition', 'Cannot cancel a booking that has already been processed');
+    }
+
+    // Determine created timestamp. Support several possible shapes: Firestore Timestamp, ISO string, numeric millis
+    let createdAtMs: number | null = null;
+    const createdAt = data.createdAt ?? data.requestDate ?? null;
+    if (createdAt) {
+      // Firestore Timestamp-like
+      if (typeof createdAt === 'object' && typeof (createdAt as any).toMillis === 'function') {
+        createdAtMs = (createdAt as any).toMillis();
+      } else if (typeof createdAt === 'number') {
+        // assume milliseconds
+        createdAtMs = createdAt;
+      } else if (typeof createdAt === 'string') {
+        const p = Date.parse(createdAt);
+        if (!isNaN(p)) createdAtMs = p;
+      }
+    }
+
+    if (!createdAtMs) {
+      // If we can't determine creation time conservatively deny cancellation
+      throw new HttpsError('failed-precondition', 'Cannot determine creation time for this booking; undo not allowed');
+    }
+
+    const ageMs = Date.now() - createdAtMs;
+    if (ageMs > UNDO_WINDOW_MS) {
+      throw new HttpsError('failed-precondition', 'Undo window expired');
+    }
+
+    // Passed checks: delete the document
+    await docRef.delete();
+    logger.info(`Booking request ${bookingRequestId} cancelled by owner ${callerUid}`);
+
+    return { success: true, message: 'Booking request cancelled' };
+  } catch (err: unknown) {
+    logger.error('cancelBookingRequest error:', err);
+    if (err instanceof HttpsError) throw err;
+    throw new HttpsError('internal', 'Failed to cancel booking request');
+  }
+});
+
+/**
  * Deletes a classroom and cascades deletion to related bookingRequests and schedules
  * Only non-lapsed bookings/schedules are deleted. Lapsed entries are preserved.
  * This function must be called by an authenticated admin user.
