@@ -586,10 +586,11 @@
   /* Tiny mobile fixes: constrain popovers/calendars on very small screens (<=320px) */
   @media (max-width: 320px) {
     /* Make popover content use the full viewport width minus padding */
-    [data-slot="popover-content"],
-    [data-radix-popover-content],
-    .calendar-popover,
-    [data-radix-popper-content-wrapper] {
+    /* Exclude select dropdowns from these fixed positioning rules */
+    [data-slot="popover-content"]:not([data-slot="select-content"]),
+    [data-radix-popover-content]:not([data-radix-select-content]),
+    .calendar-popover:not([data-radix-select-content]),
+    [data-radix-popper-content-wrapper]:not([data-radix-select-content]) {
       position: fixed !important;
       left: 8px !important;
       right: 8px !important;
@@ -606,6 +607,16 @@
     /* Ensure calendar grid scales down a bit on very small screens */
     .calendar-popover .rdp {
       font-size: 13px;
+    }
+
+    /* Ensure Select dropdowns work properly on 320px screens */
+    [data-slot="select-content"],
+    [data-radix-select-content] {
+      position: fixed !important;
+      max-width: calc(100vw - 16px) !important;
+      width: auto !important;
+      min-width: 8rem !important;
+      z-index: 9999 !important;
     }
   }
 
