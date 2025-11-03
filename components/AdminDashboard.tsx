@@ -82,6 +82,8 @@ export default function AdminDashboard({
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   // Per-request processing id to prevent double-approve/reject clicks
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  // Track requests being hidden during minimum loader display time
+  const [hiddenRequestIds, setHiddenRequestIds] = useState<Set<string>>(new Set());
   
 
   // Scroll to top when component mounts
@@ -145,6 +147,7 @@ export default function AdminDashboard({
   }).length;
 
   const recentRequests = bookingRequests
+    .filter(r => !hiddenRequestIds.has(r.id)) // Filter out hidden requests
     .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
     .slice(0, 5);
 
@@ -454,13 +457,25 @@ export default function AdminDashboard({
                                         onClick={async () => {
                                           try {
                                             setProcessingRequestId(request.id);
-                                            await onRequestApproval(request.id, true);
-                                            toast.success('Request approved');
+                                            // Hide the request immediately to prevent it from moving/updating
+                                            setHiddenRequestIds(prev => new Set(prev).add(request.id));
+                                            
+                                            // Start both the approval and minimum loader time in parallel
+                                            await Promise.all([
+                                              onRequestApproval(request.id, true),
+                                              new Promise(resolve => setTimeout(resolve, 1200))
+                                            ]);
                                           } catch (err) {
                                             console.error('Approve request failed', err);
-                                            toast.error('Failed to approve request');
+                                            // Remove from hidden on error
+                                            setHiddenRequestIds(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(request.id);
+                                              return next;
+                                            });
                                           } finally {
                                             setProcessingRequestId(null);
+                                            // Keep it hidden - the real-time listener will update the list
                                           }
                                         }}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
@@ -484,13 +499,25 @@ export default function AdminDashboard({
                                         onClick={async () => {
                                           try {
                                             setProcessingRequestId(request.id);
-                                            await onRequestApproval(request.id, false);
-                                            toast.success('Request rejected');
+                                            // Hide the request immediately to prevent it from moving/updating
+                                            setHiddenRequestIds(prev => new Set(prev).add(request.id));
+                                            
+                                            // Start both the rejection and minimum loader time in parallel
+                                            await Promise.all([
+                                              onRequestApproval(request.id, false),
+                                              new Promise(resolve => setTimeout(resolve, 1200))
+                                            ]);
                                           } catch (err) {
                                             console.error('Reject request failed', err);
-                                            toast.error('Failed to reject request');
+                                            // Remove from hidden on error
+                                            setHiddenRequestIds(prev => {
+                                              const next = new Set(prev);
+                                              next.delete(request.id);
+                                              return next;
+                                            });
                                           } finally {
                                             setProcessingRequestId(null);
+                                            // Keep it hidden - the real-time listener will update the list
                                           }
                                         }}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
