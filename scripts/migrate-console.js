@@ -1,18 +1,20 @@
 /**
- * Client-side migration script using Firebase callable functions
- * Run this in the browser console when signed in as an admin
+ * Browser console migration script - Works with already loaded Firebase app
  * 
- * This script calls the setUserCustomClaims function for all admin users
+ * Prerequisites:
+ * 1. Be signed in to the app as an admin
+ * 2. Paste this entire script into the browser console
+ * 3. Run: await migrateCustomClaimsViaCallable()
  */
 
 async function migrateCustomClaimsViaCallable() {
   console.log('🚀 Starting custom claims migration via callable functions...\n');
 
   try {
-    // Get Firebase instances
-    const { getFirestore, collection, query, where, getDocs } = await import('firebase/firestore');
-    const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const { getAuth } = await import('firebase/auth');
+    // Use the Firebase app that's already loaded in your application
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+    const { getFirestore, collection, query, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js');
     
     const auth = getAuth();
     const db = getFirestore();
@@ -103,9 +105,11 @@ async function migrateCustomClaimsViaCallable() {
 
   } catch (error) {
     console.error('❌ Migration failed:', error);
+    console.error('Stack:', error.stack);
     throw error;
   }
 }
 
-// Auto-execute when loaded
-console.log('Migration script loaded. Run: await migrateCustomClaimsViaCallable()');
+// Auto-execute message
+console.log('✅ Migration script loaded successfully!');
+console.log('📋 To run the migration, execute: await migrateCustomClaimsViaCallable()');
