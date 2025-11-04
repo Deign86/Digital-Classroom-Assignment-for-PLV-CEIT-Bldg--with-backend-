@@ -22,7 +22,7 @@ interface AdminUserManagementProps {
   onNotifyUser?: (targetUserId: string, payload: any) => Promise<void>;
 }
 
-export default function AdminUserManagement({ users = [], processingUserId, onDisableUser, onEnableUser, onDeleteUser, onChangeRole, onUnlockAccount, onNotifyUser }: AdminUserManagementProps) {       
+export default function AdminUserManagement({ users = [], processingUserId, onDisableUser, onEnableUser, onDeleteUser, onChangeRole, onUnlockAccount, onNotifyUser }: AdminUserManagementProps) {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | AppUser['role']>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | string>('all');
@@ -119,21 +119,10 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
     setProcessingFor(userId, `changeRole:${role}`);
     try {
       const result = await onChangeRole(userId, role);
-      if (result.success) {
-        toast.success(result.message);
-        
-        // If the user is currently logged in, show an additional warning
-        if (result.notifyCurrentlyLoggedIn) {
-          toast.warning('User may need to sign out and sign in again for changes to take effect', {
-            duration: 5000,
-          });
-        }
-      } else {
-        toast.error(result.message);
-      }
+      // Toast is already shown by parent AdminDashboard, so we don't duplicate it here
     } catch (err: any) {
-      const msg = err?.message || 'Failed to update role';
-      toast.error(msg);
+      // Error is already handled by parent
+      console.error('Change role error:', err);
     } finally {
       setProcessingFor(userId, null);
     }
@@ -144,10 +133,10 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
     setProcessingFor(userId, 'disable');
     try {
       await onDisableUser(userId);
-      toast.success('User disabled');
+      // Toast is already shown by parent AdminDashboard
     } catch (err: any) {
-      const msg = err?.message || 'Failed to disable user';
-      toast.error(msg);
+      // Error is already handled by parent
+      console.error('Disable user error:', err);
     } finally {
       setProcessingFor(userId, null);
     }
@@ -158,10 +147,10 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
     setProcessingFor(userId, 'unlock');
     try {
       await onUnlockAccount(userId);
-      toast.success('Account unlocked');
+      // Toast is already shown by parent AdminDashboard
     } catch (err: any) {
-      const msg = err?.message || 'Failed to unlock account';
-      toast.error(msg);
+      // Error is already handled by parent
+      console.error('Unlock account error:', err);
     } finally {
       setProcessingFor(userId, null);
     }
@@ -177,7 +166,8 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
         <div className="flex flex-col gap-3 mb-4">
           {/* Search row: full width */}
             <div className="w-full">
-            <Input aria-label="Search users" className="w-full rounded-full" placeholder="Search by name, email or dept" value={search} onChange={(e) => setSearch(e.target.value)} />                                                                                                                                                                    </div>
+            <Input aria-label="Search users" className="w-full rounded-full" placeholder="Search by name, email or dept" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
 
           {/* Filters on their own row, aligned to the right */}
           <div className="flex flex-col sm:flex-row sm:items-center items-end gap-2 justify-end w-full">
