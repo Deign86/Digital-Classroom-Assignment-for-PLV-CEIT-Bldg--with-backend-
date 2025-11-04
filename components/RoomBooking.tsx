@@ -811,7 +811,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       <Clock className="h-5 w-5 text-yellow-600" />
                     </motion.div>
                     <div>
-                      <p className="text-sm font-medium text-yellow-800">Pending Request Conflicts</p>
+                      <p className="text-sm font-medium text-yellow-800">Other Pending Requests</p>
                       {pendingConflicts.map((conflict, index) => (
                         <motion.p 
                           key={index} 
@@ -824,7 +824,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                         </motion.p>
                       ))}
                       <p className="text-xs text-yellow-600 mt-1 italic">
-                        These requests are awaiting admin approval and may affect availability.
+                        Other users have pending requests for this time slot. These are awaiting admin approval and may affect availability.
                       </p>
                     </div>
                   </motion.div>
