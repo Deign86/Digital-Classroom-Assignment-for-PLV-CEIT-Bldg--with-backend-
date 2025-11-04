@@ -15,13 +15,6 @@ import PasswordResetDialog from './PasswordResetDialog';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
-// Debug logging for Vercel deployment
-if (typeof window !== 'undefined') {
-  console.log('[reCAPTCHA Debug] Site Key:', RECAPTCHA_SITE_KEY ? 'Loaded ✓' : 'MISSING ✗');
-  console.log('[reCAPTCHA Debug] Site Key Length:', RECAPTCHA_SITE_KEY?.length || 0);
-  console.log('[reCAPTCHA Debug] All Vite Env:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
-}
-
 // Load reCAPTCHA script dynamically with environment variable
 const loadRecaptchaScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -292,7 +285,10 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           logger.log('reCAPTCHA token obtained for signup');
         } catch (recaptchaError) {
           logger.error('reCAPTCHA execution failed:', recaptchaError);
-          toast.error('Security verification failed. Please try again.');
+          const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : 'Unknown error';
+          toast.error(`Security verification failed: ${errorMessage}. Please refresh and try again.`, {
+            duration: 5000,
+          });
           return;
         }
       } else {

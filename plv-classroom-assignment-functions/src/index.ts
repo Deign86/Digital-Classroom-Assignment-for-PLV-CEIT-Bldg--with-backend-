@@ -668,6 +668,11 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
  * Tracks failed login attempts and locks accounts after too many failures
  * Called by the client after a failed login attempt
  */
+/**
+ * Tracks failed login attempts for brute force protection.
+ * Called after each failed authentication attempt.
+ * Increments attempt counter and locks account after threshold is exceeded.
+ */
 export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?: string }>) => {
   const {email} = request.data || {};
 
@@ -987,6 +992,16 @@ async function persistAndSendNotification(
   const ref = await db.collection('notifications').add(record);
 
   try {
+    // Check if user has push notifications enabled before attempting to send
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data() as any;
+    const pushEnabled = userData && userData.pushEnabled === true;
+
+    if (!pushEnabled) {
+      logger.info(`persistAndSendNotification: skipping FCM send for user ${userId} - push notifications disabled`);
+      return { success: true, id: ref.id } as any;
+    }
+
     const tokensSnap = await db.collection('pushTokens').where('userId', '==', userId).get();
     if (!tokensSnap.empty) {
       const tokens: string[] = [];

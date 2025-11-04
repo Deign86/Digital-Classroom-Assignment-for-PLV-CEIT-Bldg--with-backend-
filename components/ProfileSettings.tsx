@@ -245,15 +245,20 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           return;
         }
 
-        // Local fallback behaviour: manage push tokens and update user via userService
+        // Local fallback behaviour: manage push tokens and call server-side setPushEnabled
         if (enabled) {
           const res = await pushService.enablePush();
           if (res.success && res.token) {
             setPushToken(res.token);
-            await userService.update(user.id, { ...(user as any), pushEnabled: true });
-            setPushEnabled(true);
-            toast.dismiss(loadingToast);
-            toast.success('Push notifications enabled!');
+            // Call the Cloud Function to set pushEnabled flag server-side
+            const setPushRes = await pushService.setPushEnabledOnServer(true);
+            if (setPushRes.success) {
+              setPushEnabled(true);
+              toast.dismiss(loadingToast);
+              toast.success('Push notifications enabled!');
+            } else {
+              throw new Error(setPushRes.message || 'Failed to update push preference');
+            }
           } else {
             throw new Error(res.message || 'Failed to enable push');
           }
@@ -263,11 +268,16 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           if (current) {
             await pushService.disablePush(current);
           }
-          await userService.update(user.id, { ...(user as any), pushEnabled: false });
-          setPushEnabled(false);
-          setPushToken(null);
-          toast.dismiss(loadingToast);
-          toast.success('Push notifications disabled');
+          // Call the Cloud Function to set pushEnabled flag server-side
+          const setPushRes = await pushService.setPushEnabledOnServer(false);
+          if (setPushRes.success) {
+            setPushEnabled(false);
+            setPushToken(null);
+            toast.dismiss(loadingToast);
+            toast.success('Push notifications disabled');
+          } else {
+            throw new Error(setPushRes.message || 'Failed to update push preference');
+          }
         }
       } catch (err) {
         toast.dismiss(loadingToast);

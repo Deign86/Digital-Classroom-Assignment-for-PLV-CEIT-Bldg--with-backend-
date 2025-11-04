@@ -17,18 +17,10 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
-          logger.log('Service Worker registered for Firebase Messaging:', registration.scope);
+          logger.log('Service Worker registered for Firebase Messaging and app caching:', registration.scope);
         })
         .catch((err) => {
           logger.warn('Service Worker registration failed:', err);
-        });
-      // Register a minimal app service worker for caching/navigation fallback
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          logger.log('Service Worker registered for app runtime caching:', registration.scope);
-        })
-        .catch((err) => {
-          logger.warn('App Service Worker registration failed:', err);
         });
     });
   } else {

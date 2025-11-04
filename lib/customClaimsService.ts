@@ -98,7 +98,7 @@ export const isCurrentUserAdmin = async (): Promise<boolean> => {
  * ```
  */
 export const refreshMyCustomClaims = async (): Promise<void> => {
-  const functions = getFunctions(getFirebaseApp());
+  const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const callable = httpsCallable(functions, 'refreshMyCustomClaims');
   
   await callable({});
@@ -123,7 +123,7 @@ export const refreshMyCustomClaims = async (): Promise<void> => {
  * ```
  */
 export const setUserCustomClaims = async (userId: string): Promise<void> => {
-  const functions = getFunctions(getFirebaseApp());
+  const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const callable = httpsCallable(functions, 'setUserCustomClaims');
   
   await callable({ userId });
@@ -152,7 +152,7 @@ export const changeUserRole = async (
   userId: string, 
   newRole: 'admin' | 'faculty'
 ): Promise<{ success: boolean; message: string }> => {
-  const functions = getFunctions(getFirebaseApp());
+  const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const callable = httpsCallable<{ userId: string; newRole: 'admin' | 'faculty' }, { success: boolean; message: string }>(
     functions, 
     'changeUserRole'

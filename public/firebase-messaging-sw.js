@@ -238,3 +238,70 @@ self.addEventListener('notificationclick', function(event) {
 })();
 
 // (notificationclick handled above by top-level delegate)
+
+// ========== RUNTIME CACHING FOR APP ASSETS ==========
+// Add conservative caching for better offline experience and faster repeat loads
+
+const CACHE_NAME = 'plv-app-v1';
+const RUNTIME_CACHE = 'plv-runtime-v1';
+const OFFLINE_URL = '/index.html';
+
+// Install event: pre-cache the offline shell
+self.addEventListener('install', (event) => {
+  // Note: Don't call skipWaiting() here - it's called automatically by Firebase init
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll([OFFLINE_URL]).catch(() => { 
+        console.log('Service worker: could not pre-cache offline shell');
+      });
+    })
+  );
+});
+
+// Activate event: clean up old caches
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(
+      keys.filter(k => k !== CACHE_NAME && k !== RUNTIME_CACHE).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
+  );
+});
+
+// Fetch event: handle caching strategies
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  // Only handle GET requests
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  // Network-first for navigation requests (HTML)
+  if (request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html')) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        // Put a copy in the runtime cache
+        const copy = response.clone();
+        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+        return response;
+      }).catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
+
+  // Cache-first for same-origin static assets (js/css/img)
+  if (url.origin === location.origin && /\.(js|css|png|jpg|jpeg|svg|webp|avif)$/.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetch(request).then((res) => {
+        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, res.clone())).catch(() => {});
+        return res;
+      }).catch(() => cached))
+    );
+    return;
+  }
+
+  // Default: try network, fallback to cache
+  event.respondWith(
+    fetch(request).catch(() => caches.match(request))
+  );
+});
