@@ -22,6 +22,46 @@ if (typeof window !== 'undefined') {
   console.log('[reCAPTCHA Debug] All Vite Env:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
 }
 
+// Load reCAPTCHA script dynamically with environment variable
+const loadRecaptchaScript = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!RECAPTCHA_SITE_KEY) {
+      logger.warn('reCAPTCHA site key not configured');
+      resolve();
+      return;
+    }
+
+    // Check if script already loaded
+    if (window.grecaptcha?.enterprise) {
+      resolve();
+      return;
+    }
+
+    // Check if script tag already exists
+    const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve());
+      existingScript.addEventListener('error', reject);
+      return;
+    }
+
+    // Create and load script
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      logger.log('reCAPTCHA script loaded successfully');
+      resolve();
+    };
+    script.onerror = (error) => {
+      logger.error('Failed to load reCAPTCHA script:', error);
+      reject(new Error('Failed to load reCAPTCHA'));
+    };
+    document.head.appendChild(script);
+  });
+};
+
 interface LoginFormProps {
   onLogin: (email: string, password: string) => boolean | Promise<boolean>;
   onSignup: (
@@ -52,6 +92,15 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   const STORAGE_KEY = 'plv:loginForm:activeTab';
   const allowed = ['login', 'signup'];
   const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'login', allowed));
+
+  // Load reCAPTCHA script on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
+      loadRecaptchaScript().catch((error) => {
+        logger.error('Failed to load reCAPTCHA on mount:', error);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     try {
