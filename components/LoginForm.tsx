@@ -117,6 +117,18 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       loadRecaptchaScript()
         .then(() => {
           console.log('[reCAPTCHA] Load complete');
+          // Check if badge element appears after a short delay
+          setTimeout(() => {
+            const badge = document.querySelector('.grecaptcha-badge');
+            console.log('[reCAPTCHA] Badge element found:', !!badge);
+            if (badge) {
+              console.log('[reCAPTCHA] Badge styles:', window.getComputedStyle(badge).display, 
+                         'visibility:', window.getComputedStyle(badge).visibility,
+                         'opacity:', window.getComputedStyle(badge).opacity);
+            } else {
+              console.warn('[reCAPTCHA] Badge element not found in DOM');
+            }
+          }, 1000);
         })
         .catch((error) => {
           console.error('[reCAPTCHA] Failed to load on mount:', error);
