@@ -935,7 +935,7 @@ export const authService = {
       // Notify admins about the new signup request using the server callable for consistency and permissions
       try {
         const app = getFirebaseApp();
-        const functions = getFunctions(app);
+        const functions = getFunctions(app, 'us-central1');
         const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
         await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
       } catch (err) {
@@ -1004,7 +1004,7 @@ export const authService = {
       // (wrap in try/catch to avoid failing the signup flow if the callable is temporarily unreachable)
       try {
         const app = getFirebaseApp();
-        const functions = getFunctions(app);
+        const functions = getFunctions(app, 'us-central1');
         const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
         await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
       } catch (err) {
@@ -1037,7 +1037,7 @@ export const authService = {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
     const database = getDb();
-    const functions = getFunctions(getFirebaseApp());
+    const functions = getFunctions(getFirebaseApp(), 'us-central1');
 
     try {
       // Attempt to sign in with Firebase Authentication first
@@ -1572,7 +1572,7 @@ export const userService = {
     // Attempt to revoke refresh tokens for the user so currently-signed-in sessions are invalidated.
     try {
       const app = getFirebaseApp();
-      const functions = getFunctions(app);
+      const functions = getFunctions(app, 'us-central1');
       const fn = httpsCallable(functions, 'revokeUserTokens');
       // best-effort: do not fail the lock operation if the callable is unavailable
       const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
@@ -1606,7 +1606,7 @@ export const userService = {
     // Attempt to revoke refresh tokens for the user so currently-signed-in sessions are invalidated.
     try {
       const app = getFirebaseApp();
-      const functions = getFunctions(app);
+      const functions = getFunctions(app, 'us-central1');
       const fn = httpsCallable(functions, 'revokeUserTokens');
       // best-effort: do not fail the lock operation if the callable is unavailable
       const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
@@ -1779,7 +1779,7 @@ export const classroomService = {
   // Call server-side cascade delete (admin-only). Returns deleted related count.
   async deleteCascade(id: string): Promise<{ success: boolean; deletedRelated: number }> {
     const app = getFirebaseApp();
-    const functions = getFunctions(app);
+    const functions = getFunctions(app, 'us-central1');
     const deleteClassroomCascade = httpsCallable(functions, 'deleteClassroomCascade');
     const result = await withRetry(() => deleteClassroomCascade({ classroomId: id }), { attempts: 3, shouldRetry: isNetworkError });
     return result.data as { success: boolean; deletedRelated: number };
@@ -1869,7 +1869,7 @@ export const bookingRequestService = {
     // Notify admins about the new request using the server callable for consistency and permissions
     try {
       const app = getFirebaseApp();
-      const functions = getFunctions(app);
+      const functions = getFunctions(app, 'us-central1');
       const fn = httpsCallable(functions, 'notifyAdminsOfNewRequest');
       await withRetry(() => fn({
         bookingRequestId: ref.id,
@@ -1948,7 +1948,7 @@ export const bookingRequestService = {
   async cancelWithCallable(id: string): Promise<void> {
     try {
       const app = getFirebaseApp();
-      const functions = getFunctions(app);
+      const functions = getFunctions(app, 'us-central1');
       const fn = httpsCallable(functions, 'cancelBookingRequest');
       await withRetry(() => fn({ bookingRequestId: id }), { attempts: 3, shouldRetry: isNetworkError });
     } catch (err) {
@@ -2168,7 +2168,7 @@ export const scheduleService = {
     }
 
     try {
-  const functions = getFunctions();
+  const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const fn = httpsCallable(functions, 'cancelApprovedBooking');
   await withRetry(() => fn({ scheduleId, adminFeedback: fb }), { attempts: 3, shouldRetry: isNetworkError });
       return;
@@ -2338,7 +2338,7 @@ export const signupRequestService = {
     try {
       // Use the new Firebase Functions approach for complete account deletion
       const app = getFirebaseApp();
-      const functions = getFunctions(app);
+      const functions = getFunctions(app, 'us-central1');
   const deleteUserAccount = httpsCallable(functions, 'deleteUserAccount');
       
   // Call the cloud function to delete the user account completely (with retries)
@@ -2370,7 +2370,7 @@ export const signupRequestService = {
   }> {
     try {
       const app = getFirebaseApp();
-      const functions = getFunctions(app);
+      const functions = getFunctions(app, 'us-central1');
       const bulkCleanup = httpsCallable(functions, 'bulkCleanupRejectedAccounts');
       
       // Call the cloud function (with retries)
@@ -2629,7 +2629,7 @@ export const importAllData = (): never => {
 // Admin helper: call server-side deleteUserAccount Cloud Function
 export async function adminDeleteUser(userId: string, hardDelete = false) {
   const app = getFirebaseApp();
-  const functions = getFunctions(app);
+  const functions = getFunctions(app, 'us-central1');
   const fn = httpsCallable(functions, 'deleteUserAccount');
   const result = await withRetry(() => fn({ userId, hardDelete }), { attempts: 3, shouldRetry: isNetworkError });
   return result.data;

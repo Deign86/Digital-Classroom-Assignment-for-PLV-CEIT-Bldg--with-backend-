@@ -53,7 +53,7 @@ export async function logClientError(payload: Omit<ClientErrorRecord, 'createdAt
   // First attempt: call server-side function if available
   try {
     const app = getFirebaseApp();
-    const functions = getFunctions(app);
+    const functions = getFunctions(app, 'us-central1');
     const fn = httpsCallable(functions, 'logClientError');
     const res = await fn(payload as any);
     const anyRes = res as any;

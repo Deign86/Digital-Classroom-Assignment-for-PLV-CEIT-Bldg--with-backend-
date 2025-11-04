@@ -117,7 +117,7 @@ export const createNotification = async (
 ): Promise<string | null> => {
   // Use a callable Cloud Function to create notifications server-side
   const app = getFirebaseApp();
-  const functions = getFunctions(app);
+  const functions = getFunctions(app, 'us-central1');
   const fn = httpsCallable(functions, 'createNotification');
   const payload = {
     userId,
@@ -157,7 +157,7 @@ export const createNotification = async (
 export const acknowledgeNotification = async (id: string, acknowledgedBy: string): Promise<void> => {
   // Use a server-side callable to ensure server timestamps and enforce permissions
   const app = getFirebaseApp();
-  const functions = getFunctions(app);
+  const functions = getFunctions(app, 'us-central1');
   const fn = httpsCallable(functions, 'acknowledgeNotification');
   const result = await withRetry(() => fn({ notificationId: id }), { attempts: 3, shouldRetry: isNetworkError });
   const anyResult = result as any;
@@ -188,7 +188,7 @@ export const acknowledgeNotification = async (id: string, acknowledgedBy: string
 export const acknowledgeNotifications = async (ids: string[], acknowledgedBy: string): Promise<number> => {
   // Prefer a server-side callable that can acknowledge many notifications in one atomic operation
   const app = getFirebaseApp();
-  const functions = getFunctions(app);
+  const functions = getFunctions(app, 'us-central1');
   const fn = httpsCallable(functions, 'acknowledgeNotifications');
   const result = await withRetry(() => fn({ notificationIds: ids }), { attempts: 3, shouldRetry: isNetworkError });
   const anyResult = result as any;

@@ -35,6 +35,8 @@
 - **Push functions:** `registerPushToken`, `unregisterPushToken`, `setPushEnabled`, `sendTestPush` - FCM token management
 - **Scheduled functions:** `expirePastPendingBookings` - runs hourly to expire old pending bookings
 
+**IMPORTANT - Push Notification Behavior:** The `persistAndSendNotification` helper in Cloud Functions checks the user's `pushEnabled` flag before sending FCM messages. Always ensure users have `pushEnabled: true` in their Firestore document for push notifications to work. In-app notifications are ALWAYS created regardless of this flag.
+
 When adding infra-affecting changes, update client usage in `lib/firebaseService.ts`.
 
 ## Push Notifications
