@@ -767,8 +767,12 @@ export default function AdminDashboard({
                     // Use the new changeUserRole function which automatically updates custom claims
                     const result = await customClaimsService.changeUserRole(id, role);
                     
+                    // Only show success toast, not error (error is shown in catch block)
                     if (result.success) {
                       toast.success(result.message);
+                    } else {
+                      // If the function returns success: false, show the error message
+                      toast.error(result.message);
                     }
 
                     // Infer whether the target user has a recent sign-in (active session).
@@ -793,6 +797,7 @@ export default function AdminDashboard({
                   } catch (err: any) {
                     console.error('Change role error', err);
                     const msg = err?.message || 'Failed to change role';
+                    // Show error toast only once
                     toast.error(msg);
                     return { success: false, message: msg };
                   } finally {
