@@ -958,6 +958,7 @@ html {
 
 /* Hide badge when user is authenticated (body will have this class after login) */
 body.authenticated .grecaptcha-badge {
+  display: none !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
