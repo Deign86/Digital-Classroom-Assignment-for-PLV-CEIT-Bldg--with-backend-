@@ -155,34 +155,34 @@ export default function AdminDashboard({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-1">
               <div className="transition-transform hover:rotate-12 hover:scale-110 flex-shrink-0">
-                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <Building2 className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">PLV CEIT Admin Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Classroom Assignment Management System</p>
+                <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">PLV CEIT Admin Dashboard</h1>
+                <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">Classroom Assignment Management System</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+            <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 lg:space-x-4 flex-shrink-0">
               <div className="hidden md:block text-right">
-                <p className="text-sm font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
+                <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
                 <p className="text-xs text-gray-500 whitespace-nowrap">{user.email}</p>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
                 <div className="transition-transform hover:scale-105 active:scale-95">
-                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
-                    <LogOut className="h-4 w-4 sm:mr-2" />
+                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200 text-xs sm:text-sm">
+                    <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1.5 md:mr-2" />
                     <span className="hidden sm:inline">Logout</span>
                   </Button>
                 </div>
                 {showNotifications && (
                   <>
                     {/* Fixed top-right panel (same as FacultyDashboard) */}
-                    <div className="fixed right-4 top-20 z-50">
+                    <div className="fixed right-2 sm:right-4 top-16 sm:top-20 z-50">
                       <NotificationCenter
                         userId={user.id}
                         onClose={() => setShowNotifications(false)}
@@ -202,51 +202,51 @@ export default function AdminDashboard({
         </div>
       </header>
 
-      <div className="p-4 sm:p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+      <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Desktop Tab Layout */}
-          <TabsList className="hidden lg:grid w-full grid-cols-8 mx-auto max-w-full gap-1 p-1">
-            <TabsTrigger value="overview" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
-              <BarChart3 className="h-4 w-4 flex-shrink-0" />
-              <span>Overview</span>
+          <TabsList className="hidden lg:grid w-full grid-cols-8 mx-auto max-w-full gap-0.5 md:gap-1 p-0.5 md:p-1">
+            <TabsTrigger value="overview" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <BarChart3 className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="classrooms" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
-              <Settings className="h-4 w-4 flex-shrink-0" />
-              <span>Classrooms</span>
+            <TabsTrigger value="classrooms" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <Settings className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Classrooms</span>
             </TabsTrigger>
-                <TabsTrigger value="requests" className="flex items-center justify-center space-x-1 text-sm px-2 py-2 relative">
-              <Users className="h-4 w-4 flex-shrink-0" />
-              <span>Classroom Requests</span>
+                <TabsTrigger value="requests" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2 relative">
+              <Users className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Classroom Requests</span>
               {pendingRequests > 0 && (
-                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 min-w-[16px] rounded-full">
+                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[9px] md:text-[10px] px-0.5 md:px-1 py-0 h-3.5 md:h-4 min-w-[14px] md:min-w-[16px] rounded-full">
                   {pendingRequests}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="signups" className="flex items-center justify-center space-x-1 text-sm px-2 py-2 relative">
-              <UserPlus className="h-4 w-4 flex-shrink-0" />
-              <span>Signups</span>
+            <TabsTrigger value="signups" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2 relative">
+              <UserPlus className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Signups</span>
               {pendingSignups > 0 && (
-                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 min-w-[16px] rounded-full">
+                <Badge variant="destructive" className="absolute -top-1 -right-1 text-[9px] md:text-[10px] px-0.5 md:px-1 py-0 h-3.5 md:h-4 min-w-[14px] md:min-w-[16px] rounded-full">
                   {pendingSignups}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
-              <Calendar className="h-4 w-4 flex-shrink-0" />
-              <span>Schedule</span>
+            <TabsTrigger value="schedule" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Schedule</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
-              <FileText className="h-4 w-4 flex-shrink-0" />
-              <span>Reports</span>
+            <TabsTrigger value="reports" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <FileText className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Reports</span>
             </TabsTrigger>
-            <TabsTrigger value="user-management" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
-              <Users className="h-4 w-4 flex-shrink-0" />
-              <span>Users</span>
+            <TabsTrigger value="user-management" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <Users className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center justify-center space-x-1 text-sm px-2 py-2">
-              <UserCog className="h-4 w-4 flex-shrink-0" />
-              <span>Settings</span>
+            <TabsTrigger value="settings" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <UserCog className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
           
@@ -299,23 +299,23 @@ export default function AdminDashboard({
             <div className="tab-scroll-indicator"></div>
           </div>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-5 md:space-y-6">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 animate-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6 animate-in">
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 
                   className="h-full stat-card-clickable cursor-pointer" 
                   onClick={() => setActiveTab('classrooms')}
                   title="Click to view classroom management"
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-5 md:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Classrooms</p>
-                        <p className="text-3xl font-bold text-gray-900">{totalClassrooms}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-600">Total Classrooms</p>
+                        <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">{totalClassrooms}</p>
                       </div>
                       <div className="transition-transform hover:rotate-12">
-                        <Building2 className="h-8 w-8 text-blue-600" />
+                        <Building2 className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-blue-600" />
                       </div>
                     </div>
                   </CardContent>

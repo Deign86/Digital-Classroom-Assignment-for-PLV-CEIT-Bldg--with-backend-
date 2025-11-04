@@ -288,31 +288,35 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col space-y-4">
+    <div className="space-y-4 sm:space-y-5 md:space-y-6">
+      <div className="flex flex-col space-y-3 sm:space-y-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Classroom Reservation Management</h2>
-          <p className="text-gray-600 mt-1">Review and manage classroom reservation requests</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Classroom Reservation Management</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Review and manage classroom reservation requests</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Desktop: regular grid tabs (visible on sm+) */}
-          <TabsList className="hidden sm:grid w-full grid-cols-4 h-12">
-            <TabsTrigger value="pending" className="flex items-center justify-center gap-2">
-              <Clock className="h-4 w-4" />
-              Pending ({pendingRequests.length})
+          <TabsList className="hidden sm:grid w-full grid-cols-4 h-11 md:h-12">
+            <TabsTrigger value="pending" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden md:inline">Pending ({pendingRequests.length})</span>
+              <span className="md:hidden">({pendingRequests.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="approved" className="flex items-center justify-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Approved ({approvedRequests.length})
+            <TabsTrigger value="approved" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden md:inline">Approved ({approvedRequests.length})</span>
+              <span className="md:hidden">({approvedRequests.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center justify-center gap-2">
-              <XCircle className="h-4 w-4" />
-              Rejected ({rejectedRequests.length})
+            <TabsTrigger value="rejected" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <XCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden md:inline">Rejected ({rejectedRequests.length})</span>
+              <span className="md:hidden">({rejectedRequests.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="expired" className="flex items-center justify-center gap-2">
-              <Clock className="h-4 w-4 text-gray-500" />
-              Expired ({expiredRequests.length})
+            <TabsTrigger value="expired" className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+              <span className="hidden md:inline">Expired ({expiredRequests.length})</span>
+              <span className="md:hidden">({expiredRequests.length})</span>
             </TabsTrigger>
           </TabsList>
 

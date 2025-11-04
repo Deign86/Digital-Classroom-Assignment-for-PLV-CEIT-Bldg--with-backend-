@@ -351,37 +351,37 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto px-2 sm:px-0">
       <Card className="transition-shadow duration-200 hover:shadow-lg animate-in">
-        <CardHeader>
-          <CardTitle>Request a Classroom</CardTitle>
-          <CardDescription>Submit a new classroom reservation request</CardDescription>
+        <CardHeader className="p-4 sm:p-5 md:p-6">
+          <CardTitle className="text-lg sm:text-xl md:text-2xl">Request a Classroom</CardTitle>
+          <CardDescription className="text-sm sm:text-base">Submit a new classroom reservation request</CardDescription>
         </CardHeader>
-        <CardContent className="relative overflow-visible">
+        <CardContent className="relative overflow-visible p-4 sm:p-5 md:p-6">
           <form 
             onSubmit={handleSubmit} 
-            className="space-y-6"
+            className="space-y-4 sm:space-y-5 md:space-y-6"
             style={{ isolation: 'auto', transform: 'none' }}
           >
               {/* Classroom Selection */}
               <div className="space-y-2">
-                <Label htmlFor="classroom">Classroom *</Label>
+                <Label htmlFor="classroom" className="text-sm sm:text-base">Classroom *</Label>
                 <Select value={formData.classroomId} onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, classroomId: value }));
                   if (errors.classroomId) setErrors(prev => ({ ...prev, classroomId: '' }));
                 }}>
-                  <SelectTrigger id="classroom" className={`transition-all duration-200 focus:scale-105 ${errors.classroomId ? 'border-red-500' : ''}`}>
+                  <SelectTrigger id="classroom" className={`transition-all duration-200 focus:scale-105 h-10 sm:h-11 md:h-12 text-sm sm:text-base ${errors.classroomId ? 'border-red-500' : ''}`}>
                     <SelectValue placeholder="Select a classroom" />
                   </SelectTrigger>
                 <SelectContent>
                   {availableClassrooms.length === 0 ? (
-                    <div className="p-2 text-sm text-gray-500">No available classrooms</div>
+                    <div className="p-2 text-xs sm:text-sm text-gray-500">No available classrooms</div>
                   ) : (
                     availableClassrooms.map((classroom) => (
                       <SelectItem key={classroom.id} value={classroom.id}>
                         <div className="flex items-center justify-between w-full">
-                          <span>{classroom.name}</span>
-                          <div className="flex items-center space-x-2 text-xs text-gray-500 ml-2">
+                          <span className="text-sm sm:text-base">{classroom.name}</span>
+                          <div className="flex items-center space-x-1 sm:space-x-2 text-xs text-gray-500 ml-2">
                             <Users className="h-3 w-3" />
                             <span>{classroom.capacity}</span>
                           </div>
@@ -392,7 +392,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   </SelectContent>
                 </Select>
                 {errors.classroomId && (
-                  <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1 mt-1">
                     <AlertTriangle className="h-3 w-3" />
                     {errors.classroomId}
                   </p>
@@ -409,20 +409,20 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
                     <Card className="bg-blue-50 border-blue-200 transition-shadow duration-200 hover:shadow-md">
-                      <CardContent className="p-4">
+                      <CardContent className="p-3 sm:p-4">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium">{selectedClassroom.name}</h4>
+                            <h4 className="font-medium text-sm sm:text-base">{selectedClassroom.name}</h4>
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
                             >
-                              <Badge variant="outline">{selectedClassroom.capacity} seats</Badge>
+                              <Badge variant="outline" className="text-xs sm:text-sm">{selectedClassroom.capacity} seats</Badge>
                             </motion.div>
                           </div>
-                          <div className="flex items-center space-x-1 text-sm text-gray-600">
-                            <MapPin className="h-4 w-4" />
+                          <div className="flex items-center space-x-1 text-xs sm:text-sm text-gray-600">
+                            <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                             <span>{selectedClassroom.building}, Floor {selectedClassroom.floor}</span>
                           </div>
                           {selectedClassroom.equipment.length > 0 && (
@@ -443,7 +443,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                                     stiffness: 300 
                                   }}
                                 >
-                                  <Badge variant="secondary" className="text-xs inline-flex items-center">
+                                  <Badge variant="secondary" className="text-[10px] sm:text-xs inline-flex items-center">
                                     {getIconForEquipment(eq)}
                                     <span className="align-middle">{eq}</span>
                                   </Badge>
@@ -460,7 +460,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
 
               {/* Date Selection */}
               <div className="space-y-2">
-                <Label htmlFor="date">Date *</Label>
+                <Label htmlFor="date" className="text-sm sm:text-base">Date *</Label>
                 {isSmallPhone ? (
                   <div>
                     <input
@@ -484,10 +484,10 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                           setFormData(prev => ({ ...prev, date: v }));
                         }
                       }} 
-                      className="w-full px-3 py-2 bg-surface border rounded-md"
+                      className="w-full px-3 py-2 h-10 sm:h-11 md:h-12 text-sm sm:text-base bg-surface border rounded-md"
                     />
                     {errors.date && (
-                      <p className="text-sm text-red-600 flex items-center gap-1 mt-1">
+                      <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1 mt-1">
                         <AlertTriangle className="h-3 w-3" />
                         {errors.date}
                       </p>
@@ -498,9 +498,9 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="w-full text-left px-3 py-2 bg-surface hover:bg-muted/50 border rounded-md flex items-center justify-between"
+                        className="w-full text-left px-3 py-2 h-10 sm:h-11 md:h-12 text-sm sm:text-base bg-surface hover:bg-muted/50 border rounded-md flex items-center justify-between"
                       > 
-                        <span className={`text-sm ${formData.date ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <span className={`text-sm sm:text-base ${formData.date ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {formData.date ? formatISOToMDY(formData.date) : 'Select a date'}
                         </span>
                         <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -532,21 +532,21 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 )}
               </div>
               {errors.date && !isSmallPhone && (
-                <p className="text-sm text-red-600 flex items-center gap-1 -mt-1">
+                <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1 -mt-1">
                   <AlertTriangle className="h-3 w-3" />
                   {errors.date}
                 </p>
               )}
 
               {/* Time Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startTime">Start Time *</Label>
+                  <Label htmlFor="startTime" className="text-sm sm:text-base">Start Time *</Label>
                   <Select value={formData.startTime} onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, startTime: value }));
                     if (errors.startTime) setErrors(prev => ({ ...prev, startTime: '' }));
                   }}>
-                    <SelectTrigger id="startTime" className={`transition-all duration-200 focus:scale-105 ${errors.startTime ? 'border-red-500' : ''}`}>
+                    <SelectTrigger id="startTime" className={`transition-all duration-200 focus:scale-105 h-10 sm:h-11 md:h-12 text-sm sm:text-base ${errors.startTime ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Select start time" />
                     </SelectTrigger>
                   <SelectContent>

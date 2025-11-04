@@ -325,27 +325,27 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4 sm:space-y-6 lg:space-y-8">
       {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">Welcome Back</h1>
-        <p className="text-gray-600">Sign in to access the Digital Classroom Assignment System</p>
+      <div className="text-center space-y-2 sm:space-y-3 lg:space-y-4">
+        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900">Welcome Back</h1>
+        <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">Sign in to access the Digital Classroom Assignment System</p>
       </div>
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full overflow-hidden">
-          <TabsTrigger value="login">Faculty Sign In</TabsTrigger>
-          <TabsTrigger value="signup">Faculty Request</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden">
+          <TabsTrigger value="login" className="text-sm sm:text-base">Faculty Sign In</TabsTrigger>
+          <TabsTrigger value="signup" className="text-sm sm:text-base">Faculty Request</TabsTrigger>
         </TabsList>
       
-        <TabsContent value="login" className="space-y-8 mt-8">
-          <form onSubmit={handleSubmit} className="space-y-8" noValidate>
-            <div className="space-y-6">
+        <TabsContent value="login" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 max-w-md mx-auto" noValidate>
+            <div className="space-y-5 sm:space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-sm sm:text-base">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   <Input
                     id="email"
                     type="email"
@@ -357,12 +357,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, email: '' }));
                       }
                     }}
-                    className={`pl-10 h-12 rounded-xl ${loginErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-14 rounded-xl text-sm sm:text-base ${loginErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                 </div>
                 {loginErrors.email && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {loginErrors.email}
                   </p>
@@ -370,9 +370,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm sm:text-base">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   <Input
                     id="password"
                     type={showLoginPassword ? 'text' : 'password'}
@@ -384,7 +384,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, password: '' }));
                       }
                     }}
-                    className={`pl-10 h-12 rounded-xl ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-14 rounded-xl text-sm sm:text-base ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -395,11 +395,11 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     aria-pressed={showLoginPassword}
                     title={showLoginPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showLoginPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showLoginPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </button>
                 </div>
                 {loginErrors.password && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {loginErrors.password}
                   </p>
@@ -408,7 +408,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <PasswordResetDialog>
                     <button
                       type="button"
-                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
                     >
                       Forgot password?
                     </button>
@@ -418,7 +418,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
             </div>
 
             {isLocked && (
-              <div className="mb-3 text-sm text-red-600">
+              <div className="mb-3 text-xs sm:text-sm text-red-600">
                 {accountLockedMessage ? (
                   <span className="font-medium">{accountLockedMessage}</span>
                 ) : (
@@ -433,8 +433,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               aria-busy={isLoading}
               className={
                 isLoading
-                  ? 'w-full h-12 rounded-full px-6 bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
-                  : 'w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+                  ? 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
               }
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
@@ -442,14 +442,14 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           </form>
         </TabsContent>
 
-        <TabsContent value="signup" className="space-y-8 mt-8">
-          <form onSubmit={handleSignup} className="space-y-8" noValidate>
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+        <TabsContent value="signup" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
+          <form onSubmit={handleSignup} className="space-y-6 sm:space-y-8 max-w-2xl mx-auto" noValidate>
+            <div className="space-y-4 sm:space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-firstName">First Name</Label>
+                  <Label htmlFor="signup-firstName" className="text-sm sm:text-base">First Name</Label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                     <Input
                       id="signup-firstName"
                       type="text"
@@ -461,21 +461,21 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, firstName: '' }));
                         }
                       }}
-                      className={`pl-10 h-12 rounded-xl ${signupErrors.firstName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.firstName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                   </div>
                   {signupErrors.firstName && (
-                    <p className="text-sm text-red-600 flex items-center gap-1">
+                    <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
                       {signupErrors.firstName}
                     </p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-lastName">Last Name</Label>
+                  <Label htmlFor="signup-lastName" className="text-sm sm:text-base">Last Name</Label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                     <Input
                       id="signup-lastName"
                       type="text"
@@ -487,12 +487,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, lastName: '' }));
                         }
                       }}
-                      className={`pl-10 h-12 rounded-xl ${signupErrors.lastName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.lastName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                   </div>
                   {signupErrors.lastName && (
-                    <p className="text-sm text-red-600 flex items-center gap-1">
+                    <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
                       {signupErrors.lastName}
                     </p>
@@ -501,9 +501,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="signup-email">Email Address</Label>
+                <Label htmlFor="signup-email" className="text-sm sm:text-base">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   <Input
                     id="signup-email"
                     type="email"
@@ -515,12 +515,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setSignupErrors(prev => ({ ...prev, email: '' }));
                       }
                     }}
-                    className={`pl-10 h-12 rounded-xl ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                 </div>
                 {signupErrors.email && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {signupErrors.email}
                   </p>
@@ -528,7 +528,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="signup-department">Department</Label>
+                <Label htmlFor="signup-department" className="text-sm sm:text-base">Department</Label>
                 <Select
                   value={signupData.department}
                   onValueChange={(value: string) => {
@@ -539,7 +539,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   }}
                   required
                 >
-                  <SelectTrigger className={`h-12 rounded-xl ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
+                  <SelectTrigger className={`h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
                     <SelectValue placeholder="Select your department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -549,16 +549,16 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   </SelectContent>
                 </Select>
                 {signupErrors.department && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {signupErrors.department}
                   </p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-password">Create Password</Label>
+                <Label htmlFor="signup-password" className="text-sm sm:text-base">Create Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   <Input
                     id="signup-password"
                     type={showSignupPassword ? 'text' : 'password'}
@@ -570,7 +570,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setSignupErrors(prev => ({ ...prev, password: '' }));
                       }
                     }}
-                    className={`pl-10 h-12 rounded-xl ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -581,18 +581,18 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     aria-pressed={showSignupPassword}
                     title={showSignupPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showSignupPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showSignupPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </button>
                 </div>
                 {signupErrors.password ? (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {signupErrors.password}
                   </p>
                 ) : (
-                  <div className="text-sm text-gray-700 text-left">
+                  <div className="text-xs sm:text-sm text-gray-700 text-left">
                     <p className="font-medium mb-1">Password Requirements:</p>
-                    <ul className="list-disc list-inside space-y-1 text-xs text-gray-600 text-left pl-4">
+                    <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-gray-600 text-left pl-3 sm:pl-4">
                       <li>At least 8 characters long</li>
                       <li>Contains uppercase and lowercase letters</li>
                       <li>Contains at least one number</li>
@@ -603,9 +603,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                <Label htmlFor="signup-confirm-password" className="text-sm sm:text-base">Confirm Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   <Input
                     id="signup-confirm-password"
                     type={showSignupConfirmPassword ? 'text' : 'password'}
@@ -617,7 +617,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
                       }
                     }}
-                    className={`pl-10 h-12 rounded-xl ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -628,22 +628,22 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     aria-pressed={showSignupConfirmPassword}
                     title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                   >
-                    {showSignupConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showSignupConfirmPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </button>
                 </div>
                 {signupErrors.confirmPassword && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {signupErrors.confirmPassword}
                   </p>
                 )}
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Lock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-900">Account Review</p>
+                    <p className="text-xs sm:text-sm font-medium text-blue-900">Account Review</p>
                     <p className="text-xs text-blue-700">
                       You can sign in with this password once the administrator approves your request. If the request is rejected, the account will remain inactive.
                     </p>
@@ -658,8 +658,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               aria-busy={signupIsLoading}
               className={
                 signupIsLoading
-                  ? 'w-full h-12 rounded-full px-6 bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
-                  : 'w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+                  ? 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
               }
             >
               {signupIsLoading ? 'Requesting...' : 'Request Faculty Account'}
