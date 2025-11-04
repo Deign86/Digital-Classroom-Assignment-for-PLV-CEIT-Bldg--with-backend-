@@ -93,6 +93,35 @@ This document outlines all new security features implemented and provides step-b
 
 ---
 
+### 🟡 HIGH PRIORITY FIXES (CONTINUED)
+
+#### 7. ✅ Rate Limiting Cloud Functions
+**What Changed:**
+- Implemented 3 Cloud Functions for comprehensive rate limiting
+- **ALL 3 FUNCTIONS SUCCESSFULLY DEPLOYED (100%)**
+
+**Functions Deployed:**
+1. **checkLoginRateLimit** - 10 attempts per IP per 15 minutes
+2. **checkBookingRateLimit** - 5 requests per user per hour
+3. **checkAdminActionRateLimit** - 30 actions per user per minute
+
+**Features:**
+- Window-based rate limiting with automatic reset
+- Atomic Firestore operations to prevent race conditions
+- Stores data in `rateLimits` collection
+- Returns clear error messages with reset times
+- IP-based tracking for login attempts
+- User-based tracking for booking/admin actions
+
+**Files Modified:**
+- `plv-classroom-assignment-functions/src/index.ts` (+240 lines)
+
+**Deployment Status:**
+- ✅ All 3/3 functions deployed to production (`us-central1`)
+- ✅ All functions operational and ready for testing
+
+---
+
 ## 🧪 **TESTING PROCEDURES**
 
 ### **PRE-TEST SETUP**
@@ -429,7 +458,120 @@ Then check console - should be mostly empty.
 
 ---
 
-### **TEST 8: Build and Production Deployment**
+### **TEST 8: Rate Limiting Functions (NEW)**
+
+**Objective:** Verify all rate limiting Cloud Functions work correctly
+
+#### A. Login Rate Limiting
+
+**Steps:**
+1. Open login page in **incognito window**
+2. Enter any email (e.g., `test@test.com`)
+3. Enter wrong password and click Login
+4. Repeat rapidly 11 times
+5. Observe error messages
+
+#### ✅ Expected Results:
+- First 10 attempts show "Invalid credentials" or similar
+- 11th attempt shows rate limit error:
+  - "Too many login attempts. Please try again later."
+  - Shows reset time (15 minutes from first attempt)
+- Cannot attempt login even with correct password
+- After 15 minutes, can try again
+
+#### ❌ Failure Indicators:
+- Can make unlimited login attempts
+- No rate limit error shown
+- Rate limit not enforced
+- Incorrect reset time shown
+
+---
+
+#### B. Booking Rate Limiting
+
+**Steps:**
+1. Login as **Faculty** user
+2. Go to Room Booking page
+3. Create a booking request:
+   - Select any classroom
+   - Select tomorrow's date
+   - Select any time slot
+   - Enter purpose
+   - Submit
+4. Repeat rapidly 6 times (change time slot each time)
+5. Observe messages
+
+#### ✅ Expected Results:
+- First 5 bookings submit successfully
+- After 3rd booking, should see warning: "X booking requests remaining this hour"
+- 6th booking shows rate limit error:
+  - "Too many booking requests. Please try again later."
+  - Shows reset time (1 hour from first booking)
+- Cannot submit more bookings until reset time
+- After 1 hour, can create bookings again
+
+#### ❌ Failure Indicators:
+- Can create unlimited bookings
+- No rate limit warning or error
+- Rate limit not enforced
+- Bookings created but not counted
+
+---
+
+#### C. Admin Rate Limiting
+
+**Steps:**
+1. Login as **Admin** user
+2. Go to Request Approval page
+3. Perform rapid admin actions:
+   - Approve 30+ requests rapidly, OR
+   - Reject 30+ requests rapidly, OR
+   - Mix of approve/reject actions
+4. Observe messages after 30 actions
+
+#### ✅ Expected Results:
+- First 30 actions complete successfully
+- 31st action shows rate limit error:
+  - "Too many admin actions. Please slow down."
+  - Shows reset time (1 minute from first action)
+- Cannot perform more actions until reset time
+- After 1 minute, can perform actions again
+- Counter resets properly
+
+#### ❌ Failure Indicators:
+- Can perform unlimited admin actions
+- No rate limit error shown
+- Rate limit not enforced
+- Actions slow down but no error message
+
+---
+
+#### D. Rate Limit Error Handling
+
+**Steps:**
+1. Test unauthenticated access:
+   - Open browser console
+   - Call `checkBookingRateLimit()` before login
+2. Test non-admin access:
+   - Login as Faculty
+   - Try to call `checkAdminActionRateLimit()`
+
+#### ✅ Expected Results:
+- Booking/Admin functions require authentication
+- Clear error: "User must be authenticated"
+- Admin function checks role
+- Clear error: "User must be an admin"
+- No server crashes or 500 errors
+
+#### ❌ Failure Indicators:
+- Functions execute without authentication
+- No role checking for admin function
+- Server errors or crashes
+- Unclear error messages
+
+---
+
+### **TEST 9: Build and Production Deployment**
 
 **Objective:** Verify production build works correctly
 
@@ -507,13 +649,40 @@ Mark each test as you complete it:
 - [ ] TEST 7B: Session timeout works
 - [ ] TEST 7C: Password reset rate limiting works
 
+### Rate Limiting Tests (Must Pass - NEW)
+- [ ] TEST 8A: Login rate limiting (10/IP/15min)
+- [ ] TEST 8B: Booking rate limiting (5/user/hour)
+- [ ] TEST 8C: Admin rate limiting (30/user/min)
+- [ ] TEST 8D: Rate limit error handling
+
 ### Production Tests (Must Pass)
-- [ ] TEST 8: Build succeeds
-- [ ] TEST 9: Mobile responsive
+- [ ] TEST 9: Build succeeds
+- [ ] TEST 10: Mobile responsive
 
 ---
 
 ## 🐛 **TROUBLESHOOTING**
+
+### Issue: Rate limiting not working
+**Solution:**
+1. Verify all 3 functions deployed: `firebase functions:list`
+2. Check Firebase Console → Functions for deployment status
+3. Ensure Cloud Functions properly initialized in frontend
+4. Check browser console for CORS or network errors
+5. Verify Firestore collection `rateLimits` is accessible
+
+### Issue: Rate limit error "User must be authenticated"
+**Solution:**
+1. Ensure user is logged in before calling booking/admin rate limits
+2. Check authentication token is valid
+3. Verify `request.auth` is populated in Cloud Function
+
+### Issue: Admin rate limiting not enforcing
+**Solution:**
+1. Check user has admin role in Firestore `users` collection
+2. Verify role check in `checkAdminActionRateLimit` function
+3. Ensure admin actions call the rate limit function
+4. Check function logs in Firebase Console
 
 ### Issue: reCAPTCHA badge doesn't appear
 **Solution:**
@@ -555,12 +724,14 @@ The implementation is ready for deployment if:
 1. ✅ All Critical Tests pass
 2. ✅ All High Priority Tests pass
 3. ✅ All Security Tests pass
-4. ✅ Production build succeeds
-5. ✅ No console errors in production
-6. ✅ Mobile responsive works
-7. ✅ No regressions in existing features
-8. ✅ reCAPTCHA badge behavior correct
-9. ✅ Documentation complete
+4. ✅ All Rate Limiting Tests pass (NEW)
+5. ✅ Production build succeeds
+6. ✅ No console errors in production
+7. ✅ Mobile responsive works
+8. ✅ No regressions in existing features
+9. ✅ reCAPTCHA badge behavior correct
+10. ✅ Rate limiting functions operational (NEW)
+11. ✅ Documentation complete
 
 ---
 
@@ -569,8 +740,9 @@ The implementation is ready for deployment if:
 - **Test Environment:** Development server or production preview
 - **Browser:** Test in Chrome, Firefox, Safari (if possible)
 - **Devices:** Desktop + at least one mobile size
-- **Duration:** Complete testing should take 30-45 minutes
+- **Duration:** Complete testing should take **45-60 minutes** (updated for rate limiting tests)
 - **Report Issues:** Document any failures with screenshots and console logs
+- **Rate Limiting:** May need to wait for reset windows (15min, 1hr) or use different IPs/accounts
 
 ---
 
@@ -598,10 +770,17 @@ Be prepared to demonstrate:
    - Show error boundaries in action (optional)
    - Explain graceful degradation
 
+5. **Rate Limiting** (NEW)
+   - Demonstrate login rate limiting (10 attempts/IP/15min)
+   - Show booking rate limiting (5 requests/user/hour)
+   - Explain admin action throttling (30 actions/user/min)
+   - Show error messages and reset times
+   - Discuss DDoS mitigation strategies
+
 ---
 
-**Testing Guide Version:** 1.0  
+**Testing Guide Version:** 1.1  
 **Last Updated:** November 4, 2025  
-**Status:** Ready for Testing
+**Status:** Ready for Testing - Rate Limiting Tests Added
 
 Good luck! 🚀
