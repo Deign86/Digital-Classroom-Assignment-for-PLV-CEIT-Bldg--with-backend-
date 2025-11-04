@@ -1687,3 +1687,243 @@ export const refreshMyCustomClaims = onCall(async (request: CallableRequest) => 
     throw new HttpsError('internal', `Failed to refresh custom claims: ${err.message}`);
   }
 });
+
+// ========================================
+// Rate Limiting Cloud Functions
+// ========================================
+
+/**
+ * Check login rate limit
+ * Limits: 10 login attempts per IP per 15 minutes
+ * Stores rate limit data in Firestore collection: rateLimits/login/{ip}
+ */
+export const checkLoginRateLimit = onCall(async (request: CallableRequest) => {
+  try {
+    // Get IP from request context (available in firebase-functions v2)
+    const ip = (request as any).rawRequest?.ip || 'unknown';
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000; // 15 minutes
+    const maxAttempts = 10;
+
+    logger.info(`Checking login rate limit for IP: ${ip}`);
+
+    const rateLimitRef = admin.firestore().collection('rateLimits').doc(`login_${ip}`);
+    const rateLimitDoc = await rateLimitRef.get();
+
+    if (rateLimitDoc.exists) {
+      const data = rateLimitDoc.data()!;
+      const resetTime = data.resetTime?.toMillis() || 0;
+
+      // Reset window if expired
+      if (now > resetTime) {
+        await rateLimitRef.set({
+          attempts: 1,
+          resetTime: admin.firestore.Timestamp.fromMillis(now + windowMs),
+          ip: ip,
+          type: 'login',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs };
+      }
+
+      // Check if limit exceeded
+      if (data.attempts >= maxAttempts) {
+        logger.warn(`Login rate limit exceeded for IP: ${ip}`);
+        return { 
+          allowed: false, 
+          remaining: 0, 
+          resetAt: resetTime,
+          error: 'Too many login attempts. Please try again later.'
+        };
+      }
+
+      // Increment attempts
+      await rateLimitRef.update({
+        attempts: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { allowed: true, remaining: maxAttempts - (data.attempts + 1), resetAt: resetTime };
+    }
+
+    // First attempt
+    await rateLimitRef.set({
+      attempts: 1,
+      resetTime: admin.firestore.Timestamp.fromMillis(now + windowMs),
+      ip: ip,
+      type: 'login',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs };
+  } catch (err: any) {
+    logger.error('Error checking login rate limit:', err);
+    throw new HttpsError('internal', `Failed to check login rate limit: ${err.message}`);
+  }
+});
+
+/**
+ * Check booking rate limit
+ * Limits: 5 booking requests per user per hour
+ * Stores rate limit data in Firestore collection: rateLimits/booking/{userId}
+ */
+export const checkBookingRateLimit = onCall(async (request: CallableRequest) => {
+  try {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = request.auth.uid;
+    const now = Date.now();
+    const windowMs = 60 * 60 * 1000; // 1 hour
+    const maxAttempts = 5;
+
+    logger.info(`Checking booking rate limit for user: ${userId}`);
+
+    const rateLimitRef = admin.firestore().collection('rateLimits').doc(`booking_${userId}`);
+    const rateLimitDoc = await rateLimitRef.get();
+
+    if (rateLimitDoc.exists) {
+      const data = rateLimitDoc.data()!;
+      const resetTime = data.resetTime?.toMillis() || 0;
+
+      // Reset window if expired
+      if (now > resetTime) {
+        await rateLimitRef.set({
+          attempts: 1,
+          resetTime: admin.firestore.Timestamp.fromMillis(now + windowMs),
+          userId: userId,
+          type: 'booking',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs };
+      }
+
+      // Check if limit exceeded
+      if (data.attempts >= maxAttempts) {
+        logger.warn(`Booking rate limit exceeded for user: ${userId}`);
+        return { 
+          allowed: false, 
+          remaining: 0, 
+          resetAt: resetTime,
+          error: 'Too many booking requests. Please try again later.'
+        };
+      }
+
+      // Increment attempts
+      await rateLimitRef.update({
+        attempts: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { allowed: true, remaining: maxAttempts - (data.attempts + 1), resetAt: resetTime };
+    }
+
+    // First attempt
+    await rateLimitRef.set({
+      attempts: 1,
+      resetTime: admin.firestore.Timestamp.fromMillis(now + windowMs),
+      userId: userId,
+      type: 'booking',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs };
+  } catch (err: any) {
+    logger.error('Error checking booking rate limit:', err);
+    
+    if (err instanceof HttpsError) {
+      throw err;
+    }
+
+    throw new HttpsError('internal', `Failed to check booking rate limit: ${err.message}`);
+  }
+});
+
+/**
+ * Check admin action rate limit
+ * Limits: 30 admin actions per user per minute
+ * Stores rate limit data in Firestore collection: rateLimits/admin/{userId}
+ */
+export const checkAdminActionRateLimit = onCall(async (request: CallableRequest) => {
+  try {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    const userId = request.auth.uid;
+    
+    // Verify admin role from Firestore
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+      throw new HttpsError('permission-denied', 'User must be an admin');
+    }
+
+    const now = Date.now();
+    const windowMs = 60 * 1000; // 1 minute
+    const maxAttempts = 30;
+
+    logger.info(`Checking admin action rate limit for user: ${userId}`);
+
+    const rateLimitRef = admin.firestore().collection('rateLimits').doc(`admin_${userId}`);
+    const rateLimitDoc = await rateLimitRef.get();
+
+    if (rateLimitDoc.exists) {
+      const data = rateLimitDoc.data()!;
+      const resetTime = data.resetTime?.toMillis() || 0;
+
+      // Reset window if expired
+      if (now > resetTime) {
+        await rateLimitRef.set({
+          attempts: 1,
+          resetTime: admin.firestore.Timestamp.fromMillis(now + windowMs),
+          userId: userId,
+          type: 'admin',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs };
+      }
+
+      // Check if limit exceeded
+      if (data.attempts >= maxAttempts) {
+        logger.warn(`Admin action rate limit exceeded for user: ${userId}`);
+        return { 
+          allowed: false, 
+          remaining: 0, 
+          resetAt: resetTime,
+          error: 'Too many admin actions. Please slow down.'
+        };
+      }
+
+      // Increment attempts
+      await rateLimitRef.update({
+        attempts: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { allowed: true, remaining: maxAttempts - (data.attempts + 1), resetAt: resetTime };
+    }
+
+    // First attempt
+    await rateLimitRef.set({
+      attempts: 1,
+      resetTime: admin.firestore.Timestamp.fromMillis(now + windowMs),
+      userId: userId,
+      type: 'admin',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { allowed: true, remaining: maxAttempts - 1, resetAt: now + windowMs };
+  } catch (err: any) {
+    logger.error('Error checking admin action rate limit:', err);
+    
+    if (err instanceof HttpsError) {
+      throw err;
+    }
+
+    throw new HttpsError('internal', `Failed to check admin action rate limit: ${err.message}`);
+  }
+});
