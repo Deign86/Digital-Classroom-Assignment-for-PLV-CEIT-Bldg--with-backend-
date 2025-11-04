@@ -26,6 +26,7 @@ if (typeof window !== 'undefined') {
 const loadRecaptchaScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!RECAPTCHA_SITE_KEY) {
+      console.error('[reCAPTCHA] Site key not configured - cannot load script');
       logger.warn('reCAPTCHA site key not configured');
       resolve();
       return;
@@ -33,6 +34,7 @@ const loadRecaptchaScript = (): Promise<void> => {
 
     // Check if script already loaded
     if (window.grecaptcha?.enterprise) {
+      console.log('[reCAPTCHA] Script already loaded');
       resolve();
       return;
     }
@@ -40,24 +42,39 @@ const loadRecaptchaScript = (): Promise<void> => {
     // Check if script tag already exists
     const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]');
     if (existingScript) {
-      existingScript.addEventListener('load', () => resolve());
-      existingScript.addEventListener('error', reject);
+      console.log('[reCAPTCHA] Script tag already exists, waiting for load');
+      existingScript.addEventListener('load', () => {
+        console.log('[reCAPTCHA] Existing script loaded successfully');
+        resolve();
+      });
+      existingScript.addEventListener('error', (error) => {
+        console.error('[reCAPTCHA] Existing script failed to load:', error);
+        reject(error);
+      });
       return;
     }
 
     // Create and load script
+    const scriptUrl = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
+    console.log('[reCAPTCHA] Creating script tag with URL:', scriptUrl);
+    
     const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.src = scriptUrl;
     script.async = true;
     script.defer = true;
     script.onload = () => {
+      console.log('[reCAPTCHA] Script loaded successfully, grecaptcha available:', !!window.grecaptcha);
       logger.log('reCAPTCHA script loaded successfully');
       resolve();
     };
     script.onerror = (error) => {
+      console.error('[reCAPTCHA] Script failed to load:', error);
+      console.error('[reCAPTCHA] Script URL that failed:', scriptUrl);
       logger.error('Failed to load reCAPTCHA script:', error);
       reject(new Error('Failed to load reCAPTCHA'));
     };
+    
+    console.log('[reCAPTCHA] Appending script to document head');
     document.head.appendChild(script);
   });
 };
@@ -96,9 +113,17 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   // Load reCAPTCHA script on component mount
   useEffect(() => {
     if (typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
-      loadRecaptchaScript().catch((error) => {
-        logger.error('Failed to load reCAPTCHA on mount:', error);
-      });
+      console.log('[reCAPTCHA] Component mounted, starting script load');
+      loadRecaptchaScript()
+        .then(() => {
+          console.log('[reCAPTCHA] Load complete');
+        })
+        .catch((error) => {
+          console.error('[reCAPTCHA] Failed to load on mount:', error);
+          logger.error('Failed to load reCAPTCHA on mount:', error);
+        });
+    } else {
+      console.warn('[reCAPTCHA] Not loading - window:', typeof window, 'siteKey:', !!RECAPTCHA_SITE_KEY);
     }
   }, []);
 
