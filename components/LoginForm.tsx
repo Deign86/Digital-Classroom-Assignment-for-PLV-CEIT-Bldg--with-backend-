@@ -285,7 +285,10 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           logger.log('reCAPTCHA token obtained for signup');
         } catch (recaptchaError) {
           logger.error('reCAPTCHA execution failed:', recaptchaError);
-          toast.error('Security verification failed. Please try again.');
+          const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : 'Unknown error';
+          toast.error(`Security verification failed: ${errorMessage}. Please refresh and try again.`, {
+            duration: 5000,
+          });
           return;
         }
       } else {
