@@ -13,6 +13,7 @@ import { Label } from './ui/label';
 import { Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../lib/firebaseService';
+import { logger } from '../lib/logger';
 
 interface PasswordResetDialogProps {
   children: React.ReactNode;
@@ -23,6 +24,8 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [lastResetTime, setLastResetTime] = useState<number>(0);
+  const RESET_COOLDOWN_MS = 60000; // 1 minute cooldown
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +42,19 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
       return;
     }
 
+    // Check rate limiting cooldown
+    const now = Date.now();
+    const timeSinceLastReset = now - lastResetTime;
+    
+    if (timeSinceLastReset < RESET_COOLDOWN_MS) {
+      const secondsRemaining = Math.ceil((RESET_COOLDOWN_MS - timeSinceLastReset) / 1000);
+      toast.error(`Please wait ${secondsRemaining} second${secondsRemaining > 1 ? 's' : ''}`, {
+        description: 'This prevents email spam. Try again shortly.',
+        duration: 3000
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -51,13 +67,14 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
         });
       } else {
         setEmailSent(true);
+        setLastResetTime(now); // Record successful reset time
         toast.success('Password reset email sent!', {
           description: 'Please check your inbox for the reset link.',
           duration: 5000
         });
       }
     } catch (err) {
-      console.error('Password reset error:', err);
+      logger.error('Password reset error:', err);
       toast.error('An error occurred', {
         description: 'Please try again or contact your administrator.',
         duration: 5000

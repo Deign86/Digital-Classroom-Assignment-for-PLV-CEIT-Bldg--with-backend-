@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../lib/logger';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Button } from './ui/button';
 import { RefreshCw, LogOut } from 'lucide-react';
@@ -35,7 +36,7 @@ export const TokenRefreshNotification: React.FC<TokenRefreshNotificationProps> =
         setSyncStatus(status);
         setNeedsRefresh(!status.inSync);
       } catch (err) {
-        console.error('Error checking claims sync status:', err);
+        logger.error('Error checking claims sync status:', err);
       }
     };
 
@@ -55,7 +56,7 @@ export const TokenRefreshNotification: React.FC<TokenRefreshNotificationProps> =
       setNeedsRefresh(false);
       onRoleChanged?.();
     } catch (err) {
-      console.error('Error refreshing claims:', err);
+      logger.error('Error refreshing claims:', err);
       toast.error('Failed to refresh permissions. Please try signing out and signing in again.');
     } finally {
       setRefreshing(false);
@@ -67,7 +68,7 @@ export const TokenRefreshNotification: React.FC<TokenRefreshNotificationProps> =
       await authService.signOut();
       toast.success('Signed out successfully');
     } catch (err) {
-      console.error('Error signing out:', err);
+      logger.error('Error signing out:', err);
       toast.error('Failed to sign out');
     }
   };

@@ -2,6 +2,7 @@ import { getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { logger } from './logger';
 
 type RegisterResult = { success: boolean; token?: string; message?: string };
 
@@ -18,12 +19,12 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<Ser
   try {
     // First check if there's already an active controller
     if (navigator.serviceWorker.controller) {
-      console.log('[pushService] Service worker controller already active');
+      logger.log('[pushService] Service worker controller already active');
       return await navigator.serviceWorker.ready;
     }
 
     // Wait for SW to become ready with timeout
-    console.log('[pushService] Waiting for service worker to become ready...');
+    logger.log('[pushService] Waiting for service worker to become ready...');
     
     // Poll for service worker registration with exponential backoff
     const startTime = Date.now();
@@ -33,19 +34,19 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<Ser
       
       // Check if a registration exists
       const registrations = await navigator.serviceWorker.getRegistrations();
-      console.log(`[pushService] Attempt ${attempt}: Found ${registrations.length} registration(s)`);
+      logger.log(`[pushService] Attempt ${attempt}: Found ${registrations.length} registration(s)`);
       
       if (registrations.length > 0) {
         const registration = registrations[0];
         
         // Check if registration has an active or activating worker
         if (registration.active) {
-          console.log('[pushService] Service worker is active and ready');
+          logger.log('[pushService] Service worker is active and ready');
           return registration;
         }
         
         if (registration.installing) {
-          console.log('[pushService] Service worker is installing, waiting for activation...');
+          logger.log('[pushService] Service worker is installing, waiting for activation...');
           // Wait for the installing worker to become active
           await new Promise<void>((resolve) => {
             const checkState = () => {
@@ -70,7 +71,7 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<Ser
           
           // Re-check if active now
           if (registration.active) {
-            console.log('[pushService] Service worker activated successfully');
+            logger.log('[pushService] Service worker activated successfully');
             return registration;
           }
         }
@@ -82,7 +83,7 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<Ser
     }
 
     // Timeout reached - try one last time with navigator.serviceWorker.ready
-    console.warn('[pushService] Polling timed out, attempting navigator.serviceWorker.ready as fallback...');
+    logger.warn('[pushService] Polling timed out, attempting navigator.serviceWorker.ready as fallback...');
     const readyPromise = navigator.serviceWorker.ready;
     const timeoutPromise = new Promise<never>((_, reject) => 
       setTimeout(() => reject(new Error('Service worker ready timeout after 15 seconds')), 5000)
@@ -90,21 +91,21 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<Ser
     
     return await Promise.race([readyPromise, timeoutPromise]);
   } catch (e) {
-    console.warn('[pushService] Error waiting for service worker:', e);
+    logger.warn('[pushService] Error waiting for service worker:', e);
     throw new Error('Service worker is still initializing. Please wait a moment and try again.');
   }
 };
 
 const requestPermissionAndGetToken = async (): Promise<string> => {
   if (!('Notification' in window)) throw new Error('Notifications are not supported in this browser');
-  console.log('[pushService] Requesting notification permission');
+  logger.log('[pushService] Requesting notification permission');
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notification permission not granted');
 
   if (!VAPID_KEY) throw new Error('Missing VAPID key. Set VITE_FIREBASE_VAPID_KEY in your environment.');
 
   if (!isSupported()) {
-    console.warn('[pushService] Firebase messaging not supported in this environment');
+    logger.warn('[pushService] Firebase messaging not supported in this environment');
     throw new Error('Firebase messaging is not supported in this environment');
   }
 
@@ -115,10 +116,10 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   // This prevents "no active Service Worker" errors on first page load
   const registration = await waitForServiceWorkerReady();
   
-  console.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
+  logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
   const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
   if (!token) throw new Error('Failed to obtain messaging token');
-  console.log('[pushService] Obtained FCM token:', token);
+  logger.log('[pushService] Obtained FCM token:', token);
   return token;
 };
 
@@ -126,17 +127,17 @@ const registerTokenOnServer = async (token: string): Promise<RegisterResult> => 
   const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const fn = httpsCallable(functions, 'registerPushToken');
   try {
-    console.log('[pushService] Calling registerPushToken callable');
+    logger.log('[pushService] Calling registerPushToken callable');
     const res = await withRetry(() => fn({ token }), { attempts: 3, shouldRetry: isNetworkError });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
-      console.log('[pushService] registerPushToken succeeded');
+      logger.log('[pushService] registerPushToken succeeded');
       return { success: true, token };
     }
-    console.warn('[pushService] registerPushToken returned failure', anyRes?.data);
+    logger.warn('[pushService] registerPushToken returned failure', anyRes?.data);
     return { success: false, message: anyRes?.data?.message || 'Unknown' };
   } catch (err) {
-    console.error('[pushService] registerPushToken callable error', err);
+    logger.error('[pushService] registerPushToken callable error', err);
     return { success: false, message: err instanceof Error ? err.message : String(err) };
   }
 };
@@ -146,17 +147,17 @@ const unregisterTokenOnServer = async (token: string): Promise<RegisterResult> =
   const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const fn = httpsCallable(functions, 'unregisterPushToken');
   try {
-    console.log('[pushService] Calling unregisterPushToken callable');
+    logger.log('[pushService] Calling unregisterPushToken callable');
     const res = await withRetry(() => fn({ token }), { attempts: 3, shouldRetry: isNetworkError });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
-      console.log('[pushService] unregisterPushToken succeeded');
+      logger.log('[pushService] unregisterPushToken succeeded');
       return { success: true };
     }
-    console.warn('[pushService] unregisterPushToken returned failure', anyRes?.data);
+    logger.warn('[pushService] unregisterPushToken returned failure', anyRes?.data);
     return { success: false, message: anyRes?.data?.message || 'Unknown' };
   } catch (err) {
-    console.error('[pushService] unregisterPushToken callable error', err);
+    logger.error('[pushService] unregisterPushToken callable error', err);
     return { success: false, message: err instanceof Error ? err.message : String(err) };
   }
 };
@@ -165,17 +166,17 @@ const setPushEnabledOnServer = async (enabled: boolean): Promise<{ success: bool
   const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const fn = httpsCallable(functions, 'setPushEnabled');
   try {
-    console.log('[pushService] Calling setPushEnabled callable with', enabled);
+    logger.log('[pushService] Calling setPushEnabled callable with', enabled);
     const res = await withRetry(() => fn({ enabled }), { attempts: 3, shouldRetry: isNetworkError });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
-      console.log('[pushService] setPushEnabled succeeded');
+      logger.log('[pushService] setPushEnabled succeeded');
       return { success: true, enabled: anyRes.data.enabled };
     }
-    console.warn('[pushService] setPushEnabled returned failure', anyRes?.data);
+    logger.warn('[pushService] setPushEnabled returned failure', anyRes?.data);
     return { success: false, message: anyRes?.data?.message || 'Unknown' };
   } catch (err) {
-    console.error('[pushService] setPushEnabled callable error', err);
+    logger.error('[pushService] setPushEnabled callable error', err);
     return { success: false, message: err instanceof Error ? err.message : String(err) };
   }
 };
@@ -195,9 +196,9 @@ export const pushService = {
   },
   async enablePush(): Promise<RegisterResult> {
     try {
-      console.log('[pushService] enablePush invoked');
+      logger.log('[pushService] enablePush invoked');
       const token = await requestPermissionAndGetToken();
-      console.log('[pushService] enablePush obtained token, registering on server');
+      logger.log('[pushService] enablePush obtained token, registering on server');
       const server = await registerTokenOnServer(token);
       return server;
     } catch (err) {
@@ -222,17 +223,17 @@ export const pushService = {
     const functions = getFunctions(getFirebaseApp(), 'us-central1');
     const fn = httpsCallable(functions, 'sendTestPush');
     try {
-      console.log('[pushService] Calling sendTestPush callable');
+      logger.log('[pushService] Calling sendTestPush callable');
       const res = await withRetry(() => fn({ token, title, body }), { attempts: 3, shouldRetry: isNetworkError });
       const anyRes: any = res;
       if (anyRes?.data?.success) {
-        console.log('[pushService] sendTestPush succeeded');
+        logger.log('[pushService] sendTestPush succeeded');
         return { success: true, result: anyRes.data.result };
       }
-      console.warn('[pushService] sendTestPush returned failure', anyRes?.data);
+      logger.warn('[pushService] sendTestPush returned failure', anyRes?.data);
       return { success: false, message: anyRes?.data?.message || 'Unknown' };
     } catch (err) {
-      console.error('[pushService] sendTestPush callable error', err);
+      logger.error('[pushService] sendTestPush callable error', err);
       return { success: false, message: err instanceof Error ? err.message : String(err) };
     }
   },
@@ -248,10 +249,10 @@ export const pushService = {
       const registration = await waitForServiceWorkerReady();
 
       const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
-      console.log('[pushService] getCurrentToken returned', token);
+      logger.log('[pushService] getCurrentToken returned', token);
       return token ?? null;
     } catch (err) {
-      console.warn('[pushService] getCurrentToken error:', err);
+      logger.warn('[pushService] getCurrentToken error:', err);
       return null;
     }
   },

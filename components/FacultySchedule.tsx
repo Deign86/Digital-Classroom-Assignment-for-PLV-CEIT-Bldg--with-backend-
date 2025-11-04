@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { useAnnouncer } from './Announcer';
@@ -360,7 +361,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                   try {
                     onQuickRebook?.(quickDialogData);
                   } catch (e) {
-                    console.error('onQuickRebook handler failed', e);
+                    logger.error('onQuickRebook handler failed', e);
                   }
                 }}
               >
@@ -432,7 +433,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                 try {
                                   await onCancelSelected(id);
                                 } catch (err) {
-                                  console.error('onCancelSelected failed for', id, err);
+                                  logger.error('onCancelSelected failed for', id, err);
                                 }
                               }
                               const message = `Attempted to cancel ${ids.length} reservation(s).`;
@@ -552,14 +553,14 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                           successfulScheduleCancellations.push(requestId);
                                         }
                                       } catch (err) {
-                                        console.error('Failed to cancel schedule for request', requestId, err);
+                                        logger.error('Failed to cancel schedule for request', requestId, err);
                                         failedScheduleCancellations.push({ id: requestId, error: err });
                                       }
                                     } else {
                                       successfulScheduleCancellations.push(requestId);
                                     }
                                   } catch (err) {
-                                    console.error('Failed to cancel schedule for request', requestId, err);
+                                    logger.error('Failed to cancel schedule for request', requestId, err);
                                     failedScheduleCancellations.push({ id: requestId, error: err });
                                   } finally {
                                     // clear processing state for this request
@@ -577,12 +578,12 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                 try {
                                   await bookingRequestService.bulkUpdate(bookingUpdates);
                                 } catch (err) {
-                                  console.error('Bulk update of booking requests failed', err);
+                                  logger.error('Bulk update of booking requests failed', err);
                                   for (const u of bookingUpdates) {
                                     try {
                                       await bookingRequestService.update(u.id, u.data as Partial<any>);
                                     } catch (innerErr) {
-                                      console.error('Fallback per-item update failed for', u.id, innerErr);
+                                      logger.error('Fallback per-item update failed for', u.id, innerErr);
                                       failedScheduleCancellations.push({ id: u.id, error: innerErr });
                                     }
                                   }
@@ -727,13 +728,13 @@ export function clearFacultyScheduleStorageForUser(userId?: string) {
     const base = 'plv:facultySchedule:activeTab';
     if (userId) {
       window.localStorage.removeItem(`${base}:${userId}`);
-      console.debug('[FacultySchedule] cleared storage for user', { key: `${base}:${userId}` });
+      logger.debug('[FacultySchedule] cleared storage for user', { key: `${base}:${userId}` });
     } else {
       // best-effort: remove base key
       window.localStorage.removeItem(base);
-      console.debug('[FacultySchedule] cleared base storage key', { key: base });
+      logger.debug('[FacultySchedule] cleared base storage key', { key: base });
     }
   } catch (err) {
-    console.warn('Failed to clear FacultySchedule storage key', err);
+    logger.warn('Failed to clear FacultySchedule storage key', err);
   }
 }

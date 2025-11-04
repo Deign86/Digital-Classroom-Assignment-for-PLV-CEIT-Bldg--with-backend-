@@ -1,6 +1,7 @@
 import './styles/globals.css';
 import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { logger } from './lib/logger';
 import LoginForm from './components/LoginForm';
 // Lazy-load heavy dashboard components to reduce initial bundle size
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
@@ -41,10 +42,10 @@ if (import.meta.env.DEV) {
     // Dynamically import to avoid circular import issues
     import('./lib/pushService').then((mod) => {
       (window as any).pushService = mod.pushService;
-      console.log('🛠️ pushService exposed to window for debugging');
-    }).catch((e) => console.warn('Could not expose pushService to window', e));
+      logger.log('🛠️ pushService exposed to window for debugging');
+    }).catch((e) => logger.warn('Could not expose pushService to window', e));
   } catch (err) {
-    console.warn('Could not dynamically load pushService for dev exposure', err);
+    logger.warn('Could not dynamically load pushService for dev exposure', err);
   }
 }
 
@@ -210,7 +211,7 @@ export default function App() {
     }
     const lastLoggedRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>;
     const shouldLogSetup = Boolean(user && lastLoggedRef.current !== user.id);
-    if (shouldLogSetup) console.log('🔄 Setting up real-time data listeners...');
+    if (shouldLogSetup) logger.log('🔄 Setting up real-time data listeners...');
     
     if (!user) {
       // Clear data when no user
@@ -230,39 +231,39 @@ export default function App() {
       
       realtimeService.subscribeToData(user, {
         onClassroomsUpdate: (classrooms) => {
-          console.log('📍 Real-time update: Classrooms', classrooms.length);
+          logger.log('📍 Real-time update: Classrooms', classrooms.length);
           setClassrooms(classrooms);
           setLoadingMessage('Loading...');
         },
         
         onBookingRequestsUpdate: (requests) => {
-          console.log('📋 Real-time update: Booking Requests', requests.length);
+          logger.log('📋 Real-time update: Booking Requests', requests.length);
           setBookingRequests(requests);
           setLoadingMessage('Loading...');
         },
         
         onSchedulesUpdate: (schedules) => {
-          console.log('📅 Real-time update: Schedules', schedules.length);
+          logger.log('📅 Real-time update: Schedules', schedules.length);
           setSchedules(schedules);
           setLoadingMessage('Loading...');
         },
         
         onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
-          console.log('👥 Real-time update: Signup Requests', requests.length);
+          logger.log('👥 Real-time update: Signup Requests', requests.length);
           setSignupRequests(requests);
         } : undefined,
         onSignupHistoryUpdate: user.role === 'admin' ? (history) => {
-          console.log('📜 Real-time update: Signup History', history.length);
+          logger.log('📜 Real-time update: Signup History', history.length);
           setSignupHistory(history);
         } : undefined,
         
         onUsersUpdate: user.role === 'admin' ? (users) => {
-          console.log('👤 Real-time update: Users', users.length);
+          logger.log('👤 Real-time update: Users', users.length);
           setUsers(users);
         } : undefined,
         
         onError: (error) => {
-          console.error('❌ Real-time listener error:', error);
+          logger.error('❌ Real-time listener error:', error);
           toast.error('Real-time sync error. Some data may be outdated.');
         }
       });
@@ -276,12 +277,12 @@ export default function App() {
         // Load signup history for admins
         signupHistoryService.getAll()
           .then((history) => {
-            console.log('📜 Loaded signup history:', history.length);
+            logger.log('📜 Loaded signup history:', history.length);
             setSignupHistory(history);
           })
           .catch((err) => {
             // Log full error for debugging
-            console.error('❌ Failed to load signup history:', err);
+            logger.error('❌ Failed to load signup history:', err);
 
             // Surface a user-facing toast so admins know history may be stale
             try {
@@ -292,17 +293,17 @@ export default function App() {
               });
             } catch (toastErr) {
               // If toasting fails for any reason, still keep the original error logged
-              console.warn('Could not show toast for signup history error:', toastErr);
+              logger.warn('Could not show toast for signup history error:', toastErr);
             }
           });
       }
       
       if (shouldLogSetup) {
-        console.log('✅ Real-time listeners setup complete');
+        logger.log('✅ Real-time listeners setup complete');
         try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) {}
       }
       } catch (err) {
-      console.error('❌ Failed to setup real-time listeners:', err);
+      logger.error('❌ Failed to setup real-time listeners:', err);
       toast.error('Failed to setup real-time data sync');
     } finally {
       setIsLoading(false);
@@ -357,17 +358,15 @@ export default function App() {
             try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
             setAccountLockedMessage(msg);
 
-            const ts = Date.now();
             // Record a lightweight debug event and log timestamps (dev only)
-            try {
-              if (import.meta.env.DEV) {
-                console.debug(`DEBUG[lock] set sessionStorage at ${new Date(ts).toISOString()} for`, email, { msg });
-              }
+            if (import.meta.env.DEV) {
+              const ts = Date.now();
               try {
+                logger.debug(`DEBUG[lock] set sessionStorage at ${new Date(ts).toISOString()} for`, email, { msg });
                 (window as any).__loginLockDebug = (window as any).__loginLockDebug || [];
                 (window as any).__loginLockDebug.push({ event: 'sessionSet', ts, email, msg });
               } catch (_) {}
-            } catch (_) {}
+            }
 
             // Defer opening the modal slightly so the LoginForm submit
             // lifecycle can finish. This also helps if the form is controlling
@@ -380,10 +379,10 @@ export default function App() {
             // we can verify this code path executed on the first failed attempt.
             if (import.meta.env.DEV) {
               try {
-                console.debug('DEBUG: accountLocked scheduled dialog for', email, 'message:', msg);
+                logger.debug('DEBUG: accountLocked scheduled dialog for', email, 'message:', msg);
                 toast(`${msg} (debug: lock dialog scheduled)`, { duration: 5000 });
               } catch (e) {
-                console.warn('Could not show debug toast for account lock:', e);
+                logger.warn('Could not show debug toast for account lock:', e);
               }
 
               // Force-open fallback: if the modal hasn't opened after 5s,
@@ -392,19 +391,19 @@ export default function App() {
               setTimeout(() => {
                 try {
                   if (!showAccountLockedDialog) {
-                    console.warn('DEBUG[lock] fallback forced opening of account-locked dialog after 5s');
+                    logger.warn('DEBUG[lock] fallback forced opening of account-locked dialog after 5s');
                     setShowAccountLockedDialog(true);
                     try { (window as any).__loginLockDebug.push({ event: 'fallbackOpen', ts: Date.now(), email }); } catch (_) {}
                   }
                 } catch (e) {
-                  console.warn('DEBUG[lock] fallback open failed:', e);
+                  logger.warn('DEBUG[lock] fallback open failed:', e);
                 }
               }, 5000);
             }
           }
         }
       } catch (e) {
-        console.warn('Could not set accountLocked session flag:', e);
+        logger.warn('Could not set accountLocked session flag:', e);
       }
 
       // Error is already handled by the toast.promise, but we need to return false for the form.
@@ -438,7 +437,7 @@ export default function App() {
       }
       return false;
     } catch (err) {
-      console.error('Login error:', err);
+      logger.error('Login error:', err);
       
       // Check for specific status errors (pending/rejected accounts)
       if (err instanceof Error && 'status' in err) {
@@ -506,7 +505,7 @@ export default function App() {
   }, [setupRealtimeListeners]); // Note: I'm keeping the old function here for reference, but the new one is active.
 
   const handleSignup = useCallback(
-    async (email: string, name: string, department: string, password: string) => {
+    async (email: string, name: string, department: string, password: string, recaptchaToken?: string) => {
       try {
         // Check for duplicate requests (optional - don't fail signup if this fails)
         // Only attempt reads if we have an authenticated client session to avoid permission errors
@@ -523,13 +522,13 @@ export default function App() {
           }
         } catch (checkError) {
           // Do not surface permission errors for unauthenticated users. Log only unexpected errors.
-          console.warn('Could not check for existing requests (possibly unauthenticated):', checkError instanceof Error ? checkError.message : checkError);
+          logger.warn('Could not check for existing requests (possibly unauthenticated):', checkError instanceof Error ? checkError.message : checkError);
         }
 
         let request: SignupRequest;
         
         try {
-          const result = await authService.registerFaculty(email, password, name, department);
+          const result = await authService.registerFaculty(email, password, name, department, recaptchaToken);
           request = result.request;
         } catch (registerError: any) {
           // If registration fails because the email is already in use,
@@ -537,7 +536,7 @@ export default function App() {
           // This covers both active users and users whose accounts might be in a limbo state
           // after a rejected signup. We will treat them all as "account exists".
           if (registerError?.code === 'auth/email-already-in-use') {
-            console.log('Signup failed: email already in use. Directing user to sign in.');
+            logger.log('Signup failed: email already in use. Directing user to sign in.');
             toast.error('Account already exists', {
               description: 'This email is already associated with an account. Please sign in or use the password reset link if you forgot your password.',
               duration: 8000,
@@ -566,7 +565,7 @@ export default function App() {
             }
           }
         } catch (userError) {
-          console.warn('Could not load user data (possibly unauthenticated):', userError instanceof Error ? userError.message : userError);
+          logger.warn('Could not load user data (possibly unauthenticated):', userError instanceof Error ? userError.message : userError);
           // Continue anyway - the signup was successful
         }
 
@@ -580,7 +579,15 @@ export default function App() {
         }
         return true;
       } catch (err) {
-        console.error('Signup error:', err);
+        logger.error('Signup error:', err);
+        // Log full error details for debugging
+        if (err && typeof err === 'object') {
+          logger.error('Error details:', {
+            code: 'code' in err ? err.code : undefined,
+            message: 'message' in err ? err.message : undefined,
+            name: 'name' in err ? err.name : undefined,
+          });
+        }
         let message = 'Unable to submit signup request.';
         
         if (err && typeof err === 'object') {
@@ -625,7 +632,7 @@ export default function App() {
 
   const handleLogout = useCallback(async () => {
     try {
-      console.log('🔴 Logout clicked - user:', currentUser?.email);
+      logger.log('🔴 Logout clicked - user:', currentUser?.email);
       await authService.signOut();
 
       // Set flag for login page to show success notification
@@ -644,9 +651,9 @@ export default function App() {
       setSchedules([]);
       setUsers([]);
 
-      console.log('✅ User state cleared');
+      logger.log('✅ User state cleared');
     } catch (err) {
-      console.error('❌ Logout error:', err);
+      logger.error('❌ Logout error:', err);
       // Force logout even if auth service fails
       setCurrentUser(null);
 
@@ -666,7 +673,7 @@ export default function App() {
 
   // Idle timeout handlers
   const handleIdleTimeout = useCallback(async () => {
-    console.log('🕒 Session expired due to inactivity');
+    logger.log('🕒 Session expired due to inactivity');
     
     try {
       await authService.signOutDueToIdleTimeout();
@@ -682,7 +689,7 @@ export default function App() {
       setUsers([]);
       setShowSessionWarning(false);
     } catch (err) {
-      console.error('❌ Idle timeout logout error:', err);
+      logger.error('❌ Idle timeout logout error:', err);
       // Force logout even if service fails
       sessionStorage.setItem('sessionExpired', 'true');
       setCurrentUser(null);
@@ -691,7 +698,7 @@ export default function App() {
   }, []);
 
   const handleSessionWarning = useCallback((timeRemaining: number) => {
-    console.log(`⚠️ Session warning - ${Math.ceil(timeRemaining / 1000)}s remaining`);
+    logger.log(`⚠️ Session warning - ${Math.ceil(timeRemaining / 1000)}s remaining`);
     setSessionTimeRemaining(timeRemaining);
     setShowSessionWarning(true);
     
@@ -702,7 +709,7 @@ export default function App() {
   }, []);
 
   const handleExtendSession = useCallback(() => {
-    console.log('🔄 Session extended by user');
+    logger.log('🔄 Session extended by user');
     setShowSessionWarning(false);
     toast.success('Session extended successfully');
   }, []);
@@ -751,7 +758,7 @@ export default function App() {
         excludeRequestId
       );
     } catch (err) {
-      console.error('Error checking conflicts:', err);
+      logger.error('Error checking conflicts:', err);
       toast.error('Failed to check for conflicts');
       return true; // Return true to be safe
     }
@@ -799,7 +806,7 @@ export default function App() {
           undoTimerRef.current = null;
         }, 5000);
       } catch (e) {
-        console.warn('Failed to set undo state for booking:', e);
+        logger.warn('Failed to set undo state for booking:', e);
       }
       if (!suppressToast) {
         // Provide an undo action in the toast that will delete the just-created request
@@ -821,7 +828,7 @@ export default function App() {
                 }
                 toast('Reservation undone — form pre-filled');
               } catch (err) {
-                console.error('Undo failed:', err);
+                logger.error('Undo failed:', err);
                 // If client-side delete is blocked by security rules, try server callable
                 try {
                   await bookingRequestService.cancelWithCallable(newRequest.id);
@@ -834,7 +841,7 @@ export default function App() {
                   }
                   toast('Reservation undone — form pre-filled');
                 } catch (err2) {
-                  console.error('Server-side undo failed:', err2);
+                  logger.error('Server-side undo failed:', err2);
                   toast.error('Could not undo reservation');
                 }
               }
@@ -843,7 +850,7 @@ export default function App() {
         });
       }
     } catch (err) {
-      console.error('Booking request error:', err);
+      logger.error('Booking request error:', err);
       // Check if it's a duplicate/conflict error from the database
       const errorMessage = err instanceof Error ? err.message : '';
       if (errorMessage.includes('conflict') || errorMessage.includes('duplicate')) {
@@ -935,7 +942,7 @@ export default function App() {
         toast.success(approved ? 'Reservation approved!' : 'Reservation rejected.');
       }
     } catch (err) {
-      console.error('Approval error:', err);
+      logger.error('Approval error:', err);
       if (!suppressToast) {
         toast.error('Failed to process request');
       }
@@ -1019,7 +1026,7 @@ export default function App() {
                 duration: 6000,
               });
             } catch (err) {
-              console.error('Signup rejection error (bulk):', err);
+              logger.error('Signup rejection error (bulk):', err);
               toast.error('Failed to reject signup request');
             }
             return;
@@ -1031,7 +1038,7 @@ export default function App() {
           return;
         }
       } catch (err) {
-        console.error('Signup approval error:', err);
+        logger.error('Signup approval error:', err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         toast.error('Failed to process signup request', {
           description: errorMessage,
@@ -1062,7 +1069,7 @@ export default function App() {
 
       toast.success('Reservation cancelled!');
     } catch (err) {
-      console.error('Cancel schedule error:', err);
+      logger.error('Cancel schedule error:', err);
       toast.error('Failed to cancel booking');
     }
   }, []);
@@ -1124,7 +1131,7 @@ export default function App() {
 
       toast.success('Approved reservation cancelled!');
     } catch (err) {
-      console.error('Cancel approved booking error:', err);
+      logger.error('Cancel approved booking error:', err);
       toast.error('Failed to cancel approved booking');
     }
   }, [schedules, bookingRequests]);
@@ -1145,7 +1152,7 @@ export default function App() {
         duration: 5000,
       });
     } catch (err) {
-      console.error('Unlock account error:', err);
+      logger.error('Unlock account error:', err);
       toast.error('Failed to unlock account', {
         description: 'Please try again or contact support.',
         duration: 5000,
@@ -1175,7 +1182,7 @@ export default function App() {
         duration: 6000,
       });
     } catch (err) {
-      console.error('Failed to reject signup request:', err);
+      logger.error('Failed to reject signup request:', err);
       toast.error('Failed to reject signup request');
     } finally {
       setIsRejecting(false);
@@ -1226,7 +1233,7 @@ export default function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        console.log('🚀 Initializing app...');
+        logger.log('🚀 Initializing app...');
   setLoadingMessage('Loading...');
   // show the shared overlay while initializing
   showOverlay('Loading...');
@@ -1234,25 +1241,25 @@ export default function App() {
         const user = await authService.getCurrentUser();
         
         if (user) {
-          console.log('✅ Valid user session found:', user.email);
+          logger.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
 
           // Do NOT set up real-time listeners here. The auth state listener
           // centralizes real-time lifecycle management and will perform setup
           // so we avoid duplicate registrations from multiple code paths.
-          console.log('📊 Authenticated session found; deferring real-time listener setup to auth state handler');
+          logger.log('📊 Authenticated session found; deferring real-time listener setup to auth state handler');
         } else {
-          console.log('ℹ️ No valid session found');
+          logger.log('ℹ️ No valid session found');
         }
         
-        console.log('✅ App initialized successfully');
+        logger.log('✅ App initialized successfully');
       } catch (err) {
-        console.error('❌ Failed to initialize app:', err);
+        logger.error('❌ Failed to initialize app:', err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(`Failed to load application data: ${errorMessage}. Please refresh the page.`);
       } finally {
         // Mark that auth has been checked and stop loading
-        console.log('✅ Setting isLoading to false');
+        logger.log('✅ Setting isLoading to false');
         setIsAuthChecked(true);
         setIsLoading(false);
         setLoadingMessage(null);
@@ -1268,22 +1275,22 @@ export default function App() {
     // Listen for auth state changes (login, logout, token refresh)
     const { data: { subscription } } = authService.onAuthStateChange(
       async (user) => {
-        console.log('👤 Auth state changed, new user:', user?.email || 'none');
+        logger.log('👤 Auth state changed, new user:', user?.email || 'none');
         
         // Only update if user actually changed to prevent loops
         setCurrentUser(prevUser => {
           if (prevUser?.id === user?.id) {
-            console.log('ℹ️ Same user, skipping update');
+            logger.log('ℹ️ Same user, skipping update');
             return prevUser;
           }
           
           // If a new user logged in and we have no data yet, load it
           if (user && !prevUser) {
-            console.log('📊 New user detected, setting up listeners...');
+            logger.log('📊 New user detected, setting up listeners...');
             try {
               setupRealtimeListeners(user);
             } catch (err) {
-              console.error('Failed to setup listeners after auth change:', err);
+              logger.error('Failed to setup listeners after auth change:', err);
             }
           }
           
@@ -1292,7 +1299,7 @@ export default function App() {
       },
       (error) => {
         // Handle auth errors (expired links, invalid tokens)
-        console.error('Auth error:', error);
+        logger.error('Auth error:', error);
         toast.error('Authentication Error', {
           description: error,
           duration: 8000
@@ -1369,7 +1376,7 @@ export default function App() {
 
         // If accountLocked is true on the server, force local sign-out immediately.
         if (data?.accountLocked) {
-          console.log('🔒 Detected account lock for current user. Signing out.');
+          logger.log('🔒 Detected account lock for current user. Signing out.');
           // Attempt to sign out via auth service, but proceed to clear state regardless.
           authService.signOut().catch(() => undefined).finally(() => {
             // Mark the login page to show the lock notification
@@ -1385,10 +1392,10 @@ export default function App() {
           });
         }
       }, (error) => {
-        console.error('Error listening to user doc for lock status:', error);
+        logger.error('Error listening to user doc for lock status:', error);
       });
     } catch (err) {
-      console.error('Could not create user doc listener for lock status:', err);
+      logger.error('Could not create user doc listener for lock status:', err);
     }
 
     return () => {
@@ -1410,15 +1417,15 @@ export default function App() {
       (window as any).bookingRequestService = bookingRequestService;
       (window as any).scheduleService = scheduleService;
       (window as any).signupRequestService = signupRequestService;
-      console.log('🛠️ All services exposed to window for debugging');
+      logger.log('🛠️ All services exposed to window for debugging');
       
       // Also expose a quick test function
       (window as any).testRealtimeNow = () => {
-        console.log('🧪 Real-time Service Test:');
-        console.log('Listener count:', realtimeService.getListenerCount());
-        console.log('Auth service:', !!authService);
-        console.log('Current user available:', !!currentUser);
-        console.log('Services working:', {
+        logger.log('🧪 Real-time Service Test:');
+        logger.log('Listener count:', realtimeService.getListenerCount());
+        logger.log('Auth service:', !!authService);
+        logger.log('Current user available:', !!currentUser);
+        logger.log('Services working:', {
           auth: !!authService,
           realtime: !!realtimeService,
           classroom: !!classroomService
@@ -1617,14 +1624,16 @@ export default function App() {
               </div>
             ) : null}
 
-            <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
-              {/* Render the appropriate dashboard directly (react-router removed). */}
-              {activeUser.role === 'admin' ? (
-                <AdminDashboard {...adminDashboardProps} />
-              ) : (
-                <FacultyDashboard {...facultyDashboardProps} />
-              )}
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
+                {/* Render the appropriate dashboard directly (react-router removed). */}
+                {activeUser.role === 'admin' ? (
+                  <AdminDashboard {...adminDashboardProps} />
+                ) : (
+                  <FacultyDashboard {...facultyDashboardProps} />
+                )}
+              </Suspense>
+            </ErrorBoundary>
             {/* Using the single inline PLV loader for Suspense fallback; no portal loader mounted */}
           </div>
           <Footer />

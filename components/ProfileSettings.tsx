@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -57,7 +58,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setPushEnabled(!!(user as any).pushEnabled);
     } catch (err) {
       // If something odd happens, keep current local state and log for diagnostics
-      console.warn('Failed to sync pushEnabled from user prop:', err);
+      logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
   }, [user?.pushEnabled]);
 
@@ -200,7 +201,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         // No need for additional logout call here
       }
     } catch (err) {
-      console.error('Password update error:', err);
+      logger.error('Password update error:', err);
       const errorMessage = err instanceof Error ? err.message : 'An error occurred while updating password';
       toast.error('Failed to update password', {
         description: errorMessage
@@ -274,7 +275,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error('Push toggle error:', msg);
+      logger.error('Push toggle error:', msg);
       if (msg === 'Push-not-supported' || /not supported/i.test(msg)) {
         toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {

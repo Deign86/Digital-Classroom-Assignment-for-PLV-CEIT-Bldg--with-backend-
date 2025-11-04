@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -131,7 +132,7 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
       });
       onSuccess();
     } catch (err) {
-      console.error('❌ Password reset error:', err);
+      logger.error('❌ Password reset error:', err);
       setIsLoading(false);
       toast.error('An error occurred. Please try again.');
     }

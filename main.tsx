@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './styles/globals.css'
+import { logger } from './lib/logger'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
@@ -16,21 +17,21 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
         .then((registration) => {
-          console.log('Service Worker registered for Firebase Messaging:', registration.scope);
+          logger.log('Service Worker registered for Firebase Messaging:', registration.scope);
         })
         .catch((err) => {
-          console.warn('Service Worker registration failed:', err);
+          logger.warn('Service Worker registration failed:', err);
         });
       // Register a minimal app service worker for caching/navigation fallback
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
-          console.log('Service Worker registered for app runtime caching:', registration.scope);
+          logger.log('Service Worker registered for app runtime caching:', registration.scope);
         })
         .catch((err) => {
-          console.warn('App Service Worker registration failed:', err);
+          logger.warn('App Service Worker registration failed:', err);
         });
     });
   } else {
-    console.log('Skipping service worker registration in non-local dev mode');
+    logger.log('Skipping service worker registration in non-local dev mode');
   }
 }

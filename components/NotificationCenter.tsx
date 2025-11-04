@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { logger } from '../lib/logger';
 import { notificationService, type Notification } from '../lib/notificationService';
 import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
@@ -78,7 +79,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
         .filter((i) => i.userId === userId)
         .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
       setItems(filtered);
-    }, (err) => console.error('NotificationCenter listener error', err), userId);
+    }, (err) => logger.error('NotificationCenter listener error', err), userId);
 
     return () => unsub?.();
   }, [userId]);
@@ -109,7 +110,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
       // Make server call; server will emit updated doc via listener
       await notificationService.acknowledgeNotification(id, userId);
     } catch (err) {
-      console.error('Acknowledge error', err);
+      logger.error('Acknowledge error', err);
     } finally {
       setAckPending((s) => ({ ...s, [id]: false }));
       setGlobalAcking(false);
@@ -160,7 +161,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
                   onAcknowledgeAll?.(0);
                 }
               } catch (err) {
-                console.error('Failed to acknowledge all notifications', err);
+                logger.error('Failed to acknowledge all notifications', err);
                 // revert the optimistic update by re-triggering listener (listener will correct state)
               } finally {
                 setGlobalAcking(false);

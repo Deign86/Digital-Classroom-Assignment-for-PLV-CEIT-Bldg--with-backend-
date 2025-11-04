@@ -41,6 +41,7 @@ import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory,
 import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
 import { isPastBookingTime } from '../utils/timeUtils';
 import withRetry, { isNetworkError } from './withRetry';
+import { logger } from './logger';
 
 const db = () => getFirebaseDb();
 
@@ -207,12 +208,12 @@ let activeUnsubscribes: Unsubscribe[] = [];
 let currentRealtimeUserId: string | null = null;
 
 const unsubscribeAllListeners = () => {
-  console.log(`Unsubscribing from ${activeUnsubscribes.length} real-time listeners.`);
+  logger.log(`Unsubscribing from ${activeUnsubscribes.length} real-time listeners.`);
   activeUnsubscribes.forEach((unsubscribe) => {
     try {
       unsubscribe();
     } catch (error) {
-      console.warn('Error during listener unsubscribe:', error);
+      logger.warn('Error during listener unsubscribe:', error);
     }
   });
   activeUnsubscribes = [];
@@ -229,7 +230,7 @@ const notifyDataListeners = <T>(
     try {
       listener(data);
     } catch (error) {
-      console.error('Data listener error:', error);
+      logger.error('Data listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   });
@@ -249,11 +250,11 @@ const setupClassroomsListener = (callback: DataListener<Classroom>, errorCallbac
       });
       callback(classrooms);
     } catch (error) {
-      console.error('Classrooms listener error:', error);
+      logger.error('Classrooms listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, (error) => {
-    console.error('Classrooms listener error:', error);
+    logger.error('Classrooms listener error:', error);
     errorCallback?.(error);
   });
   
@@ -286,11 +287,11 @@ const setupBookingRequestsListener = (
       });
       callback(requests);
     } catch (error) {
-      console.error('BookingRequests listener error:', error);
+      logger.error('BookingRequests listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, (error) => {
-    console.error('BookingRequests listener error:', error);
+    logger.error('BookingRequests listener error:', error);
     errorCallback?.(error);
   });
   
@@ -323,11 +324,11 @@ const setupSchedulesListener = (
       });
       callback(schedules);
     } catch (error) {
-      console.error('Schedules listener error:', error);
+      logger.error('Schedules listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, (error) => {
-    console.error('Schedules listener error:', error);
+    logger.error('Schedules listener error:', error);
     errorCallback?.(error);
   });
   
@@ -348,11 +349,11 @@ const setupSignupRequestsListener = (callback: DataListener<SignupRequest>, erro
       });
       callback(requests);
     } catch (error) {
-      console.error('SignupRequests listener error:', error);
+      logger.error('SignupRequests listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, (error) => {
-    console.error('SignupRequests listener error:', error);
+    logger.error('SignupRequests listener error:', error);
     errorCallback?.(error);
   });
   
@@ -373,11 +374,11 @@ const setupSignupHistoryListener = (callback: DataListener<import('../App').Sign
       });
       callback(history);
     } catch (error) {
-      console.error('SignupHistory listener error:', error);
+      logger.error('SignupHistory listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, (error) => {
-    console.error('SignupHistory listener error:', error);
+    logger.error('SignupHistory listener error:', error);
     errorCallback?.(error instanceof Error ? error : new Error(String(error)));
   });
 
@@ -398,11 +399,11 @@ const setupUsersListener = (callback: DataListener<User>, errorCallback?: DataEr
       });
       callback(users);
     } catch (error) {
-      console.error('Users listener error:', error);
+      logger.error('Users listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
     }
   }, (error) => {
-    console.error('Users listener error:', error);
+    logger.error('Users listener error:', error);
     errorCallback?.(error);
   });
   
@@ -415,7 +416,7 @@ const notifyAuthListeners = (user: User | null) => {
     try {
       listener(user);
     } catch (error) {
-      console.error('Auth listener error:', error);
+      logger.error('Auth listener error:', error);
     }
   });
 };
@@ -649,7 +650,7 @@ const ensureUserRecordFromAuth = async (
         }
       } catch (error) {
         // If we can't fetch signup request, default to pending
-        console.warn('Could not fetch signup request for user:', firebaseUser.uid, error);
+        logger.warn('Could not fetch signup request for user:', firebaseUser.uid, error);
       }
     }
     
@@ -729,7 +730,7 @@ const ensureAuthStateListener = () => {
 
   onAuthStateChanged(auth, async (firebaseUser) => {
     if (suppressAuthStateHandling) {
-      console.log('Auth state change suppressed temporarily (registration/reactivation flow)');
+      logger.log('Auth state change suppressed temporarily (registration/reactivation flow)');
       // Ensure any waiter for initial auth state doesn't hang.
       if (authStateReadyResolve) {
         authStateReadyResolve();
@@ -754,7 +755,7 @@ const ensureAuthStateListener = () => {
       try {
         await firebaseUser.getIdToken(true);
       } catch (tokenError) {
-        console.error('Token refresh failed in auth listener:', tokenError);
+        logger.error('Token refresh failed in auth listener:', tokenError);
         currentUserCache = null;
         notifyAuthListeners(null);
         unsubscribeAllListeners(); // Clean up listeners on sign-out
@@ -777,7 +778,7 @@ const ensureAuthStateListener = () => {
         notifyAuthListeners(user);
       }
     } catch (error) {
-      console.error('Auth state listener error:', error);
+      logger.error('Auth state listener error:', error);
       currentUserCache = null;
       notifyAuthListeners(null);
       unsubscribeAllListeners(); // Clean up listeners on error
@@ -817,7 +818,8 @@ export const authService = {
     email: string,
     password: string,
     name: string,
-    department: string
+    department: string,
+    recaptchaToken?: string
   ): Promise<{ request: SignupRequest }> {
     // If a user's signup was rejected, their Auth account was likely deleted.
     // In this case, reactivation is the same as a new registration.
@@ -825,9 +827,9 @@ export const authService = {
     // If they don't exist, we just call the normal registration flow.
     const existingUser = await userService.getByEmail(email);
     if (!existingUser) {
-      console.log(`Reactivation attempt for non-existent user ${email}. Treating as new registration.`);
+      logger.log(`Reactivation attempt for non-existent user ${email}. Treating as new registration.`);
       // The user was fully deleted, so this is a new registration.
-      return this.registerFaculty(email, password, name, department);
+      return this.registerFaculty(email, password, name, department, recaptchaToken);
     }
 
     // Try to sign in first to get the existing Firebase Auth user
@@ -866,6 +868,7 @@ export const authService = {
         requestDate: now,
         createdAt: now,
         updatedAt: now,
+        ...(recaptchaToken && { recaptchaToken }), // Store token if provided
       };
 
       await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
@@ -877,7 +880,7 @@ export const authService = {
         const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
         await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
       } catch (err) {
-        console.warn('Failed to notify admins of new signup:', err);
+        logger.warn('Failed to notify admins of new signup:', err);
       }
 
       await sendEmailVerification(firebaseUser).catch(() => undefined);
@@ -896,7 +899,8 @@ export const authService = {
     email: string,
     password: string,
     name: string,
-    department: string
+    department: string,
+    recaptchaToken?: string
   ): Promise<{ request: SignupRequest }> {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
@@ -932,6 +936,7 @@ export const authService = {
         requestDate: now,
         createdAt: now,
         updatedAt: now,
+        ...(recaptchaToken && { recaptchaToken }), // Store token if provided
       };
 
       await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
@@ -944,7 +949,7 @@ export const authService = {
         const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
         await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
       } catch (err) {
-        console.warn('Failed to notify admins of new signup:', err);
+        logger.warn('Failed to notify admins of new signup:', err);
       }
 
       await sendEmailVerification(firebaseUser).catch(() => undefined);
@@ -952,12 +957,12 @@ export const authService = {
       return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
     } catch (error) {
       // If Firestore operations fail, delete the Auth user to prevent orphaned accounts
-      console.error('Signup failed, cleaning up Auth user:', error);
+      logger.error('Signup failed, cleaning up Auth user:', error);
       try {
         await firebaseUser.delete();
-        console.log('Auth user deleted successfully');
+        logger.log('Auth user deleted successfully');
       } catch (deleteError) {
-        console.error('Failed to delete Auth user:', deleteError);
+        logger.error('Failed to delete Auth user:', deleteError);
       }
       throw error;
     } finally {
@@ -984,7 +989,7 @@ export const authService = {
       try {
         await firebaseUser.getIdToken(true);
       } catch (tokenError) {
-        console.warn('Failed to refresh token on sign in:', tokenError);
+        logger.warn('Failed to refresh token on sign in:', tokenError);
       }
       
       const record = await ensureUserRecordFromAuth(firebaseUser);
@@ -1036,9 +1041,9 @@ export const authService = {
       try {
         const resetFailedLogins = httpsCallable(functions, 'resetFailedLogins');
         await withRetry(() => resetFailedLogins(), { attempts: 3, shouldRetry: isNetworkError });
-        console.log('✅ Failed login attempts reset');
+        logger.log('✅ Failed login attempts reset');
       } catch (cloudFunctionError) {
-        console.warn('⚠️ Failed to call resetFailedLogins cloud function after retries:', cloudFunctionError);
+        logger.warn('⚠️ Failed to call resetFailedLogins cloud function after retries:', cloudFunctionError);
         // Don't fail login if cloud function fails - try to update directly as fallback
         try {
           const userDocRef = doc(database, COLLECTIONS.USERS, firebaseUser.uid);
@@ -1050,7 +1055,7 @@ export const authService = {
             updatedAt: nowIso(),
           });
         } catch (fallbackError) {
-          console.error('Failed to reset login attempts (fallback):', fallbackError);
+          logger.error('Failed to reset login attempts (fallback):', fallbackError);
         }
       }
 
@@ -1064,7 +1069,7 @@ export const authService = {
 
       // Handle failed login attempts - call Cloud Function to track
       // Log the error to see what we're getting
-      console.log('🔍 Login error details:', {
+      logger.log('🔍 Login error details:', {
         error,
         code: error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : 'no-code',
         message: error instanceof Error ? error.message : 'unknown'
@@ -1076,7 +1081,7 @@ export const authService = {
         
         // Track any auth-related error
         if (code?.startsWith('auth/')) {
-          console.log('🔒 Calling trackFailedLogin for:', email);
+          logger.log('🔒 Calling trackFailedLogin for:', email);
 
           // Optimisation: do the tracking call in the background so we can
           // return control to the UI immediately. In some environments the
@@ -1103,7 +1108,7 @@ export const authService = {
                 lockedUntil?: string;
               };
 
-              console.log('✅ trackFailedLogin response (background):', data);
+              logger.log('✅ trackFailedLogin response (background):', data);
 
               if (data.message) {
                 try { sessionStorage.setItem('accountLockedMessage', data.message); } catch (_) {}
@@ -1121,7 +1126,7 @@ export const authService = {
                 try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
               }
             } catch (bgErr) {
-              console.error('❌ trackFailedLogin background error:', bgErr);
+              logger.error('❌ trackFailedLogin background error:', bgErr);
             }
           })();
         }
@@ -1168,7 +1173,7 @@ export const authService = {
         message: 'Password reset instructions sent. If an account exists with this email, you will receive a link shortly.' 
       };
     } catch (error) {
-      console.error('Password reset error:', error);
+      logger.error('Password reset error:', error);
       
       // Handle specific Firebase errors
       if (error && typeof error === 'object' && 'code' in error) {
@@ -1222,7 +1227,7 @@ export const authService = {
       } else if (typedError.code === 'auth/weak-password') {
         message = 'The new password is too weak. Please choose a stronger password.';
       }
-      console.error('Confirm password reset error:', error);
+      logger.error('Confirm password reset error:', error);
       return { success: false, message };
     }
   },
@@ -1291,7 +1296,7 @@ export const authService = {
       try {
         await firebaseUser.getIdToken(true);
       } catch (tokenError) {
-        console.warn('Failed to refresh token:', tokenError);
+        logger.warn('Failed to refresh token:', tokenError);
         // If token refresh fails, user might need to re-authenticate
         await firebaseSignOut(auth);
         currentUserCache = null;
@@ -1314,7 +1319,7 @@ export const authService = {
       currentUserCache = user;
       return user;
     } catch (error) {
-      console.error('Failed to fetch current user:', error);
+      logger.error('Failed to fetch current user:', error);
       // Clear auth state on error
       await firebaseSignOut(auth).catch(() => undefined);
       currentUserCache = null;
@@ -1343,7 +1348,7 @@ export const authService = {
             try {
               authListeners.delete(callback);
             } catch (error) {
-              console.error('Failed to remove auth listener', error);
+              logger.error('Failed to remove auth listener', error);
               errorCallback?.('Failed to unsubscribe from auth updates');
             }
           },
@@ -1353,7 +1358,7 @@ export const authService = {
   },
 
   async signOutDueToIdleTimeout(): Promise<void> {
-    console.log('🕒 User session expired due to inactivity - logging out');
+    logger.log('🕒 User session expired due to inactivity - logging out');
     const auth = getFirebaseAuth();
     await firebaseSignOut(auth).catch(() => undefined);
     currentUserCache = null;
@@ -1501,10 +1506,10 @@ export const userService = {
       const fn = httpsCallable(functions, 'revokeUserTokens');
       // best-effort: do not fail the lock operation if the callable is unavailable
       const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
-      console.log('revokeUserTokens response:', resp?.data);
+      logger.log('revokeUserTokens response:', resp?.data);
     } catch (revErr) {
       // Log but don't throw - lock state was already set in Firestore
-      console.warn('Failed to call revokeUserTokens callable after locking account:', revErr);
+      logger.warn('Failed to call revokeUserTokens callable after locking account:', revErr);
     }
     return toUser(snapshot.id, record);
   },
@@ -1535,10 +1540,10 @@ export const userService = {
       const fn = httpsCallable(functions, 'revokeUserTokens');
       // best-effort: do not fail the lock operation if the callable is unavailable
       const resp = await withRetry(() => fn({ userId: id, reason: `Locked by admin via client` }), { attempts: 3, shouldRetry: isNetworkError });
-      console.log('revokeUserTokens response:', resp?.data);
+      logger.log('revokeUserTokens response:', resp?.data);
     } catch (revErr) {
       // Log but don't throw - lock state was already set in Firestore
-      console.warn('Failed to call revokeUserTokens callable after locking account (admin):', revErr);
+      logger.warn('Failed to call revokeUserTokens callable after locking account (admin):', revErr);
     }
 
     return toUser(snapshot.id, record);
@@ -1676,15 +1681,15 @@ export const classroomService = {
       if (bookingDeletes.length > 0) {
         // convert to DocumentReference array
         await chunkAndCommit(bookingDeletes);
-        console.log(`Deleted ${bookingDeletes.length} related booking request(s) for classroom ${id}`);
+        logger.log(`Deleted ${bookingDeletes.length} related booking request(s) for classroom ${id}`);
       }
 
       if (scheduleDeletes.length > 0) {
         await chunkAndCommit(scheduleDeletes);
-        console.log(`Deleted ${scheduleDeletes.length} related schedule(s) for classroom ${id}`);
+        logger.log(`Deleted ${scheduleDeletes.length} related schedule(s) for classroom ${id}`);
       }
     } catch (cascadeError) {
-      console.error('Error during cascade deletion for classroom:', cascadeError);
+      logger.error('Error during cascade deletion for classroom:', cascadeError);
       // proceed to still delete classroom document even if cascade had issues
     }
 
@@ -1777,7 +1782,7 @@ export const bookingRequestService = {
         purpose: record.purpose,
       }), { attempts: 3, shouldRetry: isNetworkError });
     } catch (err) {
-      console.warn('Failed to notify admins of new booking request:', err);
+      logger.warn('Failed to notify admins of new booking request:', err);
     }
     return toBookingRequest(ref.id, record);
   },
@@ -1826,7 +1831,7 @@ export const bookingRequestService = {
           { bookingRequestId: snapshot.id, adminFeedback: updatePayload.adminFeedback, actorId: currentUserCache?.id }
         );
       } catch (err) {
-        console.warn('Could not create notification after booking update:', err);
+        logger.warn('Could not create notification after booking update:', err);
       }
     }
 
@@ -1922,11 +1927,11 @@ export const bookingRequestService = {
             { bookingRequestId: snapshot.id, adminFeedback: (u.data as any).adminFeedback, actorId: currentUserCache?.id }
           );
         } catch (err) {
-          console.warn('Failed to create notification after bulk booking update for', u.id, err);
+          logger.warn('Failed to create notification after bulk booking update for', u.id, err);
         }
       }
     } catch (err) {
-      console.warn('Error while post-processing bulk booking updates for notifications:', err);
+      logger.warn('Error while post-processing bulk booking updates for notifications:', err);
     }
   },
 };
@@ -2163,7 +2168,7 @@ export const signupRequestService = {
           { adminFeedback: updatePayload.adminFeedback, actorId: currentUserCache?.id }
         );
       } catch (err) {
-        console.warn('Failed to create signup notification:', err);
+        logger.warn('Failed to create signup notification:', err);
       }
     }
     return toSignupRequest(snapshot.id, data);
@@ -2206,7 +2211,7 @@ export const signupRequestService = {
         { adminFeedback: feedback, actorId: currentUserCache?.id }
       );
     } catch (err) {
-      console.warn('Failed to notify user about signup rejection cleanup:', err);
+      logger.warn('Failed to notify user about signup rejection cleanup:', err);
     }
 
     try {
@@ -2217,7 +2222,7 @@ export const signupRequestService = {
       
   // Call the cloud function to delete the user account completely (with retries)
   const result = await withRetry(() => deleteUserAccount({ userId: request.userId }), { attempts: 3, shouldRetry: isNetworkError });
-  console.log('Account deletion result:', result.data);
+  logger.log('Account deletion result:', result.data);
       
       // Delete the signup request from Firestore
       await this.delete(requestId);
@@ -2228,7 +2233,7 @@ export const signupRequestService = {
       try {
         await signupHistoryService.delete(historyRecord.id);
       } catch (historyDeleteError) {
-        console.error('Failed to clean up history record after failed rejection:', historyDeleteError);
+        logger.error('Failed to clean up history record after failed rejection:', historyDeleteError);
       }
       throw error;
     }
@@ -2257,7 +2262,7 @@ export const signupRequestService = {
         errors: string[];
       };
     } catch (error) {
-      console.error('Bulk cleanup error:', error);
+      logger.error('Bulk cleanup error:', error);
       throw new Error(`Failed to perform bulk cleanup: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
@@ -2369,12 +2374,12 @@ export const signupHistoryService = {
 export const realtimeService = {
   // Clean up all active listeners
   cleanup() {
-    console.log('🧹 Cleaning up real-time listeners...');
+    logger.log('🧹 Cleaning up real-time listeners...');
     activeUnsubscribes.forEach((unsubscribe) => {
       try {
         unsubscribe();
       } catch (error) {
-        console.error('Error unsubscribing listener:', error);
+        logger.error('Error unsubscribing listener:', error);
       }
     });
     activeUnsubscribes = [];
@@ -2398,11 +2403,11 @@ export const realtimeService = {
       onError?: (error: Error) => void;
     }
   ) {
-    console.log('🔄 Setting up real-time listeners for user:', user?.email);
+    logger.log('🔄 Setting up real-time listeners for user:', user?.email);
     
       // If we've already set up listeners for this exact user, skip re-setup
       if (user?.id && currentRealtimeUserId === user.id && activeUnsubscribes.length > 0) {
-        console.log('⚠️ Real-time listeners already active for this user, skipping re-registration');
+        logger.log('⚠️ Real-time listeners already active for this user, skipping re-registration');
         return;
       }
 
@@ -2448,9 +2453,9 @@ export const realtimeService = {
       // Mark which user these listeners belong to so we can avoid redundant setups
       currentRealtimeUserId = user?.id ?? null;
 
-      console.log(`✅ Real-time listeners setup complete for ${user?.role || 'anonymous'} user`);
+      logger.log(`✅ Real-time listeners setup complete for ${user?.role || 'anonymous'} user`);
     } catch (error) {
-      console.error('❌ Failed to setup real-time listeners:', error);
+      logger.error('❌ Failed to setup real-time listeners:', error);
       onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   },

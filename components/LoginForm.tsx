@@ -9,8 +9,11 @@ import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPe
 import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
+import { logger } from '../lib/logger';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
+
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => boolean | Promise<boolean>;
@@ -18,7 +21,8 @@ interface LoginFormProps {
     email: string,
     name: string,
     department: string,
-    password: string
+    password: string,
+    recaptchaToken?: string
   ) => boolean | Promise<boolean>;
   users: User[];
   isLocked?: boolean;
@@ -215,15 +219,37 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       setSignupData(prev => ({ ...prev, password: cleaned, confirmPassword: cleanedConfirm }));
     }
 
-    const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
     setSignupIsLoading(true);
     let success = false;
     try {
+      // Execute reCAPTCHA before signup
+      let recaptchaToken: string | undefined;
+      if (RECAPTCHA_SITE_KEY && typeof window !== 'undefined' && window.grecaptcha?.enterprise) {
+        try {
+          await new Promise<void>((resolve) => {
+            window.grecaptcha!.enterprise.ready(() => resolve());
+          });
+          
+          recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { 
+            action: 'SIGNUP' 
+          });
+          logger.log('reCAPTCHA token obtained for signup');
+        } catch (recaptchaError) {
+          logger.error('reCAPTCHA execution failed:', recaptchaError);
+          toast.error('Security verification failed. Please try again.');
+          return;
+        }
+      } else {
+        logger.warn('reCAPTCHA not configured or unavailable');
+      }
+
+      const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
       success = await onSignup(
         signupData.email,
         fullName,
         signupData.department,
-        signupData.password
+        signupData.password,
+        recaptchaToken
       );
     } finally {
       setSignupIsLoading(false);

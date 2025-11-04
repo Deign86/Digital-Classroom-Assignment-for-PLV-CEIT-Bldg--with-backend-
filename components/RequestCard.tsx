@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { logger } from '../lib/logger';
 import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -62,7 +63,7 @@ export default function RequestCard({
           setHasConflict(result);
         }
       } catch (error) {
-        console.error('Error checking conflicts:', error);
+        logger.error('Error checking conflicts:', error);
         setHasConflict(true);
       }
     };
@@ -324,7 +325,7 @@ export default function RequestCard({
                           setCancelError(null);
                           try { announce('Reservation cancelled', 'polite'); } catch (e) { }
                         } catch (err: any) {
-                          console.error('Failed to cancel reservation', err);
+                          logger.error('Failed to cancel reservation', err);
                           const msg = err?.message || 'Failed to cancel reservation. Please try again.';
                           setCancelError(msg);
                           toast.error(msg);

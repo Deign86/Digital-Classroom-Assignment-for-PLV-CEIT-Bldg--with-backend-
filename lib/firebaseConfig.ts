@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
+import { logger } from './logger';
 
 const REQUIRED_ENV_VARS = [
   'VITE_FIREBASE_API_KEY',
@@ -52,12 +53,12 @@ const createFirebaseApp = (): FirebaseApp => {
 
   try {
     if (getApps().length === 0) {
-      console.log('Initializing Firebase app with projectId:', firebaseConfig.projectId);
+      logger.log('Initializing Firebase app with projectId:', firebaseConfig.projectId);
       return initializeApp(firebaseConfig);
     }
     return getApp();
   } catch (error) {
-    console.error('Failed to initialize Firebase app:', error);
+    logger.error('Failed to initialize Firebase app:', error);
     throw new Error(`Firebase initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
@@ -78,9 +79,9 @@ export const getFirebaseDb = (): Firestore => {
     try {
       const app = getFirebaseApp();
       firestoreInstance = getFirestore(app);
-      console.log('Firestore instance initialized for project:', app.options.projectId);
+      logger.log('Firestore instance initialized for project:', app.options.projectId);
     } catch (error) {
-      console.error('Failed to initialize Firestore:', error);
+      logger.error('Failed to initialize Firestore:', error);
       throw new Error(`Firestore initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -96,7 +97,7 @@ export const getFirebaseAuth = async (): Promise<Auth> => {
     try {
       await setPersistence(authInstance, browserLocalPersistence);
     } catch (error) {
-      console.warn('Failed to set auth persistence:', error);
+      logger.warn('Failed to set auth persistence:', error);
     }
   }
   return authInstance;

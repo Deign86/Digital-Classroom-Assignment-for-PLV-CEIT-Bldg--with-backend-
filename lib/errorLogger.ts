@@ -1,6 +1,7 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { logger } from './logger';
 
 export type ClientErrorRecord = {
   message: string;
@@ -29,7 +30,7 @@ export async function logClientError(payload: Omit<ClientErrorRecord, 'createdAt
     if (anyRes?.data?.id) return anyRes.data.id as string;
   } catch (fnErr) {
     // Not critical — we'll fall back to direct Firestore write below
-    console.warn('logClientError cloud function failed or unavailable, falling back to client-side write:', fnErr);
+    logger.warn('logClientError cloud function failed or unavailable, falling back to client-side write:', fnErr);
   }
 
   // Fallback: write directly to Firestore (best-effort)
@@ -43,7 +44,7 @@ export async function logClientError(payload: Omit<ClientErrorRecord, 'createdAt
     return docRef.id;
   } catch (err) {
     // If logging fails, don't block the app — print to console and return null
-    console.error('Failed to write client error log (fallback):', err);
+    logger.error('Failed to write client error log (fallback):', err);
     return null;
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
+import { logger } from '../lib/logger';
 /* spinner removed by request; fallbacks reverted to text */
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -91,7 +92,7 @@ export default function FacultyDashboard({
       try {
         onExternalInitialDataConsumed?.();
       } catch (e) {
-        console.warn('Error calling onExternalInitialDataConsumed:', e);
+        logger.warn('Error calling onExternalInitialDataConsumed:', e);
       }
     }
   }, [externalInitialData, onExternalInitialDataConsumed]);

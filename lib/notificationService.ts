@@ -16,6 +16,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
+import { logger } from './logger';
 
 export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';
 
@@ -158,12 +159,12 @@ export const setupNotificationsListener = (
     const app = getFirebaseApp();
     try {
       const auth = getAuth(app);
-      console.log('setupNotificationsListener registering', { projectId: app.options?.projectId, currentUser: auth.currentUser?.uid ?? null });
+      logger.log('setupNotificationsListener registering', { projectId: app.options?.projectId, currentUser: auth.currentUser?.uid ?? null });
     } catch (e) {
-      console.log('setupNotificationsListener: unable to read auth currentUser', e);
+      logger.log('setupNotificationsListener: unable to read auth currentUser', e);
     }
   } catch (e) {
-    console.log('setupNotificationsListener: unable to read firebase app info', e);
+    logger.log('setupNotificationsListener: unable to read firebase app info', e);
   }
 
   const unsubscribe = onSnapshot(
@@ -176,12 +177,12 @@ export const setupNotificationsListener = (
         });
         callback(items);
       } catch (err) {
-        console.error('Notifications listener error:', err);
+        logger.error('Notifications listener error:', err);
         errorCallback?.(err instanceof Error ? err : new Error(String(err)));
       }
     },
     (error) => {
-      console.error('Notifications listener error (snapshot):', error);
+      logger.error('Notifications listener error (snapshot):', error);
       // Do NOT call unsubscribe() from inside the SDK error callback — calling
       // the returned unsubscribe here can cause internal SDK race conditions
       // and assertions. Forward the error to the caller and let the higher

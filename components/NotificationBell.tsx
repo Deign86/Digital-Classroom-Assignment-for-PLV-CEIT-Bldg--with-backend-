@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logger } from '../lib/logger';
 import { notificationService, type Notification } from '../lib/notificationService';
 import { Bell } from '@phosphor-icons/react';
 
@@ -29,7 +30,7 @@ export const NotificationBell: React.FC<Props> = ({ userId, onOpen, forceUnread 
           setCount(unread);
         }, undefined, userId);
       } catch (err) {
-        console.error('NotificationBell error:', err);
+        logger.error('NotificationBell error:', err);
       }
     };
 

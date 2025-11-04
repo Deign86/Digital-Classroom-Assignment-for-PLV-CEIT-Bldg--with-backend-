@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { logger } from '../lib/logger';
 // react-router navigation removed for bulk results to avoid unexpected full-screen navigation
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -163,7 +164,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       await onSignupApproval(requestId, approved, approved ? feedbackText || undefined : feedbackText);
       setFeedback((prev) => ({ ...prev, [requestId]: '' }));
     } catch (err) {
-      console.error('Signup approval error:', err);
+      logger.error('Signup approval error:', err);
       toast.error('Failed to process signup request');
     } finally {
       setProcessingIds(prev => {

@@ -10,14 +10,25 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // Authenticated users can read user profiles (needed for app functionality).
-      // Users can write their own profile OR authenticated users can perform admin operations.
+      // Authenticated users can read user profiles (needed for app functionality)
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (
-        isOwner(userId) || 
-        // Allow admin operations - more flexible for status/role updates
-        request.auth != null
-      );
+      
+      // Users can only update their own specific fields (cannot change role/status)
+      // Admins update users via Cloud Functions with Admin SDK (bypasses these rules)
+      allow update: if request.auth.uid == userId 
+                   && request.resource.data.keys().hasOnly([
+                     'name', 'department', 'photoURL', 'pushEnabled', 
+                     'updatedAt', 'email', 'emailLower', 'role', 'status',
+                     'createdAt', 'failedLoginAttempts', 'accountLocked', 
+                     'lockedUntil', 'lockedByAdmin', 'lastSignInAt'
+                   ])
+                   && request.resource.data.role == resource.data.role  // Cannot change own role
+                   && request.resource.data.status == resource.data.status  // Cannot change own status
+                   && (!request.resource.data.keys().hasAny(['accountLocked', 'lockedByAdmin']) 
+                       || request.resource.data.accountLocked == resource.data.accountLocked)  // Cannot unlock self
+                   && request.resource.data.email == resource.data.email;  // Cannot change email directly
+      
+      // Create and delete operations are handled by Cloud Functions with Admin SDK only
     }
     
     // Classrooms collection
