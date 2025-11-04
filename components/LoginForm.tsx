@@ -114,6 +114,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   useEffect(() => {
     if (typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
       console.log('[reCAPTCHA] Component mounted, starting script load');
+      console.log('[reCAPTCHA] Body classes:', document.body.className);
+      console.log('[reCAPTCHA] Has authenticated class:', document.body.classList.contains('authenticated'));
+      
       loadRecaptchaScript()
         .then(() => {
           console.log('[reCAPTCHA] Load complete');
@@ -122,9 +125,13 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
             const badge = document.querySelector('.grecaptcha-badge');
             console.log('[reCAPTCHA] Badge element found:', !!badge);
             if (badge) {
-              console.log('[reCAPTCHA] Badge styles:', window.getComputedStyle(badge).display, 
-                         'visibility:', window.getComputedStyle(badge).visibility,
-                         'opacity:', window.getComputedStyle(badge).opacity);
+              const styles = window.getComputedStyle(badge);
+              console.log('[reCAPTCHA] Badge styles:', 
+                         'display:', styles.display,
+                         'visibility:', styles.visibility,
+                         'opacity:', styles.opacity,
+                         'z-index:', styles.zIndex);
+              console.log('[reCAPTCHA] Body has authenticated class:', document.body.classList.contains('authenticated'));
             } else {
               console.warn('[reCAPTCHA] Badge element not found in DOM');
             }
