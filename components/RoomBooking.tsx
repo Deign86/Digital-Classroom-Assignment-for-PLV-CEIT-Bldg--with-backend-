@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge'; 
-import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle, WifiOff } from 'lucide-react';
 import equipmentIcons, { getIconForEquipment, getPhosphorIcon } from '../lib/equipmentIcons';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import { useAnnouncer } from './Announcer';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { generateTimeSlots, convertTo24Hour, convertTo12Hour, getValidEndTimes, isPastBookingTime, isValidSchoolTime, isReasonableBookingDuration } from '../utils/timeUtils';
+import { executeWithNetworkHandling, checkIsOffline } from '../lib/networkErrorHandler';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
 interface RoomBookingProps {
@@ -300,9 +301,25 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         purpose: formData.purpose
       };
 
-        await onBookingRequest(request);
+      // Execute with network error handling
+      const result = await executeWithNetworkHandling(
+        async () => {
+          await onBookingRequest(request); // Let App.tsx show the success toast with undo action
+          return request;
+        },
+        {
+          operationName: 'submit booking request',
+          successMessage: undefined, // App.tsx handles the success message with undo action
+          maxAttempts: 3,
+        }
+      );
 
-      // Reset form
+      if (!result.success) {
+        // Error already shown by network handler
+        return;
+      }
+
+      // Reset form only on success
       setFormData({
         classroomId: '',
         date: '',
