@@ -95,13 +95,13 @@ This document summarizes all security fixes implemented before thesis defense.
 
 ### 6. General Rate Limiting ✅
 **Risk Level:** HIGH  
-**Status:** FIXED (This session)
+**Status:** FIXED (This session) - ALL FUNCTIONS DEPLOYED ✅
 
 **What Was Done:**
 - Created 3 Cloud Functions for comprehensive rate limiting:
   1. **checkLoginRateLimit** - 10 attempts per IP per 15 minutes ✅ DEPLOYED
   2. **checkBookingRateLimit** - 5 requests per user per hour ✅ DEPLOYED
-  3. **checkAdminActionRateLimit** - 30 actions per user per minute ⚠️ PENDING (CPU quota issue)
+  3. **checkAdminActionRateLimit** - 30 actions per user per minute ✅ DEPLOYED
 
 - Implemented window-based rate limiting with automatic reset
 - Atomic Firestore operations to prevent race conditions
@@ -109,8 +109,9 @@ This document summarizes all security fixes implemented before thesis defense.
 - Returns clear error messages and reset times
 
 **Deployment Status:**
-- 2/3 functions deployed successfully to production
-- 1 function pending CPU quota resolution with Firebase
+- ✅ All 3/3 functions deployed successfully to production
+- Initial deployment of admin function failed (storage precondition error)
+- Resolved by deleting failed function and redeploying fresh
 - See [RATE_LIMITING_IMPLEMENTATION.md](./RATE_LIMITING_IMPLEMENTATION.md) for details
 
 **Security Impact:**
@@ -118,6 +119,7 @@ This document summarizes all security fixes implemented before thesis defense.
 - ✅ Booking spam prevention (user-based limits)
 - ✅ Admin action throttling (prevents accidental mass operations)
 - ✅ DDoS mitigation for authenticated endpoints
+- ✅ All rate limiting functions fully operational in production
 
 **Files Modified:**
 - `plv-classroom-assignment-functions/src/index.ts` - Added 3 rate limit functions (240 lines)
@@ -244,7 +246,7 @@ This document summarizes all security fixes implemented before thesis defense.
 
 **Both remaining issues are LOW PRIORITY and not security vulnerabilities.**
 
-**Note:** `checkAdminActionRateLimit` Cloud Function is implemented but deployment failed due to CPU quota. The code is production-ready and will deploy once quota is increased. The other two rate limiting functions (login and booking) are successfully deployed and protecting the application.
+**✅ UPDATE:** All rate limiting functions (3/3) are now successfully deployed and operational in production!
 
 ---
 
