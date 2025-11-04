@@ -1270,6 +1270,20 @@ export default function App() {
     initializeApp();
   }, [setupRealtimeListeners]);
 
+  // Hide reCAPTCHA badge when user is authenticated
+  useEffect(() => {
+    if (currentUser) {
+      document.body.classList.add('authenticated');
+    } else {
+      document.body.classList.remove('authenticated');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('authenticated');
+    };
+  }, [currentUser]);
+
   // Separate effect for auth state listener to ensure proper cleanup
   useEffect(() => {
     // Listen for auth state changes (login, logout, token refresh)
