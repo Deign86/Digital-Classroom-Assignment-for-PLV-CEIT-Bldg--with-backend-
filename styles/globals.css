@@ -951,7 +951,6 @@ html {
 /* Hide reCAPTCHA badge when user is logged in (after signup/login) */
 /* The badge is only needed during signup, not after authentication */
 .grecaptcha-badge {
-  display: block !important; /* Force display to override Google's default */
   opacity: 1;
   visibility: visible;
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;

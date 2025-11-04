@@ -15,18 +15,10 @@ import PasswordResetDialog from './PasswordResetDialog';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
-// Debug logging for Vercel deployment
-if (typeof window !== 'undefined') {
-  console.log('[reCAPTCHA Debug] Site Key:', RECAPTCHA_SITE_KEY ? 'Loaded ✓' : 'MISSING ✗');
-  console.log('[reCAPTCHA Debug] Site Key Length:', RECAPTCHA_SITE_KEY?.length || 0);
-  console.log('[reCAPTCHA Debug] All Vite Env:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
-}
-
 // Load reCAPTCHA script dynamically with environment variable
 const loadRecaptchaScript = (): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!RECAPTCHA_SITE_KEY) {
-      console.error('[reCAPTCHA] Site key not configured - cannot load script');
       logger.warn('reCAPTCHA site key not configured');
       resolve();
       return;
@@ -34,7 +26,6 @@ const loadRecaptchaScript = (): Promise<void> => {
 
     // Check if script already loaded
     if (window.grecaptcha?.enterprise) {
-      console.log('[reCAPTCHA] Script already loaded');
       resolve();
       return;
     }
@@ -42,40 +33,24 @@ const loadRecaptchaScript = (): Promise<void> => {
     // Check if script tag already exists
     const existingScript = document.querySelector('script[src*="recaptcha/enterprise.js"]');
     if (existingScript) {
-      console.log('[reCAPTCHA] Script tag already exists, waiting for load');
-      existingScript.addEventListener('load', () => {
-        console.log('[reCAPTCHA] Existing script loaded successfully');
-        resolve();
-      });
-      existingScript.addEventListener('error', (error) => {
-        console.error('[reCAPTCHA] Existing script failed to load:', error);
-        reject(error);
-      });
+      existingScript.addEventListener('load', () => resolve());
+      existingScript.addEventListener('error', reject);
       return;
     }
 
     // Create and load script
-    const scriptUrl = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
-    console.log('[reCAPTCHA] Creating script tag with URL:', scriptUrl);
-    
     const script = document.createElement('script');
-    script.src = scriptUrl;
+    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      console.log('[reCAPTCHA] Script loaded successfully, grecaptcha available:', !!window.grecaptcha);
       logger.log('reCAPTCHA script loaded successfully');
       resolve();
     };
     script.onerror = (error) => {
-      console.error('[reCAPTCHA] Script failed to load:', error);
-      console.error('[reCAPTCHA] Script URL that failed:', scriptUrl);
-      console.error('[reCAPTCHA] This might be blocked by browser, extension, or network policy');
       logger.error('Failed to load reCAPTCHA script:', error);
       reject(new Error('Failed to load reCAPTCHA'));
     };
-    
-    console.log('[reCAPTCHA] Appending script to document head');
     document.head.appendChild(script);
   });
 };
@@ -114,41 +89,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   // Load reCAPTCHA script on component mount
   useEffect(() => {
     if (typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
-      console.log('[reCAPTCHA] Component mounted, starting script load');
-      console.log('[reCAPTCHA] Body classes:', document.body.className);
-      console.log('[reCAPTCHA] Has authenticated class:', document.body.classList.contains('authenticated'));
-      
-      loadRecaptchaScript()
-        .then(() => {
-          console.log('[reCAPTCHA] Load complete');
-          // Check if badge element appears after a short delay
-          setTimeout(() => {
-            const badge = document.querySelector('.grecaptcha-badge') as HTMLElement;
-            console.log('[reCAPTCHA] Badge element found:', !!badge);
-            if (badge) {
-              // Force display via inline styles to override any other CSS
-              badge.style.setProperty('display', 'block', 'important');
-              badge.style.setProperty('visibility', 'visible', 'important');
-              badge.style.setProperty('opacity', '1', 'important');
-              
-              const styles = window.getComputedStyle(badge);
-              console.log('[reCAPTCHA] Badge styles after forcing:', 
-                         'display:', styles.display,
-                         'visibility:', styles.visibility,
-                         'opacity:', styles.opacity,
-                         'z-index:', styles.zIndex);
-              console.log('[reCAPTCHA] Body has authenticated class:', document.body.classList.contains('authenticated'));
-            } else {
-              console.warn('[reCAPTCHA] Badge element not found in DOM');
-            }
-          }, 1000);
-        })
-        .catch((error) => {
-          console.error('[reCAPTCHA] Failed to load on mount:', error);
-          logger.error('Failed to load reCAPTCHA on mount:', error);
-        });
-    } else {
-      console.warn('[reCAPTCHA] Not loading - window:', typeof window, 'siteKey:', !!RECAPTCHA_SITE_KEY);
+      loadRecaptchaScript().catch((error) => {
+        logger.error('Failed to load reCAPTCHA on mount:', error);
+      });
     }
   }, []);
 
