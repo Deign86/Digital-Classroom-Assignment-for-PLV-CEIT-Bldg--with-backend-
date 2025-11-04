@@ -1,19 +1,55 @@
 /**
- * Universal input validation and sanitization utilities
+ * Universal input validation and sanitization utilities.
+ * 
+ * Provides comprehensive input validation to prevent XSS attacks,
+ * SQL injection, and ensure data quality throughout the application.
  */
 
+/**
+ * Maximum length constraints for different input fields.
+ * Based on RFC standards and practical application limits.
+ */
 export const INPUT_LIMITS = {
-  EMAIL: 320, // RFC 5321 max
+  /** Maximum email length per RFC 5321 */
+  EMAIL: 320,
+  /** Maximum user name length */
   NAME: 100,
+  /** Maximum department name length */
   DEPARTMENT: 100,
+  /** Maximum purpose/description length */
   PURPOSE: 500,
+  /** Maximum feedback text length */
   FEEDBACK: 500,
+  /** Maximum classroom name length */
   CLASSROOM_NAME: 50,
+  /** Maximum reason text length */
   REASON: 500,
 } as const;
 
 /**
- * Sanitize text input: trim, remove excessive whitespace, limit length
+ * Sanitizes text input by trimming, removing excessive whitespace, and limiting length.
+ * 
+ * Security features:
+ * - Removes zero-width and invisible characters
+ * - Strips control characters
+ * - Collapses multiple spaces
+ * - Enforces length limits
+ * 
+ * @param text - The text to sanitize
+ * @param maxLength - Maximum allowed length (default: 500)
+ * @param options - Optional sanitization behavior
+ * @param options.allowNewlines - Whether to preserve line breaks
+ * @param options.allowMultipleSpaces - Whether to preserve multiple spaces
+ * @returns Sanitized text string
+ * 
+ * @example
+ * ```typescript
+ * sanitizeText("  Hello   World  ", 50)
+ * // Returns "Hello World"
+ * 
+ * sanitizeText("Line 1\nLine 2", 100, { allowNewlines: true })
+ * // Returns "Line 1\nLine 2"
+ * ```
  */
 export function sanitizeText(
   text: string, 
@@ -45,7 +81,19 @@ export function sanitizeText(
 }
 
 /**
- * Validate email format
+ * Validates email format using RFC 5322 simplified regex.
+ * 
+ * Also sanitizes the email and enforces length limits.
+ * 
+ * @param email - The email address to validate
+ * @returns true if email format is valid
+ * 
+ * @example
+ * ```typescript
+ * isValidEmail("user@example.com")     // true
+ * isValidEmail("invalid.email")        // false
+ * isValidEmail("user@example")         // false
+ * ```
  */
 export function isValidEmail(email: string): boolean {
   const sanitized = sanitizeText(email, INPUT_LIMITS.EMAIL);
@@ -55,7 +103,21 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Validate name (no numbers or special chars except space, hyphen, apostrophe)
+ * Validates name format (letters, spaces, hyphens, and apostrophes only).
+ * 
+ * Ensures names contain only alphabetic characters and common name punctuation.
+ * Requires minimum length of 2 characters.
+ * 
+ * @param name - The name to validate
+ * @returns true if name format is valid
+ * 
+ * @example
+ * ```typescript
+ * isValidName("John Doe")           // true
+ * isValidName("Mary-Jane O'Brien")  // true
+ * isValidName("User123")            // false (contains numbers)
+ * isValidName("A")                  // false (too short)
+ * ```
  */
 export function isValidName(name: string): boolean {
   const sanitized = sanitizeText(name, INPUT_LIMITS.NAME);
@@ -64,7 +126,24 @@ export function isValidName(name: string): boolean {
 }
 
 /**
- * Check for potential XSS/injection patterns
+ * Checks for potential XSS/injection patterns in text.
+ * 
+ * Detects common attack vectors including:
+ * - Script tags
+ * - JavaScript protocols
+ * - Event handlers (onclick, onerror, onload)
+ * - Iframes
+ * - eval() and expression() calls
+ * 
+ * @param text - The text to check for suspicious content
+ * @returns true if suspicious patterns are detected
+ * 
+ * @example
+ * ```typescript
+ * containsSuspiciousContent("<script>alert('xss')</script>")  // true
+ * containsSuspiciousContent("javascript:void(0)")             // true
+ * containsSuspiciousContent("Hello World")                    // false
+ * ```
  */
 export function containsSuspiciousContent(text: string): boolean {
   const suspicious = [
@@ -82,7 +161,28 @@ export function containsSuspiciousContent(text: string): boolean {
 }
 
 /**
- * Comprehensive validation for text input
+ * Performs comprehensive validation on text input.
+ * 
+ * Combines multiple validation checks:
+ * - Presence validation (non-empty)
+ * - Length validation
+ * - XSS/injection detection
+ * - Automatic sanitization
+ * 
+ * @param text - The text to validate
+ * @param field - Field name for error messages
+ * @param maxLength - Maximum allowed length
+ * @returns Validation result with sanitized text
+ * 
+ * @example
+ * ```typescript
+ * const result = validateTextInput(userInput, "Description", 500);
+ * if (result.isValid) {
+ *   saveData(result.sanitized);
+ * } else {
+ *   showError(result.error);
+ * }
+ * ```
  */
 export function validateTextInput(
   text: string,

@@ -1,14 +1,50 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 
+/**
+ * Configuration options for the idle timeout hook
+ */
 interface IdleTimeoutOptions {
-  timeout: number; // in milliseconds
+  /** Idle timeout duration in milliseconds */
+  timeout: number;
+  /** Callback fired when user becomes idle */
   onIdle: () => void;
+  /** Optional callback fired when user becomes active again */
   onActive?: () => void;
+  /** Optional callback fired when warning time is reached, receives remaining time */
   onWarning?: (timeRemaining: number) => void;
-  warningTime?: number; // warning time in milliseconds before timeout
+  /** Warning time in milliseconds before timeout (default: 5 minutes) */
+  warningTime?: number;
+  /** Whether the idle detection is disabled */
   disabled?: boolean;
 }
 
+/**
+ * React hook for detecting user idle state and managing session timeouts.
+ * 
+ * Tracks user activity (mouse, keyboard, touch, scroll) and triggers callbacks
+ * when the user becomes idle or when approaching the timeout threshold.
+ * 
+ * Features:
+ * - Configurable timeout and warning periods
+ * - Real-time countdown of remaining time
+ * - Session extension capability
+ * - Automatic cleanup on unmount
+ * - Can be disabled/enabled dynamically
+ * 
+ * @param options - Configuration options for idle detection
+ * @returns Object with idle state, time remaining, and session extension function
+ * 
+ * @example
+ * ```typescript
+ * const { isIdle, timeRemaining, extendSession } = useIdleTimeout({
+ *   timeout: 15 * 60 * 1000, // 15 minutes
+ *   warningTime: 2 * 60 * 1000, // 2 minutes warning
+ *   onWarning: (remaining) => showWarning(remaining),
+ *   onIdle: () => signOut(),
+ *   onActive: () => hideWarning()
+ * });
+ * ```
+ */
 export const useIdleTimeout = ({
   timeout,
   onIdle,

@@ -18,18 +18,34 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
 import { logger } from './logger';
 
+/**
+ * Types of notifications that can be sent to users
+ */
 export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';
 
+/**
+ * Represents a notification in the system
+ */
 export type Notification = {
+  /** Unique notification identifier */
   id: string;
-  userId: string; // faculty user id who receives this notification
+  /** ID of the faculty user who receives this notification */
+  userId: string;
+  /** Type of notification */
   type: NotificationType;
+  /** Notification message text */
   message: string;
+  /** Associated booking request ID (if applicable) */
   bookingRequestId?: string;
+  /** Admin feedback or reason (for approvals/rejections) */
   adminFeedback?: string;
+  /** ID of user who acknowledged the notification */
   acknowledgedBy?: string | null;
+  /** Timestamp when notification was acknowledged */
   acknowledgedAt?: string | null;
+  /** Timestamp when notification was created */
   createdAt: string;
+  /** Timestamp when notification was last updated */
   updatedAt: string;
 };
 
@@ -65,6 +81,34 @@ const toNotification = (id: string, data: FirestoreNotificationRecord): Notifica
   updatedAt: normalizeTimestamp(data.updatedAt) ?? nowIso(),
 });
 
+/**
+ * Creates a new notification for a user.
+ * 
+ * Uses a Cloud Function for server-side creation to ensure security and
+ * proper timestamp handling. Automatically prevents self-notifications
+ * when actor and recipient are the same user.
+ * 
+ * @param userId - ID of the user to receive the notification
+ * @param type - Type of notification being created
+ * @param message - Notification message text
+ * @param options - Optional parameters
+ * @param options.bookingRequestId - Associated booking request ID
+ * @param options.adminFeedback - Admin feedback or reason
+ * @param options.actorId - ID of user performing the action (to prevent self-notifications)
+ * @returns The created notification ID, or null if skipped (e.g., self-notification)
+ * @throws Error if notification creation fails
+ * 
+ * @example
+ * ```typescript
+ * // Create approval notification
+ * await createNotification(
+ *   facultyId,
+ *   'approved',
+ *   'Your booking request was approved',
+ *   { bookingRequestId: request.id, actorId: adminId }
+ * );
+ * ```
+ */
 export const createNotification = async (
   userId: string,
   type: NotificationType,
@@ -95,6 +139,21 @@ export const createNotification = async (
   return id as string;
 };
 
+/**
+ * Marks a single notification as acknowledged by a user.
+ * 
+ * Uses a server-side Cloud Function to ensure proper timestamp handling
+ * and permission enforcement.
+ * 
+ * @param id - The notification ID to acknowledge
+ * @param acknowledgedBy - ID of the user acknowledging the notification
+ * @throws Error if acknowledgment fails or notification doesn't exist
+ * 
+ * @example
+ * ```typescript
+ * await acknowledgeNotification(notificationId, currentUser.id);
+ * ```
+ */
 export const acknowledgeNotification = async (id: string, acknowledgedBy: string): Promise<void> => {
   // Use a server-side callable to ensure server timestamps and enforce permissions
   const app = getFirebaseApp();
@@ -107,6 +166,25 @@ export const acknowledgeNotification = async (id: string, acknowledgedBy: string
   }
 };
 
+/**
+ * Marks multiple notifications as acknowledged in a single operation.
+ * 
+ * More efficient than calling acknowledgeNotification repeatedly.
+ * Uses a server-side Cloud Function for atomic batch operations.
+ * 
+ * @param ids - Array of notification IDs to acknowledge
+ * @param acknowledgedBy - ID of the user acknowledging the notifications
+ * @returns The new unread notification count for the user
+ * @throws Error if batch acknowledgment fails
+ * 
+ * @example
+ * ```typescript
+ * const unreadCount = await acknowledgeNotifications(
+ *   ['notif1', 'notif2', 'notif3'],
+ *   currentUser.id
+ * );
+ * ```
+ */
 export const acknowledgeNotifications = async (ids: string[], acknowledgedBy: string): Promise<number> => {
   // Prefer a server-side callable that can acknowledge many notifications in one atomic operation
   const app = getFirebaseApp();
@@ -121,6 +199,20 @@ export const acknowledgeNotifications = async (ids: string[], acknowledgedBy: st
   return typeof anyResult?.data?.unreadCount === 'number' ? anyResult.data.unreadCount : 0;
 };
 
+/**
+ * Retrieves a single notification by its ID.
+ * 
+ * @param id - The notification ID to fetch
+ * @returns The notification object, or null if not found
+ * 
+ * @example
+ * ```typescript
+ * const notification = await getNotificationById('notif123');
+ * if (notification) {
+ *   console.log(notification.message);
+ * }
+ * ```
+ */
 export const getNotificationById = async (id: string): Promise<Notification | null> => {
   const database = db();
   const ref = doc(database, COLLECTION, id);
@@ -130,6 +222,18 @@ export const getNotificationById = async (id: string): Promise<Notification | nu
   return toNotification(snap.id, data);
 };
 
+/**
+ * Gets the count of unread notifications for a specific user.
+ * 
+ * @param userId - The user ID to check unread count for
+ * @returns Number of unread notifications
+ * 
+ * @example
+ * ```typescript
+ * const unreadCount = await getUnreadCount(currentUser.id);
+ * setBadgeCount(unreadCount);
+ * ```
+ */
 export const getUnreadCount = async (userId: string): Promise<number> => {
   const database = db();
   // Firestore allows querying for null equality
@@ -139,6 +243,32 @@ export const getUnreadCount = async (userId: string): Promise<number> => {
   return snapshot.size;
 };
 
+/**
+ * Sets up a real-time listener for notifications.
+ * 
+ * Receives automatic updates when notifications are created, modified, or deleted.
+ * The listener should be unsubscribed when no longer needed to prevent memory leaks.
+ * 
+ * @param callback - Function called with updated notifications array
+ * @param errorCallback - Optional function called when errors occur
+ * @param userId - Optional user ID to filter notifications (if omitted, returns all)
+ * @returns Unsubscribe function to stop listening
+ * 
+ * @example
+ * ```typescript
+ * const unsubscribe = setupNotificationsListener(
+ *   (notifications) => {
+ *     setNotifications(notifications);
+ *     setUnreadCount(notifications.filter(n => !n.acknowledgedAt).length);
+ *   },
+ *   (error) => console.error('Listener error:', error),
+ *   currentUser.id
+ * );
+ * 
+ * // Later: cleanup
+ * return () => unsubscribe();
+ * ```
+ */
 export const setupNotificationsListener = (
   callback: (items: Notification[]) => void,
   errorCallback?: (error: Error) => void,
@@ -195,6 +325,12 @@ export const setupNotificationsListener = (
   return unsubscribe;
 };
 
+/**
+ * Complete notification service interface.
+ * 
+ * Provides all functions needed for managing in-app notifications
+ * including creation, acknowledgment, and real-time updates.
+ */
 export const notificationService = {
   createNotification,
   acknowledgeNotification,

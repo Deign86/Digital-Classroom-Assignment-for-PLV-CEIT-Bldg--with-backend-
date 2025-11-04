@@ -1,5 +1,22 @@
-// Time utility functions for converting between 24-hour and 12-hour formats
+/**
+ * Time utility functions for converting between 24-hour and 12-hour formats.
+ * 
+ * These utilities help manage school hours, validate booking times,
+ * and provide consistent time formatting throughout the application.
+ */
 
+/**
+ * Converts 24-hour time format to 12-hour format with AM/PM.
+ * 
+ * @param time24 - Time in 24-hour format (HH:MM)
+ * @returns Time in 12-hour format with AM/PM (e.g., "2:30 PM")
+ * 
+ * @example
+ * ```typescript
+ * convertTo12Hour("14:30") // Returns "2:30 PM"
+ * convertTo12Hour("09:00") // Returns "9:00 AM"
+ * ```
+ */
 export function convertTo12Hour(time24: string): string {
   if (!time24) return '';
   
@@ -10,6 +27,18 @@ export function convertTo12Hour(time24: string): string {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
+/**
+ * Converts 12-hour time format with AM/PM to 24-hour format.
+ * 
+ * @param time12 - Time in 12-hour format with AM/PM (e.g., "2:30 PM")
+ * @returns Time in 24-hour format (HH:MM)
+ * 
+ * @example
+ * ```typescript
+ * convertTo24Hour("2:30 PM")  // Returns "14:30"
+ * convertTo24Hour("12:00 AM") // Returns "00:00"
+ * ```
+ */
 export function convertTo24Hour(time12: string): string {
   if (!time12) return '';
   
@@ -26,7 +55,20 @@ export function convertTo24Hour(time12: string): string {
   return `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-// Generate time slots from 7:00 AM to 8:00 PM in 30-minute intervals
+/**
+ * Generates all available time slots for classroom booking.
+ * 
+ * Creates slots from 7:00 AM to 8:00 PM in 30-minute intervals,
+ * representing school operating hours.
+ * 
+ * @returns Array of time slots in 12-hour format
+ * 
+ * @example
+ * ```typescript
+ * const slots = generateTimeSlots();
+ * // ["7:00 AM", "7:30 AM", "8:00 AM", ..., "8:00 PM"]
+ * ```
+ */
 export function generateTimeSlots(): string[] {
   const slots: string[] = [];
   
@@ -41,7 +83,20 @@ export function generateTimeSlots(): string[] {
   return slots;
 }
 
-// Validate if time is within school hours (7 AM to 8 PM)
+/**
+ * Validates if a time falls within school operating hours.
+ * 
+ * School hours are defined as 7:00 AM to 8:00 PM.
+ * 
+ * @param time12 - Time in 12-hour format
+ * @returns true if time is within school hours
+ * 
+ * @example
+ * ```typescript
+ * isValidSchoolTime("8:00 AM")  // true
+ * isValidSchoolTime("10:00 PM") // false
+ * ```
+ */
 export function isValidSchoolTime(time12: string): boolean {
   const time24 = convertTo24Hour(time12);
   const [hours] = time24.split(':').map(Number);
@@ -49,7 +104,19 @@ export function isValidSchoolTime(time12: string): boolean {
   return hours >= 7 && hours <= 20;
 }
 
-// Compare two 12-hour times
+/**
+ * Compares two times in 12-hour format.
+ * 
+ * @param time1 - First time in 12-hour format
+ * @param time2 - Second time in 12-hour format
+ * @returns Negative if time1 < time2, 0 if equal, positive if time1 > time2
+ * 
+ * @example
+ * ```typescript
+ * compareTime12Hour("9:00 AM", "10:00 AM")  // Returns negative
+ * compareTime12Hour("2:00 PM", "2:00 PM")   // Returns 0
+ * ```
+ */
 export function compareTime12Hour(time1: string, time2: string): number {
   const time1_24 = convertTo24Hour(time1);
   const time2_24 = convertTo24Hour(time2);
@@ -57,7 +124,19 @@ export function compareTime12Hour(time1: string, time2: string): number {
   return time1_24.localeCompare(time2_24);
 }
 
-// Check if end time is after start time (same day booking)
+/**
+ * Validates that end time is after start time (for same-day bookings).
+ * 
+ * @param startTime - Booking start time in 12-hour format
+ * @param endTime - Booking end time in 12-hour format
+ * @returns true if end time is after start time
+ * 
+ * @example
+ * ```typescript
+ * isValidTimeRange("9:00 AM", "11:00 AM")  // true
+ * isValidTimeRange("3:00 PM", "1:00 PM")   // false
+ * ```
+ */
 export function isValidTimeRange(startTime: string, endTime: string): boolean {
   const start24 = convertTo24Hour(startTime);
   const end24 = convertTo24Hour(endTime);
@@ -73,7 +152,22 @@ export function isValidTimeRange(startTime: string, endTime: string): boolean {
   return endTotalMinutes > startTotalMinutes;
 }
 
-// Check if booking duration is reasonable (max 8 hours)
+/**
+ * Checks if booking duration is within reasonable limits.
+ * 
+ * Enforces minimum duration of 30 minutes and maximum of 8 hours.
+ * 
+ * @param startTime - Booking start time in 12-hour format
+ * @param endTime - Booking end time in 12-hour format
+ * @returns true if duration is between 30 minutes and 8 hours
+ * 
+ * @example
+ * ```typescript
+ * isReasonableBookingDuration("9:00 AM", "5:00 PM")   // true (8 hours)
+ * isReasonableBookingDuration("9:00 AM", "9:15 AM")   // false (too short)
+ * isReasonableBookingDuration("9:00 AM", "10:00 PM")  // false (too long)
+ * ```
+ */
 export function isReasonableBookingDuration(startTime: string, endTime: string): boolean {
   const start24 = convertTo24Hour(startTime);
   const end24 = convertTo24Hour(endTime);
@@ -91,7 +185,24 @@ export function isReasonableBookingDuration(startTime: string, endTime: string):
   return durationHours >= 0.5 && durationHours <= 8;
 }
 
-// Get valid end times based on start time
+/**
+ * Gets valid end times based on a given start time.
+ * 
+ * Filters time slots to only show times that are:
+ * - After the start time
+ * - Within reasonable booking duration (up to 8 hours)
+ * - Within school hours
+ * 
+ * @param startTime - Selected start time in 12-hour format
+ * @param allTimeSlots - Array of all available time slots
+ * @returns Filtered array of valid end times
+ * 
+ * @example
+ * ```typescript
+ * const validEnds = getValidEndTimes("9:00 AM", generateTimeSlots());
+ * // Returns slots from 9:30 AM onwards, up to 8 hours later
+ * ```
+ */
 export function getValidEndTimes(startTime: string, allTimeSlots: string[]): string[] {
   if (!startTime) return allTimeSlots;
   

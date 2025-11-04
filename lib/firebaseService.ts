@@ -43,6 +43,22 @@ import { isPastBookingTime } from '../utils/timeUtils';
 import withRetry, { isNetworkError } from './withRetry';
 import { logger } from './logger';
 
+/**
+ * Firebase Service - Main data layer for the Digital Classroom Assignment system.
+ * 
+ * This service provides a complete abstraction layer over Firebase Authentication
+ * and Firestore, offering:
+ * - User authentication and management
+ * - Classroom and booking request operations
+ * - Schedule management
+ * - Signup request handling
+ * - Real-time data synchronization
+ * - Role-based access control integration
+ * 
+ * All operations include automatic retry logic for network resilience
+ * and proper error handling.
+ */
+
 const db = () => getFirebaseDb();
 
 let authInstance: Auth | null = null;
@@ -61,6 +77,9 @@ const getFirebaseAuth = (): Auth => {
 //   .map((email: string) => email.trim().toLowerCase())
 //   .filter(Boolean);
 
+/**
+ * Firestore collection names used throughout the application
+ */
 const COLLECTIONS = {
   USERS: 'users',
   CLASSROOMS: 'classrooms',
@@ -423,16 +442,40 @@ const notifyAuthListeners = (user: User | null) => {
 
 const nowIso = () => new Date().toISOString();
 
-// Helper function to remove undefined values from update objects
+/**
+ * Removes undefined values from update objects to prevent Firestore errors.
+ * 
+ * Firestore doesn't allow undefined values, so this utility cleans objects
+ * before sending them to the database.
+ * 
+ * @param obj - Object potentially containing undefined values
+ * @returns New object with undefined values removed
+ */
 const removeUndefinedValues = <T>(obj: Partial<T>): Partial<T> => {
   return Object.fromEntries(
     Object.entries(obj).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
 };
 
-// Generic bulk updater using Firestore writeBatch. Uses set with merge:true
-// to safely apply partial updates to existing documents (and will create a
-// document if it doesn't exist). Returns void or throws on batch commit failure.
+/**
+ * Performs bulk updates on Firestore documents using a batch operation.
+ * 
+ * Uses Firestore writeBatch for atomic multi-document updates. Each document
+ * is updated using set() with merge:true to safely apply partial updates
+ * and create documents if they don't exist.
+ * 
+ * @param collectionName - Name of the Firestore collection
+ * @param updates - Array of document IDs and their update data
+ * @throws Error if batch commit fails
+ * 
+ * @example
+ * ```typescript
+ * await bulkUpdateDocs('users', [
+ *   { id: 'user1', data: { status: 'approved' } },
+ *   { id: 'user2', data: { status: 'approved' } }
+ * ]);
+ * ```
+ */
 export const bulkUpdateDocs = async (
   collectionName: string,
   updates: Array<{ id: string; data: Record<string, unknown> }>
@@ -792,6 +835,12 @@ const ensureAuthStateListener = () => {
   });
 };
 
+/**
+ * Maps Firebase Authentication error codes to user-friendly messages.
+ * 
+ * @param error - Firebase auth error object
+ * @returns User-friendly error message
+ */
 const mapAuthErrorToMessage = (error: { code?: string }): string => {
   switch (error.code) {
     case 'auth/invalid-email':
@@ -813,6 +862,16 @@ const mapAuthErrorToMessage = (error: { code?: string }): string => {
   }
 };
 
+/**
+ * Authentication service providing user authentication and registration.
+ * 
+ * Handles:
+ * - Faculty registration and signup requests
+ * - User login and logout
+ * - Password reset and account recovery
+ * - Auth state monitoring
+ * - Account reactivation for previously rejected users
+ */
 export const authService = {
   async handleRejectedUserReactivation(
     email: string,
@@ -1371,6 +1430,17 @@ export const authService = {
 // USER SERVICE
 // ============================================
 
+/**
+ * User service for managing user accounts and profiles.
+ * 
+ * Provides operations for:
+ * - Retrieving user data
+ * - Updating user profiles
+ * - Managing user roles and status
+ * - Account locking/unlocking
+ * - Push notification preferences
+ * - Real-time user data subscriptions
+ */
 export const userService = {
   async getAll(): Promise<User[]> {
     const database = getDb();
@@ -1563,6 +1633,16 @@ export const userService = {
 // CLASSROOM SERVICE
 // ============================================
 
+/**
+ * Classroom service for managing classroom resources.
+ * 
+ * Provides operations for:
+ * - Creating, updating, and deleting classrooms
+ * - Retrieving classroom availability
+ * - Searching and filtering classrooms
+ * - Managing classroom equipment and capacity
+ * - Real-time classroom data subscriptions
+ */
 export const classroomService = {
   async getAll(): Promise<Classroom[]> {
     const database = getDb();
@@ -1710,6 +1790,15 @@ export const classroomService = {
 // BOOKING REQUEST SERVICE
 // ============================================
 
+/**
+ * Helper function to check if two time ranges overlap.
+ * 
+ * @param startA - Start time of range A
+ * @param endA - End time of range A
+ * @param startB - Start time of range B
+ * @param endB - End time of range B
+ * @returns true if the time ranges overlap
+ */
 const timesOverlap = (
   startA: string,
   endA: string,
@@ -1720,6 +1809,17 @@ const timesOverlap = (
   (endA > startB && endA <= endB) ||
   (startA <= startB && endA >= endB);
 
+/**
+ * Booking request service for managing classroom booking requests.
+ * 
+ * Provides operations for:
+ * - Creating and submitting booking requests
+ * - Approving or rejecting requests (admin)
+ * - Canceling pending requests
+ * - Retrieving booking history
+ * - Checking classroom availability
+ * - Real-time booking request subscriptions
+ */
 export const bookingRequestService = {
   async getAll(): Promise<BookingRequest[]> {
     const database = getDb();
@@ -1953,6 +2053,16 @@ function doTimeRangesOverlap(
 // SCHEDULE SERVICE
 // ============================================
 
+/**
+ * Schedule service for managing approved classroom bookings.
+ * 
+ * Schedules represent confirmed classroom reservations.
+ * Provides operations for:
+ * - Retrieving all schedules
+ * - Filtering schedules by faculty or classroom
+ * - Getting schedules for specific date ranges
+ * - Real-time schedule subscriptions
+ */
 export const scheduleService = {
   async getAll(): Promise<Schedule[]> {
     const database = getDb();
@@ -2074,6 +2184,17 @@ export const scheduleService = {
 // SIGNUP REQUEST SERVICE
 // ============================================
 
+/**
+ * Signup request service for managing faculty registration requests.
+ * 
+ * Handles the approval workflow for new faculty accounts.
+ * Provides operations for:
+ * - Retrieving pending signup requests
+ * - Approving or rejecting signup requests (admin)
+ * - Updating signup request status
+ * - Bulk operations for managing multiple requests
+ * - Cleanup of processed requests
+ */
 export const signupRequestService = {
   async getAll(): Promise<SignupRequest[]> {
     const database = getDb();
@@ -2274,8 +2395,8 @@ export const signupRequestService = {
   },
 };
 
-// Re-export notification service for consistency with other services
-// Wrap the setupNotificationsListener so that unsubscribes are tracked
+// Re-export notification service for consistency with other services.
+// Wraps the setupNotificationsListener so that unsubscribes are tracked
 // by the central `activeUnsubscribes` array and can be cleaned up on sign-out.
 const _notificationServiceWrapped = {
   ...notificationServiceImport,
@@ -2292,13 +2413,22 @@ const _notificationServiceWrapped = {
   },
 };
 
+/**
+ * Notification service wrapper that integrates with the central unsubscribe management.
+ * See lib/notificationService.ts for detailed documentation.
+ */
 export const notificationService = _notificationServiceWrapped as typeof notificationServiceImport;
 
 // ============================================
 // SIGNUP HISTORY SERVICE
 // ============================================
 
-export const signupHistoryService = {
+/**
+ * Signup history service for tracking processed signup requests.
+ * 
+ * Maintains a permanent record of all approved and rejected signups.
+ * Useful for auditing and tracking registration history.
+ */export const signupHistoryService = {
   async getAll(): Promise<SignupHistory[]> {
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SIGNUP_HISTORY);
@@ -2371,6 +2501,18 @@ export const signupHistoryService = {
 // REAL-TIME DATA SERVICE
 // ============================================
 
+/**
+ * Real-time service for managing live data subscriptions.
+ * 
+ * Provides centralized management of Firestore real-time listeners:
+ * - Automatic cleanup on user sign-out
+ * - Prevents duplicate listener registration
+ * - Memory leak prevention
+ * - Coordinated listener lifecycle management
+ * 
+ * The service automatically sets up appropriate listeners based on user role
+ * and cleans them up when the user signs out or when explicitly requested.
+ */
 export const realtimeService = {
   // Clean up all active listeners
   cleanup() {
