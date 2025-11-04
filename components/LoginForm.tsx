@@ -15,6 +15,13 @@ import PasswordResetDialog from './PasswordResetDialog';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
+// Debug logging for Vercel deployment
+if (typeof window !== 'undefined') {
+  console.log('[reCAPTCHA Debug] Site Key:', RECAPTCHA_SITE_KEY ? 'Loaded ✓' : 'MISSING ✗');
+  console.log('[reCAPTCHA Debug] Site Key Length:', RECAPTCHA_SITE_KEY?.length || 0);
+  console.log('[reCAPTCHA Debug] All Vite Env:', Object.keys(import.meta.env).filter(k => k.startsWith('VITE_')));
+}
+
 interface LoginFormProps {
   onLogin: (email: string, password: string) => boolean | Promise<boolean>;
   onSignup: (
