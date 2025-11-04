@@ -70,6 +70,7 @@ const loadRecaptchaScript = (): Promise<void> => {
     script.onerror = (error) => {
       console.error('[reCAPTCHA] Script failed to load:', error);
       console.error('[reCAPTCHA] Script URL that failed:', scriptUrl);
+      console.error('[reCAPTCHA] This might be blocked by browser, extension, or network policy');
       logger.error('Failed to load reCAPTCHA script:', error);
       reject(new Error('Failed to load reCAPTCHA'));
     };
@@ -122,11 +123,16 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           console.log('[reCAPTCHA] Load complete');
           // Check if badge element appears after a short delay
           setTimeout(() => {
-            const badge = document.querySelector('.grecaptcha-badge');
+            const badge = document.querySelector('.grecaptcha-badge') as HTMLElement;
             console.log('[reCAPTCHA] Badge element found:', !!badge);
             if (badge) {
+              // Force display via inline styles to override any other CSS
+              badge.style.setProperty('display', 'block', 'important');
+              badge.style.setProperty('visibility', 'visible', 'important');
+              badge.style.setProperty('opacity', '1', 'important');
+              
               const styles = window.getComputedStyle(badge);
-              console.log('[reCAPTCHA] Badge styles:', 
+              console.log('[reCAPTCHA] Badge styles after forcing:', 
                          'display:', styles.display,
                          'visibility:', styles.visibility,
                          'opacity:', styles.opacity,
