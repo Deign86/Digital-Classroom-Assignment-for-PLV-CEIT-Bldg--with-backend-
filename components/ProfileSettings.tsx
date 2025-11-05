@@ -25,6 +25,7 @@ import type { User } from '../App';
 import { authService, userService } from '../lib/firebaseService';
 import { pushService } from '../lib/pushService';
 import { Switch } from './ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface ProfileSettingsProps {
   user: User;
@@ -51,16 +52,32 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [pushSupported, setPushSupported] = useState<boolean>(true);
+  
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: user.name,
+    department: user.department || ''
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileErrors, setProfileErrors] = useState({
+    name: '',
+    department: ''
+  });
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
   useEffect(() => {
     try {
       setPushEnabled(!!(user as any).pushEnabled);
+      setProfileData({
+        name: user.name,
+        department: user.department || ''
+      });
     } catch (err) {
       // If something odd happens, keep current local state and log for diagnostics
       logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
-  }, [user?.pushEnabled]);
+  }, [user?.pushEnabled, user?.name, user?.department]);
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
   useEffect(() => {
@@ -71,6 +88,81 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setPushSupported(false);
     }
   }, []);
+
+  const validateProfileData = (): boolean => {
+    const newErrors = {
+      name: '',
+      department: ''
+    };
+
+    let isValid = true;
+
+    // Validate name
+    if (!profileData.name.trim()) {
+      newErrors.name = 'Name is required';
+      isValid = false;
+    } else if (profileData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+      isValid = false;
+    }
+
+    // Validate department
+    const validDepartments = ['Information Technology', 'Civil Engineering', 'Information Technology & Civil Engineering'];
+    if (profileData.department && !validDepartments.includes(profileData.department)) {
+      newErrors.department = 'Please select a valid department';
+      isValid = false;
+    }
+
+    setProfileErrors(newErrors);
+    return isValid;
+  };
+
+  const handleProfileSave = async () => {
+    if (!validateProfileData()) {
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const trimmedData = {
+        name: profileData.name.trim(),
+        department: profileData.department.trim()
+      };
+
+      await userService.update(user.uid, trimmedData);
+      
+      toast.success('Profile updated successfully', {
+        description: 'Your profile information has been saved.'
+      });
+      
+      setIsEditingProfile(false);
+      
+      // Refresh user data if available
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    } catch (err) {
+      logger.error('Profile update error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while updating profile';
+      toast.error('Failed to update profile', {
+        description: errorMessage
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleProfileCancel = () => {
+    setProfileData({
+      name: user.name,
+      department: user.department || ''
+    });
+    setProfileErrors({
+      name: '',
+      department: ''
+    });
+    setIsEditingProfile(false);
+  };
 
   const validatePassword = (): boolean => {
     const newErrors = {
@@ -335,24 +427,96 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       {/* Profile Information Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserIcon className="h-5 w-5" />
-            Profile Information
-          </CardTitle>
-          <CardDescription>
-            Your account details and role information
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserIcon className="h-5 w-5" />
+                Profile Information
+              </CardTitle>
+              <CardDescription>
+                Your account details and role information
+              </CardDescription>
+            </div>
+            {!isEditingProfile ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingProfile(true)}
+                className="flex items-center gap-2"
+              >
+                <UserIcon className="h-4 w-4" />
+                Edit Profile
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleProfileCancel}
+                  disabled={isSavingProfile}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleProfileSave}
+                  disabled={isSavingProfile}
+                  className="flex items-center gap-2"
+                >
+                  {isSavingProfile ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Name Field */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Full Name</Label>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                <UserIcon className="h-4 w-4 text-gray-500" />
-                <span className="font-medium">{user.name}</span>
-              </div>
+              {isEditingProfile ? (
+                <div className="space-y-1">
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Enter your full name"
+                      value={profileData.name}
+                      onChange={(e) => {
+                        setProfileData(prev => ({ ...prev, name: e.target.value }));
+                        if (profileErrors.name) {
+                          setProfileErrors(prev => ({ ...prev, name: '' }));
+                        }
+                      }}
+                      className={`pl-10 ${profileErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    />
+                  </div>
+                  {profileErrors.name && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {profileErrors.name}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <UserIcon className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium">{user.name}</span>
+                </div>
+              )}
             </div>
 
+            {/* Email Field - Read Only */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Email Address</Label>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
@@ -361,6 +525,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               </div>
             </div>
 
+            {/* Role Field - Read Only */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Role</Label>
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
@@ -371,15 +536,46 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               </div>
             </div>
 
-            {user.department && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-600">Department</Label>
+            {/* Department Field */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-600">Department</Label>
+              {isEditingProfile ? (
+                <div className="space-y-1">
+                  <Select
+                    value={profileData.department}
+                    onValueChange={(value) => {
+                      setProfileData(prev => ({ ...prev, department: value }));
+                      if (profileErrors.department) {
+                        setProfileErrors(prev => ({ ...prev, department: '' }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={`${profileErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-gray-400" />
+                        <SelectValue placeholder="Select department" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Information Technology">Information Technology</SelectItem>
+                      <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
+                      <SelectItem value="Information Technology & Civil Engineering">Information Technology & Civil Engineering</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {profileErrors.department && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {profileErrors.department}
+                    </p>
+                  )}
+                </div>
+              ) : (
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <Building className="h-4 w-4 text-gray-500" />
-                  <span className="font-medium">{user.department}</span>
+                  <span className="font-medium">{user.department || 'Not specified'}</span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

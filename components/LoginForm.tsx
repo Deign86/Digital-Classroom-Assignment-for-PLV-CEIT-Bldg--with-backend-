@@ -124,7 +124,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
   const { announce } = useAnnouncer();
 
-  const departments = ['Civil Engineering', 'Information Technology'];
+  const departments = ['Information Technology', 'Civil Engineering', 'Information Technology & Civil Engineering'];
 
   // Shared sanitizer for password fields
   const sanitizePassword = (pwd: string) => {
