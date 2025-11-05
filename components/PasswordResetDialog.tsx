@@ -29,6 +29,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent the event from bubbling to parent forms
     
     if (!email.trim()) {
       toast.error('Please enter your email address');

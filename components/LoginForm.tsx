@@ -10,6 +10,7 @@ import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Ey
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
 import { logger } from '../lib/logger';
+import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
 
@@ -239,10 +240,25 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     setIsLoading(true);
     
     try {
-      const success = await onLogin(email, cleanedPassword);
-      if (!success) {
+      // Execute login with network error handling
+      const result = await executeWithNetworkHandling(
+        async () => {
+          const success = await onLogin(email, cleanedPassword);
+          if (!success) {
+            throw new Error('Invalid email or password');
+          }
+          return success;
+        },
+        {
+          operationName: 'sign in',
+          successMessage: undefined, // App.tsx handles the welcome message
+          maxAttempts: 2, // Fewer retries for auth operations
+          showLoadingToast: false, // We'll show our own loading state
+        }
+      );
+
+      if (!result.success) {
         setPassword('');
-        // Announce failure to screen reader users (if enabled)
         try { announce('Login failed. Please check your email and password.', 'assertive'); } catch (e) {}
       } else {
         try { announce('Login successful. Redirecting to your dashboard.', 'polite'); } catch (e) {}
@@ -278,58 +294,70 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     }
 
     setSignupIsLoading(true);
-    let success = false;
     try {
-      // Execute reCAPTCHA before signup
-      let recaptchaToken: string | undefined;
-      if (RECAPTCHA_SITE_KEY && typeof window !== 'undefined' && window.grecaptcha?.enterprise) {
-        try {
-          await new Promise<void>((resolve) => {
-            window.grecaptcha!.enterprise.ready(() => resolve());
-          });
-          
-          recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { 
-            action: 'SIGNUP' 
-          });
-          logger.log('reCAPTCHA token obtained for signup');
-        } catch (recaptchaError) {
-          logger.error('reCAPTCHA execution failed:', recaptchaError);
-          const errorMessage = recaptchaError instanceof Error ? recaptchaError.message : 'Unknown error';
-          toast.error(`Security verification failed: ${errorMessage}. Please refresh and try again.`, {
-            duration: 5000,
-          });
-          return;
-        }
-      } else {
-        logger.warn('reCAPTCHA not configured or unavailable');
-      }
+      // Execute signup with network error handling
+      const result = await executeWithNetworkHandling(
+        async () => {
+          // Execute reCAPTCHA before signup
+          let recaptchaToken: string | undefined;
+          if (RECAPTCHA_SITE_KEY && typeof window !== 'undefined' && window.grecaptcha?.enterprise) {
+            try {
+              await new Promise<void>((resolve) => {
+                window.grecaptcha!.enterprise.ready(() => resolve());
+              });
+              
+              recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { 
+                action: 'SIGNUP' 
+              });
+              logger.log('reCAPTCHA token obtained for signup');
+            } catch (recaptchaError) {
+              logger.error('reCAPTCHA execution failed:', recaptchaError);
+              throw new Error('Security verification failed');
+            }
+          } else {
+            logger.warn('reCAPTCHA not configured or unavailable');
+          }
 
-      const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
-      success = await onSignup(
-        signupData.email,
-        fullName,
-        signupData.department,
-        signupData.password,
-        recaptchaToken
+          const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
+          const success = await onSignup(
+            signupData.email,
+            fullName,
+            signupData.department,
+            signupData.password,
+            recaptchaToken
+          );
+          
+          if (!success) {
+            throw new Error('Signup request failed');
+          }
+          
+          return success;
+        },
+        {
+          operationName: 'submit signup request',
+          successMessage: undefined, // App.tsx handles the success message
+          maxAttempts: 3,
+          showLoadingToast: false,
+        }
       );
+
+      if (result.success) {
+        setSignupData({
+          email: '',
+          firstName: '',
+          lastName: '',
+          department: '',
+          password: '',
+          confirmPassword: ''
+        });
+        // Automatically switch to login tab after successful signup
+        try { announce('Signup request submitted. You will be notified when your account is approved.', 'polite'); } catch (e) {}
+        setTimeout(() => {
+          setActiveTab('login');
+        }, 1500); // Small delay to let user see the success message
+      }
     } finally {
       setSignupIsLoading(false);
-    }
-
-    if (success) {
-      setSignupData({
-        email: '',
-        firstName: '',
-        lastName: '',
-        department: '',
-        password: '',
-        confirmPassword: ''
-      });
-      // Automatically switch to login tab after successful signup
-      try { announce('Signup request submitted. You will be notified when your account is approved.', 'polite'); } catch (e) {}
-      setTimeout(() => {
-        setActiveTab('login');
-      }, 1500); // Small delay to let user see the success message
     }
   };
 

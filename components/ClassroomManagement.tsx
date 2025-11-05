@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { classroomService } from '../lib/firebaseService';
+import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -64,34 +65,46 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       .split(',')
       .map(eq => eq.trim())
       .filter(eq => eq.length > 0);
-    try {
-      if (editingClassroom) {
-        await classroomService.update(editingClassroom.id, {
-          name: formData.name,
-          capacity: parseInt(formData.capacity),
-          equipment: equipmentArray,
-          building: formData.building,
-          floor: parseInt(formData.floor),
-          isAvailable: formData.isAvailable
-        });
-        toast.success('Classroom updated successfully');
-      } else {
-        await classroomService.create({
-          name: formData.name,
-          capacity: parseInt(formData.capacity),
-          equipment: equipmentArray,
-          building: formData.building,
-          floor: parseInt(formData.floor),
-          isAvailable: formData.isAvailable
-        });
-        toast.success('Classroom added successfully');
+    
+    const result = await executeWithNetworkHandling(
+      async () => {
+        if (editingClassroom) {
+          await classroomService.update(editingClassroom.id, {
+            name: formData.name,
+            capacity: parseInt(formData.capacity),
+            equipment: equipmentArray,
+            building: formData.building,
+            floor: parseInt(formData.floor),
+            isAvailable: formData.isAvailable
+          });
+        } else {
+          await classroomService.create({
+            name: formData.name,
+            capacity: parseInt(formData.capacity),
+            equipment: equipmentArray,
+            building: formData.building,
+            floor: parseInt(formData.floor),
+            isAvailable: formData.isAvailable
+          });
+        }
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+        return { isEdit: !!editingClassroom };
+      },
+      {
+        operationName: editingClassroom ? 'update classroom' : 'create classroom',
+        successMessage: undefined, // Let toast below handle it
+        maxAttempts: 3,
+        showLoadingToast: true,
       }
-      const updatedClassrooms = await classroomService.getAll();
-      onClassroomUpdate(updatedClassrooms);
+    );
+
+    if (result.success) {
+      toast.success(result.data?.isEdit ? 'Classroom updated successfully' : 'Classroom added successfully');
       resetForm();
       setIsAddDialogOpen(false);
       setEditingClassroom(null);
-    } catch (err) {
+    } else if (!result.success && !result.isNetworkError) {
       toast.error('Error saving classroom');
     }
   };
@@ -116,14 +129,28 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
   const handleDeleteConfirm = async () => {
     if (!classroomToDelete) return;
-    try {
-      await classroomService.delete(classroomToDelete.id);
-      const updatedClassrooms = await classroomService.getAll();
-      onClassroomUpdate(updatedClassrooms);
+    
+    const result = await executeWithNetworkHandling(
+      async () => {
+        await classroomService.delete(classroomToDelete.id);
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+        return true;
+      },
+      {
+        operationName: 'delete classroom',
+        successMessage: undefined,
+        maxAttempts: 3,
+        showLoadingToast: true,
+      }
+    );
+
+    if (result.success) {
       toast.success('Classroom deleted successfully');
-    } catch (err) {
+    } else if (!result.success && !result.isNetworkError) {
       toast.error('Error deleting classroom');
     }
+    
     setDeleteDialogOpen(false);
     setClassroomToDelete(null);
   };
@@ -131,20 +158,33 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
     // show per-row loader while updating
     setLoadingRows(prev => ({ ...prev, [classroomId]: true }));
-    try {
-      await classroomService.update(classroomId, { isAvailable });
-      const updatedClassrooms = await classroomService.getAll();
-      onClassroomUpdate(updatedClassrooms);
-      toast.success(`Classroom ${isAvailable ? 'enabled' : 'disabled'} successfully`);
-    } catch (err) {
+    
+    const result = await executeWithNetworkHandling(
+      async () => {
+        await classroomService.update(classroomId, { isAvailable });
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+        return { isAvailable };
+      },
+      {
+        operationName: isAvailable ? 'enable classroom' : 'disable classroom',
+        successMessage: undefined,
+        maxAttempts: 3,
+        showLoadingToast: false, // We have per-row loader
+      }
+    );
+
+    if (result.success) {
+      toast.success(`Classroom ${result.data?.isAvailable ? 'enabled' : 'disabled'} successfully`);
+    } else if (!result.success && !result.isNetworkError) {
       toast.error('Error updating availability');
-    } finally {
-      setLoadingRows(prev => {
-        const copy = { ...prev };
-        delete copy[classroomId];
-        return copy;
-      });
     }
+    
+    setLoadingRows(prev => {
+      const copy = { ...prev };
+      delete copy[classroomId];
+      return copy;
+    });
   };
 
   const closeDialog = () => {

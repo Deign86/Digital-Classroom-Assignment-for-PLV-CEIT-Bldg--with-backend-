@@ -12,6 +12,7 @@ import Footer from './components/Footer';
 import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
+import NetworkStatusIndicator from './components/NetworkStatusIndicator';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
@@ -19,6 +20,7 @@ import { buttonVariants } from './components/ui/button';
 import { cn } from './components/ui/utils';
 import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
+import { executeWithNetworkHandling } from './lib/networkErrorHandler';
 import {
   authService,
   userService,
@@ -862,154 +864,157 @@ export default function App() {
   }, [checkConflicts]);
 
   const handleRequestApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => {
-    try {
-      // Find the request first
-      const request = bookingRequests.find(req => req.id === requestId);
-      if (!request) {
-        toast.error('Request not found');
-        return;
-      }
-
-      // Check if already processed
-      if (request.status !== 'pending') {
-        toast.error('Request has already been processed');
-        return;
-      }
-
-      // If approving, verify there are no conflicts with already approved/confirmed bookings
-      if (approved) {
-        // Check if the booking time has already passed
-        if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
-          toast.error('Cannot approve: booking time has already passed');
-          return;
+    const result = await executeWithNetworkHandling(
+      async () => {
+        // Find the request first
+        const request = bookingRequests.find(req => req.id === requestId);
+        if (!request) {
+          throw new Error('Request not found');
         }
 
-        // Check for conflicts with existing confirmed schedules and approved requests
-        const hasConflict = await checkConflicts(
-          request.classroomId,
-          request.date,
-          request.startTime,
-          request.endTime,
-          false, // Don't check past time again (already checked above)
-          requestId // Exclude this request from conflict check
-        );
-
-        if (hasConflict) {
-          toast.error('Cannot approve: conflicts with existing confirmed booking. Please reject this request.');
-          return;
+        // Check if already processed
+        if (request.status !== 'pending') {
+          throw new Error('Request has already been processed');
         }
-      }
 
-      // Update the booking request status
-      const updateData: { status: 'approved' | 'rejected'; adminFeedback?: string } = {
-        status: approved ? 'approved' : 'rejected'
-      };
-      
-      // Only include adminFeedback if it's provided
-      if (feedback && feedback.trim()) {
-        updateData.adminFeedback = feedback.trim();
-      }
-      
-      const updatedRequest = await bookingRequestService.update(requestId, updateData);
+        // If approving, verify there are no conflicts with already approved/confirmed bookings
+        if (approved) {
+          // Check if the booking time has already passed
+          if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
+            throw new Error('Cannot approve: booking time has already passed');
+          }
 
-      // Notification creation is handled by the bookingRequest service boundary
-      // (it will create a server-side notification when status transitions). Avoid
-      // duplicating the creation here which caused duplicate notifications.
+          // Check for conflicts with existing confirmed schedules and approved requests
+          const hasConflict = await checkConflicts(
+            request.classroomId,
+            request.date,
+            request.startTime,
+            request.endTime,
+            false, // Don't check past time again (already checked above)
+            requestId // Exclude this request from conflict check
+          );
 
-      setBookingRequests(prev =>
-        prev.map(req => req.id === requestId ? updatedRequest : req)
-      );
-      
-  // Create schedule only if approved
-      if (approved) {
-        const newSchedule = await scheduleService.create({
-          classroomId: request.classroomId,
-          classroomName: request.classroomName,
-          facultyId: request.facultyId,
-          facultyName: request.facultyName,
-          date: request.date,
-          startTime: request.startTime,
-          endTime: request.endTime,
-          purpose: request.purpose,
-          status: 'confirmed'
-        });
+          if (hasConflict) {
+            throw new Error('Cannot approve: conflicts with existing confirmed booking. Please reject this request.');
+          }
+        }
+
+        // Update the booking request status
+        const updateData: { status: 'approved' | 'rejected'; adminFeedback?: string } = {
+          status: approved ? 'approved' : 'rejected'
+        };
         
-        setSchedules(prev => [...prev, newSchedule]);
+        // Only include adminFeedback if it's provided
+        if (feedback && feedback.trim()) {
+          updateData.adminFeedback = feedback.trim();
+        }
+        
+        const updatedRequest = await bookingRequestService.update(requestId, updateData);
+
+        // Notification creation is handled by the bookingRequest service boundary
+        // (it will create a server-side notification when status transitions). Avoid
+        // duplicating the creation here which caused duplicate notifications.
+
+        setBookingRequests(prev =>
+          prev.map(req => req.id === requestId ? updatedRequest : req)
+        );
+        
+        // Create schedule only if approved
+        if (approved) {
+          const newSchedule = await scheduleService.create({
+            classroomId: request.classroomId,
+            classroomName: request.classroomName,
+            facultyId: request.facultyId,
+            facultyName: request.facultyName,
+            date: request.date,
+            startTime: request.startTime,
+            endTime: request.endTime,
+            purpose: request.purpose,
+            status: 'confirmed'
+          });
+          
+          setSchedules(prev => [...prev, newSchedule]);
+        }
+        
+        return { approved };
+      },
+      {
+        operationName: approved ? 'approve reservation' : 'reject reservation',
+        successMessage: undefined, // Let the original toast logic handle success messages
+        maxAttempts: 3,
+        showLoadingToast: true,
       }
-      
-      // Only show a per-item toast when the caller hasn't requested suppression
-      if (!suppressToast) {
-        toast.success(approved ? 'Reservation approved!' : 'Reservation rejected.');
-      }
-    } catch (err) {
-      logger.error('Approval error:', err);
-      if (!suppressToast) {
-        toast.error('Failed to process request');
+    );
+
+    if (result.success && !suppressToast) {
+      toast.success(result.data?.approved ? 'Reservation approved!' : 'Reservation rejected.');
+    } else if (!result.success) {
+      // Error toast already shown by network handler, but log for debugging
+      logger.error('Request approval failed:', result.error);
+      if (!suppressToast && !result.isNetworkError) {
+        // Only show additional error toast if it's not a network error (network handler already showed it)
+        const errorMsg = result.error?.message || 'Failed to process request';
+        if (!errorMsg.includes('network') && !errorMsg.includes('connection')) {
+          toast.error(errorMsg);
+        }
       }
     }
-  }, [bookingRequests]);
+  }, [bookingRequests, checkConflicts]);
 
   const handleSignupApproval = useCallback(
     async (requestId: string, approved: boolean, feedback?: string, skipConfirm: boolean = false) => {
-      try {
-        const request = signupRequests.find((r) => r.id === requestId);
-        if (!request) {
-          toast.error('Request not found');
-          return;
-        }
+      const result = await executeWithNetworkHandling(
+        async () => {
+          const request = signupRequests.find((r) => r.id === requestId);
+          if (!request) {
+            throw new Error('Request not found');
+          }
 
-        if (request.status !== 'pending') {
-          toast.error('Request has already been processed');
-          return;
-        }
+          if (request.status !== 'pending') {
+            throw new Error('Request has already been processed');
+          }
 
-        const resolvedAt = new Date().toISOString();
+          const resolvedAt = new Date().toISOString();
 
-        if (approved) {
-          const updatedRequest = await signupRequestService.update(requestId, {
-            status: 'approved',
-            adminFeedback: feedback || 'Account approved',
-            resolvedAt,
-          });
+          if (approved) {
+            const updatedRequest = await signupRequestService.update(requestId, {
+              status: 'approved',
+              adminFeedback: feedback || 'Account approved',
+              resolvedAt,
+            });
 
-          const updatedUser = await userService.updateStatus(request.userId, 'approved', {
-            name: request.name,
-            department: request.department,
-            role: 'faculty',
-          });
+            const updatedUser = await userService.updateStatus(request.userId, 'approved', {
+              name: request.name,
+              department: request.department,
+              role: 'faculty',
+            });
 
-          setSignupRequests((prev) =>
-            prev.map((entry) => (entry.id === requestId ? updatedRequest : entry))
-          );
+            setSignupRequests((prev) =>
+              prev.map((entry) => (entry.id === requestId ? updatedRequest : entry))
+            );
 
-          setUsers((prev) => {
-            const existingIndex = prev.findIndex((user) => user.id === updatedUser.id);
-            if (existingIndex === -1) {
-              return [...prev, updatedUser];
+            setUsers((prev) => {
+              const existingIndex = prev.findIndex((user) => user.id === updatedUser.id);
+              if (existingIndex === -1) {
+                return [...prev, updatedUser];
+              }
+              const copy = [...prev];
+              copy[existingIndex] = updatedUser;
+              return copy;
+            });
+
+            return { approved: true, requestName: request.name };
+          } else {
+            if (!feedback || !feedback.trim()) {
+              throw new Error('Feedback is required when rejecting a request');
             }
-            const copy = [...prev];
-            copy[existingIndex] = updatedUser;
-            return copy;
-          });
 
-          toast.success(`Faculty account approved for ${request.name}!`, {
-            description: 'They can now sign in with the password they created during signup.',
-            duration: 8000,
-          });
-        } else {
-          if (!feedback || !feedback.trim()) {
-            toast.error('Feedback is required when rejecting a request');
-            return;
-          }
+            if (!currentUser) {
+              throw new Error('Admin user information not available');
+            }
 
-          if (!currentUser) {
-            toast.error('Admin user information not available');
-            return;
-          }
-
-          // If this is part of a bulk confirmed action, skip the per-item confirmation
-          if (skipConfirm) {
-            try {
+            // If this is part of a bulk confirmed action, skip the per-item confirmation
+            if (skipConfirm) {
               const historyRecord = await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback.trim());
 
               // Remove the signup request from local list
@@ -1021,118 +1026,173 @@ export default function App() {
               // Remove the corresponding user by the signup request's userId
               setUsers((prev) => prev.filter((user) => user.id !== request.userId));
 
-              toast.success(`Signup request rejected for ${request.name}.`, {
-                description: 'The account has been completely removed. They can submit a new signup request.',
-                duration: 6000,
-              });
-            } catch (err) {
-              logger.error('Signup rejection error (bulk):', err);
-              toast.error('Failed to reject signup request');
+              return { approved: false, requestName: request.name };
             }
-            return;
-          }
 
-          // Open the app-styled confirmation dialog instead of using window.confirm
-          setPendingRejectAction({ requestId, userId: request.userId, feedback: feedback.trim(), requestName: request.name });
-          // Actual rejection will be performed when admin confirms in the dialog
+            // Open the app-styled confirmation dialog instead of using window.confirm
+            setPendingRejectAction({ requestId, userId: request.userId, feedback: feedback.trim(), requestName: request.name });
+            // Actual rejection will be performed when admin confirms in the dialog
+            return { approved: false, needsConfirmation: true };
+          }
+        },
+        {
+          operationName: approved ? 'approve signup request' : 'reject signup request',
+          successMessage: undefined, // Let the original toast logic handle success messages
+          maxAttempts: 3,
+          showLoadingToast: true,
+        }
+      );
+
+      if (result.success && result.data) {
+        if (result.data.needsConfirmation) {
+          // Dialog opened, no toast needed
           return;
         }
-      } catch (err) {
-        logger.error('Signup approval error:', err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        toast.error('Failed to process signup request', {
-          description: errorMessage,
-          duration: 5000,
-        });
+        
+        if (result.data.approved) {
+          toast.success(`Faculty account approved for ${result.data.requestName}!`, {
+            description: 'They can now sign in with the password they created during signup.',
+            duration: 8000,
+          });
+        } else {
+          toast.success(`Signup request rejected for ${result.data.requestName}.`, {
+            description: 'The account has been completely removed. They can submit a new signup request.',
+            duration: 6000,
+          });
+        }
+      } else if (!result.success && result.error) {
+        // Error toast already shown by network handler for network errors
+        logger.error('Signup approval error:', result.error);
+        if (!result.isNetworkError) {
+          const errorMessage = result.error.message || 'Unknown error occurred';
+          if (!errorMessage.includes('network') && !errorMessage.includes('connection')) {
+            toast.error(errorMessage.includes('Failed') ? errorMessage : 'Failed to process signup request', {
+              description: errorMessage.includes('Failed') ? undefined : errorMessage,
+              duration: 5000,
+            });
+          }
+        }
       }
     },
-    [signupRequests]
+    [signupRequests, currentUser]
   );
 
   const handleCancelSchedule = useCallback(async (scheduleId: string, reason: string) => {
-    try {
-      const feedback = typeof reason === 'string' ? reason.trim() : '';
-      if (!feedback) {
-        toast.error('Cancellation reason is required');
-        return;
-      }
+    const result = await executeWithNetworkHandling(
+      async () => {
+        const feedback = typeof reason === 'string' ? reason.trim() : '';
+        if (!feedback) {
+          throw new Error('Cancellation reason is required');
+        }
 
-      await scheduleService.cancelApprovedBooking(scheduleId, feedback);
-
-      setSchedules(prev =>
-        prev.map(schedule => 
-          schedule.id === scheduleId 
-            ? { ...schedule, status: 'cancelled' as const, adminFeedback: feedback }
-            : schedule
-        )
-      );
-
-      toast.success('Reservation cancelled!');
-    } catch (err) {
-      logger.error('Cancel schedule error:', err);
-      toast.error('Failed to cancel booking');
-    }
-  }, []);
-
-  const handleCancelApprovedBooking = useCallback(async (requestId: string, reason: string) => {
-    try {
-      const feedback = typeof reason === 'string' ? reason.trim() : '';
-      if (!feedback) {
-        toast.error('Cancellation reason is required');
-        return;
-      }
-
-      // Find the corresponding schedule for this booking request
-      const correspondingSchedule = schedules.find(schedule => 
-        schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
-        schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
-        schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
-        schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
-        schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
-      );
-
-      if (correspondingSchedule) {
-        // Use server-side callable to cancel the approved booking (server will
-        // update schedules and related bookingRequests and create the faculty
-        // notification). Avoid calling bookingRequestService.update here to
-        // prevent duplicate notifications.
-        await scheduleService.cancelApprovedBooking(correspondingSchedule.id, feedback);
+        await scheduleService.cancelApprovedBooking(scheduleId, feedback);
 
         setSchedules(prev =>
           prev.map(schedule => 
-            schedule.id === correspondingSchedule.id 
-              ? { ...schedule, status: 'cancelled' as const, ...(feedback ? { adminFeedback: feedback } : {}) }
+            schedule.id === scheduleId 
+              ? { ...schedule, status: 'cancelled' as const, adminFeedback: feedback }
               : schedule
           )
         );
 
-        // Optimistically update bookingRequests in the UI — the server will
-        // also update Firestore; this local update prevents a visual race.
-        setBookingRequests(prev =>
-          prev.map(request => 
-            request.id === requestId 
-              ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
-              : request
-          )
-        );
-      } else {
-        // No corresponding schedule found: perform a direct booking request update
-        // (this path should create the appropriate notification server-side).
-        await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
-
-        setBookingRequests(prev =>
-          prev.map(request => 
-            request.id === requestId 
-              ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
-              : request
-          )
-        );
+        return true;
+      },
+      {
+        operationName: 'cancel reservation',
+        successMessage: undefined, // Let the original toast logic handle success
+        maxAttempts: 3,
+        showLoadingToast: true,
       }
+    );
 
+    if (result.success) {
+      toast.success('Reservation cancelled!');
+    } else if (!result.success && result.error) {
+      logger.error('Cancel schedule error:', result.error);
+      if (!result.isNetworkError) {
+        const errorMsg = result.error.message || 'Failed to cancel booking';
+        if (!errorMsg.includes('network') && !errorMsg.includes('connection')) {
+          toast.error(errorMsg);
+        }
+      }
+    }
+  }, []);
+
+  const handleCancelApprovedBooking = useCallback(async (requestId: string, reason: string) => {
+    const result = await executeWithNetworkHandling(
+      async () => {
+        const feedback = typeof reason === 'string' ? reason.trim() : '';
+        if (!feedback) {
+          throw new Error('Cancellation reason is required');
+        }
+
+        // Find the corresponding schedule for this booking request
+        const correspondingSchedule = schedules.find(schedule => 
+          schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
+          schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
+          schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
+          schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
+          schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
+        );
+
+        if (correspondingSchedule) {
+          // Use server-side callable to cancel the approved booking (server will
+          // update schedules and related bookingRequests and create the faculty
+          // notification). Avoid calling bookingRequestService.update here to
+          // prevent duplicate notifications.
+          await scheduleService.cancelApprovedBooking(correspondingSchedule.id, feedback);
+
+          setSchedules(prev =>
+            prev.map(schedule => 
+              schedule.id === correspondingSchedule.id 
+                ? { ...schedule, status: 'cancelled' as const, ...(feedback ? { adminFeedback: feedback } : {}) }
+                : schedule
+            )
+          );
+
+          // Optimistically update bookingRequests in the UI — the server will
+          // also update Firestore; this local update prevents a visual race.
+          setBookingRequests(prev =>
+            prev.map(request => 
+              request.id === requestId 
+                ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
+                : request
+            )
+          );
+        } else {
+          // No corresponding schedule found: perform a direct booking request update
+          // (this path should create the appropriate notification server-side).
+          await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
+
+          setBookingRequests(prev =>
+            prev.map(request => 
+              request.id === requestId 
+                ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
+                : request
+            )
+          );
+        }
+
+        return true;
+      },
+      {
+        operationName: 'cancel approved reservation',
+        successMessage: undefined, // Let the original toast logic handle success
+        maxAttempts: 3,
+        showLoadingToast: true,
+      }
+    );
+
+    if (result.success) {
       toast.success('Approved reservation cancelled!');
-    } catch (err) {
-      logger.error('Cancel approved booking error:', err);
-      toast.error('Failed to cancel approved booking');
+    } else if (!result.success && result.error) {
+      logger.error('Cancel approved booking error:', result.error);
+      if (!result.isNetworkError) {
+        const errorMsg = result.error.message || 'Failed to cancel approved booking';
+        if (!errorMsg.includes('network') && !errorMsg.includes('connection')) {
+          toast.error(errorMsg);
+        }
+      }
     }
   }, [schedules, bookingRequests]);
 
@@ -1621,6 +1681,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AnnouncerProvider>
+          {/* Network status indicator */}
+          <NetworkStatusIndicator />
+          
           {/* Skip link for keyboard users */}
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
           <div className="min-h-screen bg-background flex flex-col">
