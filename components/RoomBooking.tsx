@@ -370,18 +370,18 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   return (
     <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto px-2 sm:px-0">
       <Card className="transition-shadow duration-200 hover:shadow-lg animate-in">
-        <CardHeader className="p-4 sm:p-5 md:p-6 pb-3 sm:pb-4">
+        <CardHeader className="p-4 sm:p-5 md:p-6 pb-2 sm:pb-3">
           <CardTitle className="text-lg sm:text-xl md:text-2xl">Request a Classroom</CardTitle>
           <CardDescription className="text-sm sm:text-base">Submit a new classroom reservation request</CardDescription>
         </CardHeader>
-        <CardContent className="relative overflow-visible p-4 sm:p-5 md:p-6 pt-2 sm:pt-3">
+        <CardContent className="relative overflow-visible p-4 sm:p-5 md:p-6 pt-0 sm:pt-1">
           <form 
             onSubmit={handleSubmit} 
-            className="space-y-3 sm:space-y-4 md:space-y-5"
+            className="space-y-2 sm:space-y-3 md:space-y-4"
             style={{ isolation: 'auto', transform: 'none' }}
           >
               {/* Classroom Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="classroom" className="text-sm sm:text-base">Classroom *</Label>
                 <Select value={formData.classroomId} onValueChange={(value) => {
                   setFormData(prev => ({ ...prev, classroomId: value }));
@@ -427,7 +427,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   >
                     <Card className="bg-blue-50 border-blue-200 transition-shadow duration-200 hover:shadow-md">
                       <CardContent className="p-3 sm:p-4">
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium text-sm sm:text-base">{selectedClassroom.name}</h4>
                             <motion.div
@@ -476,7 +476,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               </AnimatePresence>
 
               {/* Date Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="date" className="text-sm sm:text-base">Date *</Label>
                 {isSmallPhone ? (
                   <div>
@@ -556,8 +556,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               )}
 
               {/* Time Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div className="space-y-1.5">
                   <Label htmlFor="startTime" className="text-sm sm:text-base">Start Time *</Label>
                   <Select value={formData.startTime} onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, startTime: value }));
@@ -639,7 +639,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 )}
               </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="endTime">End Time *</Label>
                   <Select 
                     value={formData.endTime} 
@@ -878,7 +878,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               </AnimatePresence>
 
               {/* Purpose */}
-              <motion.div className="space-y-2" variants={itemVariants}>
+              <motion.div className="space-y-1.5" variants={itemVariants}>
                 <Label htmlFor="purpose">Purpose *</Label>
                 <Textarea
                   id="purpose"
