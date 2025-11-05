@@ -143,8 +143,23 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         newDepartment: trimmedData.department
       });
 
-      // Update in Firestore and get the updated user back
+      // Update Firestore user document
       const updatedUser = await userService.update(user.id, trimmedData);
+      
+      // CRITICAL: Also update Firebase Auth displayName to prevent it from overwriting Firestore on next auth state change
+      try {
+        const auth = await import('firebase/auth');
+        const currentUser = auth.getAuth().currentUser;
+        if (currentUser && trimmedData.name !== currentUser.displayName) {
+          await auth.updateProfile(currentUser, {
+            displayName: trimmedData.name
+          });
+          logger.info('Firebase Auth displayName updated to:', trimmedData.name);
+        }
+      } catch (authError) {
+        logger.error('Failed to update Firebase Auth displayName:', authError);
+        // Don't fail the whole operation if this fails
+      }
       
       logger.info('Profile updated successfully:', updatedUser);
       
