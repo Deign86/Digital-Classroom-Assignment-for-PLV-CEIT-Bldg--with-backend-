@@ -186,7 +186,7 @@ export default function AdminDashboard({
                       <NotificationCenter
                         userId={user.id}
                         onClose={() => setShowNotifications(false)}
-                        onAcknowledgeAll={(newCount) => {
+                        onAcknowledgeAll={(newCount: number | null) => {
                           setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
                           setTimeout(() => setForceBellUnread(null), 1500);
                           setShowNotifications(false);
