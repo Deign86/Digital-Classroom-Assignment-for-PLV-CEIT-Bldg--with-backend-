@@ -334,23 +334,23 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   };
 
   return (
-    <div className="w-full space-y-4 sm:space-y-6 lg:space-y-8">
+    <div className="w-full space-y-3 sm:space-y-4 lg:space-y-5">
       {/* Header */}
-      <div className="text-center space-y-2 sm:space-y-3 lg:space-y-4">
+      <div className="text-center space-y-1.5 sm:space-y-2 lg:space-y-3">
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900">Welcome Back</h1>
         <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">Sign in to access the Digital Classroom Assignment System</p>
       </div>
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-  <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
+  <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-5 bg-gray-100 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
           <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Sign In</TabsTrigger>
           <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Request</TabsTrigger>
         </TabsList>
       
-        <TabsContent value="login" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
-          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 max-w-md mx-auto" noValidate>
-            <div className="space-y-5 sm:space-y-6">
+        <TabsContent value="login" className="space-y-4 sm:space-y-5 mt-4 sm:mt-5">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 max-w-md mx-auto" noValidate>
+            <div className="space-y-3.5 sm:space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm sm:text-base">Email Address</Label>
                 <div className="relative">
@@ -366,7 +366,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, email: '' }));
                       }
                     }}
-                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-14 rounded-xl text-sm sm:text-base ${loginErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${loginErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                 </div>
@@ -393,7 +393,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, password: '' }));
                       }
                     }}
-                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-14 rounded-xl text-sm sm:text-base ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -442,8 +442,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               aria-busy={isLoading}
               className={
                 isLoading
-                  ? 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
-                  : 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+                  ? 'w-full h-10 sm:h-11 md:h-12 rounded-full px-6 text-sm sm:text-base bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-10 sm:h-11 md:h-12 rounded-full px-6 text-sm sm:text-base bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
               }
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
@@ -451,9 +451,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           </form>
         </TabsContent>
 
-        <TabsContent value="signup" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
-          <form onSubmit={handleSignup} className="space-y-6 sm:space-y-8 max-w-2xl mx-auto" noValidate>
-            <div className="space-y-4 sm:space-y-5">
+        <TabsContent value="signup" className="space-y-4 sm:space-y-5 mt-4 sm:mt-5">
+          <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5 max-w-2xl mx-auto" noValidate>
+            <div className="space-y-3 sm:space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-firstName" className="text-sm sm:text-base">First Name</Label>
@@ -470,7 +470,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, firstName: '' }));
                         }
                       }}
-                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.firstName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.firstName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                   </div>
@@ -496,7 +496,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, lastName: '' }));
                         }
                       }}
-                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.lastName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.lastName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                   </div>
@@ -525,7 +525,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, email: '' }));
                         }
                       }}
-                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                   </div>
@@ -549,7 +549,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     }}
                     required
                   >
-                    <SelectTrigger className={`h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
+                    <SelectTrigger className={`h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
                       <SelectValue placeholder="Select your department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -583,7 +583,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, password: '' }));
                         }
                       }}
-                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                     <button
@@ -620,7 +620,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
                         }
                       }}
-                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                     <button
@@ -674,8 +674,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               aria-busy={signupIsLoading}
               className={
                 signupIsLoading
-                  ? 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
-                  : 'w-full h-11 sm:h-12 md:h-14 rounded-full px-6 text-sm sm:text-base bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+                  ? 'w-full h-10 sm:h-11 md:h-12 rounded-full px-6 text-sm sm:text-base bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-10 sm:h-11 md:h-12 rounded-full px-6 text-sm sm:text-base bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
               }
             >
               {signupIsLoading ? 'Requesting...' : 'Request Faculty Account'}
