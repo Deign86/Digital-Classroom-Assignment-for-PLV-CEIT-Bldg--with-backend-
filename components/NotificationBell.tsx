@@ -44,14 +44,11 @@ export const NotificationBell: React.FC<Props> = ({ userId, onOpen, forceUnread 
   const displayCount = forceUnread !== null && forceUnread !== undefined ? forceUnread : count;
 
   return (
-    <button aria-label={`Notifications (${displayCount} unread)`} onClick={onOpen} className="relative p-2">
+    <button aria-label={`Notifications (${displayCount} unread)`} onClick={onOpen} className="relative">
       <Bell size={20} weight="regular" aria-hidden className="text-current" />
       {displayCount > 0 && (
-        <span 
-          aria-hidden 
-          className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full text-[10px] sm:text-xs min-w-[16px] sm:min-w-[18px] h-4 sm:h-[18px] flex items-center justify-center px-1 font-medium leading-none"
-        >
-          {displayCount > 99 ? '99+' : displayCount}
+        <span aria-hidden className="absolute -top-1 -right-1 bg-red-600 text-white rounded-ios text-xs px-1">
+          {displayCount}
         </span>
       )}
     </button>
