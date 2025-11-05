@@ -165,12 +165,21 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       hasErrors = true;
     }
 
+    // Enhanced password validation
     if (!data.password) {
       errors.password = 'Please create a password';
       hasErrors = true;
-    } else if (data.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
-      hasErrors = true;
+    } else {
+      const hasMinLength = data.password.length >= 8;
+      const hasUpperCase = /[A-Z]/.test(data.password);
+      const hasLowerCase = /[a-z]/.test(data.password);
+      const hasNumber = /[0-9]/.test(data.password);
+      const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(data.password);
+
+      if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        errors.password = 'Password does not meet all requirements';
+        hasErrors = true;
+      }
     }
 
     if (!data.confirmPassword) {
@@ -634,10 +643,10 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 </div>
               </div>
 
-              {!signupErrors.password && (
-                <div className="text-xs sm:text-sm text-gray-700 text-left">
-                  <p className="font-medium mb-1">Password Requirements:</p>
-                  <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-gray-600 text-left pl-3 sm:pl-4">
+              {signupErrors.password && (
+                <div className="text-xs sm:text-sm text-gray-700 text-left bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+                  <p className="font-medium mb-1 text-red-900">Password Requirements:</p>
+                  <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-red-700 text-left pl-3 sm:pl-4">
                     <li>At least 8 characters long</li>
                     <li>Contains uppercase and lowercase letters</li>
                     <li>Contains at least one number</li>
