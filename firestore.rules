@@ -24,9 +24,10 @@ service cloud.firestore {
                    ])
                    && request.resource.data.role == resource.data.role  // Cannot change own role
                    && request.resource.data.status == resource.data.status  // Cannot change own status
-                   && (!request.resource.data.keys().hasAny(['accountLocked', 'lockedByAdmin']) 
+                   && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['accountLocked', 'lockedByAdmin']) 
                        || request.resource.data.accountLocked == resource.data.accountLocked)  // Cannot unlock self
-                   && request.resource.data.email == resource.data.email;  // Cannot change email directly
+                   && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'emailLower'])
+                       || request.resource.data.email == resource.data.email);  // Cannot change email directly
       
       // Create and delete operations are handled by Cloud Functions with Admin SDK only
     }
