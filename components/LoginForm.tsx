@@ -334,12 +334,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-1.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden">
-          <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-4 py-2 sm:py-2.5 whitespace-nowrap">
+        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden">
+          <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 md:px-4 py-2 whitespace-nowrap">
             <span className="hidden xs:inline">Faculty Sign In</span>
             <span className="xs:hidden">Sign In</span>
           </TabsTrigger>
-          <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-4 py-2 sm:py-2.5 whitespace-nowrap">
+          <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 md:px-4 py-2 whitespace-nowrap">
             <span className="hidden xs:inline">Faculty Request</span>
             <span className="xs:hidden">Request</span>
           </TabsTrigger>
@@ -561,6 +561,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   </p>
                 )}
               </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-password" className="text-sm sm:text-base">Create Password</Label>
                 <div className="relative">
@@ -590,21 +592,11 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     {showSignupPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                   </button>
                 </div>
-                {signupErrors.password ? (
+                {signupErrors.password && (
                   <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
                     {signupErrors.password}
                   </p>
-                ) : (
-                  <div className="text-xs sm:text-sm text-gray-700 text-left">
-                    <p className="font-medium mb-1">Password Requirements:</p>
-                    <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-gray-600 text-left pl-3 sm:pl-4">
-                      <li>At least 8 characters long</li>
-                      <li>Contains uppercase and lowercase letters</li>
-                      <li>Contains at least one number</li>
-                      <li>Contains at least one special character (e.g., !@#$%^&*)</li>
-                    </ul>
-                  </div>
                 )}
               </div>
 
@@ -644,6 +636,19 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   </p>
                 )}
               </div>
+              </div>
+              
+              {(signupErrors.password || signupErrors.confirmPassword) && (
+                <div className="text-xs sm:text-sm text-gray-700 text-left -mt-2">
+                  <p className="font-medium mb-1">Password Requirements:</p>
+                  <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-gray-600 text-left pl-3 sm:pl-4">
+                    <li>At least 8 characters long</li>
+                    <li>Contains uppercase and lowercase letters</li>
+                    <li>Contains at least one number</li>
+                    <li>Contains at least one special character (e.g., !@#$%^&*)</li>
+                  </ul>
+                </div>
+              )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
                 <div className="flex items-start gap-2 sm:gap-3">
