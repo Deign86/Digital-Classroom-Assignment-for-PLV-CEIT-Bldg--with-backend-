@@ -408,7 +408,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                       status="pending"
                       showSelect
                       selected={!!selectedIds[request.id]}
-                      onToggleSelect={(checked) => toggleSelect(request.id, checked)}
+                      onToggleSelect={(checked: boolean) => toggleSelect(request.id, checked)}
                       disabled={isProcessingBulk}
                     />
                   ))}
@@ -466,7 +466,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                       status="approved"
                       showSelect
                       selected={!!approvedSelectedIds[request.id]}
-                      onToggleSelect={(checked) => toggleApprovedSelect(request.id, checked)}
+                      onToggleSelect={(checked: boolean) => toggleApprovedSelect(request.id, checked)}
                       disabled={isProcessingBulk}
                     />
                   ))}
