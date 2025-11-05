@@ -353,14 +353,14 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   return (
     <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto px-2 sm:px-0">
       <Card className="transition-shadow duration-200 hover:shadow-lg animate-in">
-        <CardHeader className="p-4 sm:p-5 md:p-6">
+        <CardHeader className="p-4 sm:p-5 md:p-6 pb-3 sm:pb-4">
           <CardTitle className="text-lg sm:text-xl md:text-2xl">Request a Classroom</CardTitle>
           <CardDescription className="text-sm sm:text-base">Submit a new classroom reservation request</CardDescription>
         </CardHeader>
-        <CardContent className="relative overflow-visible p-4 sm:p-5 md:p-6">
+        <CardContent className="relative overflow-visible p-4 sm:p-5 md:p-6 pt-2 sm:pt-3">
           <form 
             onSubmit={handleSubmit} 
-            className="space-y-4 sm:space-y-5 md:space-y-6"
+            className="space-y-3 sm:space-y-4 md:space-y-5"
             style={{ isolation: 'auto', transform: 'none' }}
           >
               {/* Classroom Selection */}
