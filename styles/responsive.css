@@ -1,0 +1,834 @@
+﻿/**
+ * Apple-Style Responsive Breakpoints
+ * Fine-grained media queries for smooth transitions across all device sizes
+ */
+
+/* ============================================
+   Tailwind Custom Breakpoint Extensions
+   ============================================ */
+@media (min-width: 375px) {
+  .xs\:space-y-2\.5 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(0.625rem * calc(1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(0.625rem * var(--tw-space-y-reverse));
+  }
+  
+  .xs\:space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(1rem * var(--tw-space-y-reverse));
+  }
+  
+  .xs\:space-y-5 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(1.25rem * var(--tw-space-y-reverse));
+  }
+  
+  .xs\:space-y-7 > :not([hidden]) ~ :not([hidden]) {
+    --tw-space-y-reverse: 0;
+    margin-top: calc(1.75rem * calc(1 - var(--tw-space-y-reverse)));
+    margin-bottom: calc(1.75rem * var(--tw-space-y-reverse));
+  }
+  
+  .xs\:text-xs { font-size: 0.75rem; line-height: 1rem; }
+  .xs\:text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+  .xs\:text-base { font-size: 1rem; line-height: 1.5rem; }
+  .xs\:text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+  .xs\:text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+  .xs\:text-2xl { font-size: 1.5rem; line-height: 2rem; }
+  .xs\:text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+  .xs\:text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+  
+  .xs\:p-5 { padding: 1.25rem; }
+  .xs\:p-6 { padding: 1.5rem; }
+  
+  .xs\:px-4 { padding-left: 1rem; padding-right: 1rem; }
+  .xs\:px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+  
+  .xs\:mb-1\.5 { margin-bottom: 0.375rem; }
+  .xs\:mb-5 { margin-bottom: 1.25rem; }
+  .xs\:mb-7 { margin-bottom: 1.75rem; }
+  
+  .xs\:h-22 { height: 5.5rem; }
+  .xs\:w-22 { width: 5.5rem; }
+  
+  .xs\:rounded-2xl { border-radius: 1rem; }
+}
+
+/* ============================================
+   BASE STYLES (Mobile First - 320px+)
+   ============================================ */
+:root {
+  /* Spacing Scale */
+  --spacing-xs: 0.5rem;   /* 8px */
+  --spacing-sm: 0.75rem;  /* 12px */
+  --spacing-md: 1rem;     /* 16px */
+  --spacing-lg: 1.5rem;   /* 24px */
+  --spacing-xl: 2rem;     /* 32px */
+  --spacing-2xl: 3rem;    /* 48px */
+  --spacing-3xl: 4rem;    /* 64px */
+  
+  /* Typography Scale */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
+  
+  /* Container widths */
+  --container-xs: 100%;
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+}
+
+/* ============================================
+   iPhone SE (320px)
+   ============================================ */
+@media (min-width: 320px) {
+  :root {
+    --page-padding: 1rem;
+    --card-padding: 1rem;
+    --button-height: 2.75rem;
+    --input-height: 2.75rem;
+  }
+}
+
+/* ============================================
+   iPhone 8/7/6 (375px)
+   ============================================ */
+@media (min-width: 375px) {
+  :root {
+    --page-padding: 1.25rem;
+    --card-padding: 1.25rem;
+    --button-height: 3rem;
+    --input-height: 3rem;
+  }
+}
+
+/* ============================================
+   iPhone 12/13/14 Pro (390px)
+   ============================================ */
+@media (min-width: 390px) {
+  :root {
+    --page-padding: 1.5rem;
+    --card-padding: 1.5rem;
+  }
+}
+
+/* ============================================
+   iPhone Plus (414px)
+   ============================================ */
+@media (min-width: 414px) {
+  :root {
+    --page-padding: 1.5rem;
+    --card-padding: 1.75rem;
+    --button-height: 3.25rem;
+    --input-height: 3.25rem;
+  }
+}
+
+/* ============================================
+   iPhone 12/13/14 Pro Max (428px)
+   ============================================ */
+@media (min-width: 428px) {
+  :root {
+    --page-padding: 1.75rem;
+    --card-padding: 2rem;
+    --button-height: 3.5rem;
+    --input-height: 3.5rem;
+  }
+}
+
+/* ============================================
+   iPhone 14 Plus/15 Plus (430px)
+   ============================================ */
+@media (min-width: 430px) {
+  :root {
+    --page-padding: 1.75rem;
+    --card-padding: 2rem;
+  }
+}
+
+/* ============================================
+   Large Phones / Small Tablets (480px)
+   ============================================ */
+@media (min-width: 480px) {
+  :root {
+    --page-padding: 2rem;
+    --card-padding: 2rem;
+  }
+}
+
+/* ============================================
+   Tablet Portrait - SM (640px)
+   ============================================ */
+@media (min-width: 640px) {
+  :root {
+    --page-padding: 2.5rem;
+    --card-padding: 2.5rem;
+    --button-height: 3.5rem;
+    --input-height: 3.5rem;
+  }
+}
+
+/* ============================================
+   iPad Mini / Tablet - MD (768px)
+   ============================================ */
+@media (min-width: 768px) {
+  :root {
+    --page-padding: 3rem;
+    --card-padding: 3rem;
+    --button-height: 3.75rem;
+    --input-height: 3.75rem;
+  }
+}
+
+/* ============================================
+   iPad Air (834px)
+   ============================================ */
+@media (min-width: 834px) {
+  :root {
+    --page-padding: 3.5rem;
+    --card-padding: 3.5rem;
+  }
+}
+
+/* ============================================
+   Tablet Landscape / Small Desktop - LG (1024px)
+   ============================================ */
+@media (min-width: 1024px) {
+  :root {
+    --page-padding: 4rem;
+    --card-padding: 4rem;
+    --button-height: 4rem;
+    --input-height: 4rem;
+  }
+}
+
+/* ============================================
+   Desktop - XL (1280px)
+   ============================================ */
+@media (min-width: 1280px) {
+  :root {
+    --page-padding: 5rem;
+    --card-padding: 4.5rem;
+  }
+}
+
+/* ============================================
+   Large Desktop (1440px)
+   ============================================ */
+@media (min-width: 1440px) {
+  :root {
+    --page-padding: 6rem;
+    --card-padding: 5rem;
+  }
+}
+
+/* ============================================
+   Full HD Desktop - 2XL (1920px)
+   ============================================ */
+@media (min-width: 1920px) {
+  :root {
+    --page-padding: 8rem;
+    --card-padding: 6rem;
+    --button-height: 4.5rem;
+    --input-height: 4.5rem;
+  }
+}
+
+/* ============================================
+   Ultra-wide / 4K (2560px)
+   ============================================ */
+@media (min-width: 2560px) {
+  :root {
+    --page-padding: 10rem;
+    --card-padding: 8rem;
+  }
+}
+
+/* ============================================
+   Fluid Typography (clamp for smooth scaling)
+   ============================================ */
+.fluid-text-xs {
+  font-size: clamp(0.7rem, 0.5vw + 0.6rem, 0.75rem);
+}
+
+.fluid-text-sm {
+  font-size: clamp(0.8rem, 0.6vw + 0.7rem, 0.875rem);
+}
+
+.fluid-text-base {
+  font-size: clamp(0.9rem, 0.7vw + 0.8rem, 1rem);
+}
+
+.fluid-text-lg {
+  font-size: clamp(1rem, 0.8vw + 0.9rem, 1.125rem);
+}
+
+.fluid-text-xl {
+  font-size: clamp(1.1rem, 1vw + 1rem, 1.25rem);
+}
+
+.fluid-text-2xl {
+  font-size: clamp(1.3rem, 1.5vw + 1rem, 1.5rem);
+}
+
+.fluid-text-3xl {
+  font-size: clamp(1.5rem, 2vw + 1.2rem, 1.875rem);
+}
+
+.fluid-text-4xl {
+  font-size: clamp(1.75rem, 2.5vw + 1.5rem, 2.25rem);
+}
+
+.fluid-text-5xl {
+  font-size: clamp(2rem, 3vw + 1.8rem, 3rem);
+}
+
+/* ============================================
+   Responsive Container Classes
+   ============================================ */
+.container-responsive {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    max-width: var(--container-sm);
+  }
+}
+
+@media (min-width: 768px) {
+  .container-responsive {
+    max-width: var(--container-md);
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    max-width: var(--container-lg);
+  }
+}
+
+@media (min-width: 1280px) {
+  .container-responsive {
+    max-width: var(--container-xl);
+  }
+}
+
+@media (min-width: 1536px) {
+  .container-responsive {
+    max-width: var(--container-2xl);
+  }
+}
+
+/* ============================================
+   Responsive Spacing Utilities
+   ============================================ */
+.spacing-responsive-y {
+  padding-top: var(--page-padding);
+  padding-bottom: var(--page-padding);
+}
+
+.spacing-responsive-x {
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
+}
+
+.spacing-responsive {
+  padding: var(--page-padding);
+}
+
+/* ============================================
+   Card Responsive Padding
+   ============================================ */
+.card-responsive {
+  padding: var(--card-padding);
+  border-radius: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* ============================================
+   Button Responsive Heights
+   ============================================ */
+.btn-responsive {
+  height: var(--button-height);
+  padding-left: clamp(1.5rem, 3vw, 2.5rem);
+  padding-right: clamp(1.5rem, 3vw, 2.5rem);
+  font-size: clamp(0.875rem, 1vw, 1rem);
+}
+
+/* ============================================
+   Input Responsive Heights
+   ============================================ */
+.input-responsive {
+  height: var(--input-height);
+  padding-left: clamp(1rem, 2vw, 1.5rem);
+  padding-right: clamp(1rem, 2vw, 1.5rem);
+  font-size: clamp(0.875rem, 1vw, 1rem);
+}
+
+/* ============================================
+   Grid Responsive (Apple-style)
+   ============================================ */
+.grid-responsive {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    gap: var(--spacing-lg);
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-responsive {
+    gap: var(--spacing-xl);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    gap: var(--spacing-2xl);
+  }
+}
+
+/* ============================================
+   Responsive Display Utilities
+   ============================================ */
+.show-mobile {
+  display: block;
+}
+
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .show-mobile {
+    display: none;
+  }
+  
+  .hide-mobile {
+    display: block;
+  }
+}
+
+/* ============================================
+   Smooth Transitions (Apple-style)
+   ============================================ */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-smooth {
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-smooth-slow {
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   ORIENTATION-SPECIFIC OPTIMIZATIONS
+   ============================================ */
+
+/* Portrait Phone Optimization (Most mobile devices) */
+@media (max-width: 768px) and (orientation: portrait) {
+  :root {
+    --page-padding: clamp(1rem, 3vw, 1.5rem);
+    --card-padding: clamp(1rem, 3vw, 1.5rem);
+    --button-height: 44px; /* Apple's minimum touch target */
+    --input-height: 44px;
+  }
+  
+  /* Ensure touch targets are at least 44x44pt */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Exception: Switch components use padding for touch targets, not min-width */
+  button[role="switch"], [data-slot="switch"] {
+    min-width: unset !important;
+    min-height: unset !important;
+  }
+  
+  /* Exception: Checkboxes should maintain their designed size */
+  input[type="checkbox"], [data-slot="checkbox"] {
+    min-width: unset !important;
+    min-height: unset !important;
+  }
+  
+  /* Optimize vertical space in portrait */
+  .portrait-compact {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  
+  /* Stack elements vertically in portrait */
+  .portrait-stack {
+    flex-direction: column !important;
+  }
+  
+  /* Full width in portrait for better touch interaction */
+  .portrait-full {
+    width: 100% !important;
+  }
+}
+
+/* Landscape Phone/Tablet Optimization */
+@media (max-width: 1024px) and (orientation: landscape) {
+  :root {
+    --page-padding: clamp(1.5rem, 4vw, 3rem);
+    --card-padding: clamp(1.5rem, 3vw, 2.5rem);
+  }
+  
+  /* Reduce vertical padding in landscape to maximize space */
+  .landscape-compact {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  /* Use horizontal layout in landscape */
+  .landscape-horizontal {
+    flex-direction: row !important;
+  }
+  
+  /* Optimize header height in landscape */
+  header, .header-responsive {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+  
+  /* Two-column layout in landscape for better space usage */
+  .landscape-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* Tablet Portrait Optimization (iPad, etc.) */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  :root {
+    --page-padding: 2.5rem;
+    --card-padding: 2rem;
+  }
+  
+  /* Optimize for reading/viewing content on tablet portrait */
+  .tablet-portrait-center {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  /* Use more of the screen width on tablets */
+  .tablet-portrait-wide {
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Tablet Landscape Optimization */
+@media (min-width: 1024px) and (max-width: 1366px) and (orientation: landscape) {
+  :root {
+    --page-padding: 3rem;
+    --card-padding: 2.5rem;
+  }
+  
+  /* Three-column layout for tablets in landscape */
+  .tablet-landscape-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+/* ============================================
+   SAFE AREA INSETS (iPhone X+ with notch)
+   ============================================ */
+@supports (padding: max(0px)) {
+  :root {
+    /* Safe area insets for notched devices */
+    --safe-area-inset-top: env(safe-area-inset-top, 0);
+    --safe-area-inset-right: env(safe-area-inset-right, 0);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0);
+    --safe-area-inset-left: env(safe-area-inset-left, 0);
+  }
+  
+  /* Apply safe area to body */
+  body {
+    padding-top: max(0px, var(--safe-area-inset-top));
+    padding-right: max(0px, var(--safe-area-inset-right));
+    padding-bottom: max(0px, var(--safe-area-inset-bottom));
+    padding-left: max(0px, var(--safe-area-inset-left));
+  }
+  
+  /* Safe area for fixed headers */
+  .safe-top {
+    padding-top: max(1rem, calc(1rem + var(--safe-area-inset-top)));
+  }
+  
+  /* Safe area for fixed footers */
+  .safe-bottom {
+    padding-bottom: max(1rem, calc(1rem + var(--safe-area-inset-bottom)));
+  }
+  
+  /* Safe area for horizontal padding */
+  .safe-x {
+    padding-left: max(1rem, calc(1rem + var(--safe-area-inset-left)));
+    padding-right: max(1rem, calc(1rem + var(--safe-area-inset-right)));
+  }
+  
+  /* Full safe area padding */
+  .safe-all {
+    padding-top: max(1rem, calc(1rem + var(--safe-area-inset-top)));
+    padding-right: max(1rem, calc(1rem + var(--safe-area-inset-right)));
+    padding-bottom: max(1rem, calc(1rem + var(--safe-area-inset-bottom)));
+    padding-left: max(1rem, calc(1rem + var(--safe-area-inset-left)));
+  }
+}
+
+/* ============================================
+   TOUCH OPTIMIZATION (iOS Safari)
+   ============================================ */
+/* Disable iOS Safari text size adjustment */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Smooth scrolling on iOS */
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Better tap highlight */
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+  -webkit-touch-callout: none;
+}
+
+/* Disable selection on UI elements */
+button, a, select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Enable selection on text content */
+p, span, div[contenteditable], textarea, input[type="text"], input[type="email"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+  :root {
+    --page-padding: 1cm;
+    --card-padding: 0.5cm;
+  }
+  
+  /* Hide non-essential elements when printing */
+  nav, .no-print, button:not(.print-visible), .notification-bell {
+    display: none !important;
+  }
+  
+  /* Optimize for print */
+  body {
+    background: white;
+    color: black;
+  }
+  
+  /* Avoid page breaks inside elements */
+  .card-responsive, .grid-responsive > * {
+    page-break-inside: avoid;
+  }
+  
+  /* Show links */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+}
+
+/* ===================================================
+   Login tab (pill) responsive fixes
+   Prevent the active pill from overlapping neighbors on
+   smaller screens by reducing padding/radius/font-size
+   and ensuring box-sizing/overflow are safe.
+   These rules intentionally target the `.login-tabs`
+   markup used in `components/LoginForm.tsx` (grid with
+   two columns).
+   =================================================== */
+
+/* Gentle adjustment for tablet/landscape widths */
+@media (max-width: 1024px) {
+  .login-tabs {
+    border-radius: 20px; /* slightly smaller rounding */
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.4rem 1rem !important; /* reduce horizontal padding */
+    font-size: 0.95rem !important;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 20px !important;
+    transform: none !important;
+    z-index: 2 !important;
+  }
+}
+
+/* Tablet portrait and large phones */
+@media (max-width: 768px) {
+  .login-tabs {
+    border-radius: 16px;
+    padding: 2px; /* keep inner spacing small */
+    overflow: hidden;
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.35rem 0.9rem !important;
+    font-size: 0.9rem !important;
+    min-width: 0 !important; /* allow grid column to control width */
+    text-align: center;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 16px !important;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .login-tabs {
+    border-radius: 12px;
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.82rem !important;
+    line-height: 1rem !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 12px !important;
+  }
+
+  /* Force triggers to center and avoid overflow causing overlap */
+  .login-tabs > * {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* Very small/compact devices (<=375/320) */
+@media (max-width: 375px) {
+  .login-tabs {
+    border-radius: 10px;
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 10px !important;
+  }
+
+  /* Request tabs: enable horizontal scrolling on very small screens */
+  .request-tabs-mobile .mobile-tab-scroll {
+    justify-content: flex-start !important;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .request-tabs-mobile .mobile-tab-item {
+    flex: 0 0 auto;
+    min-width: auto;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .request-tabs-mobile .mobile-tab-item svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+}
+
+/* Extra small devices - 320px specific adjustments */
+@media (max-width: 320px) {
+  .request-tabs-mobile .mobile-tab-scroll {
+    gap: 0.375rem;
+    padding: 0.375rem;
+  }
+
+  .request-tabs-mobile .mobile-tab-item {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.7rem;
+    gap: 0.375rem;
+  }
+
+  .request-tabs-mobile .mobile-tab-item svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  /* Classroom Management - Move Add Classroom button to bottom and center it */
+  .classroom-management-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .classroom-management-header > div:first-child {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .classroom-management-header .add-classroom-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
