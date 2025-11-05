@@ -463,6 +463,18 @@
     min-width: 44px;
   }
   
+  /* Exception: Switch components use padding for touch targets, not min-width */
+  button[role="switch"], [data-slot="switch"] {
+    min-width: unset !important;
+    min-height: unset !important;
+  }
+  
+  /* Exception: Checkboxes should maintain their designed size */
+  input[type="checkbox"], [data-slot="checkbox"] {
+    min-width: unset !important;
+    min-height: unset !important;
+  }
+  
   /* Optimize vertical space in portrait */
   .portrait-compact {
     padding-top: 0.75rem;
@@ -663,5 +675,105 @@ p, span, div[contenteditable], textarea, input[type="text"], input[type="email"]
     content: " (" attr(href) ")";
     font-size: 0.8em;
     color: #666;
+  }
+}
+
+/* ===================================================
+   Login tab (pill) responsive fixes
+   Prevent the active pill from overlapping neighbors on
+   smaller screens by reducing padding/radius/font-size
+   and ensuring box-sizing/overflow are safe.
+   These rules intentionally target the `.login-tabs`
+   markup used in `components/LoginForm.tsx` (grid with
+   two columns).
+   =================================================== */
+
+/* Gentle adjustment for tablet/landscape widths */
+@media (max-width: 1024px) {
+  .login-tabs {
+    border-radius: 20px; /* slightly smaller rounding */
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.4rem 1rem !important; /* reduce horizontal padding */
+    font-size: 0.95rem !important;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 20px !important;
+    transform: none !important;
+    z-index: 2 !important;
+  }
+}
+
+/* Tablet portrait and large phones */
+@media (max-width: 768px) {
+  .login-tabs {
+    border-radius: 16px;
+    padding: 2px; /* keep inner spacing small */
+    overflow: hidden;
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.35rem 0.9rem !important;
+    font-size: 0.9rem !important;
+    min-width: 0 !important; /* allow grid column to control width */
+    text-align: center;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 16px !important;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .login-tabs {
+    border-radius: 12px;
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.82rem !important;
+    line-height: 1rem !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 12px !important;
+  }
+
+  /* Force triggers to center and avoid overflow causing overlap */
+  .login-tabs > * {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* Very small/compact devices (<=375/320) */
+@media (max-width: 375px) {
+  .login-tabs {
+    border-radius: 10px;
+  }
+
+  .login-tabs [role="tab"] {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Active pill must match container border-radius to fit snugly */
+  .login-tabs [role="tab"][data-state="active"],
+  .login-tabs [role="tab"][aria-selected="true"] {
+    border-radius: 10px !important;
   }
 }

@@ -410,7 +410,48 @@
     align-items: center !important;
     width: 100%;
   }
+  
+  /* Request tabs: distribute evenly across full width */
+  .request-tabs-mobile .mobile-tab-scroll {
+    justify-content: space-evenly !important;
+  }
+  
+  /* Request tabs: make items take equal width */
+  .request-tabs-mobile .mobile-tab-item {
+    flex: 1;
+    min-width: fit-content;
+    justify-content: center;
+  }
 
+  .mobile-tab-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Login tab visual tweaks: make active pill match parent container curvature
+     - Target only the login tabset via `.login-tabs` to avoid affecting other tabs
+     - Remove active shadow and set same border-radius as the parent to remove notch
+     - Base radius for desktop (1025px+), responsive.css handles smaller screens */
+  .login-tabs {
+    /* keep overflow hidden (already set on the element) but reinforce */
+    overflow: hidden;
+    border-radius: 24px; /* parent radius used in layout */
+  }
+
+  .login-tabs [role="tab"] {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Desktop-only base styling (1025px+) - responsive.css overrides for smaller screens */
+  @media (min-width: 1025px) {
+    .login-tabs [role="tab"][data-state="active"],
+    .login-tabs [role="tab"][aria-selected="true"] {
+      border-radius: 24px !important; /* match parent curvature */
+      box-shadow: none !important; /* remove inner notch shadow */
+      z-index: 2 !important; /* bring active pill above neighbors */
+      transform: none !important; /* ensure no unexpected translations */
+    }
+  }
   .mobile-tab-scroll::-webkit-scrollbar {
     display: none;
   }

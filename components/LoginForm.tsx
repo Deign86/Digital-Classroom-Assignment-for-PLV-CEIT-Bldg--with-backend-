@@ -334,9 +334,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden">
-          <TabsTrigger value="login" className="text-sm sm:text-base">Faculty Sign In</TabsTrigger>
-          <TabsTrigger value="signup" className="text-sm sm:text-base">Faculty Request</TabsTrigger>
+  <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
+          <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Sign In</TabsTrigger>
+          <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Request</TabsTrigger>
         </TabsList>
       
         <TabsContent value="login" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
@@ -500,144 +500,151 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="signup-email" className="text-sm sm:text-base">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="your.email@plv.edu.ph"
-                    value={signupData.email}
-                    onChange={(e) => {
-                      setSignupData(prev => ({ ...prev, email: e.target.value }));
-                      if (signupErrors.email) {
-                        setSignupErrors(prev => ({ ...prev, email: '' }));
-                      }
-                    }}
-                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                    required
-                  />
-                </div>
-                {signupErrors.email && (
-                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {signupErrors.email}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="signup-department" className="text-sm sm:text-base">Department</Label>
-                <Select
-                  value={signupData.department}
-                  onValueChange={(value: string) => {
-                    setSignupData(prev => ({ ...prev, department: value }));
-                    if (signupErrors.department) {
-                      setSignupErrors(prev => ({ ...prev, department: '' }));
-                    }
-                  }}
-                  required
-                >
-                  <SelectTrigger className={`h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
-                    <SelectValue placeholder="Select your department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {signupErrors.department && (
-                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {signupErrors.department}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password" className="text-sm sm:text-base">Create Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-                  <Input
-                    id="signup-password"
-                    type={showSignupPassword ? 'text' : 'password'}
-                    placeholder="Enter a strong password"
-                    value={signupData.password}
-                    onChange={(e) => {
-                      setSignupData(prev => ({ ...prev, password: e.target.value }));
-                      if (signupErrors.password) {
-                        setSignupErrors(prev => ({ ...prev, password: '' }));
-                      }
-                    }}
-                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSignupPassword(!showSignupPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
-                    aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showSignupPassword}
-                    title={showSignupPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showSignupPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
-                  </button>
-                </div>
-                {signupErrors.password ? (
-                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {signupErrors.password}
-                  </p>
-                ) : (
-                  <div className="text-xs sm:text-sm text-gray-700 text-left">
-                    <p className="font-medium mb-1">Password Requirements:</p>
-                    <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-gray-600 text-left pl-3 sm:pl-4">
-                      <li>At least 8 characters long</li>
-                      <li>Contains uppercase and lowercase letters</li>
-                      <li>Contains at least one number</li>
-                      <li>Contains at least one special character (e.g., !@#$%^&*)</li>
-                    </ul>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email" className="text-sm sm:text-base">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="your.email@plv.edu.ph"
+                      value={signupData.email}
+                      onChange={(e) => {
+                        setSignupData(prev => ({ ...prev, email: e.target.value }));
+                        if (signupErrors.email) {
+                          setSignupErrors(prev => ({ ...prev, email: '' }));
+                        }
+                      }}
+                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      required
+                    />
                   </div>
-                )}
-              </div>
+                  {signupErrors.email && (
+                    <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {signupErrors.email}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="signup-confirm-password" className="text-sm sm:text-base">Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
-                  <Input
-                    id="signup-confirm-password"
-                    type={showSignupConfirmPassword ? 'text' : 'password'}
-                    placeholder="Re-enter your password"
-                    value={signupData.confirmPassword}
-                    onChange={(e) => {
-                      setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }));
-                      if (signupErrors.confirmPassword) {
-                        setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
+                <div className="space-y-2">
+                  <Label htmlFor="signup-department" className="text-sm sm:text-base">Department</Label>
+                  <Select
+                    value={signupData.department}
+                    onValueChange={(value: string) => {
+                      setSignupData(prev => ({ ...prev, department: value }));
+                      if (signupErrors.department) {
+                        setSignupErrors(prev => ({ ...prev, department: '' }));
                       }
                     }}
-                    className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
-                    aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                    aria-pressed={showSignupConfirmPassword}
-                    title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                   >
-                    {showSignupConfirmPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
-                  </button>
+                    <SelectTrigger className={`h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
+                      <SelectValue placeholder="Select your department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {signupErrors.department && (
+                    <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {signupErrors.department}
+                    </p>
+                  )}
                 </div>
-                {signupErrors.confirmPassword && (
-                  <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {signupErrors.confirmPassword}
-                  </p>
-                )}
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password" className="text-sm sm:text-base">Create Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    <Input
+                      id="signup-password"
+                      type={showSignupPassword ? 'text' : 'password'}
+                      placeholder="Enter a strong password"
+                      value={signupData.password}
+                      onChange={(e) => {
+                        setSignupData(prev => ({ ...prev, password: e.target.value }));
+                        if (signupErrors.password) {
+                          setSignupErrors(prev => ({ ...prev, password: '' }));
+                        }
+                      }}
+                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                      aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
+                      aria-pressed={showSignupPassword}
+                      title={showSignupPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showSignupPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    </button>
+                  </div>
+                  {signupErrors.password && (
+                    <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {signupErrors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm-password" className="text-sm sm:text-base">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+                    <Input
+                      id="signup-confirm-password"
+                      type={showSignupConfirmPassword ? 'text' : 'password'}
+                      placeholder="Re-enter your password"
+                      value={signupData.confirmPassword}
+                      onChange={(e) => {
+                        setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                        if (signupErrors.confirmPassword) {
+                          setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
+                        }
+                      }}
+                      className={`pl-9 sm:pl-11 h-11 sm:h-12 md:h-13 rounded-xl text-sm sm:text-base ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                      aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                      aria-pressed={showSignupConfirmPassword}
+                      title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    >
+                      {showSignupConfirmPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    </button>
+                  </div>
+                  {signupErrors.confirmPassword && (
+                    <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {signupErrors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {!signupErrors.password && (
+                <div className="text-xs sm:text-sm text-gray-700 text-left">
+                  <p className="font-medium mb-1">Password Requirements:</p>
+                  <ul className="list-disc list-inside space-y-0.5 sm:space-y-1 text-xs text-gray-600 text-left pl-3 sm:pl-4">
+                    <li>At least 8 characters long</li>
+                    <li>Contains uppercase and lowercase letters</li>
+                    <li>Contains at least one number</li>
+                    <li>Contains at least one special character (e.g., !@#$%^&*)</li>
+                  </ul>
+                </div>
+              )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
                 <div className="flex items-start gap-2 sm:gap-3">
