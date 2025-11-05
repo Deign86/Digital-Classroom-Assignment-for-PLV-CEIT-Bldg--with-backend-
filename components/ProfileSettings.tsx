@@ -83,7 +83,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       // If something odd happens, keep current local state and log for diagnostics
       logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
-  }, [user?.pushEnabled, user?.name, user?.department, isEditingProfile, isSavingProfile]);
+  }, [user?.pushEnabled, user?.name, user?.department]); // Remove isEditingProfile and isSavingProfile from dependencies
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
   useEffect(() => {
@@ -134,6 +134,14 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         name: profileData.name.trim(),
         department: profileData.department.trim()
       };
+
+      logger.info('Saving profile data:', {
+        userId: user.id,
+        currentName: user.name,
+        newName: trimmedData.name,
+        currentDepartment: user.department,
+        newDepartment: trimmedData.department
+      });
 
       // Update in Firestore and get the updated user back
       const updatedUser = await userService.update(user.id, trimmedData);
