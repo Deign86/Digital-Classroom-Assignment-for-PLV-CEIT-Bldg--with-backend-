@@ -54,6 +54,9 @@
   .xs\:w-22 { width: 5.5rem; }
   
   .xs\:rounded-2xl { border-radius: 1rem; }
+  
+  .xs\:inline { display: inline; }
+  .xs\:hidden { display: none; }
 }
 
 /* ============================================

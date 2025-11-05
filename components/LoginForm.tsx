@@ -334,9 +334,15 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden">
-          <TabsTrigger value="login" className="text-sm sm:text-base">Faculty Sign In</TabsTrigger>
-          <TabsTrigger value="signup" className="text-sm sm:text-base">Faculty Request</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-gray-100 rounded-xl p-1.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden">
+          <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-4 py-2 sm:py-2.5 whitespace-nowrap">
+            <span className="hidden xs:inline">Faculty Sign In</span>
+            <span className="xs:hidden">Sign In</span>
+          </TabsTrigger>
+          <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-4 py-2 sm:py-2.5 whitespace-nowrap">
+            <span className="hidden xs:inline">Faculty Request</span>
+            <span className="xs:hidden">Request</span>
+          </TabsTrigger>
         </TabsList>
       
         <TabsContent value="login" className="space-y-6 sm:space-y-8 mt-6 sm:mt-8">
