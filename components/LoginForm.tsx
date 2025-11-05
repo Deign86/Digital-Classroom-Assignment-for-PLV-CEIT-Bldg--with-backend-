@@ -338,7 +338,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       {/* Header */}
       <div className="text-center space-y-1.5 sm:space-y-2 lg:space-y-3">
         <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900">Welcome Back</h1>
-        <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">Sign in to access the Digital Classroom Assignment System</p>
+        <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">Sign in to manage your classroom reservations</p>
       </div>
 
       {/* Login/Signup Form */}
