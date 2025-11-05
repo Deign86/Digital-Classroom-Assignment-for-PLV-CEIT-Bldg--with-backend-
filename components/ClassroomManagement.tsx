@@ -157,14 +157,14 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="classroom-management-header flex items-center justify-between">
             <div>
               <CardTitle>Classroom Management</CardTitle>
               <CardDescription>Manage CEIT classroom inventory and availability</CardDescription>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="add-classroom-btn">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Classroom
                 </Button>
