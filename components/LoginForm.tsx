@@ -656,8 +656,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
                   <div className="space-y-1">
                     <p className="text-xs sm:text-sm font-medium text-blue-900">Account Review</p>
                     <p className="text-xs text-blue-700">
