@@ -241,33 +241,33 @@ export default function FacultyDashboard({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-shrink">
+        <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4">
+            <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-shrink">
               <div className="transition-transform hover:rotate-12 hover:scale-110 flex-shrink-0">
-                <GraduationCap className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 text-blue-600" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">Faculty Dashboard</h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block truncate">PLV CEIT Classroom Management</p>
+                <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">Faculty Dashboard</h1>
+                <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">PLV CEIT Classroom Management</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3 flex-shrink-0">
+            <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
               <div className="hidden md:block text-right min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate max-w-[280px]">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate max-w-[280px]">{user.department} • {user.email}</p>
+                <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 truncate max-w-[200px] lg:max-w-[280px]">{user.name}</p>
+                <p className="text-xs text-gray-500 truncate max-w-[200px] lg:max-w-[280px]">{user.department} • {user.email}</p>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
                 <div className="transition-transform hover:scale-105 active:scale-95">
-                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
-                    <LogOut className="h-4 w-4 sm:mr-2" />
+                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200 text-xs sm:text-sm">
+                    <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1.5 md:mr-2" />
                     <span className="hidden sm:inline">Logout</span>
                   </Button>
                 </div>
               </div>
               {showNotifications && (
-                <div className="fixed right-4 top-20 z-50">
+                <div className="fixed right-2 sm:right-4 top-16 sm:top-20 z-50">
                   <NotificationCenter
                     userId={user.id}
                     onClose={() => setShowNotifications(false)}
@@ -286,17 +286,18 @@ export default function FacultyDashboard({
         </div>
       </header>
 
-      <div className="p-4 sm:p-6">
-  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FacultyTab)} className="space-y-4 sm:space-y-6">
+      <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FacultyTab)} className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Desktop Tab Layout */}
-          <TabsList className="hidden sm:flex w-full h-12">
-            <TabsTrigger value="overview" className="flex-1 px-4 py-2">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Overview
+          <TabsList className="hidden sm:flex w-full h-11 md:h-12">
+            <TabsTrigger value="overview" className="flex-1 px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm">
+              <BookOpen className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              <span className="hidden lg:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="booking" className="flex-1 px-4 py-2">
-              <Plus className="h-4 w-4 mr-2" />
-              Reserve a Classroom
+            <TabsTrigger value="booking" className="flex-1 px-2 md:px-4 py-1.5 md:py-2 text-xs md:text-sm">
+              <Plus className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              <span className="hidden lg:inline">Reserve a Classroom</span>
+              <span className="lg:hidden">Reserve</span>
             </TabsTrigger>
             <TabsTrigger value="search" className="flex-1 px-4 py-2">
               <Search className="h-4 w-4 mr-2" />
@@ -339,23 +340,23 @@ export default function FacultyDashboard({
             <div className="tab-scroll-indicator"></div>
           </div>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-5 md:space-y-6">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 animate-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6 animate-in">
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 
                   className="h-full stat-card-clickable cursor-pointer" 
                   onClick={() => setActiveTab('schedule')}
                   title="Click to view your schedule"
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-5 md:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Upcoming Classes</p>
-                        <p className="text-3xl font-bold text-blue-600">{upcomingClasses}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-600">Upcoming Classes</p>
+                        <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600">{upcomingClasses}</p>
                       </div>
                       <div className="transition-transform hover:scale-110">
-                        <Calendar className="h-8 w-8 text-blue-600" />
+                        <Calendar className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-blue-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -380,14 +381,14 @@ export default function FacultyDashboard({
                     }
                   }}
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-5 md:p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Pending Requests</p>
-                        <p className="text-3xl font-bold text-orange-600">{pendingRequests}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-600">Pending Requests</p>
+                        <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-orange-600">{pendingRequests}</p>
                       </div>
                       <div className={`transition-transform ${pendingRequests > 0 ? 'animate-pulse' : ''}`}>
-                        <Clock className="h-8 w-8 text-orange-600" />
+                        <Clock className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-orange-600" />
                       </div>
                     </div>
                   </CardContent>
