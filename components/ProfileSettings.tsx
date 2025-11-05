@@ -66,7 +66,13 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   });
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
+  // But DON'T update if user is currently editing to avoid overwriting their changes
   useEffect(() => {
+    if (isEditingProfile || isSavingProfile) {
+      // Don't reset form data while user is editing or saving
+      return;
+    }
+    
     try {
       setPushEnabled(!!(user as any).pushEnabled);
       setProfileData({
@@ -77,7 +83,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       // If something odd happens, keep current local state and log for diagnostics
       logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
-  }, [user?.pushEnabled, user?.name, user?.department]);
+  }, [user?.pushEnabled, user?.name, user?.department, isEditingProfile, isSavingProfile]);
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
   useEffect(() => {
@@ -129,25 +135,27 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         department: profileData.department.trim()
       };
 
-      await userService.update(user.uid, trimmedData);
+      // Update in Firestore and get the updated user back
+      const updatedUser = await userService.update(user.id, trimmedData);
+      
+      logger.info('Profile updated successfully:', updatedUser);
       
       toast.success('Profile updated successfully', {
-        description: 'Your profile information has been saved.'
+        description: `Name: ${updatedUser.name}, Department: ${updatedUser.department || 'N/A'}`
       });
       
       setIsEditingProfile(false);
       
-      // Refresh user data if available
-      if (typeof window !== 'undefined') {
+      // Wait a moment then reload to ensure all state is fresh
+      setTimeout(() => {
         window.location.reload();
-      }
+      }, 1500);
     } catch (err) {
       logger.error('Profile update error:', err);
       const errorMessage = err instanceof Error ? err.message : 'An error occurred while updating profile';
       toast.error('Failed to update profile', {
         description: errorMessage
       });
-    } finally {
       setIsSavingProfile(false);
     }
   };
