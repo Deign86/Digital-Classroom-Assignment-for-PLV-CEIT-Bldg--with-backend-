@@ -314,6 +314,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               <span>History</span>
             </TabsTrigger>
           </TabsList>
+          <div className="tab-scroll-indicator"></div>
         </div>
 
         <TabsContent value="upcoming" className="space-y-4">
