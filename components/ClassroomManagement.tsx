@@ -857,7 +857,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             <div className="space-y-2 pt-2 border-t">
               <Label htmlFor="disable-reason">
                 Reason for disabling *
-                <span className="text-sm text-gray-500 font-normal ml-2">
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal ml-2">
                   This will be included in the notification
                 </span>
               </Label>
@@ -877,12 +877,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   Reason is required to notify affected faculty
                 </p>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {disableReason.length}/200 characters
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3 text-sm text-blue-800 dark:text-blue-200">
               <p className="font-medium mb-1">What happens next?</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
                 <li>All affected faculty members will receive an in-app notification</li>

@@ -1292,6 +1292,69 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   border-color: #5E9FFF !important;
 }
 
+/* Button styling improvements for dark mode */
+/* Make button borders visible in dark mode */
+.dark button {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Button hover effects - Light mode (keep original from master) */
+button:not(.dark button):hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Button hover effects - Dark mode (new subtle effects) */
+.dark button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Specific button variant hover effects for dark mode */
+.dark button[class*="bg-primary"]:hover:not(:disabled),
+.dark button[class*="bg-blue"]:hover:not(:disabled) {
+  background-color: #5391E7 !important;
+  border-color: #6B9EFF !important;
+}
+
+.dark button[class*="bg-destructive"]:hover:not(:disabled),
+.dark button[class*="bg-red"]:hover:not(:disabled) {
+  background-color: #DC2626 !important;
+  border-color: #EF4444 !important;
+}
+
+.dark button[class*="bg-amber"]:hover:not(:disabled) {
+  background-color: #D97706 !important;
+  border-color: #F59E0B !important;
+}
+
+.dark button[class*="variant-outline"]:hover:not(:disabled),
+.dark button[class*="border"]:hover:not(:disabled):not([class*="bg-"]) {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Input and textarea border visibility in dark mode */
+.dark input,
+.dark textarea,
+.dark select {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.dark input:hover,
+.dark textarea:hover,
+.dark select:hover {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: rgba(94, 159, 255, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(94, 159, 255, 0.1) !important;
+}
+
 /* === APPENDED: ensure nav/tabs/footer use dark surfaces in .dark theme === */
 .dark {
   /* prefer semantic vars already defined above */
