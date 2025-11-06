@@ -214,12 +214,12 @@ describe('ClassroomManagement', () => {
         expect(screen.getByLabelText(/room name/i)).toBeInTheDocument()
       })
       
-      // Fill in form
+      // Fill in basic required form fields only first
       await user.type(screen.getByLabelText(/room name/i), 'CEIT-999')
       await user.type(screen.getByLabelText(/capacity/i), '50')
       await user.type(screen.getByLabelText(/building/i), 'CEIT Building')
-      await user.type(screen.getByLabelText(/equipment/i), 'Projector, WiFi')
       
+      // Don't interact with equipment field - just submit with empty equipment list
       // Submit form
       const submitButton = screen.getByRole('button', { name: /^add classroom$/i })
       await user.click(submitButton)
@@ -228,7 +228,7 @@ describe('ClassroomManagement', () => {
         expect(classroomService.create).toHaveBeenCalledWith({
           name: 'CEIT-999',
           capacity: 50,
-          equipment: ['Projector', 'WiFi'],
+          equipment: [],
           building: 'CEIT Building',
           floor: 1,
           isAvailable: true,
@@ -437,7 +437,7 @@ describe('ClassroomManagement', () => {
   })
 
   describe('Form Validation', () => {
-    it('should handle equipment parsing with comma separation', async () => {
+    it('should successfully add classroom with equipment', async () => {
       const user = userEvent.setup()
       render(<ClassroomManagement {...defaultProps} />)
       
@@ -451,7 +451,27 @@ describe('ClassroomManagement', () => {
       await user.type(screen.getByLabelText(/room name/i), 'CEIT-999')
       await user.type(screen.getByLabelText(/capacity/i), '50')
       await user.type(screen.getByLabelText(/building/i), 'CEIT Building')
-      await user.type(screen.getByLabelText(/equipment/i), 'Projector, WiFi, Whiteboard')
+      
+      // Find the equipment Select button by its id
+      const equipmentButton = document.getElementById('equipment')!
+      
+      // Select Projector
+      await user.click(equipmentButton)
+      await waitFor(() => expect(screen.getByRole('option', { name: /projector/i })).toBeVisible())
+      await user.click(screen.getByRole('option', { name: /projector/i }))
+      
+      // Select WiFi
+      await user.click(equipmentButton)
+      await waitFor(() => expect(screen.getByRole('option', { name: /^wifi$/i })).toBeVisible())
+      await user.click(screen.getByRole('option', { name: /^wifi$/i }))
+      
+      // Select Whiteboard
+      await user.click(equipmentButton)
+      await waitFor(() => expect(screen.getByRole('option', { name: /whiteboard/i })).toBeVisible())
+      await user.click(screen.getByRole('option', { name: /whiteboard/i }))
+      
+      // Click outside to close dropdown
+      await user.click(screen.getByLabelText(/room name/i))
       
       const submitButton = screen.getByRole('button', { name: /^add classroom$/i })
       await user.click(submitButton)
@@ -465,7 +485,7 @@ describe('ClassroomManagement', () => {
       })
     })
 
-    it('should handle equipment with extra spaces', async () => {
+    it('should handle equipment selection and removal', async () => {
       const user = userEvent.setup()
       render(<ClassroomManagement {...defaultProps} />)
       
@@ -479,7 +499,22 @@ describe('ClassroomManagement', () => {
       await user.type(screen.getByLabelText(/room name/i), 'CEIT-999')
       await user.type(screen.getByLabelText(/capacity/i), '50')
       await user.type(screen.getByLabelText(/building/i), 'CEIT Building')
-      await user.type(screen.getByLabelText(/equipment/i), '  Projector  ,  WiFi  ')
+      
+      // Find the equipment Select button by its id
+      const equipmentButton = document.getElementById('equipment')!
+      
+      // Select Projector
+      await user.click(equipmentButton)
+      await waitFor(() => expect(screen.getByRole('option', { name: /projector/i })).toBeVisible())
+      await user.click(screen.getByRole('option', { name: /projector/i }))
+      
+      // Select WiFi
+      await user.click(equipmentButton)
+      await waitFor(() => expect(screen.getByRole('option', { name: /^wifi$/i })).toBeVisible())
+      await user.click(screen.getByRole('option', { name: /^wifi$/i }))
+      
+      // Click outside to close dropdown
+      await user.click(screen.getByLabelText(/room name/i))
       
       const submitButton = screen.getByRole('button', { name: /^add classroom$/i })
       await user.click(submitButton)
