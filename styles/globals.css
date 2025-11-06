@@ -1132,7 +1132,8 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 }
 
 /* Tabs: keep text readable, hover subtle, and active not white */
-[role="tablist"] [role="tab"] {
+/* Only apply transition to tabs in dark mode to avoid affecting light mode styling */
+.dark [role="tablist"] [role="tab"] {
   transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
 
