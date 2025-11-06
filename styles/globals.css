@@ -94,20 +94,20 @@
   --card-foreground: #f2f2f7;
   --popover: #1c1c1e;
   --popover-foreground: #f2f2f7;
-  --primary: #0a84ff;
+  --primary: #5E9FFF;
   --primary-foreground: #ffffff;
   --secondary: #1c1c1e;
   --secondary-foreground: #f2f2f7;
   --muted: #1c1c1e;
   --muted-foreground: #8e8e93;
-  --accent: #0a84ff;
+  --accent: #5E9FFF;
   --accent-foreground: #ffffff;
   --destructive: #ff453a;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.08);
   --input: #1c1c1e;
-  --ring: #0a84ff;
-  --chart-1: #0a84ff;
+  --ring: #5E9FFF;
+  --chart-1: #5E9FFF;
   --chart-2: #30d158;
   --chart-3: #ff9f0a;
   --chart-4: #ff453a;
@@ -1034,9 +1034,9 @@ body.authenticated .grecaptcha-badge {
   --card: #121213;
   --card-foreground: #f2f2f7;
   --muted-foreground: #9aa6b2;
-  --primary: #0a84ff;
+  --primary: #5E9FFF;
   --border: rgba(255,255,255,0.08);
-  --ring: #0a84ff;
+  --ring: #5E9FFF;
   --hover-surface: rgba(255,255,255,0.03);
 }
 
@@ -1253,6 +1253,43 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 .dark .space-y-6,
 .dark .grid > div {
   background: transparent !important;
+}
+
+/* Dim bright blue colors in dark mode for better eye comfort */
+.dark .text-blue-600 {
+  color: #6B9EFF !important;
+}
+
+.dark .text-blue-700 {
+  color: #5E9FFF !important;
+}
+
+.dark .text-blue-800 {
+  color: #7FACFF !important;
+}
+
+.dark .text-blue-900 {
+  color: #8BB8FF !important;
+}
+
+.dark .bg-blue-600 {
+  background-color: #5E9FFF !important;
+}
+
+.dark .bg-blue-700 {
+  background-color: #5391E7 !important;
+}
+
+.dark .hover\:bg-blue-700:hover {
+  background-color: #5391E7 !important;
+}
+
+.dark .hover\:text-blue-700:hover {
+  color: #5E9FFF !important;
+}
+
+.dark .border-blue-600 {
+  border-color: #5E9FFF !important;
 }
 
 /* === APPENDED: ensure nav/tabs/footer use dark surfaces in .dark theme === */
