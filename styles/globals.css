@@ -1131,12 +1131,12 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   border-color: var(--sidebar-border) !important;
 }
 
-/* Tabs: keep text readable, hover subtle, and active not white - DARK MODE ONLY */
-.dark [role="tablist"] [role="tab"] {
+/* Tabs: keep text readable, hover subtle, and active not white */
+[role="tablist"] [role="tab"] {
   transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
 
-/* Hover: only subtle darkening (no white flash) - DARK MODE ONLY */
+/* Hover: only subtle darkening (no white flash) */
 .dark [role="tablist"] [role="tab"]:hover,
 .dark .btn-theme:hover,
 .dark .card-content:hover {
@@ -1144,7 +1144,7 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   color: inherit !important;
 }
 
-/* Active/selected tabs - use card surface / subtle overlay (never pure white) - DARK MODE ONLY */
+/* Active/selected tabs - use card surface / subtle overlay (never pure white) */
 .dark [role="tablist"] [role="tab"][data-state="active"],
 .dark [role="tablist"] [role="tab"][aria-selected="true"],
 .dark [role="tablist"] [role="tab"].active,
@@ -1156,13 +1156,9 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   border-color: transparent !important;
 }
 
-/* Defensive: neutralize utility classes that might force white backgrounds or black text - DARK MODE ONLY */
-.dark .bg-white {
+/* Defensive: neutralize utility classes that might force white backgrounds or black text */
+.dark .bg-white, .dark .text-black, .dark .text-gray-900 {
   background: transparent !important;
-}
-
-.dark .text-black, 
-.dark .text-gray-900 {
   color: inherit !important;
 }
 
@@ -1252,10 +1248,11 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 }
 
 /* Fix form field container backgrounds in dark mode - remove gray boxes */
-.dark .space-y-2,
-.dark .space-y-4,
-.dark .space-y-6,
-.dark .grid > div {
+/* Exclude elements inside card components to preserve their backgrounds */
+.dark .space-y-2:not([class*="card"] .space-y-2),
+.dark .space-y-4:not([class*="card"] .space-y-4),
+.dark .space-y-6:not([class*="card"] .space-y-6),
+.dark .grid > div:not([class*="card"] .grid > div) {
   background: transparent !important;
 }
 
