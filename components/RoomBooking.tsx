@@ -83,6 +83,17 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     return `${year}-${month}-${day}`;
   })();
 
+  // Get maximum date (2 months from today)
+  const maxDate = (() => {
+    const now = new Date();
+    const future = new Date(now);
+    future.setMonth(future.getMonth() + 2);
+    const year = future.getFullYear();
+    const month = String(future.getMonth() + 1).padStart(2, '0');
+    const day = String(future.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  })();
+
   // Helper to format internal ISO (YYYY-MM-DD) to MM/DD/YYYY for display
   const formatISOToMDY = (iso?: string) => {
     if (!iso) return '';
@@ -211,6 +222,12 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
     }
     if (!formData.date) {
       newErrors.date = 'Please select a date.';
+      isValid = false;
+    } else if (formData.date < today) {
+      newErrors.date = 'Date cannot be in the past.';
+      isValid = false;
+    } else if (formData.date > maxDate) {
+      newErrors.date = 'Bookings can only be made up to 2 months in advance.';
       isValid = false;
     }
     if (!formData.startTime) {
@@ -484,6 +501,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       id="date"
                       type="date"
                       min={today}
+                      max={maxDate}
                       value={formData.date}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -496,6 +514,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                           setErrors(prev => ({ ...prev, date: 'Invalid date.' }));
                         } else if (v < today) {
                           setErrors(prev => ({ ...prev, date: 'Date must be today or later.' }));
+                        } else if (v > maxDate) {
+                          setErrors(prev => ({ ...prev, date: 'Bookings can only be made up to 2 months in advance.' }));
                         } else {
                           setErrors(prev => ({ ...prev, date: '' }));
                           setFormData(prev => ({ ...prev, date: v }));
@@ -534,14 +554,19 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                               setErrors(prev => ({ ...prev, date: 'Please select a date.' }));
                               return;
                             }
-                            if (!isValidISODate(iso) || iso < today) {
+                            if (!isValidISODate(iso)) {
+                              setErrors(prev => ({ ...prev, date: 'Invalid date.' }));
+                            } else if (iso < today) {
                               setErrors(prev => ({ ...prev, date: 'Invalid or past date.' }));
+                            } else if (iso > maxDate) {
+                              setErrors(prev => ({ ...prev, date: 'Bookings can only be made up to 2 months in advance.' }));
                             } else {
                               setErrors(prev => ({ ...prev, date: '' }));
                               setFormData(prev => ({ ...prev, date: iso }));
                             }
                           }}
                           min={today}
+                          max={maxDate}
                         />
                       </div>
                     </PopoverContent>

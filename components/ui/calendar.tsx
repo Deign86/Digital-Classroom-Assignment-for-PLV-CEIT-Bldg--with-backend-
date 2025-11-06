@@ -6,6 +6,7 @@ type CalendarProps = {
   value?: string; // YYYY-MM-DD (internal storage)
   onSelect?: (isoDate?: string) => void; // emits YYYY-MM-DD
   min?: string; // YYYY-MM-DD
+  max?: string; // YYYY-MM-DD
   className?: string;
 };
 
@@ -27,11 +28,21 @@ function formatLocalDateToISO(date?: Date): string | undefined {
   return `${y}-${m}-${d}`;
 }
 
-export function Calendar({ value, onSelect, min, className }: CalendarProps) {
+export function Calendar({ value, onSelect, min, max, className }: CalendarProps) {
   const selected = parseISOToLocal(value);
   const fromDate = parseISOToLocal(min);
+  const toDate = parseISOToLocal(max);
 
   const wrapper = ['app-calendar', className].filter(Boolean).join(' ');
+
+  // Build disabled configuration
+  const disabledDates: any = {};
+  if (fromDate) {
+    disabledDates.before = fromDate;
+  }
+  if (toDate) {
+    disabledDates.after = toDate;
+  }
 
   return (
     <div className={wrapper}>
@@ -42,7 +53,7 @@ export function Calendar({ value, onSelect, min, className }: CalendarProps) {
           if (!onSelect) return;
           onSelect(date ? formatLocalDateToISO(date) : undefined);
         }}
-        disabled={fromDate ? { before: fromDate } : undefined}
+        disabled={Object.keys(disabledDates).length > 0 ? disabledDates : undefined}
       />
     </div>
   );
