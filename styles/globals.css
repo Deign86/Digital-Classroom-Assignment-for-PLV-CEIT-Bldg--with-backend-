@@ -1252,10 +1252,15 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 }
 
 /* Fix form field container backgrounds in dark mode - remove gray boxes */
-.dark .space-y-2,
-.dark .space-y-4,
-.dark .space-y-6,
-.dark .grid > div {
+/* Only target form containers, not card content areas */
+.dark form .space-y-2,
+.dark form .space-y-4,
+.dark form .space-y-6,
+.dark form .grid > div,
+.dark .form-container .space-y-2,
+.dark .form-container .space-y-4,
+.dark .form-container .space-y-6,
+.dark .form-container .grid > div {
   background: transparent !important;
 }
 
