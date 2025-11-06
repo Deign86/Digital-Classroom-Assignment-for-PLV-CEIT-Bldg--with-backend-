@@ -17,7 +17,7 @@ service cloud.firestore {
       // Admins update users via Cloud Functions with Admin SDK (bypasses these rules)
       allow update: if request.auth.uid == userId 
                    && request.resource.data.keys().hasOnly([
-                     'name', 'department', 'photoURL', 'pushEnabled', 
+                     'name', 'department', 'departments', 'photoURL', 'pushEnabled', 
                      'updatedAt', 'email', 'emailLower', 'role', 'status',
                      'createdAt', 'failedLoginAttempts', 'accountLocked', 
                      'lockedUntil', 'lockedByAdmin', 'lastSignInAt'
