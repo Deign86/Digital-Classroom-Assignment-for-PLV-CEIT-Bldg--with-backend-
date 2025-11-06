@@ -5,12 +5,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi as LucideWifi } from 'lucide-react';
-import * as Phosphor from '@phosphor-icons/react';
+import { Search, MapPin, Users, Clock, CheckCircle, XCircle, X } from 'lucide-react';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour, isValidTimeRange, isPastBookingTime, getValidEndTimes } from '../utils/timeUtils';
 import type { Classroom, Schedule, BookingRequest } from '../App';
+import { getIconForEquipment } from '../lib/equipmentIcons';
 
 interface RoomSearchProps {
   classrooms: Classroom[];
@@ -20,56 +20,26 @@ interface RoomSearchProps {
 
 const timeSlots = generateTimeSlots();
 
-const phosphorIndex = Phosphor as unknown as Record<string, React.ElementType | undefined>;
-const getPhosphorIcon = (names: string[]) => {
-  for (const n of names) {
-    const Comp = phosphorIndex[n] ?? phosphorIndex[`${n}Icon`];
-    if (Comp) return <Comp className="h-4 w-4" />;
-  }
-  return null;
-};
-
-const equipmentIcons: { [key: string]: React.ReactNode } = {
-  'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen']),
-  'Computer': getPhosphorIcon(['Monitor', 'Desktop']),
-  'Computers': getPhosphorIcon(['Monitor', 'Desktop']),
-  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple']),
-  'Whiteboard': getPhosphorIcon(['Chalkboard', 'ChalkboardSimple']) || getPhosphorIcon(['Note']),
-  'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay']),
-  'Podium': getPhosphorIcon(['Podium', 'Presentation', 'Microphone']) || getPhosphorIcon(['SpeakerHigh']),
-  // Common variants that may appear in classroom data
-  'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
-  'Speaker': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
-  'Air Conditioner': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
-  'AC': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
-};
-
-const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
-
-// Robust lookup for equipment icons: normalized exact match, singular/plural, WiFi fallback
-const getIconForEquipment = (eq?: string) => {
-  if (!eq) return null;
-  const rawKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(eq));
-  if (rawKey) {
-    const v = equipmentIcons[rawKey];
-    if (v) return v; // only return if mapping produced an icon
-    // otherwise fall through to try singular/plural and wifi fallback
-  }
-
-  const singularAttempt = eq.endsWith('s') ? eq.slice(0, -1) : `${eq}s`;
-  const spKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(singularAttempt));
-  if (spKey) {
-    const v = equipmentIcons[spKey];
-    if (v) return v;
-  }
-
-  // wifi fallback (only match 'wifi' to avoid collisions with words like 'whiteboard')
-  if (normalize(eq).includes('wifi')) {
-    return <LucideWifi className="h-4 w-4" />;
-  }
-
-  return null;
-};
+// Available equipment options for filtering
+const EQUIPMENT_OPTIONS = [
+  'Projector',
+  'Computer',
+  'WiFi',
+  'Whiteboard',
+  'TV',
+  'Speakers',
+  'Air Conditioner',
+  'Podium',
+  'Microphone',
+  'Camera',
+  'Printer',
+  'Scanner',
+  'Document Camera',
+  'Smart Board',
+  'Visualizer',
+  'DVD Player',
+  'VCR'
+];
 
 export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {
   const [searchFilters, setSearchFilters] = useState({
@@ -77,7 +47,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     startTime: '',
     endTime: '',
     minCapacity: '',
-    equipment: ''
+    equipment: [] as string[]
   });
 
   // Defensive handlers to prevent selecting disabled times (some Select implementations
@@ -117,6 +87,22 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     if (conflictType !== 'none') return;
 
     setSearchFilters(prev => ({ ...prev, endTime: value }));
+  };
+
+  const toggleEquipment = (equipment: string) => {
+    setSearchFilters(prev => ({
+      ...prev,
+      equipment: prev.equipment.includes(equipment)
+        ? prev.equipment.filter(eq => eq !== equipment)
+        : [...prev.equipment, equipment]
+    }));
+  };
+
+  const removeEquipment = (equipment: string) => {
+    setSearchFilters(prev => ({
+      ...prev,
+      equipment: prev.equipment.filter(eq => eq !== equipment)
+    }));
   };
 
   // Get minimum date (today) in local timezone to avoid offset issues
@@ -321,10 +307,12 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     }
 
     // Filter by equipment
-    if (searchFilters.equipment) {
+    if (searchFilters.equipment.length > 0) {
       filtered = filtered.filter(c => 
-        c.equipment.some(eq => 
-          eq.toLowerCase().includes(searchFilters.equipment.toLowerCase())
+        searchFilters.equipment.every(reqEq =>
+          c.equipment.some(classEq => 
+            classEq.toLowerCase().includes(reqEq.toLowerCase())
+          )
         )
       );
     }
@@ -350,11 +338,15 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
       startTime: '',
       endTime: '',
       minCapacity: '',
-      equipment: ''
+      equipment: []
     });
   };
 
-  const hasActiveFilters = Object.values(searchFilters).some(value => value !== '');
+  const hasActiveFilters = searchFilters.date !== '' || 
+    searchFilters.startTime !== '' || 
+    searchFilters.endTime !== '' || 
+    searchFilters.minCapacity !== '' || 
+    searchFilters.equipment.length > 0;
 
   return (
     <div className="space-y-6">
@@ -554,12 +546,48 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-equipment">Equipment</Label>
-              <Input
-                id="search-equipment"
-                placeholder="e.g., Projector, Computer"
-                value={searchFilters.equipment}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, equipment: e.target.value }))}
-              />
+              <Select value="" onValueChange={toggleEquipment}>
+                <SelectTrigger id="search-equipment">
+                  <SelectValue placeholder="Select equipment to filter..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {EQUIPMENT_OPTIONS.map((equipment) => (
+                    <SelectItem 
+                      key={equipment} 
+                      value={equipment}
+                      disabled={searchFilters.equipment.includes(equipment)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        {getIconForEquipment(equipment)}
+                        <span>{equipment}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Selected Equipment Tags */}
+              {searchFilters.equipment.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-gray-50">
+                  {searchFilters.equipment.map((eq) => (
+                    <Badge 
+                      key={eq} 
+                      variant="secondary" 
+                      className="text-xs flex items-center space-x-1 pr-1"
+                    >
+                      {getIconForEquipment(eq)}
+                      <span>{eq}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeEquipment(eq)}
+                        className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -29,7 +29,16 @@ const EQUIPMENT_OPTIONS = [
   'TV',
   'Speakers',
   'Air Conditioner',
-  'Podium'
+  'Podium',
+  'Microphone',
+  'Camera',
+  'Printer',
+  'Scanner',
+  'Document Camera',
+  'Smart Board',
+  'Visualizer',
+  'DVD Player',
+  'VCR'
 ];
 
 export default function ClassroomManagement({ classrooms, onClassroomUpdate }: ClassroomManagementProps) {
