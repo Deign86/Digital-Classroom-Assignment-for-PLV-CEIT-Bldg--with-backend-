@@ -233,6 +233,138 @@ describe('RoomBooking - Comprehensive Tests', () => {
       })
     })
 
+    it('should accept dates up to 2 months in advance', async () => {
+      const user = userEvent.setup()
+      render(
+        <RoomBooking
+          user={mockFacultyUser}
+          classrooms={classrooms}
+          schedules={schedules}
+          bookingRequests={bookingRequests}
+          onBookingRequest={mockOnBookingRequest}
+          checkConflicts={mockCheckConflicts}
+        />
+      )
+
+      // Calculate date exactly 2 months from today
+      const twoMonthsAhead = new Date()
+      twoMonthsAhead.setMonth(twoMonthsAhead.getMonth() + 2)
+      const validDate = twoMonthsAhead.toISOString().split('T')[0]
+
+      // Fill out the form with a date 2 months ahead
+      const classroomSelect = screen.getByRole('combobox', { name: /classroom/i })
+      await user.click(classroomSelect)
+      
+      const option = await screen.findByText(mockClassroom.name)
+      await user.click(option)
+
+      const dateInput = screen.queryByLabelText(/date/i) || screen.queryByPlaceholderText(/select date/i)
+      if (dateInput && dateInput.tagName === 'INPUT') {
+        await user.clear(dateInput)
+        await user.type(dateInput, validDate)
+      }
+
+      const startTimeSelect = screen.getByRole('combobox', { name: /start time/i })
+      await user.click(startTimeSelect)
+      const startOption = await screen.findByText('9:00 AM')
+      await user.click(startOption)
+
+      const endTimeSelect = screen.getByRole('combobox', { name: /end time/i })
+      await user.click(endTimeSelect)
+      const endOption = await screen.findByText('10:00 AM')
+      await user.click(endOption)
+
+      const purposeInput = screen.getByLabelText(/purpose/i)
+      await user.type(purposeInput, 'Valid 2-month advance booking')
+
+      const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        // Should be allowed - 2 months is the maximum allowed
+        expect(mockOnBookingRequest).toHaveBeenCalled()
+      })
+    })
+
+    it('should reject dates more than 2 months in advance', async () => {
+      const user = userEvent.setup()
+      render(
+        <RoomBooking
+          user={mockFacultyUser}
+          classrooms={classrooms}
+          schedules={schedules}
+          bookingRequests={bookingRequests}
+          onBookingRequest={mockOnBookingRequest}
+          checkConflicts={mockCheckConflicts}
+        />
+      )
+
+      // Calculate date more than 2 months from today (e.g., 2 months + 5 days)
+      const tooFarAhead = new Date()
+      tooFarAhead.setMonth(tooFarAhead.getMonth() + 2)
+      tooFarAhead.setDate(tooFarAhead.getDate() + 5)
+      const invalidDate = tooFarAhead.toISOString().split('T')[0]
+
+      const dateInput = screen.queryByLabelText(/date/i) || screen.queryByPlaceholderText(/select date/i)
+      
+      if (dateInput && dateInput.tagName === 'INPUT') {
+        await user.clear(dateInput)
+        await user.type(dateInput, invalidDate)
+      }
+
+      const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        // Should show error message about 2-month limit
+        expect(screen.queryByText(/bookings can only be made up to 2 months in advance/i)).toBeInTheDocument()
+      })
+
+      await waitFor(() => {
+        // Should not submit the booking
+        expect(mockOnBookingRequest).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should reject dates 2 years in advance (original bug)', async () => {
+      const user = userEvent.setup()
+      render(
+        <RoomBooking
+          user={mockFacultyUser}
+          classrooms={classrooms}
+          schedules={schedules}
+          bookingRequests={bookingRequests}
+          onBookingRequest={mockOnBookingRequest}
+          checkConflicts={mockCheckConflicts}
+        />
+      )
+
+      // Calculate date 2 years from today (the bug we're fixing)
+      const twoYearsAhead = new Date()
+      twoYearsAhead.setFullYear(twoYearsAhead.getFullYear() + 2)
+      const invalidDate = twoYearsAhead.toISOString().split('T')[0]
+
+      const dateInput = screen.queryByLabelText(/date/i) || screen.queryByPlaceholderText(/select date/i)
+      
+      if (dateInput && dateInput.tagName === 'INPUT') {
+        await user.clear(dateInput)
+        await user.type(dateInput, invalidDate)
+      }
+
+      const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        // Should show error message about 2-month limit
+        expect(screen.queryByText(/bookings can only be made up to 2 months in advance/i)).toBeInTheDocument()
+      })
+
+      await waitFor(() => {
+        // Should not submit the booking
+        expect(mockOnBookingRequest).not.toHaveBeenCalled()
+      })
+    })
+
     it('should reject invalid date format (Feb 30, Apr 31, etc.)', async () => {
       const user = userEvent.setup()
       
