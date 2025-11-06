@@ -1131,12 +1131,12 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   border-color: var(--sidebar-border) !important;
 }
 
-/* Tabs: keep text readable, hover subtle, and active not white */
-[role="tablist"] [role="tab"] {
+/* Tabs: keep text readable, hover subtle, and active not white - DARK MODE ONLY */
+.dark [role="tablist"] [role="tab"] {
   transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
 
-/* Hover: only subtle darkening (no white flash) */
+/* Hover: only subtle darkening (no white flash) - DARK MODE ONLY */
 .dark [role="tablist"] [role="tab"]:hover,
 .dark .btn-theme:hover,
 .dark .card-content:hover {
@@ -1144,7 +1144,7 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   color: inherit !important;
 }
 
-/* Active/selected tabs - use card surface / subtle overlay (never pure white) */
+/* Active/selected tabs - use card surface / subtle overlay (never pure white) - DARK MODE ONLY */
 .dark [role="tablist"] [role="tab"][data-state="active"],
 .dark [role="tablist"] [role="tab"][aria-selected="true"],
 .dark [role="tablist"] [role="tab"].active,
@@ -1156,9 +1156,13 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   border-color: transparent !important;
 }
 
-/* Defensive: neutralize utility classes that might force white backgrounds or black text */
-.dark .bg-white, .dark .text-black, .dark .text-gray-900 {
+/* Defensive: neutralize utility classes that might force white backgrounds or black text - DARK MODE ONLY */
+.dark .bg-white {
   background: transparent !important;
+}
+
+.dark .text-black, 
+.dark .text-gray-900 {
   color: inherit !important;
 }
 
@@ -1299,9 +1303,9 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 }
 
 /* Button hover effects - Light mode (keep original from master) */
-button:not(.dark button):hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+html:not(.dark) button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* Button hover effects - Dark mode (new subtle effects) */
