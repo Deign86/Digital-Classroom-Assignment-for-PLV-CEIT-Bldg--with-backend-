@@ -704,11 +704,11 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1 min-w-0 pr-4">
               <p className="font-medium">Browser & Device Push</p>
               <p className="text-sm text-muted-foreground">Receive push notifications even when the app is closed (via browser/service worker).</p>
             </div>
-            <div>
+            <div className="flex items-center gap-2 shrink-0">
               <Switch
                 checked={pushEnabled}
                 onCheckedChange={(val) => handleTogglePush(!!val)}
@@ -716,10 +716,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                 disabled={isTogglingPush || !pushSupported}
               />
               {isTogglingPush && (
-                <span className="inline-flex items-center">
-                  <Loader2 className="h-4 w-4 inline-block ml-2 text-gray-500 animate-spin" />
-                  <span className="sr-only">Updating push preference</span>
-                </span>
+                <Loader2 className="h-4 w-4 text-gray-500 animate-spin" />
               )}
             </div>
           </div>
