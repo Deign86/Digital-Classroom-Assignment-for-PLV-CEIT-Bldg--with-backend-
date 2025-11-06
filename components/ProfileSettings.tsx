@@ -132,6 +132,24 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       return;
     }
 
+    // Check if any changes were actually made
+    const originalDepartments = user.departments && user.departments.length > 0 
+      ? user.departments 
+      : (user.department ? [user.department] : []);
+    
+    const nameUnchanged = profileData.name.trim() === user.name;
+    const departmentsUnchanged = 
+      profileData.departments.length === originalDepartments.length &&
+      profileData.departments.every((dept, index) => dept === originalDepartments[index]);
+
+    if (nameUnchanged && departmentsUnchanged) {
+      // No changes detected, just exit edit mode without saving or reloading
+      logger.info('No profile changes detected, exiting edit mode');
+      setIsEditingProfile(false);
+      toast.info('No changes to save');
+      return;
+    }
+
     setIsSavingProfile(true);
     try {
       const trimmedData = {
