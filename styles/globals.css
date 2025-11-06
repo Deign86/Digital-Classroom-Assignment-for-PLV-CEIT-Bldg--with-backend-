@@ -1248,11 +1248,15 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 }
 
 /* Fix form field container backgrounds in dark mode - remove gray boxes */
-/* Exclude elements inside card components to preserve their backgrounds */
-.dark .space-y-2:not([class*="card"] .space-y-2),
-.dark .space-y-4:not([class*="card"] .space-y-4),
-.dark .space-y-6:not([class*="card"] .space-y-6),
-.dark .grid > div:not([class*="card"] .grid > div) {
+/* Only apply to form containers, not card content */
+.dark form .space-y-2,
+.dark form .space-y-4,
+.dark form .space-y-6,
+.dark form .grid > div,
+.dark [class*="login"] .space-y-2,
+.dark [class*="login"] .space-y-4,
+.dark [class*="signup"] .space-y-2,
+.dark [class*="signup"] .space-y-4 {
   background: transparent !important;
 }
 
