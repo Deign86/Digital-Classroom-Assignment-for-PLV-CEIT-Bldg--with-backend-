@@ -42,6 +42,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockRejectedValue(error)
       
       const promise = withRetry(fn)
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('All attempts failed')
@@ -68,6 +70,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockRejectedValue(new Error('Failed'))
       
       const promise = withRetry(fn, { attempts: 5 })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('Failed')
@@ -78,6 +82,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockRejectedValue(new Error('Failed'))
       
       const promise = withRetry(fn, { attempts: 1 })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('Failed')
@@ -88,6 +94,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockRejectedValue(new Error('Failed'))
       
       const promise = withRetry(fn, { attempts: 10 })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('Failed')
@@ -188,6 +196,8 @@ describe('withRetry - Comprehensive Tests', () => {
         attempts: 5,
         shouldRetry: () => false
       })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       
       await vi.runAllTimersAsync()
       
@@ -202,6 +212,8 @@ describe('withRetry - Comprehensive Tests', () => {
         attempts: 3,
         shouldRetry: () => true
       })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       
       await vi.runAllTimersAsync()
       
@@ -221,6 +233,8 @@ describe('withRetry - Comprehensive Tests', () => {
         .mockReturnValueOnce(false)
       
       const promise = withRetry(fn, { shouldRetry })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('Auth error')
@@ -237,6 +251,8 @@ describe('withRetry - Comprehensive Tests', () => {
         attempts: 3,
         shouldRetry: isNetworkError
       })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       
       await vi.runAllTimersAsync()
       
@@ -372,6 +388,8 @@ describe('withRetry - Comprehensive Tests', () => {
       })
       
       const promise = withRetry(fn as any)
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('Synchronous error')
@@ -403,6 +421,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockResolvedValue('success')
       
       const promise = withRetry(fn, { attempts: 0 })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       // With 0 attempts, function never runs, throws undefined
@@ -414,6 +434,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockResolvedValue('success')
       
       const promise = withRetry(fn, { attempts: -1 })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toBeUndefined()
@@ -489,6 +511,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockRejectedValue(error)
       
       const promise = withRetry(fn)
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow(CustomError)
@@ -503,6 +527,8 @@ describe('withRetry - Comprehensive Tests', () => {
       const fn = vi.fn().mockRejectedValue(error)
       
       const promise = withRetry(fn)
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       try {
@@ -524,6 +550,8 @@ describe('withRetry - Comprehensive Tests', () => {
         .mockRejectedValueOnce(error3)
       
       const promise = withRetry(fn, { attempts: 3 })
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       await vi.runAllTimersAsync()
       
       await expect(promise).rejects.toThrow('Third error')
@@ -581,6 +609,8 @@ describe('withRetry - Comprehensive Tests', () => {
           shouldRetry: isNetworkError 
         }
       )
+      // Catch promise to prevent unhandled rejection
+      promise.catch(() => {})
       
       await vi.runAllTimersAsync()
       

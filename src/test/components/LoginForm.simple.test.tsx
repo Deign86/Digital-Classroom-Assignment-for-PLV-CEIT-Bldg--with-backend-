@@ -14,7 +14,14 @@ vi.mock('../../../lib/logger', () => ({
 }))
 
 vi.mock('../../../lib/networkErrorHandler', () => ({
-  executeWithNetworkHandling: vi.fn((fn) => fn()),
+  executeWithNetworkHandling: vi.fn(async (fn) => {
+    try {
+      const result = await fn()
+      return { success: true, data: result }
+    } catch (error) {
+      return { success: false, error }
+    }
+  }),
 }))
 
 vi.mock('../../../components/Announcer', () => ({
@@ -236,9 +243,13 @@ describe('LoginForm', () => {
       await userEvent.type(passwordInput, 'wrongpassword')
       await userEvent.click(loginButton)
 
+      // Wait for login to be called and error to be handled
       await waitFor(() => {
         expect(mockOnLogin).toHaveBeenCalled()
-      })
+      }, { timeout: 3000 })
+
+      // Wait a bit more for the error to be fully processed
+      await new Promise(resolve => setTimeout(resolve, 100))
     })
   })
 })
