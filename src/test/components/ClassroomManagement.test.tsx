@@ -217,7 +217,11 @@ describe('ClassroomManagement', () => {
       // Fill in basic required form fields only first
       await user.type(screen.getByLabelText(/room name/i), 'CEIT-999')
       await user.type(screen.getByLabelText(/capacity/i), '50')
-      await user.type(screen.getByLabelText(/building/i), 'CEIT Building')
+      
+      // Use paste for building name to handle spaces correctly
+      const buildingInput = screen.getByLabelText(/building/i)
+      await user.click(buildingInput)
+      await user.paste('CEIT Building')
       
       // Don't interact with equipment field - just submit with empty equipment list
       // Submit form
