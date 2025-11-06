@@ -330,32 +330,48 @@ describe('ScheduleViewer', () => {
       }
     });
 
-    it.skip('should call onCancelSchedule with reason', async () => {
-      // Skip: Flaky test due to date filtering - schedules may not match "today"
+    it('should call onCancelSchedule with reason', async () => {
       const user = userEvent.setup();
-      render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
-      // Find the cancel button by looking for the X icon and button combination
-      const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => {
-        // Look for button that has "Cancel" text or an X icon (svg) as child
-        const hasSvg = btn.querySelector('svg');
-        const hasCorrectText = btn.textContent?.includes('Cancel');
-        const notKeepButton = !btn.textContent?.includes('Keep');
-        return (hasCorrectText || hasSvg) && notKeepButton;
+      // Create a future schedule so the cancel button will appear (isLapsed check)
+      const futureSchedules: Schedule[] = [
+        {
+          ...mockSchedules[0],
+          id: 'future-schedule-1',
+          startTime: '23:00', // Future time
+          endTime: '23:30',
+        }
+      ];
+      
+      render(<ScheduleViewer schedules={futureSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
+      
+      // Wait for schedule to be rendered
+      await waitFor(() => {
+        expect(screen.getByText('Math Lecture')).toBeInTheDocument();
       });
       
-      // Skip test if no cancel button is found (no schedules for today)
+      // Look specifically for cancel button with X icon class
+      const allButtons = screen.getAllByRole('button');
+      const cancelButton = allButtons.find(btn => {
+        const hasXIcon = !!btn.querySelector('svg.lucide-x');
+        return hasXIcon;
+      });
+      
+      // This test requires a cancel button to be present
       if (!cancelButton) {
-        expect(cancelButton).toBeDefined(); // This will fail with a clear message
-        return;
+        throw new Error('Cancel button not found - schedule may have lapsed or onCancelSchedule not provided');
       }
       
       // Click cancel button to open dialog
       await user.click(cancelButton);
       
-      // Wait for dialog to open and find textarea
-      const textarea = await screen.findByLabelText(/cancellation reason/i);
+      // Wait for dialog to open
+      await waitFor(() => {
+        expect(screen.getByText('Cancel Classroom Reservation')).toBeInTheDocument();
+      });
+      
+      // Find textarea by aria-label
+      const textarea = screen.getByLabelText(/cancellation reason/i);
       expect(textarea).toBeInTheDocument();
       
       // Type the cancellation reason
@@ -368,7 +384,7 @@ describe('ScheduleViewer', () => {
       // Verify the callback was called with correct arguments
       await waitFor(() => {
         expect(mockOnCancelSchedule).toHaveBeenCalledWith(
-          expect.any(String),
+          'future-schedule-1',
           'Emergency maintenance required'
         );
       });
