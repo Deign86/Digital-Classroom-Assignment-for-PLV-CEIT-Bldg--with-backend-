@@ -45,6 +45,20 @@ global.ResizeObserver = class ResizeObserver {
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()
 
+// Mock Pointer Capture API (required for Radix UI components)
+// JSDOM doesn't support the Pointer Capture API that Radix UI Select uses
+beforeAll(() => {
+  if (!HTMLElement.prototype.hasPointerCapture) {
+    HTMLElement.prototype.hasPointerCapture = vi.fn().mockReturnValue(false)
+  }
+  if (!HTMLElement.prototype.setPointerCapture) {
+    HTMLElement.prototype.setPointerCapture = vi.fn()
+  }
+  if (!HTMLElement.prototype.releasePointerCapture) {
+    HTMLElement.prototype.releasePointerCapture = vi.fn()
+  }
+})
+
 // Suppress console errors in tests (optional)
 const originalError = console.error
 beforeAll(() => {
