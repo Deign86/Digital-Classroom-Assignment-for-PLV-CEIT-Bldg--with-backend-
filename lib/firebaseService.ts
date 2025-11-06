@@ -1501,6 +1501,10 @@ export const userService = {
       payload.department = updates.department;
     }
 
+    if ((updates as any).departments !== undefined) {
+      payload.departments = (updates as any).departments;
+    }
+
     if (typeof (updates as any).pushEnabled === 'boolean') {
       payload.pushEnabled = (updates as any).pushEnabled;
     }
