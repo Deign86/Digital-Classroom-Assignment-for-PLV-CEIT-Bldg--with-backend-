@@ -1,4 +1,4 @@
-import { BookingRequest, Schedule, Classroom, User } from '../../../App'
+import { BookingRequest, Schedule, Classroom, User, SignupRequest } from '../../../App'
 
 export const mockClassroom: Classroom = {
   id: 'classroom-1',
@@ -114,3 +114,49 @@ export const createMockUser = (overrides: Partial<User> = {}): User => ({
   id: `user-${Math.random().toString(36).substr(2, 9)}`,
   ...overrides,
 })
+
+// Mock arrays for dashboard testing
+export const mockClassrooms: Classroom[] = [
+  mockClassroom,
+  mockClassroom2,
+  createMockClassroom({ id: 'classroom-3', name: 'Room 103', isAvailable: false })
+]
+
+export const mockUsers: User[] = [
+  mockAdminUser,
+  mockFacultyUser,
+  createMockUser({ id: 'user-3', name: 'Jane Smith', email: 'jane@plv.edu.ph' })
+]
+
+export const mockBookingRequests: BookingRequest[] = [
+  mockPendingBooking,
+  mockApprovedBooking,
+  mockRejectedBooking,
+  createMockBooking({ id: 'booking-4', status: 'pending', facultyName: 'Jane Smith', classroomName: 'Room 102' })
+]
+
+export const mockSignupRequests: SignupRequest[] = [
+  {
+    id: 'signup-1',
+    userId: 'pending-user-1',
+    email: 'newuser@plv.edu.ph',
+    name: 'New User',
+    department: 'Computer Science',
+    status: 'pending',
+    requestDate: new Date().toISOString()
+  },
+  {
+    id: 'signup-2',
+    userId: 'pending-user-2',
+    email: 'another@plv.edu.ph',
+    name: 'Another User',
+    department: 'Information Technology',
+    status: 'pending',
+    requestDate: new Date().toISOString()
+  }
+]
+
+export const mockSchedules: Schedule[] = [
+  mockSchedule,
+  createMockSchedule({ id: 'schedule-2', date: '2025-11-16', classroomName: 'Room 102' })
+]

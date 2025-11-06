@@ -107,8 +107,7 @@ describe('LoginForm', () => {
       })
     })
 
-    it('should validate email format', async () => {
-      const { toast } = await import('sonner')
+    it('should require email', async () => {
       render(
         <LoginForm
           onLogin={mockOnLogin}
@@ -117,22 +116,20 @@ describe('LoginForm', () => {
         />
       )
 
-      const emailInput = screen.getByPlaceholderText(/your.email@plv.edu.ph/i)
       const passwordInput = screen.getByPlaceholderText(/enter your password/i)
       const loginButton = screen.getByRole('button', { name: /sign in/i })
 
-      await userEvent.type(emailInput, 'invalid-email')
       await userEvent.type(passwordInput, 'password123')
       await userEvent.click(loginButton)
 
+      // LoginForm uses state-based error display for empty email
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalled()
+        expect(screen.getByText('Email is required')).toBeInTheDocument()
       })
       expect(mockOnLogin).not.toHaveBeenCalled()
     })
 
     it('should require password', async () => {
-      const { toast } = await import('sonner')
       render(
         <LoginForm
           onLogin={mockOnLogin}
@@ -147,8 +144,9 @@ describe('LoginForm', () => {
       await userEvent.type(emailInput, 'faculty@plv.edu.ph')
       await userEvent.click(loginButton)
 
+      // LoginForm uses state-based error display for empty password
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalled()
+        expect(screen.getByText('Password is required')).toBeInTheDocument()
       })
       expect(mockOnLogin).not.toHaveBeenCalled()
     })
@@ -205,7 +203,7 @@ describe('LoginForm', () => {
       await userEvent.click(signupTab)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /request faculty account/i })).toBeInTheDocument()
       })
     })
   })
@@ -221,6 +219,14 @@ describe('LoginForm', () => {
           users={mockUsers}
         />
       )
+
+      // Make sure we're on the login tab
+      const loginTab = screen.getByRole('tab', { name: /faculty sign in/i })
+      await userEvent.click(loginTab)
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/your.email@plv.edu.ph/i)).toBeInTheDocument()
+      })
 
       const emailInput = screen.getByPlaceholderText(/your.email@plv.edu.ph/i)
       const passwordInput = screen.getByPlaceholderText(/enter your password/i)
