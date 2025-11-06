@@ -299,18 +299,19 @@ export function addDaysToDateString(dateString: string, days: number): string {
  * Abbreviates department names to their initials.
  * 
  * @param departments - Array of department names or single department string
- * @returns Abbreviated department string(s) joined with line breaks
+ * @param separator - Separator to use between abbreviations (default: ', ')
+ * @returns Abbreviated department string(s) joined with separator
  * 
  * @example
  * ```typescript
  * abbreviateDepartments(['Civil Engineering', 'Information Technology'])
- * // Returns "CE\nIT"
+ * // Returns "CE, IT"
  * 
  * abbreviateDepartments('Electrical Engineering')
  * // Returns "EE"
  * ```
  */
-export function abbreviateDepartments(departments: string[] | string | undefined): string {
+export function abbreviateDepartments(departments: string[] | string | undefined, separator: string = ', '): string {
   if (!departments) return '';
   
   const deptArray = Array.isArray(departments) ? departments : [departments];
@@ -323,5 +324,5 @@ export function abbreviateDepartments(departments: string[] | string | undefined
         .map(word => word.charAt(0).toUpperCase())
         .join('');
     })
-    .join('\n');
+    .join(separator);
 }

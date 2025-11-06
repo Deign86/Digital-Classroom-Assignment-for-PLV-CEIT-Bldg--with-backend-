@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
+import { abbreviateDepartments } from '../utils/timeUtils';
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -169,7 +170,14 @@ export default function AdminDashboard({
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 lg:space-x-4 flex-shrink-0">
               <div className="hidden md:block text-right">
                 <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
-                <p className="text-xs text-gray-500 whitespace-nowrap">{user.email}</p>
+                <p className="text-xs text-gray-500 whitespace-nowrap">
+                  {user.departments && user.departments.length > 1 
+                    ? `${abbreviateDepartments(user.departments)} • ${user.email}`
+                    : user.department 
+                      ? `${user.department} • ${user.email}`
+                      : user.email
+                  }
+                </p>
               </div>
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />

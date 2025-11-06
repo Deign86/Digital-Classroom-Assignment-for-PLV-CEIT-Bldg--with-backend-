@@ -258,7 +258,7 @@ export default function FacultyDashboard({
                 <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 truncate max-w-[200px] lg:max-w-[280px]">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate max-w-[200px] lg:max-w-[280px]">
                   {user.departments && user.departments.length > 1 
-                    ? <span className="whitespace-pre-line">{abbreviateDepartments(user.departments)}</span>
+                    ? abbreviateDepartments(user.departments)
                     : user.department
                   } • {user.email}
                 </p>
