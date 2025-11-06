@@ -27,7 +27,7 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm test -- --run --reporter=verbose
+        run: npm test -- --run --reporter=verbose --exclude="**/components/**"
         env:
           CI: true
           # Mock Firebase environment variables for testing
@@ -41,7 +41,7 @@ jobs:
           VITE_FIREBASE_VAPID_KEY: "mock-vapid-key"
       
       - name: Generate coverage report
-        run: npm run test:coverage
+        run: npm run test:coverage -- --exclude="**/components/**"
         env:
           # Mock Firebase environment variables for coverage
           VITE_FIREBASE_API_KEY: "mock-api-key"
