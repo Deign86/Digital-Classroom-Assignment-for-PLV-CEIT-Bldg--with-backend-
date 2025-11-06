@@ -1189,8 +1189,35 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 /* Keep focus rings visible but more subtle in dark mode */
 .dark :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring, #0a84ff) 30%, transparent) !important;
+  box-shadow: none !important;
   border-radius: 8px;
+}
+
+/* Seamless input styling in dark mode */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="search"],
+.dark textarea {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark input[type="text"]:hover,
+.dark input[type="email"]:hover,
+.dark input[type="password"]:hover,
+.dark input[type="search"]:hover,
+.dark textarea:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark input[type="text"]:focus,
+.dark input[type="email"]:focus,
+.dark input[type="password"]:focus,
+.dark input[type="search"]:focus,
+.dark textarea:focus {
+  background: transparent;
+  border-color: rgba(10, 132, 255, 0.4);
 }
 
 /* Fix autofill styling in dark mode */
@@ -1204,8 +1231,8 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
 .dark select:-webkit-autofill:hover,
 .dark select:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--foreground);
-  -webkit-box-shadow: 0 0 0px 1000px var(--input) inset;
-  box-shadow: 0 0 0px 1000px var(--input) inset;
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset;
+  box-shadow: 0 0 0px 1000px transparent inset;
   transition: background-color 5000s ease-in-out 0s;
 }
 
