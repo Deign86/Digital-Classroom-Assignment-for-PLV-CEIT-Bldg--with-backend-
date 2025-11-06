@@ -367,13 +367,13 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     <div className="w-full space-y-3 sm:space-y-4 lg:space-y-5">
       {/* Header */}
       <div className="text-center space-y-1.5 sm:space-y-2 lg:space-y-3">
-        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900">Welcome</h1>
-        <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl mx-auto px-4">Sign in to manage your classroom reservations</p>
+        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-foreground">Welcome</h1>
+        <p className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4">Sign in to manage your classroom reservations</p>
       </div>
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-  <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-5 bg-gray-100 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
+  <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-5 bg-muted/50 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
           <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Sign In</TabsTrigger>
           <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Request</TabsTrigger>
         </TabsList>
@@ -604,7 +604,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   
                   {/* Selected Departments Badges */}
                   {signupData.departments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-gray-50">
+                    <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-muted/30">
                       {signupData.departments.map((dept) => (
                         <Badge 
                           key={dept} 
@@ -620,7 +620,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                                 departments: prev.departments.filter(d => d !== dept)
                               }));
                             }}
-                            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                            className="ml-1 hover:bg-muted rounded-full p-0.5"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -726,12 +726,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 </div>
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3 sm:p-4">
                 <div className="flex items-center gap-2 sm:gap-3">
-                  <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
+                  <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-xs sm:text-sm font-medium text-blue-900">Account Review</p>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100">Account Review</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
                       You can sign in with this password once the administrator approves your request. If the request is rejected, the account will remain inactive.
                     </p>
                   </div>

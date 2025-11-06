@@ -1186,11 +1186,27 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   background: var(--hover-surface, rgba(255,255,255,0.03)) !important;
 }
 
-/* Keep focus rings visible but not white */
+/* Keep focus rings visible but more subtle in dark mode */
 .dark :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0a84ff) 18%, transparent) !important;
-  border-radius: 6px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring, #0a84ff) 30%, transparent) !important;
+  border-radius: 8px;
+}
+
+/* Fix autofill styling in dark mode */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0px 1000px var(--input) inset;
+  box-shadow: 0 0 0px 1000px var(--input) inset;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* === APPENDED: ensure nav/tabs/footer use dark surfaces in .dark theme === */
