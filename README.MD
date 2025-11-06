@@ -286,218 +286,466 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 ## 📁 Project Architecture
 
 ```
-├── 📄 App.tsx                          # Main application with Firebase integration
+├── 📄 App.tsx                          # Main application shell with routing & Firebase integration
 ├── 📄 main.tsx                         # React 18 entry point with StrictMode
 ├── 📄 index.html                       # Optimized HTML template
 ├── ⚙️ vite.config.ts                   # Vite 7 configuration with React plugin
-├── ⚙️ package.json                     # Dependencies and scripts
-├── ⚙️ tsconfig.json                    # TypeScript strict configuration
+├── ⚙️ package.json                     # Dependencies (React 18, Firebase 12, TypeScript 5)
+├── ⚙️ tsconfig.json                    # TypeScript strict mode configuration
 ├── 🔥 firebase.json                    # Firebase deployment configuration
-├── 🔒 firestore.rules                  # Firestore security rules
+├── 🔒 firestore.rules                  # Firestore security rules (RBAC enforcement)
 ├── 🌍 vercel.json                      # Vercel deployment settings
 ├── 📝 FIREBASE_DEPLOYMENT_GUIDE.md     # Complete Firebase setup guide
+├── 📝 FIREBASE_ENVIRONMENT_GUIDE.md    # Environment configuration reference
+├── � BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md  # Security implementation docs
 ├── 
-├── 📂 components/
-│   ├── 👨‍💼 AdminDashboard.tsx          # Complete admin interface
-│   ├── 📊 AdminReports.tsx            # Analytics and reporting
-│   ├── 👥 AdminUserManagement.tsx     # User account management
-│   ├── 🏢 ClassroomManagement.tsx     # Classroom CRUD operations
-│   ├── 👨‍🏫 FacultyDashboard.tsx       # Faculty interface
-│   ├── 📅 FacultySchedule.tsx         # Schedule viewing component
-│   ├── 🔑 LoginForm.tsx               # Authentication with brute force protection
-│   ├── 🔔 NotificationBell.tsx        # Real-time notification indicator
-│   ├── 📬 NotificationCenter.tsx      # Notification management interface
-│   ├── 🔒 PasswordResetPage.tsx       # Password reset functionality
-│   ├── ⚙️ ProfileSettings.tsx         # User profile & push notification settings
-│   ├── ✅ RequestApproval.tsx         # Reservation request approval
-│   ├── 📝 RoomBooking.tsx             # Reservation form with validation
-│   ├── 🔍 RoomSearch.tsx              # Advanced classroom search
-│   ├── 📋 ScheduleViewer.tsx          # Schedule visualization
-│   ├── 👥 SignupApproval.tsx          # Faculty signup approval
-│   ├── ⏰ SessionTimeoutWarning.tsx   # Idle timeout warning dialog
+├── �📂 components/                      # React Components (TypeScript)
+│   ├── 👨‍💼 AdminDashboard.tsx          # Complete admin interface with tabs
+│   ├── 📊 AdminReports.tsx            # Analytics & utilization reports
+│   ├── 👥 AdminUserManagement.tsx     # User account & lock management
+│   ├── 🏢 ClassroomManagement.tsx     # Classroom CRUD with equipment tracking
+│   ├── 👨‍🏫 FacultyDashboard.tsx       # Faculty interface with booking management
+│   ├── 📅 FacultySchedule.tsx         # Personal & all schedules viewer
+│   ├── 🔑 LoginForm.tsx               # Auth form with brute force protection
+│   ├── 🔔 NotificationBell.tsx        # Real-time notification indicator with badge
+│   ├── 📬 NotificationCenter.tsx      # Full notification management interface
+│   ├── 🔒 PasswordResetDialog.tsx     # In-app password reset dialog
+│   ├── 🔒 PasswordResetPage.tsx       # Standalone password reset page
+│   ├── ⚙️ ProfileSettings.tsx         # User profile, password, push settings
+│   ├── 📝 RequestCard.tsx             # Reusable booking request card component
+│   ├── ✅ RequestApproval.tsx         # Admin reservation approval interface
+│   ├── 📝 RoomBooking.tsx             # Reservation form with conflict detection
+│   ├── 🔍 RoomSearch.tsx              # Advanced classroom search with filters
+│   ├── 📋 ScheduleViewer.tsx          # Calendar-based schedule visualization
+│   ├── 👥 SignupApproval.tsx          # Faculty signup approval workflow
+│   ├── ⏰ SessionTimeoutWarning.tsx   # Idle timeout warning modal
+│   ├── 🌐 NetworkStatusIndicator.tsx  # Connection status indicator
+│   ├── 🔊 Announcer.tsx               # Accessibility announcer for screen readers
+│   ├── 🐛 ErrorBoundary.tsx           # React error boundary
+│   ├── 🦶 Footer.tsx                  # App footer component
 │   ├── 🎨 animations/
-│   │   └── AppleMotion.tsx             # Apple-inspired animations
-│   └── 🧩 ui/                         # 40+ Shadcn/ui components
+│   │   └── AppleMotion.tsx             # Apple-inspired motion components
+│   └── 🧩 ui/                         # 40+ Shadcn/ui components (Radix UI + Tailwind)
 │       ├── button.tsx, card.tsx, dialog.tsx
 │       ├── form.tsx, input.tsx, select.tsx
 │       ├── switch.tsx, badge.tsx, alert.tsx
 │       ├── table.tsx, tabs.tsx, toast.tsx
-│       └── ... (complete UI component library)
+│       └── ... (complete accessible UI component library)
 ├── 
-├── 📂 lib/
-│   ├── 🔥 firebaseConfig.ts           # Firebase initialization with error handling
-│   ├── 🔄 firebaseService.ts          # Complete Firebase service layer
-│   ├── 🔔 notificationService.ts      # Real-time notification management
+├── 📂 lib/                            # Core Services & Utilities
+│   ├── 🔥 firebaseConfig.ts           # Firebase initialization with env validation
+│   ├── 🔄 firebaseService.ts          # Complete Firebase service layer (2500+ lines)
+│   │   ├── authService                 # Authentication operations
+│   │   ├── userService                 # User CRUD & management
+│   │   ├── classroomService            # Classroom operations
+│   │   ├── bookingRequestService       # Booking request management
+│   │   ├── scheduleService             # Schedule operations
+│   │   ├── signupRequestService        # Signup approval workflow
+│   │   ├── signupHistoryService        # Signup audit logs
+│   │   ├── notificationService         # Notification management (wrapped)
+│   │   └── realtimeService             # Real-time data subscriptions
+│   ├── 🔔 notificationService.ts      # Standalone notification service with Cloud Function integration
 │   ├── 📱 pushService.ts              # Firebase Cloud Messaging (FCM) integration
-│   ├── 🔁 withRetry.ts                # Network retry logic with exponential backoff
-│   ├── 📝 errorLogger.ts              # Centralized error logging
-│   └── 💾 localStorageService.ts      # Client-side storage utilities
+│   ├── � customClaimsService.ts      # Firebase custom claims management
+│   ├── �🔁 withRetry.ts                # Network retry logic (3 attempts, exponential backoff)
+│   ├── 🌐 networkErrorHandler.ts      # Centralized network error handling
+│   ├── 📝 errorLogger.ts              # Error logging utilities
+│   ├── 📝 logger.ts                   # Console logging wrapper
+│   ├── 💾 localStorageService.ts      # Client-side storage utilities
+│   └── 🎨 equipmentIcons.tsx          # Equipment icon mapping (Lucide icons)
 ├── 
-├── 📂 hooks/
+├── 📂 hooks/                          # Custom React Hooks
 │   ├── ⏰ useIdleTimeout.ts           # Idle session timeout with activity detection
-│   └── 📜 useScrollTrigger.ts         # Smooth scroll animations
+│   └── 📜 useScrollTrigger.ts         # Smooth scroll trigger animations
 ├── 
-├── 📂 utils/
-│   ├── 🎭 animation.ts                # Framer Motion utilities
-│   └── 🕒 timeUtils.ts               # Date/time formatting utilities
+├── 📂 utils/                          # Helper Utilities
+│   ├── 🎭 animation.ts                # Framer Motion animation configs
+│   ├── 🕒 timeUtils.ts                # Date/time formatting & validation
+│   ├── 📝 inputValidation.ts          # Form input validation utilities
+│   ├── 📋 bookingPrefill.ts           # Booking form prefill logic
+│   └── 💾 tabPersistence.ts           # Tab state persistence utility
 ├── 
-├── 📂 styles/
-│   └── 🎨 globals.css                # Tailwind CSS 4 with custom styles
+├── 📂 styles/                         # Global Styles
+│   ├── 🎨 globals.css                 # Tailwind CSS 4 with custom variables
+│   └── 📱 responsive.css              # Responsive utility classes
 ├── 
-├── 📂 plv-classroom-assignment-functions/  # Firebase Cloud Functions
+├── 📂 types/                          # TypeScript Type Definitions
+│   ├── missing-ambient.d.ts           # Ambient type declarations
+│   ├── recaptcha.d.ts                 # reCAPTCHA type definitions
+│   └── yauzl.d.ts                     # Yauzl library type definitions
+├── 
+├── 📂 src/test/                       # Vitest Test Suite
+│   ├── setup.ts                        # Test environment setup with polyfills
+│   └── 📂 components/                 # Component tests
+│       ├── ClassroomManagement.test.tsx   # 32 comprehensive tests
+│       ├── RoomBooking.test.tsx
+│       ├── NotificationCenter.test.tsx
+│       └── ... (full component test coverage)
+├── 
+├── 📂 plv-classroom-assignment-functions/  # Firebase Cloud Functions (TypeScript)
 │   ├── 📄 DEPLOYMENT_GUIDE.md         # Cloud Functions deployment instructions
 │   ├── 📄 CHANGELOG.md                # Cloud Functions version history
-│   ├── ⚙️ package.json                # Cloud Functions dependencies
+│   ├── ⚙️ package.json                # Cloud Functions dependencies (Firebase Admin SDK)
+│   ├── ⚙️ tsconfig.json               # TypeScript config for Cloud Functions
 │   └── 📂 src/
-│       └── index.ts                    # Cloud Functions implementation
-│           ├── 🔒 trackFailedLogin      # Brute force protection
-│           ├── 🔓 resetFailedLogins     # Login counter reset
-│           ├── 🔔 createNotification    # Server-side notifications
-│           ├── ✅ acknowledgeNotification # Notification acknowledgment
-│           ├── 📱 registerPushToken     # FCM token registration
-│           ├── 🔕 unregisterPushToken   # FCM token removal
-│           ├── ⚙️ setPushEnabled        # Push preference toggle
-│           ├── 📤 sendTestPush          # Test notification sender
-│           ├── ⏰ expirePastPendingBookings  # Scheduled cleanup
-│           ├── 🗑️ deleteUserAccount     # Account deletion
-│           └── 🧹 bulkCleanupRejectedAccounts # Bulk cleanup
+│       └── 📄 index.ts                 # Cloud Functions implementation (1945 lines)
+│           ├── 🔒 trackFailedLogin            # Brute force protection (tracks attempts)
+│           ├── 🔓 resetFailedLogins           # Login counter reset on success
+│           ├── 🔔 createNotification          # Server-side notification creation
+│           ├── ✅ acknowledgeNotification     # Single notification acknowledgment
+│           ├── ✅ acknowledgeNotifications    # Bulk notification acknowledgment
+│           ├── 📱 registerPushToken           # FCM token registration
+│           ├── 🔕 unregisterPushToken         # FCM token removal
+│           ├── ⚙️ setPushEnabled              # Push notification preference toggle
+│           ├── 📤 sendTestPush                # Test push notification sender
+│           ├── ⏰ expirePastPendingBookings   # Scheduled job (hourly) - auto-expire old bookings
+│           ├── 🗑️ deleteUserAccount           # Complete user account deletion with cleanup
+│           └── 🧹 bulkCleanupRejectedAccounts # Bulk deletion of rejected signup accounts
 ├── 
-├── 📂 public/
-│   ├── 🔥 firebase-config.json        # Public Firebase configuration
-│   ├── 👷 firebase-messaging-sw.js   # FCM service worker for push notifications
-│   └── 👷 sw.js                       # General service worker
+├── 📂 public/                         # Static Assets
+│   ├── 🔥 firebase-config.json        # Public Firebase configuration (non-sensitive)
+│   ├── 👷 firebase-messaging-sw.js   # FCM service worker for background push notifications
+│   ├── 👷 sw.js                       # General service worker
+│   └── 📱 manifest.json               # Web app manifest for PWA support
 ├── 
-├── 📂 email-templates/                # HTML email templates
+├── 📂 email-templates/                # Firebase Auth Email Templates (HTML)
 │   ├── email-verification-template.html
 │   ├── password-reset-template-FIXED.html
 │   └── email-change-template.html
 ├── 
-└── 📂 guidelines/                    # Comprehensive documentation
-    ├── 🔥 FIREBASE_QUICK_REFERENCE.md
-    ├── 🛠️ FIREBASE_TROUBLESHOOTING.md
-    ├── 📋 FirebaseDashboardSetup.md
-    └── 📝 Guidelines.md
+├── 📂 .github/                        # GitHub Configuration
+│   └── 📂 workflows/
+│       └── test.yml                    # GitHub Actions CI/CD for automated testing
+├── 
+└── 📂 guidelines/                     # Comprehensive Documentation
+    ├── 🔥 FIREBASE_QUICK_REFERENCE.md      # Quick Firebase service reference
+    ├── 🛠️ FIREBASE_TROUBLESHOOTING.md     # Common issues & solutions
+    ├── 📋 FirebaseDashboardSetup.md       # Firebase console configuration
+    └── 📝 Guidelines.md                    # Development guidelines
 ```
+
+### Service Layer Architecture (`lib/firebaseService.ts`)
+
+The application uses a comprehensive service layer pattern to interact with Firebase:
+
+- **authService**: Sign in, sign out, password resets, email verification
+- **userService**: User CRUD, role management, account operations
+- **classroomService**: Classroom management with equipment tracking
+- **bookingRequestService**: Reservation requests with conflict detection
+- **scheduleService**: Schedule management and conflict checking
+- **signupRequestService**: Faculty signup approval workflow
+- **signupHistoryService**: Audit trail for signup approvals
+- **notificationService**: Real-time notifications (Cloud Function integration)
+- **realtimeService**: Role-filtered real-time data subscriptions
+
+All services include:
+- ✅ Type-safe TypeScript interfaces
+- ✅ Error handling with retry logic
+- ✅ Loading states and user feedback
+- ✅ Real-time listeners with auto-cleanup
+- ✅ Optimistic updates where appropriate
 
 ## 🗄️ Database Schema (Firestore)
 
 ### Collections Structure
 
 #### `users`
+Core user accounts with authentication and security tracking.
+
 ```typescript
 {
-  id: string;                    // Auto-generated document ID
+  id: string;                    // Auto-generated document ID (matches Firebase Auth UID)
   email: string;                 // User email (unique, indexed)
   name: string;                  // Full name
   role: 'admin' | 'faculty';     // User role (indexed)
   department?: string;           // Faculty department (optional)
-  status: 'pending' | 'approved' | 'rejected';  // Account status
+  status: 'pending' | 'approved' | 'rejected';  // Account approval status
   
   // 🔒 Brute Force Protection Fields
-  failedLoginAttempts?: number;  // Counter for failed login attempts (default: 0)
+  failedLoginAttempts?: number;  // Failed login counter (default: 0)
   accountLocked?: boolean;       // Auto-lock after 5 failed attempts
-  lockedUntil?: string;          // ISO timestamp for auto-unlock (30 min)
+  lockedUntil?: string;          // ISO timestamp for 30-min auto-unlock
   lockedByAdmin?: boolean;       // Manual admin lock (prevents auto-unlock)
   
-  // 📱 Push Notification Fields
+  // 📱 Push Notification Settings
   pushEnabled?: boolean;         // User's push notification preference (default: false)
-  pushTokens?: string[];         // Array of FCM device tokens (deprecated - moved to pushTokens collection)
   
   // 📅 Timestamps
-  createdAt: Timestamp;          // Account creation timestamp
-  updatedAt: Timestamp;          // Last update timestamp
+  createdAt: Timestamp;          // Account creation
+  updatedAt: Timestamp;          // Last modification
 }
 
-// Indexes:
-// - email (for uniqueness and queries)
-// - role (for role-based queries)
+// Composite Indexes:
+// - email (for uniqueness and login queries)
+// - role (for role-based filtering)
 // - status (for approval workflows)
 ```
 
 #### `classrooms`
+Classroom inventory with capacity and equipment tracking.
+
 ```typescript
 {
   id: string;           // Auto-generated document ID
-  name: string;         // Room identifier (e.g., "Room 101")
+  name: string;         // Room identifier (e.g., "CEIT IT Faculty Room")
   capacity: number;     // Maximum occupancy (must be > 0)
-  equipment: string[];  // Available equipment array
-                        // Options: 'TV', 'Projector', 'Whiteboard', 'Computer', 'Audio', 'AC'
+  equipment: string[];  // Equipment array
+                        // Options: 'Projector', 'Computer', 'WiFi', 'Whiteboard', 
+                        //          'TV', 'Speakers', 'Air Conditioner', 'Podium',
+                        //          'Microphone', 'Camera', 'Printer', 'Scanner'
   building: string;     // Building name
-  floor: number;        // Floor number
-  isAvailable: boolean; // Operational status (can be temporarily disabled)
+  floor: number;        // Floor number (1-4)
+  isAvailable: boolean; // Operational status (admin can disable temporarily)
   createdAt: Timestamp; // Creation timestamp
-  updatedAt: Timestamp; // Last update timestamp
+  updatedAt: Timestamp; // Last modification
 }
 
-// Indexes:
-// - isAvailable (for availability queries)
+// Composite Indexes:
+// - isAvailable (for availability filtering)
 // - building, floor (for location-based queries)
+// - floor, isAvailable (for floor + status filtering)
 ```
 
 #### `bookingRequests`
+Faculty room reservation requests with approval workflow.
+
 ```typescript
 {
   id: string;           // Auto-generated document ID
   facultyId: string;    // Reference to users collection (indexed)
-  facultyName: string;  // Cached faculty name (for performance)
+  facultyName: string;  // Cached faculty name (denormalized for performance)
   classroomId: string;  // Reference to classrooms collection (indexed)
-  classroomName: string; // Cached classroom name (for performance)
+  classroomName: string; // Cached classroom name (denormalized)
   date: string;         // ISO date string (YYYY-MM-DD) (indexed)
-  startTime: string;    // 24-hour format (HH:mm)
-  endTime: string;      // 24-hour format (HH:mm)
-  purpose: string;      // Booking purpose/description (max 500 chars)
+  startTime: string;    // 24-hour format (HH:mm) (e.g., "07:30")
+  endTime: string;      // 24-hour format (HH:mm) (e.g., "12:00")
+  purpose: string;      // Reservation purpose/description (max 500 chars)
   status: 'pending' | 'approved' | 'rejected' | 'expired';  // Request status (indexed)
-  requestDate: string;  // ISO timestamp (sortable)
-  adminFeedback?: string; // Optional admin comments (max 500 chars)
-  resolvedAt?: Timestamp; // Approval/rejection timestamp
-  updatedBy?: string;   // User ID who last updated (or 'system' for auto-expiration)
+  requestDate: string;  // ISO timestamp for sorting (e.g., "2025-10-24T14:38:42.180Z")
+  adminFeedback?: string; // Admin comments/rejection reason (max 500 chars)
+  resolvedAt?: Timestamp; // Approval/rejection/expiration timestamp
+  expiredAt?: Timestamp;  // Auto-expiration timestamp (set by Cloud Function)
+  updatedBy?: string;   // User ID or 'system' for audit trail
+  createdAt: Timestamp; // Creation timestamp
+  updatedAt: Timestamp; // Last modification timestamp
 }
 
-// Indexes (Composite):
-// - status, requestDate (for pending requests dashboard)
+// Composite Indexes:
+// - status, requestDate (for admin pending queue, sorted by date)
 // - facultyId, status (for faculty request history)
 // - classroomId, date, startTime (for conflict detection)
-// - date, status (for date-based queries)
+// - date, status (for date-based filtering)
 
-// Security Note: Clients cannot set status to 'expired' - server-only via Cloud Function
+// Security Rules:
+// - Clients CANNOT set status to 'expired' - enforced server-side only
+// - Only Cloud Function can set updatedBy: 'system'
 ```
 
 #### `schedules`
+Confirmed and active classroom schedules.
+
 ```typescript
 {
   id: string;           // Auto-generated document ID
   classroomId: string;  // Reference to classrooms collection (indexed)
-  classroomName: string; // Cached classroom name
+  classroomName: string; // Cached classroom name (denormalized)
   facultyId: string;    // Reference to users collection (indexed)
-  facultyName: string;  // Cached faculty name
+  facultyName: string;  // Cached faculty name (denormalized)
   date: string;         // ISO date string (YYYY-MM-DD) (indexed)
   startTime: string;    // 24-hour format (HH:mm)
   endTime: string;      // 24-hour format (HH:mm)
   purpose: string;      // Schedule purpose/description
   status: 'confirmed' | 'cancelled';  // Schedule status
   createdAt: Timestamp; // Creation timestamp
+  updatedAt: Timestamp; // Last modification
 }
 
-// Indexes (Composite):
-// - classroomId, date, startTime (for schedule queries and conflict detection)
-// - facultyId, date (for faculty schedule view)
-// - date, status (for date-based filtering)
+// Composite Indexes:
+// - classroomId, date, startTime (for schedule queries + conflict detection)
+// - facultyId, date (for faculty personal schedule view)
+// - date, status (for date-based + status filtering)
 ```
 
 #### `signupRequests`
+Faculty signup requests awaiting admin approval.
+
 ```typescript
 {
   id: string;           // Auto-generated document ID
-  email: string;        // Requested email (indexed)
+  email: string;        // Requested email (indexed for duplicate prevention)
   name: string;         // Full name
-  department: string;   // Department (required)
-  status: 'pending' | 'approved' | 'rejected';  // Request status (indexed)
-  adminFeedback?: string; // Optional admin comments (max 500 chars)
-  requestDate: string;  // ISO timestamp (sortable)
+  department: string;   // Department (required field)
+  status: 'pending' | 'approved' | 'rejected';  // Approval status (indexed)
+  adminFeedback?: string; // Admin comments/rejection reason (max 500 chars)
+  requestDate: string;  // ISO timestamp for sorting
   resolvedAt?: Timestamp; // Processing timestamp
+  createdAt: Timestamp; // Creation timestamp
+  updatedAt: Timestamp; // Last modification
+}
+
+// Composite Indexes:
+// - email (for duplicate signup detection)
+// - status, requestDate (for admin approval queue sorted by date)
+```
+
+#### `signupHistory`
+Audit log of all signup approvals and rejections.
+
+```typescript
+{
+  id: string;              // Auto-generated document ID
+  email: string;           // User email (indexed)
+  name: string;            // Full name
+  department: string;      // Department
+  status: 'approved' | 'rejected';  // Final decision
+  adminFeedback?: string;  // Admin reason/comments
+  processedBy: string;     // Admin user ID who processed
+  processedAt: Timestamp;  // Processing timestamp
+  originalRequestId: string; // Reference to original signupRequest document
 }
 
 // Indexes:
+// - email (for user history lookup)
+// - processedAt (for chronological sorting)
+```
+
+#### `notifications`
+In-app notifications for users (faculty and admin).
+
+```typescript
+{
+  id: string;              // Auto-generated document ID
+  userId: string;          // Recipient user ID (faculty or admin) (indexed)
+  type: 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';  // Notification category
+  message: string;         // Notification message text (max 500 chars)
+  bookingRequestId?: string; // Optional reference to booking request
+  adminFeedback?: string;  // Optional admin feedback text
+  acknowledgedBy?: string; // User ID who acknowledged (null if unread)
+  acknowledgedAt?: string; // ISO timestamp of acknowledgment (null if unread)
+  createdAt: string;       // ISO timestamp (sortable)
+  updatedAt: string;       // ISO timestamp (for tracking changes)
+}
+
+// Composite Indexes:
+// - userId, acknowledgedBy, createdAt (DESC) - for user's notifications sorted newest first
+// - userId, type (for filtering notifications by type)
+
+// Security Rules:
+// - Notifications can ONLY be created server-side via Cloud Functions
+// - Prevents users from creating self-notifications
+// - Clients can only acknowledge their own notifications
+```
+
+#### `pushTokens`
+Firebase Cloud Messaging (FCM) device tokens for push notifications.
+
+```typescript
+{
+  id: string;              // Document ID = the FCM token itself
+  userId: string;          // Owner user ID (indexed)
+  createdAt: Timestamp;    // Registration timestamp
+}
+
+// Indexes:
+// - userId (for querying all tokens owned by a user)
+
+// Notes:
+// - Supports multiple devices per user (different tokens)
+// - Token lifecycle managed by Cloud Functions
+// - Tokens stored separately from users collection for scalability
+```
+
+#### `deletionLogs`
+Audit trail of user account deletions.
+
+```typescript
+{
+  id: string;                 // Auto-generated document ID
+  deletedUserId: string;      // Original user ID (before deletion)
+  deletedEmail: string;       // Original email
+  deletedName: string;        // Original name
+  deletedRole: string;        // Original role
+  deletedBy: string;          // Admin user ID who performed deletion
+  deletionReason?: string;    // Optional reason for deletion
+  deletedAt: Timestamp;       // Deletion timestamp
+  associatedDataCleaned: {    // Cleanup summary
+    bookingRequests: number;
+    schedules: number;
+    notifications: number;
+    pushTokens: number;
+  };
+}
+
+// Indexes:
+// - deletedUserId (for lookup of deleted accounts)
+// - deletedAt (for chronological sorting)
+```
+
+#### `deletionNotifications`
+Notifications sent to users about deletions (e.g., rejected signups).
+
+```typescript
+{
+  id: string;              // Auto-generated document ID
+  recipientEmail: string;  // Email of person to notify
+  type: 'account_deleted' | 'signup_rejected';  // Notification type
+  message: string;         // Notification message
+  sentAt: Timestamp;       // When notification was sent
+  delivered?: boolean;     // Email delivery status
+}
+
+// Indexes:
+// - recipientEmail (for user notification lookup)
+// - sentAt (for chronological sorting)
+```
+
+#### `tokenRevocations`
+Revoked Firebase Auth tokens for security.
+
+```typescript
+{
+  id: string;              // Auto-generated document ID
+  userId: string;          // User whose token was revoked (indexed)
+  reason: string;          // Revocation reason (e.g., "Account deletion", "Password reset")
+  revokedAt: Timestamp;    // Revocation timestamp
+  revokedBy: string;       // Admin or 'system' who revoked
+}
+
+// Indexes:
+// - userId (for user token history)
+// - revokedAt (for chronological sorting)
+```
+
+### Firestore Security Rules Highlights
+
+```javascript
+// 🔒 Role-Based Access Control (RBAC) enforced at database level
+// - Admins: Full read/write access to all collections
+// - Faculty: Read own data, create requests, read public data
+// - Public: Read-only access to classrooms for search
+
+// 🛡️ Key Security Features:
+// 1. Notification creation BLOCKED client-side (Cloud Functions only)
+// 2. Status 'expired' CANNOT be set by clients (server-only via Cloud Function)
+// 3. Users can only acknowledge their own notifications
+// 4. Role verification required on every request
+// 5. Timestamp validation on all writes
+// 6. Field-level validation (types, lengths, enums)
+// 7. Admin-only operations protected (user management, approvals)
+```
+
+### Database Best Practices Implemented
+
+1. **Denormalization for Performance**: Cached names (facultyName, classroomName) avoid expensive joins
+2. **Composite Indexes**: Optimized for common query patterns (status + date, user + type)
+3. **ISO Timestamps**: String timestamps for sortability and consistency
+4. **Enum Constraints**: Status fields limited to valid values for data integrity
+5. **Optional Fields**: Marked with `?` for schema flexibility
+6. **Character Limits**: Max lengths enforced (500 chars for text fields)
+7. **Server-side Critical Operations**: Sensitive status updates via Cloud Functions only
+8. **Audit Trails**: Comprehensive logs (signupHistory, deletionLogs, tokenRevocations)
+9. **Separate Token Storage**: pushTokens collection enables multi-device support
+10. **Security-First Design**: Rules prevent common attacks (self-notification, status manipulation)
 // - email (for duplicate detection)
 // - status, requestDate (for admin approval queue)
 ```
