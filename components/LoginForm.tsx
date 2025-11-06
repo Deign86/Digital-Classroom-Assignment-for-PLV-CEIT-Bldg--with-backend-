@@ -3,10 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
-import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { GraduationCap, Building2, Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
 import { logger } from '../lib/logger';
@@ -61,7 +62,7 @@ interface LoginFormProps {
   onSignup: (
     email: string,
     name: string,
-    department: string,
+    departments: string[], // Changed from department to departments
     password: string,
     recaptchaToken?: string
   ) => boolean | Promise<boolean>;
@@ -77,7 +78,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     email: '',
     firstName: '',
     lastName: '',
-    department: '',
+    departments: [] as string[], // Changed from department to departments array
     password: '',
     confirmPassword: '',
   });
@@ -161,8 +162,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       hasErrors = true;
     }
 
-    if (!data.department) {
-      errors.department = 'Please select a department';
+    if (!data.departments || data.departments.length === 0) {
+      errors.department = 'Please select at least one department';
       hasErrors = true;
     }
 
@@ -322,7 +323,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           const success = await onSignup(
             signupData.email,
             fullName,
-            signupData.department,
+            signupData.departments,
             signupData.password,
             recaptchaToken
           );
@@ -346,7 +347,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           email: '',
           firstName: '',
           lastName: '',
-          department: '',
+          departments: [],
           password: '',
           confirmPassword: ''
         });
@@ -566,26 +567,67 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-department" className="text-sm sm:text-base">Department</Label>
+                  <Label htmlFor="signup-department" className="text-sm sm:text-base">
+                    Department(s) <span className="text-gray-500 text-xs">(Select all that apply)</span>
+                  </Label>
                   <Select
-                    value={signupData.department}
+                    value=""
                     onValueChange={(value: string) => {
-                      setSignupData(prev => ({ ...prev, department: value }));
+                      const isSelected = signupData.departments.includes(value);
+                      setSignupData(prev => ({
+                        ...prev,
+                        departments: isSelected
+                          ? prev.departments.filter(d => d !== value)
+                          : [...prev.departments, value]
+                      }));
                       if (signupErrors.department) {
                         setSignupErrors(prev => ({ ...prev, department: '' }));
                       }
                     }}
-                    required
                   >
                     <SelectTrigger className={`h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
-                      <SelectValue placeholder="Select your department" />
+                      <SelectValue placeholder="Select department(s) you teach in" />
                     </SelectTrigger>
                     <SelectContent>
                       {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        <SelectItem 
+                          key={dept} 
+                          value={dept}
+                          disabled={signupData.departments.includes(dept)}
+                        >
+                          {dept}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {/* Selected Departments Badges */}
+                  {signupData.departments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-gray-50">
+                      {signupData.departments.map((dept) => (
+                        <Badge 
+                          key={dept} 
+                          variant="secondary" 
+                          className="text-xs flex items-center space-x-1 pr-1"
+                        >
+                          <span>{dept}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSignupData(prev => ({
+                                ...prev,
+                                departments: prev.departments.filter(d => d !== dept)
+                              }));
+                            }}
+                            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
                   {signupErrors.department && (
                     <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />

@@ -18,7 +18,8 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-  Bell
+  Bell,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
@@ -57,12 +58,12 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
     name: user.name,
-    department: user.department || ''
+    departments: (user.departments && user.departments.length > 0 ? user.departments : (user.department ? [user.department] : [])) as string[]
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileErrors, setProfileErrors] = useState({
     name: '',
-    department: ''
+    departments: ''
   });
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
@@ -77,13 +78,13 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setPushEnabled(!!(user as any).pushEnabled);
       setProfileData({
         name: user.name,
-        department: user.department || ''
+        departments: (user.departments && user.departments.length > 0 ? user.departments : (user.department ? [user.department] : [])) as string[]
       });
     } catch (err) {
       // If something odd happens, keep current local state and log for diagnostics
       logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
-  }, [user?.pushEnabled, user?.name, user?.department]); // Remove isEditingProfile and isSavingProfile from dependencies
+  }, [user?.pushEnabled, user?.name, user?.department, user?.departments]); // Remove isEditingProfile and isSavingProfile from dependencies
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
   useEffect(() => {
@@ -98,7 +99,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const validateProfileData = (): boolean => {
     const newErrors = {
       name: '',
-      department: ''
+      departments: ''
     };
 
     let isValid = true;
@@ -112,10 +113,13 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       isValid = false;
     }
 
-    // Validate department
+    // Validate departments
     const validDepartments = ['Information Technology', 'Civil Engineering', 'Electrical Engineering'];
-    if (profileData.department && !validDepartments.includes(profileData.department)) {
-      newErrors.department = 'Please select a valid department';
+    if (profileData.departments.length === 0) {
+      newErrors.departments = 'Please select at least one department';
+      isValid = false;
+    } else if (!profileData.departments.every(dept => validDepartments.includes(dept))) {
+      newErrors.departments = 'Please select valid departments only';
       isValid = false;
     }
 
@@ -132,7 +136,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     try {
       const trimmedData = {
         name: profileData.name.trim(),
-        department: profileData.department.trim()
+        department: profileData.departments[0], // Primary department for backward compatibility
+        departments: profileData.departments
       };
 
       logger.info('Saving profile data:', {
@@ -140,7 +145,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         currentName: user.name,
         newName: trimmedData.name,
         currentDepartment: user.department,
-        newDepartment: trimmedData.department
+        newDepartment: trimmedData.department,
+        currentDepartments: user.departments,
+        newDepartments: trimmedData.departments
       });
 
       // Update Firestore user document
@@ -186,11 +193,11 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const handleProfileCancel = () => {
     setProfileData({
       name: user.name,
-      department: user.department || ''
+      departments: (user.departments && user.departments.length > 0 ? user.departments : (user.department ? [user.department] : [])) as string[]
     });
     setProfileErrors({
       name: '',
-      department: ''
+      departments: ''
     });
     setIsEditingProfile(false);
   };
@@ -569,22 +576,27 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
             {/* Department Field */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-600">Department</Label>
+              <Label className="text-sm font-medium text-gray-600">Department{isEditingProfile && 's'}</Label>
               {isEditingProfile ? (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Select
-                    value={profileData.department}
+                    value=""
                     onValueChange={(value) => {
-                      setProfileData(prev => ({ ...prev, department: value }));
-                      if (profileErrors.department) {
-                        setProfileErrors(prev => ({ ...prev, department: '' }));
+                      if (value && !profileData.departments.includes(value)) {
+                        setProfileData(prev => ({ 
+                          ...prev, 
+                          departments: [...prev.departments, value] 
+                        }));
+                        if (profileErrors.departments) {
+                          setProfileErrors(prev => ({ ...prev, departments: '' }));
+                        }
                       }
                     }}
                   >
-                    <SelectTrigger className={`${profileErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
+                    <SelectTrigger className={`${profileErrors.departments ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
                       <div className="flex items-center gap-2">
                         <Building className="h-4 w-4 text-gray-400" />
-                        <SelectValue placeholder="Select department" />
+                        <SelectValue placeholder="Select departments" />
                       </div>
                     </SelectTrigger>
                     <SelectContent>
@@ -593,17 +605,49 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                       <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
                     </SelectContent>
                   </Select>
-                  {profileErrors.department && (
+                  
+                  {/* Selected Departments Badges */}
+                  {profileData.departments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 p-2 bg-gray-50 rounded-lg">
+                      {profileData.departments.map((dept) => (
+                        <Badge key={dept} variant="secondary" className="flex items-center gap-1 px-2 py-1">
+                          {dept}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProfileData(prev => ({
+                                ...prev,
+                                departments: prev.departments.filter(d => d !== dept)
+                              }));
+                            }}
+                            className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {profileErrors.departments && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {profileErrors.department}
+                      {profileErrors.departments}
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <Building className="h-4 w-4 text-gray-500" />
-                  <span className="font-medium">{user.department || 'Not specified'}</span>
+                  {user.departments && user.departments.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {user.departments.map(dept => (
+                        <Badge key={dept} variant="secondary">{dept}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-medium">{user.department || 'Not specified'}</span>
+                  )}
                 </div>
               )}
             </div>

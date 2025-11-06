@@ -57,7 +57,8 @@ export interface User {
   email: string;
   name: string;
   role: 'admin' | 'faculty';
-  department?: string;
+  department?: string; // Deprecated: kept for backward compatibility
+  departments?: string[]; // New: array of departments for faculty teaching in multiple departments
   status: 'pending' | 'approved' | 'rejected';
   failedLoginAttempts?: number;
   accountLocked?: boolean;
@@ -75,7 +76,8 @@ export interface SignupRequest {
   userId: string;
   email: string;
   name: string;
-  department: string;
+  department: string; // Primary department (for backward compatibility)
+  departments?: string[]; // New: array of departments
   requestDate: string;
   status: 'pending' | 'approved' | 'rejected';
   adminFeedback?: string;
@@ -507,8 +509,11 @@ export default function App() {
   }, [setupRealtimeListeners]); // Note: I'm keeping the old function here for reference, but the new one is active.
 
   const handleSignup = useCallback(
-    async (email: string, name: string, department: string, password: string, recaptchaToken?: string) => {
+    async (email: string, name: string, departments: string[], password: string, recaptchaToken?: string) => {
       try {
+        // For backward compatibility, use first department as primary department
+        const primaryDepartment = departments[0] || '';
+        
         // Check for duplicate requests (optional - don't fail signup if this fails)
         // Only attempt reads if we have an authenticated client session to avoid permission errors
         try {
@@ -530,7 +535,7 @@ export default function App() {
         let request: SignupRequest;
         
         try {
-          const result = await authService.registerFaculty(email, password, name, department, recaptchaToken);
+          const result = await authService.registerFaculty(email, password, name, primaryDepartment, departments, recaptchaToken);
           request = result.request;
         } catch (registerError: any) {
           // If registration fails because the email is already in use,

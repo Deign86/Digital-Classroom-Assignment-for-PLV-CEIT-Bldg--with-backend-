@@ -118,6 +118,7 @@ type FirestoreUserRecord = {
   name: string;
   role: UserRole;
   department?: string;
+  departments?: string[];
   status: 'pending' | 'approved' | 'rejected';
   photoURL?: string;
   lastSignInAt?: string;
@@ -181,6 +182,7 @@ type FirestoreSignupRequestRecord = {
   emailLower: string;
   name: string;
   department: string;
+  departments?: string[];
   requestDate: string;
   status: SignupRequest['status'];
   adminFeedback?: string;
@@ -888,7 +890,7 @@ export const authService = {
     if (!existingUser) {
       logger.log(`Reactivation attempt for non-existent user ${email}. Treating as new registration.`);
       // The user was fully deleted, so this is a new registration.
-      return this.registerFaculty(email, password, name, department, recaptchaToken);
+      return this.registerFaculty(email, password, name, department, undefined, recaptchaToken);
     }
 
     // Try to sign in first to get the existing Firebase Auth user
@@ -959,10 +961,14 @@ export const authService = {
     password: string,
     name: string,
     department: string,
+    departments?: string[],
     recaptchaToken?: string
   ): Promise<{ request: SignupRequest }> {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
+
+    // Use departments array if provided, otherwise fallback to single department
+    const depts = departments && departments.length > 0 ? departments : [department];
 
     // Suppress auth state handling to avoid racing the global listener
     suppressAuthStateHandling = true;
@@ -977,7 +983,8 @@ export const authService = {
       const record = await ensureUserRecordFromAuth(firebaseUser, {
         email,
         name,
-        department,
+        department: depts[0], // Primary department for backward compatibility
+        departments: depts,
         role: 'faculty',
         status: 'pending',
       });
@@ -990,7 +997,8 @@ export const authService = {
         email: record.email,
         emailLower: record.emailLower,
         name: record.name,
-        department,
+        department: depts[0], // Primary department for backward compatibility
+        departments: depts,
         status: 'pending',
         requestDate: now,
         createdAt: now,
