@@ -113,7 +113,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     }
 
     // Validate department
-    const validDepartments = ['Information Technology', 'Civil Engineering', 'Information Technology & Civil Engineering'];
+    const validDepartments = ['Information Technology', 'Civil Engineering', 'Electrical Engineering'];
     if (profileData.department && !validDepartments.includes(profileData.department)) {
       newErrors.department = 'Please select a valid department';
       isValid = false;
@@ -590,7 +590,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                     <SelectContent>
                       <SelectItem value="Information Technology">Information Technology</SelectItem>
                       <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
-                      <SelectItem value="Information Technology & Civil Engineering">Information Technology & Civil Engineering</SelectItem>
+                      <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
                     </SelectContent>
                   </Select>
                   {profileErrors.department && (
