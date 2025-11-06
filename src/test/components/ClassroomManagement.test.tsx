@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import '@testing-library/jest-dom/vitest'
 import ClassroomManagement from '../../../components/ClassroomManagement'
 import { mockClassrooms } from '../mocks/mockData'
 import { classroomService } from '../../../lib/firebaseService'
