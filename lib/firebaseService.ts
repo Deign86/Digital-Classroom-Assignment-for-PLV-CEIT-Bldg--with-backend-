@@ -525,6 +525,7 @@ const toUser = (id: string, data: FirestoreUserRecord): User => ({
   name: data.name,
   role: data.role,
   department: data.department,
+  departments: data.departments,
   status: data.status,
   failedLoginAttempts: data.failedLoginAttempts || 0,
   accountLocked: data.accountLocked || false,
