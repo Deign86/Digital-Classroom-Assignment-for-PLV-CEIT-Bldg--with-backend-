@@ -82,7 +82,11 @@ describe('AdminDashboard', () => {
       
       expect(screen.getByText('PLV CEIT Admin Dashboard')).toBeInTheDocument()
       expect(screen.getByText(adminUser.name)).toBeInTheDocument()
-      expect(screen.getByText(adminUser.email)).toBeInTheDocument()
+      // Email may be combined with department in a single text node
+      const emailElements = screen.getAllByText((content, element) => {
+        return element?.textContent?.includes(adminUser.email) || false
+      })
+      expect(emailElements.length).toBeGreaterThan(0)
     })
 
     it('should render logout button', () => {

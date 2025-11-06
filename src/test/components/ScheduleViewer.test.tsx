@@ -332,20 +332,46 @@ describe('ScheduleViewer', () => {
 
     it('should call onCancelSchedule with reason', async () => {
       const user = userEvent.setup();
-      render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
-      const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
-        btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
-      );
+      // Create a future schedule so the cancel button will appear (isLapsed check)
+      const futureSchedules: Schedule[] = [
+        {
+          ...mockSchedules[0],
+          id: 'future-schedule-1',
+          startTime: '23:00', // Future time
+          endTime: '23:30',
+        }
+      ];
       
-      expect(cancelButton).toBeDefined();
+      render(<ScheduleViewer schedules={futureSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
+      
+      // Wait for schedule to be rendered
+      await waitFor(() => {
+        expect(screen.getByText('Math Lecture')).toBeInTheDocument();
+      });
+      
+      // Look specifically for cancel button with X icon class
+      const allButtons = screen.getAllByRole('button');
+      const cancelButton = allButtons.find(btn => {
+        const hasXIcon = !!btn.querySelector('svg.lucide-x');
+        return hasXIcon;
+      });
+      
+      // This test requires a cancel button to be present
+      if (!cancelButton) {
+        throw new Error('Cancel button not found - schedule may have lapsed or onCancelSchedule not provided');
+      }
       
       // Click cancel button to open dialog
-      await user.click(cancelButton!);
+      await user.click(cancelButton);
       
-      // Wait for dialog to open and find textarea
-      const textarea = await screen.findByLabelText(/cancellation reason/i);
+      // Wait for dialog to open
+      await waitFor(() => {
+        expect(screen.getByText('Cancel Classroom Reservation')).toBeInTheDocument();
+      });
+      
+      // Find textarea by aria-label
+      const textarea = screen.getByLabelText(/cancellation reason/i);
       expect(textarea).toBeInTheDocument();
       
       // Type the cancellation reason
@@ -358,7 +384,7 @@ describe('ScheduleViewer', () => {
       // Verify the callback was called with correct arguments
       await waitFor(() => {
         expect(mockOnCancelSchedule).toHaveBeenCalledWith(
-          expect.any(String),
+          'future-schedule-1',
           'Emergency maintenance required'
         );
       });
