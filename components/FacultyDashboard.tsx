@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { logger } from '../lib/logger';
+import { abbreviateDepartments } from '../utils/timeUtils';
 /* spinner removed by request; fallbacks reverted to text */
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -255,7 +256,12 @@ export default function FacultyDashboard({
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
               <div className="hidden md:block text-right min-w-0">
                 <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 truncate max-w-[200px] lg:max-w-[280px]">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate max-w-[200px] lg:max-w-[280px]">{user.department} • {user.email}</p>
+                <p className="text-xs text-gray-500 truncate max-w-[200px] lg:max-w-[280px]">
+                  {user.departments && user.departments.length > 1 
+                    ? <span className="whitespace-pre-line">{abbreviateDepartments(user.departments)}</span>
+                    : user.department
+                  } • {user.email}
+                </p>
               </div>
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
