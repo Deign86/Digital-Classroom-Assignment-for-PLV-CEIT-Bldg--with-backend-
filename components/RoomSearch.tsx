@@ -406,7 +406,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         <span className={`text-sm ${searchFilters.date ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {searchFilters.date ? formatISOToMDY(searchFilters.date) : 'Select a date'}
                         </span>
-                        <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </button>
                     </PopoverTrigger>
                     <PopoverContent>
@@ -453,7 +453,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                     };
 
                     const getBadgeClass = () => {
-                      if (isPast) return 'ml-2 text-xs border-gray-300 text-gray-600 bg-gray-50';
+                      if (isPast) return 'ml-2 text-xs border-input text-muted-foreground bg-muted';
                       switch (conflictType) {
                         case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
                         case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
@@ -467,7 +467,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         key={time} 
                         value={time}
                         disabled={isDisabled}
-                        className={isDisabled ? "text-gray-400 opacity-60" : ""}
+                        className={isDisabled ? "text-muted-foreground opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
@@ -520,7 +520,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                           key={time} 
                           value={time}
                           disabled={isDisabled}
-                          className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                          className={hasConflicts ? "text-muted-foreground opacity-60" : ""}
                         >
                           <div className="flex items-center justify-between w-full">
                             <span>{time}</span>
@@ -572,7 +572,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                 </Button>
               )}
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               Showing {filteredClassrooms.length} of {classrooms.filter(c => c.isAvailable).length} available classrooms
             </div>
           </div>
@@ -584,11 +584,11 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
         {filteredClassrooms.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
-              <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">
                 {hasActiveFilters ? 'No Matching Classrooms' : 'Start Your Search'}
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 {hasActiveFilters 
                   ? 'Try adjusting your search criteria to find available classrooms.'
                   : 'Use the filters above to search for available classrooms that meet your needs.'
@@ -603,7 +603,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                 isClassroomAvailable(classroom.id, searchFilters.date, searchFilters.startTime, searchFilters.endTime);
 
               return (
-                <Card key={classroom.id} className={`${isAvailableForSearch ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                <Card key={classroom.id} className={`${isAvailableForSearch ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
                   <CardContent className="p-6">
                     <div className="space-y-3">
                       {/* Header */}
@@ -623,11 +623,11 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
 
                       {/* Location & Capacity */}
                       <div className="space-y-2">
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <MapPin className="h-4 w-4" />
                           <span>{classroom.building}, Floor {classroom.floor}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <Users className="h-4 w-4" />
                           <span>{classroom.capacity} seats</span>
                         </div>
@@ -636,7 +636,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                       {/* Equipment */}
                       {classroom.equipment.length > 0 && (
                         <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-700">Equipment:</p>
+                          <p className="text-sm font-medium text-foreground">Equipment:</p>
                           <div className="flex flex-wrap gap-1">
                             {classroom.equipment.map((eq, index) => (
                               <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
@@ -650,10 +650,10 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
 
                       {/* Time Display */}
                       {searchFilters.date && searchFilters.startTime && searchFilters.endTime && (
-                        <div className="pt-2 border-t border-gray-200">
+                        <div className="pt-2 border-t border-border">
                           <div className="flex items-center space-x-2 text-sm">
-                            <Clock className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-600">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
                               {searchFilters.date} • {searchFilters.startTime}-{searchFilters.endTime}
                             </span>
                           </div>

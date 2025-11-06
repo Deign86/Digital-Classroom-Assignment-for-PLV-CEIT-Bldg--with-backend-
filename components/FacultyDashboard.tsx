@@ -192,9 +192,9 @@ export default function FacultyDashboard({
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b">
         <div className="px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-shrink">
@@ -491,23 +491,23 @@ export default function FacultyDashboard({
                           .map((request, index) => (
                             <div 
                               key={request.id} 
-                              className="p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-gray-50 animate-in"
+                              className="p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-muted/50 animate-in"
                               style={{ animationDelay: `${0.1 * index}s` }}
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 truncate">{request.classroomName}</p>
-                                  <p className="text-sm text-gray-600">{formatDate(request.date)} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
+                                  <p className="font-medium text-foreground truncate">{request.classroomName}</p>
+                                  <p className="text-sm text-muted-foreground">{formatDate(request.date)} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
                                 </div>
                                 <Badge variant={getStatusBadgeVariant(request.status)} className="flex-shrink-0 ml-2">
                                   {request.status}
                                 </Badge>
                               </div>
-                              <p className="text-sm text-gray-500 break-words">{request.purpose}</p>
+                              <p className="text-sm text-muted-foreground break-words">{request.purpose}</p>
                               {request.adminFeedback && (
-                                <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                                  <p className="font-medium text-gray-700">Admin Feedback:</p>
-                                  <p className="text-gray-600">{request.adminFeedback}</p>
+                                <div className="mt-2 p-2 bg-muted rounded text-sm">
+                                  <p className="font-medium text-foreground">Admin Feedback:</p>
+                                  <p className="text-foreground">{request.adminFeedback}</p>
                                 </div>
                               )}
                             </div>
@@ -570,13 +570,13 @@ export default function FacultyDashboard({
                           .map((schedule, index) => (
                             <div 
                               key={schedule.id} 
-                              className="p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-green-50 animate-in"
+                              className="p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-muted/30 animate-in"
                               style={{ animationDelay: `${0.1 * index}s` }}
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 truncate">{schedule.classroomName}</p>
-                                  <p className="text-sm text-gray-600">{formatDate(schedule.date)} • {formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}</p>
+                                  <p className="font-medium text-foreground truncate">{schedule.classroomName}</p>
+                                  <p className="text-sm text-muted-foreground">{formatDate(schedule.date)} • {formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}</p>
                                 </div>
                                 <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
                                   <Badge variant="default" className="bg-green-100 text-green-800">
@@ -584,7 +584,7 @@ export default function FacultyDashboard({
                                   </Badge>
                                 </div>
                               </div>
-                              <p className="text-sm text-gray-500 break-words">{schedule.purpose}</p>
+                              <p className="text-sm text-muted-foreground break-words">{schedule.purpose}</p>
                             </div>
                           ))}
                       </div>

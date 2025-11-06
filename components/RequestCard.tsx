@@ -98,7 +98,7 @@ export default function RequestCard({
                   aria-label={`Select request ${request.id}`}
                   checked={!!selected}
                   onChange={(e) => onToggleSelect?.(e.target.checked)}
-                  className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                  className="h-4 w-4 text-indigo-600 rounded border-input"
                 />
               </div>
             )}
@@ -139,8 +139,8 @@ export default function RequestCard({
 
         <div className="space-y-3">
           <div className="flex items-center gap-3 text-sm">
-            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="font-medium text-gray-900">
+            <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="font-medium text-foreground">
               {new Date(request.date).toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
@@ -151,30 +151,30 @@ export default function RequestCard({
           </div>
 
           <div className="flex items-center gap-3 text-sm">
-            <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700">
+            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-foreground">
               {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}
             </span>
           </div>
 
           <div className="flex items-center gap-3 text-sm">
-            <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700">{request.classroomName}</span>
+            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span className="text-foreground">{request.classroomName}</span>
           </div>
 
           <div className="flex items-start gap-3 text-sm">
-            <User className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+            <User className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-medium text-gray-900">Purpose:</p>
-              <p className="text-gray-700 mt-1">{request.purpose}</p>
+              <p className="font-medium text-foreground">Purpose:</p>
+              <p className="text-foreground mt-1">{request.purpose}</p>
             </div>
           </div>
         </div>
 
         {request.adminFeedback && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-xs font-semibold text-gray-900 mb-1">Admin Feedback:</p>
-            <p className="text-sm text-gray-700">{request.adminFeedback}</p>
+          <div className="bg-muted border border-border rounded-lg p-3">
+            <p className="text-xs font-semibold text-foreground mb-1">Admin Feedback:</p>
+            <p className="text-sm text-foreground">{request.adminFeedback}</p>
           </div>
         )}
 
@@ -295,7 +295,7 @@ export default function RequestCard({
                       />
                     </div>
                     <div className="flex items-center justify-end mt-1">
-                      <p className="text-xs text-gray-500">{cancelReason.length}/500</p>
+                      <p className="text-xs text-muted-foreground">{cancelReason.length}/500</p>
                     </div>
                     {cancelError && <p role="alert" className="text-xs text-red-600 mt-1">{cancelError}</p>}
                   </div>

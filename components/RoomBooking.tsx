@@ -375,13 +375,13 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   </SelectTrigger>
                 <SelectContent>
                   {availableClassrooms.length === 0 ? (
-                    <div className="p-2 text-sm text-gray-500">No available classrooms</div>
+                    <div className="p-2 text-sm text-muted-foreground">No available classrooms</div>
                   ) : (
                     availableClassrooms.map((classroom) => (
                       <SelectItem key={classroom.id} value={classroom.id}>
                         <div className="flex items-center justify-between w-full">
                           <span>{classroom.name}</span>
-                          <div className="flex items-center space-x-2 text-xs text-gray-500 ml-2">
+                          <div className="flex items-center space-x-2 text-xs text-muted-foreground ml-2">
                             <Users className="h-3 w-3" />
                             <span>{classroom.capacity}</span>
                           </div>
@@ -408,11 +408,11 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     exit={{ opacity: 0, height: 0, scale: 0.9 }}
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                   >
-                    <Card className="bg-blue-50 border-blue-200 transition-shadow duration-200 hover:shadow-md">
-                      <CardContent className="p-4">
+                    <Card className="bg-blue-500/5 border-blue-500/20 transition-shadow duration-200 hover:shadow-md">
+                      <CardContent className="p-4 ">
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">{selectedClassroom.name}</h4>
+                          <div className="flex items-center justify-between ">
+                            <h4 className="font-medium text-foreground ">{selectedClassroom.name}</h4>
                             <motion.div
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
@@ -421,7 +421,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                               <Badge variant="outline">{selectedClassroom.capacity} seats</Badge>
                             </motion.div>
                           </div>
-                          <div className="flex items-center space-x-1 text-sm text-gray-600">
+                          <div className="flex items-center space-x-1 text-sm text-muted-foreground"> 
                             <MapPin className="h-4 w-4" />
                             <span>{selectedClassroom.building}, Floor {selectedClassroom.floor}</span>
                           </div>
@@ -503,7 +503,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                         <span className={`text-sm ${formData.date ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {formData.date ? formatISOToMDY(formData.date) : 'Select a date'}
                         </span>
-                        <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </button>
                     </PopoverTrigger>
                     <PopoverContent>
@@ -590,7 +590,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                           key={time} 
                           value={time}
                           disabled={wouldConflictAsStart}
-                          className={wouldConflictAsStart ? "text-gray-400 opacity-50" : ""}
+                          className={wouldConflictAsStart ? "text-muted-foreground opacity-50" : ""}
                         >
                           <div className="flex items-center justify-between w-full">
                             <span>{time}</span>
@@ -600,7 +600,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                                 className={`ml-2 text-xs ${
                                   startConflictType === 'pending' ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
                                   startConflictType === 'both' ? 'border-orange-300 text-orange-600 bg-orange-50' :
-                                  startConflictType === 'past' ? 'border-gray-300 text-gray-600 bg-gray-50' : ''
+                                  startConflictType === 'past' ? 'border-input text-muted-foreground bg-muted' : ''
                                 }`}
                               >
                                 {startConflictType === 'pending' ? 'Pending' : 
@@ -685,7 +685,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                             key={time} 
                             value={time}
                             disabled={wouldConflictAsEnd}
-                            className={wouldConflictAsEnd ? "text-gray-400 opacity-50" : ""}
+                            className={wouldConflictAsEnd ? "text-muted-foreground opacity-50" : ""}
                           >
                             <div className="flex items-center justify-between w-full">
                               <span>{time}</span>
@@ -695,7 +695,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                                   className={`ml-2 text-xs ${
                                     endConflictType === 'pending' ? 'border-yellow-300 text-yellow-700 bg-yellow-50' :
                                     endConflictType === 'both' ? 'border-orange-300 text-orange-600 bg-orange-50' :
-                                    endConflictType === 'past' ? 'border-gray-300 text-gray-600 bg-gray-50' : ''
+                                    endConflictType === 'past' ? 'border-input text-muted-foreground bg-muted' : ''
                                   }`}
                                 >
                                   {endConflictType === 'pending' ? 'Pending' : 
@@ -722,7 +722,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               <AnimatePresence>
                 {formData.startTime && formData.endTime && isValidTimeRange(formData.startTime, formData.endTime) && (
                   <motion.div 
-                    className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                    className="flex items-center space-x-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg"
                     initial={{ opacity: 0, scale: 0.9, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: -10 }}
@@ -835,7 +835,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               <AnimatePresence>
                 {formData.date && formData.startTime && isPastBookingTime(formData.date, formData.startTime) && (
                   <motion.div 
-                    className="flex items-center space-x-2 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                    className="flex items-center space-x-2 p-3 bg-muted border border-border rounded-lg"
                     initial={{ opacity: 0, scale: 0.9, x: -20 }}
                     animate={{ opacity: 1, scale: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.9, x: -20 }}
@@ -845,14 +845,14 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                       animate={{ rotate: [0, -10, 10, -10, 0] }}
                       transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 1 }}
                     >
-                      <AlertTriangle className="h-5 w-5 text-gray-600" />
+                      <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                     </motion.div>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">Invalid Time Selection</p>
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm font-medium text-foreground">Invalid Time Selection</p>
+                      <p className="text-sm text-foreground">
                         The selected time has already passed. Please choose a future time slot.
                       </p>
-                      <p className="text-xs text-gray-600 mt-1 italic">
+                      <p className="text-xs text-muted-foreground mt-1 italic">
                         You can only reserve time slots that are at least 5 minutes in the future.
                       </p>
                     </div>
@@ -881,7 +881,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   maxLength={500}
                 />
                 <div className="flex items-center justify-end mt-1">
-                  <p className="text-xs text-gray-500">{formData.purpose.length}/500</p>
+                  <p className="text-xs text-muted-foreground">{formData.purpose.length}/500</p>
                 </div>
                 {errors.purpose && (
                   <p className="text-sm text-red-600 flex items-center gap-1 mt-1">

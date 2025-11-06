@@ -292,7 +292,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       <div className="flex flex-col space-y-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Classroom Reservation Management</h2>
-          <p className="text-gray-600 mt-1">Review and manage classroom reservation requests</p>
+          <p className="text-muted-foreground mt-1">Review and manage classroom reservation requests</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -332,7 +332,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 Rejected ({rejectedRequests.length})
               </TabsTrigger>
               <TabsTrigger value="expired" className="mobile-tab-item flex items-center gap-2">
-                <Clock className="h-4 w-4 text-gray-500" />
+                <Clock className="h-4 w-4 text-muted-foreground" />
                 Expired ({expiredRequests.length})
               </TabsTrigger>
             </TabsList>
@@ -343,9 +343,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             {pendingRequests.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Clock className="h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Requests</h3>
-                  <p className="text-gray-500 text-center max-w-md">
+                  <Clock className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Pending Requests</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
                     All caught up! There are no pending reservations at the moment.
                   </p>
                 </CardContent>
@@ -417,9 +417,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             {approvedRequests.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <CheckCircle className="h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Approved Requests</h3>
-                  <p className="text-gray-500 text-center max-w-md">
+                  <CheckCircle className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Approved Requests</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
                     No reservations have been approved yet.
                   </p>
                 </CardContent>
@@ -475,9 +475,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             {expiredRequests.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Clock className="h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Expired Requests</h3>
-                  <p className="text-gray-500 text-center max-w-md">
+                  <Clock className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Expired Requests</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
                     There are no expired pending requests.
                   </p>
                 </CardContent>
@@ -499,9 +499,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             {rejectedRequests.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <XCircle className="h-16 w-16 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rejected Requests</h3>
-                  <p className="text-gray-500 text-center max-w-md">
+                  <XCircle className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No Rejected Requests</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
                     No reservations have been rejected.
                   </p>
                 </CardContent>
@@ -560,7 +560,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 maxLength={500}
               />
               <div className="flex items-center justify-end mt-1">
-                <p className="text-xs text-gray-500">{feedback.length}/500</p>
+                <p className="text-xs text-muted-foreground">{feedback.length}/500</p>
               </div>
               {feedbackError && <p className="text-xs text-red-600 mt-1">{feedbackError}</p>}
             </div>

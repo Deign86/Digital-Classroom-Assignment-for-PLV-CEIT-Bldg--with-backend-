@@ -423,8 +423,8 @@ export default function AdminDashboard({
                                             </Badge>
                                           )}
                                       </div>
-                              <p className="text-sm text-gray-600 break-words">{request.classroomName} • {request.date} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
-                              <p className="text-sm text-gray-500 break-words">{request.purpose}</p>
+                              <p className="text-sm text-muted-foreground break-words">{request.classroomName} • {request.date} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
+                              <p className="text-sm text-muted-foreground break-words">{request.purpose}</p>
                             </div>
                             {request.status === 'pending' && (
                               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-shrink-0 items-center">

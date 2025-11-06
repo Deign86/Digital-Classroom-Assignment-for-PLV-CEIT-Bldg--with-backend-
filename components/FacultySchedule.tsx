@@ -104,13 +104,13 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const ScheduleCard = ({ schedule }: { schedule: Schedule }) => {
     return (
       <Card className={`border-l-4 ${
-        schedule.status === 'cancelled' ? 'border-l-red-500 bg-red-50' : 'border-l-blue-500'
+        schedule.status === 'cancelled' ? 'border-l-red-500 bg-red-500/5' : 'border-l-blue-500'
       }`}>
         <CardContent className="p-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-500" />
+                <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">{formatDateShort(schedule.date)}</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -122,18 +122,18 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
               <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-gray-500" />
+                <Clock className="h-4 w-4 text-muted-foreground" />
                 <span>{formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}</span>
               </div>
               <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-500" />
+                <MapPin className="h-4 w-4 text-muted-foreground" />
                 <span>{schedule.classroomName}</span>
               </div>
             </div>
 
             <div>
-              <p className="font-medium text-gray-900">{schedule.purpose}</p>
-              <p className="text-sm text-gray-500 mt-1">{formatDate(schedule.date)}</p>
+              <p className="font-medium text-foreground">{schedule.purpose}</p>
+              <p className="text-sm text-muted-foreground mt-1">{formatDate(schedule.date)}</p>
               {schedule.status === 'cancelled' && (
                 <p className="text-sm text-red-600 mt-1 italic">This reservation has been cancelled</p>
               )}
@@ -197,18 +197,18 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           </div>
 
           <div>
-            <p className="font-medium text-gray-900">{request.purpose}</p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="font-medium text-foreground">{request.purpose}</p>
+            <p className="text-sm text-muted-foreground mt-1">
               Requested on {new Date(request.requestDate).toLocaleDateString()}
             </p>
           </div>
 
           {request.adminFeedback && (
-            <div className="flex items-start space-x-2 p-3 bg-gray-50 rounded-lg">
-              <MessageSquare className="h-4 w-4 text-gray-500 mt-0.5" />
+            <div className="flex items-start space-x-2 p-3 bg-muted rounded-lg">
+              <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Admin Feedback:</p>
-                <p className="text-sm text-gray-800">{request.adminFeedback}</p>
+                <p className="text-sm font-medium text-foreground">Admin Feedback:</p>
+                <p className="text-sm text-foreground">{request.adminFeedback}</p>
               </div>
             </div>
           )}
@@ -319,9 +319,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           {upcomingSchedules.filter(s => s.status === 'confirmed').length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Classes</h3>
-                <p className="text-gray-600">You don't have any confirmed classes scheduled.</p>
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Upcoming Classes</h3>
+                <p className="text-muted-foreground">You don't have any confirmed classes scheduled.</p>
               </CardContent>
             </Card>
           ) : (
@@ -376,9 +376,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           {pendingRequests.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Pending Requests</h3>
-                <p className="text-gray-600">All your requests have been processed.</p>
+                <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Pending Requests</h3>
+                <p className="text-muted-foreground">All your requests have been processed.</p>
               </CardContent>
             </Card>
           ) : (
@@ -392,9 +392,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
           {approvedRequests.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Approved Requests</h3>
-                <p className="text-gray-600">No requests have been approved yet.</p>
+                <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Approved Requests</h3>
+                <p className="text-muted-foreground">No requests have been approved yet.</p>
               </CardContent>
             </Card>
           ) : (
@@ -411,7 +411,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                       setApprovedSelectedIds(map);
                     }}
                     checked={approvedRequests.length > 0 && approvedRequests.every(r => approvedSelectedIds[r.id])}
-                    className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    className="h-4 w-4 text-indigo-600 rounded border-input"
                   />
                   <span className="text-sm">Select all ({approvedRequests.length})</span>
                 </div>
@@ -637,7 +637,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           type="checkbox"
                           checked={!!approvedSelectedIds[request.id]}
                           onChange={(e) => setApprovedSelectedIds(prev => ({ ...prev, [request.id]: e.target.checked }))}
-                          className="h-4 w-4 text-indigo-600 rounded border-gray-300 mt-3"
+                          className="h-4 w-4 text-indigo-600 rounded border-input mt-3"
                         />
                         {processingCancelIds[request.id] && (
                           <span className="inline-flex items-center ml-2">
@@ -661,8 +661,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             <Card>
               <CardContent className="p-8 text-center">
                 <X className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Rejected Requests</h3>
-                <p className="text-gray-600">You have no rejected reservation requests.</p>
+                <h3 className="text-lg font-medium text-foreground mb-2">No Rejected Requests</h3>
+                <p className="text-muted-foreground">You have no rejected reservation requests.</p>
               </CardContent>
             </Card>
           ) : (
@@ -679,8 +679,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             <Card>
               <CardContent className="p-8 text-center">
                 <XCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Cancelled Reservations</h3>
-                <p className="text-gray-600">You haven't cancelled any reservations yet.</p>
+                <h3 className="text-lg font-medium text-foreground mb-2">No Cancelled Reservations</h3>
+                <p className="text-muted-foreground">You haven't cancelled any reservations yet.</p>
               </CardContent>
             </Card>
           ) : (
@@ -698,8 +698,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             <Card>
               <CardContent className="p-8 text-center">
                 <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Past Classes</h3>
-                <p className="text-gray-600">Your past classes will appear here.</p>
+                <h3 className="text-lg font-medium text-foreground mb-2">No Past Classes</h3>
+                <p className="text-muted-foreground">Your past classes will appear here.</p>
               </CardContent>
             </Card>
           ) : (
@@ -713,7 +713,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
       </Tabs>
     ) : (
       <div className="p-4">
-        <div className="h-12 bg-gray-100 rounded animate-pulse" />
+        <div className="h-12 bg-muted rounded animate-pulse" />
       </div>
     )}
     </div>

@@ -250,13 +250,13 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     <div className="w-full space-y-6">
       {/* Header */}
       <div className="text-center space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-900">Welcome Back</h1>
-        <p className="text-gray-600">Sign in to access the Digital Classroom Assignment System</p>
+        <h1 className="text-2xl font-semibold text-foreground">Welcome Back</h1>
+        <p className="text-muted-foreground">Sign in to access the Digital Classroom Assignment System</p>
       </div>
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 rounded-xl p-1 mx-auto max-w-full overflow-hidden">
+        <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted rounded-xl p-1 mx-auto max-w-full overflow-hidden">
           <TabsTrigger value="login">Faculty Sign In</TabsTrigger>
           <TabsTrigger value="signup">Faculty Request</TabsTrigger>
         </TabsList>
@@ -267,7 +267,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -294,7 +294,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showLoginPassword ? 'text' : 'password'}
@@ -312,7 +312,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
                     aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showLoginPassword}
                     title={showLoginPassword ? 'Hide password' : 'Show password'}
@@ -355,8 +355,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               aria-busy={isLoading}
               className={
                 isLoading
-                  ? 'w-full h-12 rounded-full px-6 bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
-                  : 'w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+                  ? 'w-full h-12 rounded-full px-6 bg-muted text-muted-foreground border border-border shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-12 rounded-full px-6 bg-primary text-primary-foreground shadow-lg transition-all duration-150 ease-linear hover:bg-primary/90 hover:shadow-xl'
               }
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
@@ -371,7 +371,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 <div className="space-y-2">
                   <Label htmlFor="signup-firstName">First Name</Label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-firstName"
                       type="text"
@@ -397,7 +397,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 <div className="space-y-2">
                   <Label htmlFor="signup-lastName">Last Name</Label>
                   <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-lastName"
                       type="text"
@@ -425,7 +425,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="signup-email"
                     type="email"
@@ -480,7 +480,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Create Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="signup-password"
                     type={showSignupPassword ? 'text' : 'password'}
@@ -498,7 +498,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <button
                     type="button"
                     onClick={() => setShowSignupPassword(!showSignupPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
                     aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showSignupPassword}
                     title={showSignupPassword ? 'Hide password' : 'Show password'}
@@ -512,9 +512,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     {signupErrors.password}
                   </p>
                 ) : (
-                  <div className="text-sm text-gray-700 text-left">
+                  <div className="text-sm text-muted-foreground text-left">
                     <p className="font-medium mb-1">Password Requirements:</p>
-                    <ul className="list-disc list-inside space-y-1 text-xs text-gray-600 text-left pl-4">
+                    <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground text-left pl-4">
                       <li>At least 8 characters long</li>
                       <li>Contains uppercase and lowercase letters</li>
                       <li>Contains at least one number</li>
@@ -527,7 +527,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               <div className="space-y-2">
                 <Label htmlFor="signup-confirm-password">Confirm Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="signup-confirm-password"
                     type={showSignupConfirmPassword ? 'text' : 'password'}
@@ -545,7 +545,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <button
                     type="button"
                     onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
                     aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     aria-pressed={showSignupConfirmPassword}
                     title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
@@ -580,8 +580,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
               aria-busy={signupIsLoading}
               className={
                 signupIsLoading
-                  ? 'w-full h-12 rounded-full px-6 bg-white text-blue-700 border border-blue-200 shadow-none transition-all duration-150 ease-linear'
-                  : 'w-full h-12 rounded-full px-6 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-[0_6px_18px_rgba(14,165,233,0.12)] transition-all duration-150 ease-linear hover:from-blue-400 hover:to-blue-500 hover:shadow-[0_10px_30px_rgba(14,165,233,0.18)]'
+                  ? 'w-full h-12 rounded-full px-6 bg-muted text-muted-foreground border border-border shadow-none transition-all duration-150 ease-linear'
+                  : 'w-full h-12 rounded-full px-6 bg-primary text-primary-foreground shadow-lg transition-all duration-150 ease-linear hover:bg-primary/90 hover:shadow-xl'
               }
             >
               {signupIsLoading ? 'Requesting...' : 'Request Faculty Account'}

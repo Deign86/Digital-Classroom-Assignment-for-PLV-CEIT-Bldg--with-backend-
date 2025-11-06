@@ -1396,7 +1396,7 @@ export default function App() {
           <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4 animate-pulse">
             <div className="text-white text-lg font-bold">PLV</div>
           </div>
-          <p className="text-gray-600">{loadingMessage ?? 'Loading...'}</p>
+          <p className="text-muted-foreground">{loadingMessage ?? 'Loading...'}</p>
           <Analytics />
         </div>
       </div>
@@ -1406,7 +1406,13 @@ export default function App() {
   // Only show login page after auth has been checked and confirmed there's no user
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col">
+      <ErrorBoundary>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background flex flex-col">
+            {/* Theme Toggle in top right */}
+            <div className="absolute top-4 right-4 z-10">
+              <ThemeToggle compact />
+            </div>
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center space-y-8 w-full max-w-md">
             <div>
@@ -1415,14 +1421,14 @@ export default function App() {
                   <div className="text-white text-2xl font-bold">PLV</div>
                 </div>
               </div>
-              <p className="text-blue-600 mb-2">PLV CEIT</p>
+              <p className="text-primary mb-2">PLV CEIT</p>
               <h1 className="mb-6">Digital Classroom</h1>
-              <p className="text-gray-600 mb-8">
+              <p className="text-muted-foreground mb-8">
                 Streamlined classroom assignment and reservation system for PLV CEIT.
               </p>
             </div>
             
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
+              <div className="bg-card/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-border/20">
                 <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} accountLockedMessage={accountLockedMessage} />
               </div>
           </div>
@@ -1473,7 +1479,9 @@ export default function App() {
         </AlertDialog>
 
         <Analytics />
-      </div>
+          </div>
+        </ThemeProvider>
+      </ErrorBoundary>
     );
   }
 
@@ -1570,7 +1578,7 @@ export default function App() {
                     <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
                       <div className="text-white text-lg font-bold">PLV</div>
                     </div>
-                    <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
+                    <p className="text-muted-foreground">{overlayMessage ?? 'Loading...'}</p>
                   </div>
                 </div>
               ) : null}
