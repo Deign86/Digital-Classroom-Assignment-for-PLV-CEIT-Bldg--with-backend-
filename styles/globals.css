@@ -1055,8 +1055,7 @@ body.authenticated .grecaptcha-badge {
   stroke: currentColor;
 }
 
-/* Tab hover: only change background; keep text/icon color readable */
-[role="tablist"] [role="tab"]:hover { background: var(--hover-surface, var(--_hover-surface-light)); color: inherit !important; }
+/* Tab hover: only for dark mode to provide subtle feedback */
 .dark [role="tablist"] [role="tab"]:hover { background: var(--hover-surface, rgba(255,255,255,0.03)); }
 
 /* Sonner toast descriptions in dark: ensure contrast */
