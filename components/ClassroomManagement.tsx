@@ -6,28 +6,31 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch';
-import { Plus, Edit, Trash2, Users, MapPin, Wifi, Projector, Monitor, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, MapPin, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Classroom } from '../App';
+import { getIconForEquipment } from '../lib/equipmentIcons';
 
 interface ClassroomManagementProps {
   classrooms: Classroom[];
   onClassroomUpdate: (classrooms: Classroom[]) => void;
 }
 
-const equipmentIcons: { [key: string]: React.ReactNode } = {
-  'Projector': <Projector className="h-4 w-4" />,
-  'Computer': <Monitor className="h-4 w-4" />,
-  'Computers': <Monitor className="h-4 w-4" />,
-  'WiFi': <Wifi className="h-4 w-4" />,
-  'Whiteboard': <Edit className="h-4 w-4" />,
-  'TV': <Monitor className="h-4 w-4" />,
-};
+// Available equipment options with their icons
+const EQUIPMENT_OPTIONS = [
+  'Projector',
+  'Computer',
+  'WiFi',
+  'Whiteboard',
+  'TV',
+  'Speakers',
+  'Air Conditioner',
+  'Podium'
+];
 
 export default function ClassroomManagement({ classrooms, onClassroomUpdate }: ClassroomManagementProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -35,7 +38,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [formData, setFormData] = useState({
     name: '',
     capacity: '',
-    equipment: '',
+    equipment: [] as string[],
     building: '',
     floor: '1',
     isAvailable: true
@@ -48,7 +51,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setFormData({
       name: '',
       capacity: '',
-      equipment: '',
+      equipment: [],
       building: '',
       floor: '1',
       isAvailable: true
@@ -61,10 +64,6 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       toast.error('Please fill in all required fields');
       return;
     }
-    const equipmentArray = formData.equipment
-      .split(',')
-      .map(eq => eq.trim())
-      .filter(eq => eq.length > 0);
     
     const result = await executeWithNetworkHandling(
       async () => {
@@ -72,7 +71,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           await classroomService.update(editingClassroom.id, {
             name: formData.name,
             capacity: parseInt(formData.capacity),
-            equipment: equipmentArray,
+            equipment: formData.equipment,
             building: formData.building,
             floor: parseInt(formData.floor),
             isAvailable: formData.isAvailable
@@ -81,7 +80,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           await classroomService.create({
             name: formData.name,
             capacity: parseInt(formData.capacity),
-            equipment: equipmentArray,
+            equipment: formData.equipment,
             building: formData.building,
             floor: parseInt(formData.floor),
             isAvailable: formData.isAvailable
@@ -114,12 +113,28 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setFormData({
       name: classroom.name,
       capacity: classroom.capacity.toString(),
-      equipment: classroom.equipment.join(', '),
+      equipment: classroom.equipment,
       building: classroom.building,
       floor: classroom.floor.toString(),
       isAvailable: classroom.isAvailable
     });
     setIsAddDialogOpen(true);
+  };
+
+  const toggleEquipment = (equipment: string) => {
+    setFormData(prev => ({
+      ...prev,
+      equipment: prev.equipment.includes(equipment)
+        ? prev.equipment.filter(eq => eq !== equipment)
+        : [...prev.equipment, equipment]
+    }));
+  };
+
+  const removeEquipment = (equipment: string) => {
+    setFormData(prev => ({
+      ...prev,
+      equipment: prev.equipment.filter(eq => eq !== equipment)
+    }));
   };
 
   const handleDeleteClick = (classroom: Classroom) => {
@@ -275,13 +290,48 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
                   <div className="space-y-2">
                     <Label htmlFor="equipment">Equipment</Label>
-                    <Textarea
-                      id="equipment"
-                      placeholder="e.g., Projector, Whiteboard, AC (separate with commas)"
-                      value={formData.equipment}
-                      onChange={(e) => setFormData(prev => ({ ...prev, equipment: e.target.value }))}
-                      rows={3}
-                    />
+                    <Select value="" onValueChange={toggleEquipment}>
+                      <SelectTrigger id="equipment">
+                        <SelectValue placeholder="Select equipment to add..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EQUIPMENT_OPTIONS.map((equipment) => (
+                          <SelectItem 
+                            key={equipment} 
+                            value={equipment}
+                            disabled={formData.equipment.includes(equipment)}
+                          >
+                            <div className="flex items-center space-x-2">
+                              {getIconForEquipment(equipment)}
+                              <span>{equipment}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {/* Selected Equipment Tags */}
+                    {formData.equipment.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-gray-50">
+                        {formData.equipment.map((eq) => (
+                          <Badge 
+                            key={eq} 
+                            variant="secondary" 
+                            className="text-xs flex items-center space-x-1 pr-1"
+                          >
+                            {getIconForEquipment(eq)}
+                            <span>{eq}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeEquipment(eq)}
+                              className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -349,7 +399,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           ) : (
                             classroom.equipment.slice(0, 3).map((eq, index) => (
                               <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
-                                {equipmentIcons[eq] && <span>{equipmentIcons[eq]}</span>}
+                                {getIconForEquipment(eq)}
                                 <span>{eq}</span>
                               </Badge>
                             ))
