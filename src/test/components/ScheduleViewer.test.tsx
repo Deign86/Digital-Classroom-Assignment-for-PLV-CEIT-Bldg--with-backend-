@@ -334,15 +334,24 @@ describe('ScheduleViewer', () => {
       const user = userEvent.setup();
       render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
+      // Find the cancel button by looking for the X icon and button combination
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
-        btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
-      );
+      const cancelButton = buttons.find(btn => {
+        // Look for button that has "Cancel" text or an X icon (svg) as child
+        const hasSvg = btn.querySelector('svg');
+        const hasCorrectText = btn.textContent?.includes('Cancel');
+        const notKeepButton = !btn.textContent?.includes('Keep');
+        return (hasCorrectText || hasSvg) && notKeepButton;
+      });
       
-      expect(cancelButton).toBeDefined();
+      // Skip test if no cancel button is found (no schedules for today)
+      if (!cancelButton) {
+        expect(cancelButton).toBeDefined(); // This will fail with a clear message
+        return;
+      }
       
       // Click cancel button to open dialog
-      await user.click(cancelButton!);
+      await user.click(cancelButton);
       
       // Wait for dialog to open and find textarea
       const textarea = await screen.findByLabelText(/cancellation reason/i);
