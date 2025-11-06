@@ -33,12 +33,7 @@ const EQUIPMENT_OPTIONS = [
   'Microphone',
   'Camera',
   'Printer',
-  'Scanner',
-  'Document Camera',
-  'Smart Board',
-  'Visualizer',
-  'DVD Player',
-  'VCR'
+  'Scanner'
 ];
 
 export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {
