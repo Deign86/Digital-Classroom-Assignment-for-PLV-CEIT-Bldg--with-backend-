@@ -1095,10 +1095,8 @@ npm run predeploy    # Automated pre-deployment build
 - **Code Splitting**: Automatic route-based code splitting with Vite
 - **Lazy Loading**: Heavy components (dashboards, forms) loaded on demand
 - **Tree Shaking**: Dead code elimination for minimal bundle size
-- **Image Optimization**: Automatic image compression and format conversion
 - **Caching Strategy**: Aggressive caching with proper cache invalidation
-- **CDN Integration**: Global content delivery through Vercel Edge Network
-- **Service Worker**: PWA-ready with FCM service worker for offline capability
+- **Service Worker**: PWA-ready with FCM service worker for push notifications
 
 ### Real-time Performance
 - **Optimistic Updates**: Instant UI feedback before server confirmation
@@ -1144,7 +1142,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 
 **Built by**: [Deign](https://github.com/Deign86)  
 **Repository**: [GitHub - Digital Classroom Assignment System](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  
-**Latest Stable**: `latest-stable-build-v2`  
+**Latest Stable**: `stable-v3` (merged to master)  
 **Contact**: Available via GitHub Issues and Pull Requests
 
 ### Development Timeline
