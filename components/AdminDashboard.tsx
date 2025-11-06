@@ -34,6 +34,7 @@ const AdminReports = React.lazy(() => import('./AdminReports'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import ThemeToggle from './ThemeToggle';
 const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
 /* spinner removed by request; fallbacks reverted to text */
 import { userService, adminDeleteUser } from '../lib/firebaseService';
@@ -153,9 +154,9 @@ export default function AdminDashboard({
     .slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-1">
@@ -163,14 +164,14 @@ export default function AdminDashboard({
                 <Building2 className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">PLV CEIT Admin Dashboard</h1>
-                <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">Classroom Assignment Management System</p>
+                <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-foreground truncate">PLV CEIT Admin Dashboard</h1>
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground hidden sm:block truncate">Classroom Assignment Management System</p>
               </div>
             </div>
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 lg:space-x-4 flex-shrink-0">
               <div className="hidden md:block text-right">
-                <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
-                <p className="text-xs text-gray-500 whitespace-nowrap">
+                <p className="text-xs sm:text-sm md:text-base font-medium text-foreground whitespace-nowrap">{user.name}</p>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
                   {user.departments && user.departments.length >= 2 
                     ? `${abbreviateDepartments(user.departments)} • ${user.email}`
                     : user.department 
@@ -181,6 +182,7 @@ export default function AdminDashboard({
               </div>
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                <ThemeToggle />
                 <div className="transition-transform hover:scale-105 active:scale-95">
                   <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200 text-xs sm:text-sm">
                     <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1.5 md:mr-2" />

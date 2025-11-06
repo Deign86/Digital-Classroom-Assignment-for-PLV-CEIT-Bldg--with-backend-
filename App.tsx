@@ -1700,12 +1700,12 @@ export default function App() {
             <div className="flex-1">
             {/* Top-level shared loader overlay */}
             {overlayVisible ? (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 dark:bg-background/95">
                 <div className="text-center">
                   <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
                     <div className="text-white text-lg font-bold">PLV</div>
                   </div>
-                  <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
+                  <p className="text-foreground">{overlayMessage ?? 'Loading...'}</p>
                 </div>
               </div>
             ) : null}

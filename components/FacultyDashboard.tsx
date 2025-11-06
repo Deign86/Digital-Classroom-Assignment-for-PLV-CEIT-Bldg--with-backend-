@@ -31,6 +31,7 @@ const FacultySchedule = React.lazy(() => import('./FacultySchedule'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import ThemeToggle from './ThemeToggle';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
 interface FacultyDashboardProps {
@@ -239,9 +240,9 @@ export default function FacultyDashboard({
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b border-border">
         <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-shrink">
@@ -249,14 +250,14 @@ export default function FacultyDashboard({
                 <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 text-blue-600" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">Faculty Dashboard</h1>
-                <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">PLV CEIT Classroom Management</p>
+                <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-foreground truncate">Faculty Dashboard</h1>
+                <p className="text-xs sm:text-sm md:text-base text-muted-foreground hidden sm:block truncate">PLV CEIT Classroom Management</p>
               </div>
             </div>
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 flex-shrink-0">
               <div className="hidden md:block text-right min-w-0">
-                <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 truncate max-w-[200px] lg:max-w-[280px]">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate max-w-[200px] lg:max-w-[280px]">
+                <p className="text-xs sm:text-sm md:text-base font-medium text-foreground truncate max-w-[200px] lg:max-w-[280px]">{user.name}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px] lg:max-w-[280px]">
                   {user.departments && user.departments.length >= 2 
                     ? abbreviateDepartments(user.departments)
                     : user.department
@@ -265,6 +266,7 @@ export default function FacultyDashboard({
               </div>
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                <ThemeToggle />
                 <div className="transition-transform hover:scale-105 active:scale-95">
                   <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200 text-xs sm:text-sm">
                     <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1.5 md:mr-2" />
