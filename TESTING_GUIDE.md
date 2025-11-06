@@ -1433,7 +1433,58 @@ If you encounter any issues with the test suite:
 
 ---
 
-**Last Updated**: November 6, 2025  
+## 🆕 Feature-Specific Testing
+
+### Classroom Disable Warning Feature (v3.1.0)
+
+For comprehensive manual testing of the Classroom Disable Warning feature, refer to:
+
+📋 **[TEST_CASES_CLASSROOM_DISABLE_WARNING.md](TEST_CASES_CLASSROOM_DISABLE_WARNING.md)**
+
+This document includes:
+- ✅ **30 detailed test cases** covering all scenarios
+- ✅ **Test execution checklist** and environment setup
+- ✅ **Bug report template** for standardized issue reporting
+- ✅ **Regression testing guidelines** after fixes
+- ✅ **8 testing categories**: Basic functionality, notifications, edge cases, validation, error handling, etc.
+
+**Quick Test Verification:**
+```bash
+# 1. Create test data:
+#    - Test classroom (TEST-101)
+#    - Multiple faculty accounts
+#    - Approved bookings for future dates
+
+# 2. Test basic flow:
+#    - Login as admin
+#    - Attempt to disable classroom with bookings
+#    - Verify warning dialog appears
+#    - Confirm disable with reason
+#    - Login as faculty
+#    - Verify notification received
+
+# 3. Expected results:
+#    ✓ Warning dialog shows affected reservations
+#    ✓ Faculty receives in-app notification
+#    ✓ Push notification sent (if enabled)
+#    ✓ Amber warning icon in notification center
+```
+
+**Test Priorities:**
+- 🔴 **Critical**: TC-009 (In-app notification delivery)
+- 🟠 **High**: TC-001-005, TC-010-012, TC-013-015, TC-018, TC-022-023, TC-026
+- 🟡 **Medium**: All remaining test cases
+- 🟢 **Low**: TC-008, TC-017, TC-021, TC-024
+
+**Browser Compatibility:**
+- ✅ Chrome 90+ (Full support including push)
+- ✅ Firefox 88+ (Full support including push)
+- ✅ Safari 14+ (Push support Safari 16.4+)
+- ✅ Edge 90+ (Full support including push)
+
+---
+
+**Last Updated**: November 7, 2025  
 **Test Suite Version**: 1.0.0  
 **Total Tests**: 580 passing  
 **Maintained by**: [Deign](https://github.com/Deign86)

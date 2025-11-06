@@ -77,6 +77,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [affectedBookings, setAffectedBookings] = useState<BookingRequest[]>([]);
   const [affectedSchedules, setAffectedSchedules] = useState<Schedule[]>([]);
   const [disableReason, setDisableReason] = useState('');
+  const [disabling, setDisabling] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -395,7 +396,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const handleDisableConfirm = async () => {
     if (!classroomToDisable) return;
     
+    // Validate reason is provided
+    if (!disableReason.trim()) {
+      toast.error('Please provide a reason for disabling the classroom');
+      return;
+    }
+    
+    setDisabling(true);
     await performAvailabilityToggle(classroomToDisable.id, false, disableReason);
+    setDisabling(false);
     
     // Reset state
     setDisableWarningOpen(false);
@@ -844,10 +853,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </div>
             )}
 
-            {/* Optional Reason Field */}
+            {/* Required Reason Field */}
             <div className="space-y-2 pt-2 border-t">
               <Label htmlFor="disable-reason">
-                Reason for disabling (optional)
+                Reason for disabling *
                 <span className="text-sm text-gray-500 font-normal ml-2">
                   This will be included in the notification
                 </span>
@@ -859,7 +868,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 onChange={(e) => setDisableReason(e.target.value)}
                 maxLength={200}
                 rows={3}
+                required
+                className={!disableReason.trim() && disableReason.length > 0 ? 'border-red-500' : ''}
               />
+              {!disableReason.trim() && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Reason is required to notify affected faculty
+                </p>
+              )}
               <p className="text-xs text-gray-500">
                 {disableReason.length}/200 characters
               </p>
@@ -877,15 +894,27 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleDisableCancel}>
+            <Button 
+              variant="outline" 
+              onClick={handleDisableCancel}
+              disabled={disabling}
+            >
               Cancel
             </Button>
             <Button 
               variant="destructive" 
               onClick={handleDisableConfirm}
               className="bg-amber-600 hover:bg-amber-700"
+              disabled={!disableReason.trim() || disabling}
             >
-              Disable Classroom & Notify
+              {disabling ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Disabling...
+                </>
+              ) : (
+                'Disable Classroom & Notify'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -38,7 +38,16 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
   - Secure account deletion with data cleanup
 
 ### 👨‍💼 **Admin Dashboard**
-- **Classroom Management**: Full CRUD operations with capacity and equipment tracking
+- **Classroom Management**: 
+  - Full CRUD operations with capacity and equipment tracking
+  - Inline validation with character limits and capacity constraints (1-200)
+  - Real-time input sanitization
+  - **Smart Disable Warning**: 
+    - Automatic detection of active/upcoming reservations when disabling classrooms
+    - Comprehensive warning modal showing all affected bookings and schedules
+    - Optional reason field for transparency
+    - Automatic notification to all affected faculty members
+    - In-app and push notifications with amber warning icon
 - **Reservation Approval**: Review, approve, reject requests with admin feedback
 - **Conflict Detection**: Real-time scheduling conflict prevention
 - **User Management**: 
@@ -102,7 +111,12 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
   - Centralized notification management interface
   - Read/unread status tracking
   - Acknowledge individual or all notifications
-  - Notification type filtering (approved, rejected, info, cancelled)
+  - Notification type filtering (approved, rejected, info, cancelled, classroom_disabled)
+  - **Classroom Disable Alerts**: 
+    - Automatic notifications when reserved classroom is disabled
+    - Amber warning icon for high-priority alerts
+    - Admin reason included in notification message
+    - Contact admin call-to-action for affected reservations
 - **Push Notifications (FCM)**: 
   - Browser and device push alerts
   - Background notification support
@@ -1267,6 +1281,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 - ✅ **README.md**: Complete rewrite with comprehensive feature documentation
 - ✅ **FIREBASE_DEPLOYMENT_GUIDE.md**: Step-by-step Firebase setup
 - ✅ **BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md**: Security feature documentation
+- ✅ **CLASSROOM_DISABLE_WARNING_FEATURE.md**: Classroom disable notification system
 - ✅ **Cloud Functions DEPLOYMENT_GUIDE.md**: Function deployment instructions
 - ✅ **TESTING_GUIDE.md**: Testing strategies and best practices
 
@@ -1290,6 +1305,32 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 ---
 
 ### Previous Versions
+
+#### v3.1.0 (Latest - Classroom Disable Warning Feature)
+- ✅ **Smart Classroom Disable Warning System**:
+  - Automatic detection of active/upcoming reservations when admin disables classroom
+  - Comprehensive warning modal showing all affected bookings and schedules
+  - Optional reason field for admin transparency (200 char limit)
+  - Automatic in-app and push notifications to all affected faculty
+  - Amber warning icon for classroom_disabled notification type
+  - Handles edge cases: past reservations ignored, unique faculty notifications
+  - Scrollable lists for long reservation lists
+  - Information box explaining next steps for faculty
+- ✅ **Enhanced Classroom Management Validation**:
+  - Inline validation with real-time feedback
+  - Capacity limits enforced (1-200 students)
+  - Character limits: Room name (50), Building (100)
+  - Input sanitization to prevent XSS attacks
+  - Visual feedback with error messages and character counters
+  - Submit button disabled when validation fails
+- ✅ **Notification System Enhancement**:
+  - New 'classroom_disabled' notification type
+  - Warning icon visual indicator in notification center
+  - Server-side notification creation to prevent self-notifications
+- ✅ **Documentation**:
+  - Complete feature documentation (CLASSROOM_DISABLE_WARNING_FEATURE.md)
+  - README.md updates with new features
+  - Test case documentation
 
 #### v2.1.0 (Firebase Edition)
 - Initial Firebase migration from Supabase
@@ -1315,8 +1356,8 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 
 **⭐ Star this repository if you find it helpful!**
 
-**Last Updated**: November 6, 2025  
-**Version**: 3.0.0 (Stable v3 - Production Ready)  
+**Last Updated**: November 7, 2025  
+**Version**: 3.1.0 (Latest - Classroom Disable Warning Feature)  
 **Status**: ✅ Actively Maintained  
 **Branch**: `stable-v3` (Recommended)
 
