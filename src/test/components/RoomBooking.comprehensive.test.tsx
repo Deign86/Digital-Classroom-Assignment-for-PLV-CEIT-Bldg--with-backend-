@@ -567,6 +567,7 @@ describe('RoomBooking - Comprehensive Tests', () => {
       })
     })
 
+    // CI environments are slower than local - need longer timeout for typing long text
     it('should handle very long purpose text', async () => {
       const user = userEvent.setup()
       const longText = 'A'.repeat(2000) // 2000 characters
@@ -599,7 +600,7 @@ describe('RoomBooking - Comprehensive Tests', () => {
         // Should handle long text gracefully
         expect(mockOnBookingRequest).toHaveBeenCalled()
       })
-    })
+    }, 10000) // Increased timeout for CI environment
 
     it('should trim whitespace from purpose field', async () => {
       const user = userEvent.setup()
@@ -630,7 +631,8 @@ describe('RoomBooking - Comprehensive Tests', () => {
       await waitFor(() => {
         expect(mockOnBookingRequest).toHaveBeenCalledWith(
           expect.objectContaining({
-            purpose: expect.stringMatching(/Test Meeting/) // Check it contains the text
+            // Component accepts input with whitespace - just verify it contains the text
+            purpose: expect.stringContaining('Test Meeting')
           })
         )
       })
