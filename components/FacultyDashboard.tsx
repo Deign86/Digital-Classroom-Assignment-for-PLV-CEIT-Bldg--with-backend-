@@ -257,7 +257,7 @@ export default function FacultyDashboard({
               <div className="hidden md:block text-right min-w-0">
                 <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 truncate max-w-[200px] lg:max-w-[280px]">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate max-w-[200px] lg:max-w-[280px]">
-                  {user.departments && user.departments.length > 1 
+                  {user.departments && user.departments.length >= 2 
                     ? abbreviateDepartments(user.departments)
                     : user.department
                   } • {user.email}

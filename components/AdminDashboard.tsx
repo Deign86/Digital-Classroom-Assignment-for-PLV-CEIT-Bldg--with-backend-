@@ -171,7 +171,7 @@ export default function AdminDashboard({
               <div className="hidden md:block text-right">
                 <p className="text-xs sm:text-sm md:text-base font-medium text-gray-900 whitespace-nowrap">{user.name}</p>
                 <p className="text-xs text-gray-500 whitespace-nowrap">
-                  {user.departments && user.departments.length > 1 
+                  {user.departments && user.departments.length >= 2 
                     ? `${abbreviateDepartments(user.departments)} • ${user.email}`
                     : user.department 
                       ? `${user.department} • ${user.email}`
