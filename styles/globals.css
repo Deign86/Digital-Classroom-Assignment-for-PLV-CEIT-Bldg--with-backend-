@@ -998,6 +998,17 @@ html {
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
 }
 
+/* Dark mode styling for reCAPTCHA badge */
+.dark .grecaptcha-badge {
+  background: rgba(30, 30, 30, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .grecaptcha-badge iframe {
+  filter: invert(0.9) hue-rotate(180deg) !important;
+}
+
 /* Hide badge when user is authenticated (body will have this class after login) */
 body.authenticated .grecaptcha-badge {
   display: none !important;

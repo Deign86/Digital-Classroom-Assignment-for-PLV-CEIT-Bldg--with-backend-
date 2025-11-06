@@ -440,11 +440,11 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                     };
 
                     const getBadgeClass = () => {
-                      if (isPast) return 'ml-2 text-xs border-gray-300 text-gray-600 bg-gray-50';
+                      if (isPast) return 'ml-2 text-xs border-border text-muted-foreground bg-muted/50';
                       switch (conflictType) {
-                        case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
-                        case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
-                        case 'both': return 'ml-2 text-xs border-orange-300 text-orange-600 bg-orange-50';
+                        case 'pending': return 'ml-2 text-xs border-yellow-300 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-950/30';
+                        case 'confirmed': return 'ml-2 text-xs border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30';
+                        case 'both': return 'ml-2 text-xs border-orange-300 dark:border-orange-800 text-orange-600 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/30';
                         default: return '';
                       }
                     };
@@ -563,7 +563,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
               
               {/* Selected Equipment Tags */}
               {searchFilters.equipment.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-gray-50">
+                <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-muted/30">
                   {searchFilters.equipment.map((eq) => (
                     <Badge 
                       key={eq} 
@@ -575,7 +575,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                       <button
                         type="button"
                         onClick={() => removeEquipment(eq)}
-                        className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                        className="ml-1 hover:bg-muted rounded-full p-0.5"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -646,11 +646,11 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
 
                       {/* Location & Capacity */}
                       <div className="space-y-2">
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <MapPin className="h-4 w-4" />
                           <span>{classroom.building}, Floor {classroom.floor}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <Users className="h-4 w-4" />
                           <span>{classroom.capacity} seats</span>
                         </div>
@@ -659,7 +659,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                       {/* Equipment */}
                       {classroom.equipment.length > 0 && (
                         <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-700">Equipment:</p>
+                          <p className="text-sm font-medium text-foreground">Equipment:</p>
                           <div className="flex flex-wrap gap-1">
                             {classroom.equipment.map((eq, index) => (
                               <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
