@@ -15,17 +15,22 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
-import { authService } from '../lib/firebaseService';
+import { authService, userService } from '../lib/firebaseService';
+import { pushService } from '../lib/pushService';
+import { Switch } from './ui/switch';
 
 interface ProfileSettingsProps {
   user: User;
+  onTogglePush?: (enabled: boolean) => Promise<any> | void;
 }
 
-export default function ProfileSettings({ user }: ProfileSettingsProps) {
+export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsProps) {
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -36,41 +41,125 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [errors, setErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [pushEnabled, setPushEnabled] = useState<boolean>(() => !!(user as any).pushEnabled);
+  const [pushToken, setPushToken] = useState<string | null>(null);
+  const [isTogglingPush, setIsTogglingPush] = useState(false);
+  const [pushSupported, setPushSupported] = useState<boolean>(true);
 
-  const validatePassword = (): string | null => {
-    if (passwordData.newPassword.length < 8) {
-      return 'Password must be at least 8 characters long';
+  // Keep local state in sync when the parent `user` prop updates (for example after refresh)
+  React.useEffect(() => {
+    try {
+      setPushEnabled(!!(user as any).pushEnabled);
+    } catch (err) {
+      // If something odd happens, keep current local state and log for diagnostics
+      console.warn('Failed to sync pushEnabled from user prop:', err);
+    }
+  }, [user?.pushEnabled]);
+
+  // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
+  React.useEffect(() => {
+    try {
+      const supported = pushService.isPushSupported ? pushService.isPushSupported() : true;
+      setPushSupported(!!supported);
+    } catch (e) {
+      setPushSupported(false);
+    }
+  }, []);
+
+  const validatePassword = (): boolean => {
+    const newErrors = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    };
+
+    let isValid = true;
+
+    // Validate current password
+    if (!passwordData.currentPassword) {
+      newErrors.currentPassword = 'Current password is required';
+      isValid = false;
     }
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      return 'Passwords do not match';
+    // Validate new password
+    if (!passwordData.newPassword) {
+      newErrors.newPassword = 'New password is required';
+      isValid = false;
+    } else if (passwordData.newPassword.length < 8) {
+      newErrors.newPassword = 'Password must be at least 8 characters long';
+      isValid = false;
+    } else {
+      const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
+      const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
+      const hasNumber = /[0-9]/.test(passwordData.newPassword);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword);
+
+      if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+        newErrors.newPassword = 'Password must contain uppercase, lowercase, number, and special character';
+        isValid = false;
+      } else if (passwordData.newPassword === passwordData.currentPassword) {
+        newErrors.newPassword = 'New password cannot be the same as the current password';
+        isValid = false;
+      }
     }
 
-    if (passwordData.newPassword === passwordData.currentPassword) {
-      return 'New password cannot be the same as the current password.';
+    // Validate confirm password
+    if (!passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
     }
 
-    const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
-    const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
-    const hasNumber = /[0-9]/.test(passwordData.newPassword);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword);
+    setErrors(newErrors);
+    return isValid;
+  };
 
-    if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
-      return 'Password must contain uppercase, lowercase, number, and special character';
-    }
-
-    return null;
+  // Sanitize a password string coming from paste: trim, remove newlines/tabs and zero-width chars
+  const sanitizePassword = (pwd: string): string => {
+    if (!pwd) return pwd;
+    // Remove newline/tab characters
+    let cleaned = pwd.replace(/[\r\n\t]/g, '');
+    // Remove common zero-width/invisible characters
+    cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    // Trim leading/trailing whitespace
+    cleaned = cleaned.trim();
+    return cleaned;
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validationError = validatePassword();
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-    // Only show the confirmation dialog if validation passes
-    setShowConfirmDialog(true);
+    
+    // Clear previous errors
+    setErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+
+    // Automatically sanitize pasted/typed passwords before validation
+    const sanitizedNew = sanitizePassword(passwordData.newPassword);
+    const sanitizedConfirm = sanitizePassword(passwordData.confirmPassword);
+
+    // Update form values to reflect sanitized strings (so the UI shows the cleaned value)
+    setPasswordData((prev) => ({ ...prev, newPassword: sanitizedNew, confirmPassword: sanitizedConfirm }));
+
+    // Validate with a slight delay to ensure state is updated
+    setTimeout(() => {
+      const isValid = validatePassword();
+      if (!isValid) {
+        return;
+      }
+
+      // Only show the confirmation dialog if validation passes
+      setShowConfirmDialog(true);
+    }, 0);
   };
 
   const handleConfirmPasswordChange = async () => {
@@ -121,23 +210,63 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
     }
   };
 
-  const handleRequestPasswordReset = async () => {
+  const handleTogglePush = async (enabled: boolean) => {
+    setIsTogglingPush(true);
     try {
-      const result = await authService.resetPassword(user.email);
+      if (!pushSupported) {
+        throw new Error('Push-not-supported');
+      }
 
-      if (!result.success) {
-        toast.error('Failed to send reset email', {
-          description: result.message
-        });
+      // Prefer parent handler when present (await it). Parent may handle push token lifecycle and update user record.
+      if (typeof onTogglePush === 'function') {
+        const res: any = await onTogglePush(enabled);
+        // If parent handler returns an object with explicit failure, surface it
+        if (res && res.success === false) {
+          throw new Error(res.message || 'Failed to change push preference');
+        }
+        // If parent provided an updated pushEnabled value, use it
+        if (res && typeof res.pushEnabled === 'boolean') {
+          setPushEnabled(res.pushEnabled);
+        } else {
+          // best-effort: assume success and set local flag
+          setPushEnabled(!!enabled);
+        }
+        return;
+      }
+
+      // Local fallback behaviour: manage push tokens and update user via userService
+      if (enabled) {
+        const res = await pushService.enablePush();
+        if (res.success && res.token) {
+          setPushToken(res.token);
+          await userService.update(user.id, { ...(user as any), pushEnabled: true });
+          setPushEnabled(true);
+        } else {
+          throw new Error(res.message || 'Failed to enable push');
+        }
       } else {
-        toast.success('Password reset email sent!', {
-          description: `Check your inbox at ${user.email}`,
-          duration: 6000
-        });
+        // try to get current token if we don't have it
+        const current = pushToken || await pushService.getCurrentToken();
+        if (current) {
+          await pushService.disablePush(current);
+        }
+        await userService.update(user.id, { ...(user as any), pushEnabled: false });
+        setPushEnabled(false);
+        setPushToken(null);
       }
     } catch (err) {
-      console.error('Password reset request error:', err);
-      toast.error('An error occurred');
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Push toggle error:', msg);
+      if (msg === 'Push-not-supported' || /not supported/i.test(msg)) {
+        toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
+      } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
+        toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
+      } else {
+        // generic fallback
+        toast.error('Push notification change failed');
+      }
+    } finally {
+      setIsTogglingPush(false);
     }
   };
 
@@ -214,6 +343,44 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
         </CardContent>
       </Card>
 
+      {/* Push Notification Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notification Preferences
+          </CardTitle>
+          <CardDescription>
+            Manage browser and device push notifications for important updates
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Browser & Device Push</p>
+              <p className="text-sm text-muted-foreground">Receive push notifications even when the app is closed (via browser/service worker).</p>
+            </div>
+            <div>
+              <Switch
+                checked={pushEnabled}
+                onCheckedChange={(val) => handleTogglePush(!!val)}
+                aria-label="Enable push notifications"
+                disabled={isTogglingPush || !pushSupported}
+              />
+              {isTogglingPush && (
+                <span className="inline-flex items-center">
+                  <Loader2 className="h-4 w-4 inline-block ml-2 text-gray-500 animate-spin" />
+                  <span className="sr-only">Updating push preference</span>
+                </span>
+              )}
+            </div>
+          </div>
+          {!pushSupported && (
+            <p className="mt-2 text-xs text-muted-foreground">Push notifications are not supported in this browser or device. On iOS use Safari 16.4+ and enable Web Push in system settings.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Change Password Card */}
       <Card>
         <CardHeader>
@@ -256,18 +423,32 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type={showCurrentPassword ? 'text' : 'password'}
                     placeholder="Enter your current password"
                     value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                    className="pl-10 pr-10"
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }));
+                      if (errors.currentPassword) {
+                        setErrors(prev => ({ ...prev, currentPassword: '' }));
+                      }
+                    }}
+                    className={`pl-10 pr-10 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    aria-pressed={showCurrentPassword}
+                    title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
                   >
-                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showCurrentPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
                 </div>
+                {errors.currentPassword && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.currentPassword}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -279,19 +460,32 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter new password"
                     value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                    className="pl-10 pr-10"
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, newPassword: e.target.value }));
+                      if (errors.newPassword) {
+                        setErrors(prev => ({ ...prev, newPassword: '' }));
+                      }
+                    }}
+                    className={`pl-10 pr-10 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+                    aria-pressed={showPassword}
+                    title={showPassword ? 'Hide new password' : 'Show new password'}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
                 </div>
-                {passwordData.newPassword && (
+                {errors.newPassword ? (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.newPassword}
+                  </p>
+                ) : passwordData.newPassword && (
                   <p className={`text-sm font-medium ${passwordStrength.color}`}>
                     Strength: {passwordStrength.strength}
                   </p>
@@ -307,19 +501,32 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirm new password"
                     value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="pl-10 pr-10"
+                    onChange={(e) => {
+                      setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                      if (errors.confirmPassword) {
+                        setErrors(prev => ({ ...prev, confirmPassword: '' }));
+                      }
+                    }}
+                    className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-pressed={showConfirmPassword}
+                    title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
                 </div>
-                {passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword && (
+                {errors.confirmPassword ? (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.confirmPassword}
+                  </p>
+                ) : passwordData.confirmPassword && passwordData.newPassword === passwordData.confirmPassword && (
                   <p className="text-sm font-medium text-green-600 flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />
                     Passwords match
@@ -336,20 +543,10 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
               >
                 {isChangingPassword ? 'Updating...' : 'Update Password'}
               </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRequestPasswordReset}
-                disabled={isChangingPassword}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Email Reset Link
-              </Button>
             </div>
           </form>
 
-          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <AlertDialog open={showConfirmDialog} onOpenChange={(v) => { if (isChangingPassword) return; setShowConfirmDialog(v); }}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
@@ -373,12 +570,13 @@ export default function ProfileSettings({ user }: ProfileSettingsProps) {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
+                <AlertDialogCancel disabled={isChangingPassword}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
                   onClick={handleConfirmPasswordChange}
                   className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isChangingPassword}
                 >
-                  Yes, Change Password
+                  {isChangingPassword ? 'Updating…' : 'Yes, Change Password'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

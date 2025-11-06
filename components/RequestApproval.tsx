@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -7,25 +7,50 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
+import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
+import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle, Loader2 } from 'lucide-react';
+import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
+import RequestCard from './RequestCard';
+import { toast } from 'sonner';
+import { useAnnouncer } from './Announcer';
 
 interface RequestApprovalProps {
   requests: BookingRequest[];
-  onRequestApproval: (requestId: string, approved: boolean, feedback?: string) => void;
-  onCancelApproved?: (requestId: string) => void;
+  onRequestApproval: (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => Promise<void>;
+  onCancelApproved?: (requestId: string, reason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
+  userId?: string;
 }
 
-export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts }: RequestApprovalProps) {
-  const [activeTab, setActiveTab] = useState('pending');
+export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts, userId }: RequestApprovalProps) {
+  const STORAGE_KEY_BASE = 'plv:requestApproval:activeTab';
+  const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
+  const allowedTabs = ['pending', 'approved', 'rejected', 'expired'];
+  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'pending', allowedTabs));
+
+  useEffect(() => {
+    try {
+      writeStoredTab(STORAGE_KEY, activeTab);
+      // also reflect to hash for shareability
+      try { writeTabToHash(activeTab); } catch (e) { /* ignore */ }
+    } catch (err) {
+      // ignore
+    }
+  }, [activeTab, STORAGE_KEY]);
   const [selectedRequest, setSelectedRequest] = useState<BookingRequest | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState('');
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const { announce } = useAnnouncer();
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
+  // Consider a request expired if server-marked or if it's still pending but its start time is in the past
+  const expiredRequests = requests.filter(r => r.status === 'expired' || (r.status === 'pending' && isPastBookingTime(r.date, convertTo12Hour(r.startTime))));
+
+  // Pending requests exclude server-marked expired ones (status === 'expired') and time-based expired ones
+  const pendingRequests = requests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime)));
   const approvedRequests = requests.filter(r => r.status === 'approved');
   const rejectedRequests = requests.filter(r => r.status === 'rejected');
 
@@ -36,17 +61,230 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
     setIsDialogOpen(true);
   };
 
+  const toggleSelect = (id: string, checked: boolean) => {
+    setSelectedIds(prev => ({ ...prev, [id]: checked }));
+  };
+
+  const clearSelection = () => setSelectedIds({});
+
+  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
+
+  const startBulkAction = (type: 'approve' | 'reject') => {
+    setSelectedRequest(null);
+    setActionType(type);
+    setFeedback('');
+    setIsDialogOpen(true);
+  };
+
+  // Throttled concurrency runner used by multiple handlers (bulk confirm + retry)
+  const runWithConcurrency = async <T,>(
+    tasks: Array<() => Promise<T>>,
+    concurrency: number,
+    onProgress?: (processed: number, total: number) => void
+  ): Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
+    const results: Array<any> = [];
+    let index = 0;
+    let processed = 0;
+    const total = tasks.length;
+
+    const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
+      while (true) {
+        const i = index++;
+        if (i >= tasks.length) return;
+        try {
+          const value = await tasks[i]();
+          results[i] = { status: 'fulfilled', value };
+        } catch (err) {
+          results[i] = { status: 'rejected', reason: err };
+        } finally {
+          processed += 1;
+          if (onProgress) onProgress(processed, total);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
+  };
+
+  // Approved-tab bulk cancel state
+  const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
+  const approvedSelectedCount = Object.values(approvedSelectedIds).filter(Boolean).length;
+
+  const toggleApprovedSelect = (id: string, checked: boolean) => {
+    setApprovedSelectedIds(prev => ({ ...prev, [id]: checked }));
+  };
+
+  const clearApprovedSelection = () => setApprovedSelectedIds({});
+
+  const startBulkCancelApproved = () => {
+    // reuse dialog to gather feedback (required)
+    setSelectedRequest(null);
+    setActionType('reject'); // treat cancel as a reject operation for feedback purposes
+    setFeedback('');
+    setIsDialogOpen(true);
+  };
+
   const handleConfirm = () => {
+    // Determine target ids: prefer dialog-origin selection. If dialog opened by approved-tab bulk cancel,
+    // and no selectedRequest is set, and there are approvedSelectedIds, use those.
+    const pendingTargetIds = Object.keys(selectedIds).filter(id => selectedIds[id]);
+    const approvedTargetIds = Object.keys(approvedSelectedIds).filter(id => approvedSelectedIds[id]);
+
+    let targetIds: string[];
     if (selectedRequest) {
-      onRequestApproval(
-        selectedRequest.id,
-        actionType === 'approve',
-        feedback || undefined
-      );
+      targetIds = [selectedRequest.id];
+    } else if (approvedTargetIds.length > 0 && activeTab === 'approved') {
+      targetIds = approvedTargetIds;
+    } else {
+      targetIds = pendingTargetIds;
+    }
+    if (targetIds.length === 0) {
+      setIsDialogOpen(false);
+      return;
+    }
+
+    // Use a throttled runner for bulk operations so UI stays responsive and we can show progress
+    const runWithConcurrency = async <T,>(
+      tasks: Array<() => Promise<T>>,
+      concurrency: number,
+      onProgress?: (processed: number, total: number) => void
+    ) : Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
+      const results: Array<any> = [];
+      let index = 0;
+      let processed = 0;
+      const total = tasks.length;
+
+      const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
+        while (true) {
+          const i = index++;
+          if (i >= tasks.length) return;
+          try {
+            const value = await tasks[i]();
+            results[i] = { status: 'fulfilled', value };
+          } catch (err) {
+            results[i] = { status: 'rejected', reason: err };
+          } finally {
+            processed += 1;
+            if (onProgress) onProgress(processed, total);
+          }
+        }
+      });
+
+      await Promise.all(workers);
+      return results;
+    };
+
+  (async () => {
+      if (targetIds.length === 0) {
+        setIsDialogOpen(false);
+        return;
+      }
+
+      const fb = (feedback || '').trim();
+      if (actionType === 'reject' && activeTab === 'approved' && !fb) {
+        setFeedbackError('Please provide a reason for cancelling approved reservations.');
+        return setIsDialogOpen(true);
+      }
+
+      if (fb.length > 500) {
+        setFeedbackError('Reason must be 500 characters or less.');
+        return setIsDialogOpen(true);
+      }
+
+      setFeedbackError(null);
+      setIsProcessingBulk(true);
+      setBulkProgress({ processed: 0, total: targetIds.length });
+
+        const tasks = targetIds.map((id) => async () => {
+          if (activeTab === 'approved' && actionType === 'reject' && onCancelApproved) {
+            try {
+              await Promise.resolve(onCancelApproved(id, fb));
+              return { id, ok: true };
+            } catch (err) {
+              // fall back to update via onRequestApproval
+              await onRequestApproval(id, false, fb || undefined, true);
+              return { id, ok: true };
+            }
+          }
+          await onRequestApproval(id, actionType === 'approve', fb || undefined, true);
+          return { id, ok: true };
+        });
+
+      const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+
+      const succeeded: string[] = [];
+      const failed: { id: string; error?: unknown }[] = [];
+
+      results.forEach((res, idx) => {
+        const id = targetIds[idx];
+        if (res?.status === 'fulfilled') succeeded.push(id);
+        else failed.push({ id, error: res?.reason });
+      });
+
+    setBulkResults({ succeeded, failed });
+    showBulkSummary(succeeded, failed);
+
+      setIsProcessingBulk(false);
+      setBulkProgress({ processed: 0, total: 0 });
+
+      clearSelection();
+      clearApprovedSelection();
       setIsDialogOpen(false);
       setSelectedRequest(null);
       setFeedback('');
+      // Aggregated toast is handled by showBulkSummary above.
+    })();
+  };
+
+  // Bulk processing UI state
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
+  const [bulkResults, setBulkResults] = useState<{ succeeded: string[]; failed: { id: string; error?: unknown }[] }>({ succeeded: [], failed: [] });
+
+  // Show a single Sonner toast summary for bulk actions (replaces the old modal-based flow)
+  const showBulkSummary = (succeeded: string[], failed: { id: string; error?: unknown }[]) => {
+    setBulkResults({ succeeded, failed });
+    if (succeeded.length > 0 && failed.length === 0) {
+      const msg = `${succeeded.length} reservation(s) processed successfully.`;
+      toast.success(msg);
+      try { announce(msg, 'polite'); } catch (e) {}
+    } else if (succeeded.length > 0 && failed.length > 0) {
+      const msg = `${succeeded.length} processed, ${failed.length} failed.`;
+      toast.success(msg);
+      try { announce(msg, 'polite'); } catch (e) {}
+    } else {
+      const msg = 'Failed to process selected reservations.';
+      toast.error(msg);
+      try { announce(msg, 'assertive'); } catch (e) {}
     }
+  };
+
+  const retryFailed = async () => {
+    if (!bulkResults.failed.length) return;
+    setIsProcessingBulk(true);
+    const ids = bulkResults.failed.map(f => f.id);
+    setBulkProgress({ processed: 0, total: ids.length });
+
+    const tasks = ids.map((id) => async () => {
+  await onRequestApproval(id, actionType === 'approve', feedback || undefined, true);
+      return { id, ok: true };
+    });
+
+    const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error?: unknown }[] = [];
+    results.forEach((res, idx) => {
+      const id = ids[idx];
+      if (res?.status === 'fulfilled') succeeded.push(id);
+      else failed.push({ id, error: res?.reason });
+    });
+
+  setBulkResults({ succeeded, failed });
+  showBulkSummary(succeeded, failed);
+    setIsProcessingBulk(false);
+    setBulkProgress({ processed: 0, total: 0 });
   };
 
   return (
@@ -58,20 +296,48 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12">
-            <TabsTrigger value="pending" className="flex items-center gap-2">
+          {/* Desktop: regular grid tabs (visible on sm+) */}
+          <TabsList className="hidden sm:grid w-full grid-cols-4 h-12">
+            <TabsTrigger value="pending" className="flex items-center justify-center gap-2">
               <Clock className="h-4 w-4" />
               Pending ({pendingRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="approved" className="flex items-center gap-2">
+            <TabsTrigger value="approved" className="flex items-center justify-center gap-2">
               <CheckCircle className="h-4 w-4" />
               Approved ({approvedRequests.length})
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="flex items-center gap-2">
+            <TabsTrigger value="rejected" className="flex items-center justify-center gap-2">
               <XCircle className="h-4 w-4" />
               Rejected ({rejectedRequests.length})
             </TabsTrigger>
+            <TabsTrigger value="expired" className="flex items-center justify-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              Expired ({expiredRequests.length})
+            </TabsTrigger>
           </TabsList>
+
+          {/* Mobile: scrollable tab pills */}
+          <div className="sm:hidden mobile-tab-container">
+            <TabsList className="mobile-tab-scroll bg-background/80 backdrop-blur-lg border rounded-lg">
+              <TabsTrigger value="pending" className="mobile-tab-item flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Pending ({pendingRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="approved" className="mobile-tab-item flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Approved ({approvedRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="mobile-tab-item flex items-center gap-2">
+                <XCircle className="h-4 w-4" />
+                Rejected ({rejectedRequests.length})
+              </TabsTrigger>
+              <TabsTrigger value="expired" className="mobile-tab-item flex items-center gap-2">
+                <Clock className="h-4 w-4 text-gray-500" />
+                Expired ({expiredRequests.length})
+              </TabsTrigger>
+            </TabsList>
+            <div className="tab-scroll-indicator" />
+          </div>
 
           <TabsContent value="pending" className="mt-6">
             {pendingRequests.length === 0 ? (
@@ -85,17 +351,64 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
-                {pendingRequests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onApprove={() => handleAction(request, 'approve')}
-                    onReject={() => handleAction(request, 'reject')}
-                    checkConflicts={checkConflicts}
-                    status="pending"
-                  />
-                ))}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all pending requests"
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newMap: Record<string, boolean> = {};
+                        pendingRequests.forEach(r => { newMap[r.id] = checked; });
+                        setSelectedIds(newMap);
+                      }}
+                      checked={pendingRequests.length > 0 && pendingRequests.every(r => selectedIds[r.id])}
+                      className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Select all ({pendingRequests.length})</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk}>
+                      {isProcessingBulk ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {`Processing… (${bulkProgress.processed}/${bulkProgress.total})`}
+                        </span>
+                      ) : (
+                        `Approve Selected (${selectedCount})`
+                      )}
+                    </Button>
+                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk}>
+                      {isProcessingBulk ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing…
+                        </span>
+                      ) : (
+                        `Reject Selected (${selectedCount})`
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  {pendingRequests.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      onApprove={() => handleAction(request, 'approve')}
+                      onReject={() => handleAction(request, 'reject')}
+                      checkConflicts={checkConflicts}
+                      status="pending"
+                      showSelect
+                      selected={!!selectedIds[request.id]}
+                      onToggleSelect={(checked) => toggleSelect(request.id, checked)}
+                      disabled={isProcessingBulk}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </TabsContent>
@@ -112,16 +425,70 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </CardContent>
               </Card>
             ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all approved requests"
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newMap: Record<string, boolean> = {};
+                        approvedRequests.forEach(r => { newMap[r.id] = checked; });
+                        setApprovedSelectedIds(newMap);
+                      }}
+                      checked={approvedRequests.length > 0 && approvedRequests.every(r => approvedSelectedIds[r.id])}
+                      className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    />
+                    <span className="text-sm">Select all ({approvedRequests.length})</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk}>
+                      {isProcessingBulk ? 'Processing…' : `Cancel Selected (${approvedSelectedCount})`}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  {approvedRequests.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      onApprove={() => {}}
+                      onReject={() => {}}
+                      onCancelApproved={onCancelApproved}
+                      checkConflicts={checkConflicts}
+                      status="approved"
+                      showSelect
+                      selected={!!approvedSelectedIds[request.id]}
+                      onToggleSelect={(checked) => toggleApprovedSelect(request.id, checked)}
+                      disabled={isProcessingBulk}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="expired" className="mt-6">
+            {expiredRequests.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Clock className="h-16 w-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Expired Requests</h3>
+                  <p className="text-gray-500 text-center max-w-md">
+                    There are no expired pending requests.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
               <div className="grid gap-4">
-                {approvedRequests.map((request) => (
+                {expiredRequests.map((request) => (
                   <RequestCard
                     key={request.id}
                     request={request}
-                    onApprove={() => {}}
-                    onReject={() => {}}
-                    onCancelApproved={onCancelApproved}
-                    checkConflicts={checkConflicts}
-                    status="approved"
+                    status="expired"
                   />
                 ))}
               </div>
@@ -157,11 +524,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </Tabs>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+    <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
+          <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'approve' ? 'Approve' : 'Reject'} Reservation
+              {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}
             </DialogTitle>
             <DialogDescription>
               {actionType === 'approve' 
@@ -180,219 +547,49 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                   ? 'Enter any additional feedback...'
                   : 'Enter the reason for rejection...'}
                 value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v.length <= 500) {
+                    setFeedback(v);
+                    setFeedbackError(null);
+                  } else {
+                    setFeedbackError('Reason must be 500 characters or less.');
+                  }
+                }}
                 className="min-h-[100px]"
+                maxLength={500}
               />
+              <div className="flex items-center justify-end mt-1">
+                <p className="text-xs text-gray-500">{feedback.length}/500</p>
+              </div>
+              {feedbackError && <p className="text-xs text-red-600 mt-1">{feedbackError}</p>}
             </div>
           </div>
-          <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {
+                if (isProcessingBulk) return;
                 setIsDialogOpen(false);
                 setSelectedRequest(null);
                 setFeedback('');
               }}
+              disabled={isProcessingBulk}
             >
-              Cancel
+              {isProcessingBulk ? 'Processing…' : 'Cancel'}
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={actionType === 'reject' && !feedback.trim()}
-              className={actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
+              disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >
-              {actionType === 'approve' ? 'Approve Request' : 'Reject Request'}
+                {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk results are now shown as a single Sonner toast summary via showBulkSummary() */}
     </div>
-  );
-}
-
-function RequestCard({ 
-  request, 
-  onApprove, 
-  onReject,
-  onCancelApproved,
-  checkConflicts,
-  status 
-}: {
-  request: BookingRequest;
-  onApprove: () => void;
-  onReject: () => void;
-  onCancelApproved?: (requestId: string) => void;
-  checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
-  status: 'pending' | 'approved' | 'rejected';
-}) {
-  const [hasConflict, setHasConflict] = useState(false);
-
-  React.useEffect(() => {
-    const checkForConflicts = async () => {
-      try {
-        // Pass the current request ID to exclude it from conflict checking
-        const result = checkConflicts(
-          request.classroomId, 
-          request.date, 
-          request.startTime, 
-          request.endTime, 
-          false, // don't check past time
-          request.id // exclude this request from conflict check
-        );
-        if (result instanceof Promise) {
-          const conflict = await result;
-          setHasConflict(conflict);
-        } else {
-          setHasConflict(result);
-        }
-      } catch (error) {
-        console.error('Error checking conflicts:', error);
-        // In case of error, assume there might be a conflict to be safe
-        setHasConflict(true);
-      }
-    };
-
-    if (status === 'pending') {
-      checkForConflicts();
-    }
-  }, [request, checkConflicts, status]);
-
-  const borderColor = status === 'pending' 
-    ? (hasConflict ? 'border-l-red-500' : 'border-l-orange-500')
-    : status === 'approved' 
-    ? 'border-l-green-500' 
-    : 'border-l-red-500';
-
-  return (
-    <Card className={`border-l-4 ${borderColor} transition-shadow hover:shadow-md`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{request.facultyName}</CardTitle>
-            <CardDescription className="text-sm">Request ID: {request.id.slice(0, 8)}</CardDescription>
-          </div>
-          <Badge variant={
-            status === 'pending' ? 'secondary' : 
-            status === 'approved' ? 'default' : 
-            'destructive'
-          }>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Badge>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {hasConflict && status === 'pending' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-900">Scheduling Conflict</p>
-              <p className="text-xs text-red-700 mt-1">
-                This time slot conflicts with an existing booking.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 text-sm">
-            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="font-medium text-gray-900">
-              {new Date(request.date).toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 text-sm">
-            <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700">
-              {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 text-sm">
-            <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700">
-              {request.classroomName}
-            </span>
-          </div>
-
-          <div className="flex items-start gap-3 text-sm">
-            <User className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium text-gray-900">Purpose:</p>
-              <p className="text-gray-700 mt-1">{request.purpose}</p>
-            </div>
-          </div>
-        </div>
-
-        {request.adminFeedback && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-xs font-semibold text-gray-900 mb-1">Admin Feedback:</p>
-            <p className="text-sm text-gray-700">{request.adminFeedback}</p>
-          </div>
-        )}
-
-        {status === 'pending' && (
-          <div className="flex gap-3 pt-3 border-t">
-            <Button 
-              onClick={onApprove}
-              disabled={hasConflict}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Approve
-            </Button>
-            <Button 
-              onClick={onReject}
-              variant="destructive"
-              className="flex-1"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Reject
-            </Button>
-          </div>
-        )}
-        
-        {status === 'approved' && onCancelApproved && (
-          <div className="flex gap-3 pt-3 border-t">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="outline"
-                  className="flex-1 text-gray-600 hover:text-red-600 border-gray-200 hover:border-red-200 hover:bg-gray-50 transition-all duration-200"
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Cancel Booking
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Approved Booking</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to cancel this approved booking? This action cannot be undone.
-                    The faculty member will need to submit a new request if they need this classroom again.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => onCancelApproved(request.id)} 
-                    className="bg-gray-900 hover:bg-red-600 transition-colors duration-200"
-                  >
-                    Cancel Booking
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

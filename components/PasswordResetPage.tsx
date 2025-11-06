@@ -77,6 +77,15 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
     return null;
   };
 
+  // Sanitize pasted passwords (remove newlines/tabs, zero-width chars, trim)
+  const sanitizePassword = (pwd: string): string => {
+    if (!pwd) return pwd;
+    let cleaned = pwd.replace(/[\r\n\t]/g, '');
+    cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    cleaned = cleaned.trim();
+    return cleaned;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -102,7 +111,8 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
     setIsLoading(true);
 
     try {
-      const result = await authService.confirmPasswordReset(actionCode, newPassword);
+      const cleanedPassword = sanitizePassword(newPassword);
+      const result = await authService.confirmPasswordReset(actionCode, cleanedPassword);
 
       if (!result.success) {
         setIsLoading(false);
@@ -200,9 +210,11 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+                  aria-pressed={showPassword}
+                  title={showPassword ? 'Hide new password' : 'Show new password'}
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </button>
               </div>
 
@@ -261,9 +273,11 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  aria-pressed={showConfirmPassword}
+                  title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                 </button>
               </div>
               {confirmPassword && newPassword !== confirmPassword && (

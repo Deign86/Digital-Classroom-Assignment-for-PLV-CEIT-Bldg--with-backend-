@@ -5,8 +5,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi, Projector, Monitor } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour } from '../utils/timeUtils';
+import { Search, MapPin, Users, Clock, CheckCircle, XCircle, Wifi as LucideWifi } from 'lucide-react';
+import * as Phosphor from '@phosphor-icons/react';
+import Calendar from './ui/calendar';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
+import { convertTo12Hour, formatTimeRange, generateTimeSlots, convertTo24Hour, isValidTimeRange, isPastBookingTime, getValidEndTimes } from '../utils/timeUtils';
 import type { Classroom, Schedule, BookingRequest } from '../App';
 
 interface RoomSearchProps {
@@ -17,13 +20,55 @@ interface RoomSearchProps {
 
 const timeSlots = generateTimeSlots();
 
+const phosphorIndex = Phosphor as unknown as Record<string, React.ElementType | undefined>;
+const getPhosphorIcon = (names: string[]) => {
+  for (const n of names) {
+    const Comp = phosphorIndex[n] ?? phosphorIndex[`${n}Icon`];
+    if (Comp) return <Comp className="h-4 w-4" />;
+  }
+  return null;
+};
+
 const equipmentIcons: { [key: string]: React.ReactNode } = {
-  'Projector': <Projector className="h-4 w-4" />,
-  'Computer': <Monitor className="h-4 w-4" />,
-  'Computers': <Monitor className="h-4 w-4" />,
-  'WiFi': <Wifi className="h-4 w-4" />,
-  'Whiteboard': <Search className="h-4 w-4" />,
-  'TV': <Monitor className="h-4 w-4" />,
+  'Projector': getPhosphorIcon(['ProjectorScreenChart', 'Projector', 'ProjectorScreen']),
+  'Computer': getPhosphorIcon(['Monitor', 'Desktop']),
+  'Computers': getPhosphorIcon(['Monitor', 'Desktop']),
+  'WiFi': getPhosphorIcon(['Wifi', 'WifiSimple']),
+  'Whiteboard': getPhosphorIcon(['Chalkboard', 'ChalkboardSimple']) || getPhosphorIcon(['Note']),
+  'TV': getPhosphorIcon(['Television', 'Tv', 'MonitorPlay']),
+  'Podium': getPhosphorIcon(['Podium', 'Presentation', 'Microphone']) || getPhosphorIcon(['SpeakerHigh']),
+  // Common variants that may appear in classroom data
+  'Speakers': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+  'Speaker': getPhosphorIcon(['SpeakerHigh', 'SpeakerSimple']) || getPhosphorIcon(['Speaker']),
+  'Air Conditioner': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+  'AC': getPhosphorIcon(['Fan', 'FanSimple', 'Snowflake']) || null,
+};
+
+const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+// Robust lookup for equipment icons: normalized exact match, singular/plural, WiFi fallback
+const getIconForEquipment = (eq?: string) => {
+  if (!eq) return null;
+  const rawKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(eq));
+  if (rawKey) {
+    const v = equipmentIcons[rawKey];
+    if (v) return v; // only return if mapping produced an icon
+    // otherwise fall through to try singular/plural and wifi fallback
+  }
+
+  const singularAttempt = eq.endsWith('s') ? eq.slice(0, -1) : `${eq}s`;
+  const spKey = Object.keys(equipmentIcons).find(k => normalize(k) === normalize(singularAttempt));
+  if (spKey) {
+    const v = equipmentIcons[spKey];
+    if (v) return v;
+  }
+
+  // wifi fallback (only match 'wifi' to avoid collisions with words like 'whiteboard')
+  if (normalize(eq).includes('wifi')) {
+    return <LucideWifi className="h-4 w-4" />;
+  }
+
+  return null;
 };
 
 export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {
@@ -35,6 +80,45 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     equipment: ''
   });
 
+  // Defensive handlers to prevent selecting disabled times (some Select implementations
+  // may still trigger onValueChange in edge cases). These double-check business rules
+  // and ignore selections that should be disabled.
+  const handleStartTimeChange = (value: string) => {
+    if (!value) {
+      setSearchFilters(prev => ({ ...prev, startTime: '' }));
+      return;
+    }
+
+    const conflictType = getTimeSlotConflictType(value, true);
+    const isDisabled = Boolean(searchFilters.date && (conflictType !== 'none' || isPastBookingTime(searchFilters.date, value)));
+    if (isDisabled) return; // ignore disabled selections
+
+    // Clear endTime if it becomes invalid relative to the new startTime
+    setSearchFilters(prev => ({
+      ...prev,
+      startTime: value,
+      endTime: prev.endTime && isValidTimeRange(value, prev.endTime) ? prev.endTime : ''
+    }));
+  };
+
+  const handleEndTimeChange = (value: string) => {
+    if (!value) {
+      setSearchFilters(prev => ({ ...prev, endTime: '' }));
+      return;
+    }
+
+    // If a start time exists, compute valid end times and ignore selections that are not valid
+    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
+    const isDisabled = Boolean(searchFilters.startTime && !validEndTimes.includes(value));
+    if (isDisabled) return;
+
+    // Also ignore end times that cause conflicts across available classrooms
+    const conflictType = getTimeSlotConflictType(value, false);
+    if (conflictType !== 'none') return;
+
+    setSearchFilters(prev => ({ ...prev, endTime: value }));
+  };
+
   // Get minimum date (today) in local timezone to avoid offset issues
   const today = (() => {
     const now = new Date();
@@ -43,6 +127,40 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   })();
+
+  const formatISOToMDY = (iso?: string) => {
+    if (!iso) return '';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const [y, m, d] = parts;
+    return `${m}/${d}/${y}`;
+  };
+
+  const [isSmallPhone, setIsSmallPhone] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 320px) and (max-width: 425px)');
+    const update = () => setIsSmallPhone(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener('change', update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  const [dateError, setDateError] = React.useState<string | null>(null);
+  const isValidISODate = (iso?: string) => {
+    if (!iso) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+    const [yStr, mStr, dStr] = iso.split('-');
+    const y = Number(yStr); const m = Number(mStr); const d = Number(dStr);
+    if (m < 1 || m > 12) return false;
+    if (d < 1 || d > 31) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
+  };
 
   // Check if classroom is available for given time slot
   const isClassroomAvailable = (classroomId: string, date: string, startTime: string, endTime: string): boolean => {
@@ -251,19 +369,66 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="search-date">Date</Label>
-              <Input
-                id="search-date"
-                type="date"
-                min={today}
-                value={searchFilters.date}
-                onChange={(e) => setSearchFilters(prev => ({ ...prev, date: e.target.value }))}
-                onKeyDown={(e) => e.preventDefault()}
-                className="cursor-pointer"
-              />
+                {isSmallPhone ? (
+                  <div>
+                    <input
+                      id="search-date"
+                      type="date"
+                      min={today}
+                      value={searchFilters.date}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (!v) {
+                          setSearchFilters(prev => ({ ...prev, date: '' }));
+                          setDateError(null);
+                          return;
+                        }
+                        if (!isValidISODate(v)) {
+                          setDateError('Invalid date');
+                        } else if (v < today) {
+                          setDateError('Date must be today or later');
+                        } else {
+                          setDateError(null);
+                          setSearchFilters(prev => ({ ...prev, date: v }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-surface border rounded-md"
+                    />
+                    {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
+                  </div>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 bg-surface hover:bg-muted/50 border rounded-md flex items-center justify-between"
+                      >
+                        <span className={`text-sm ${searchFilters.date ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {searchFilters.date ? formatISOToMDY(searchFilters.date) : 'Select a date'}
+                        </span>
+                        <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 9l4 4 4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent>
+                      <div className="-mt-2">
+                        <Calendar
+                          value={searchFilters.date || undefined}
+                          onSelect={(iso) => {
+                            if (!iso) { setSearchFilters(prev => ({ ...prev, date: '' })); setDateError(null); return; }
+                            if (!isValidISODate(iso) || iso < today) setDateError('Invalid or past date');
+                            else { setDateError(null); setSearchFilters(prev => ({ ...prev, date: iso })); }
+                          }}
+                          min={today}
+                          className="md:w-[280px]"
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-start">Start Time</Label>
-              <Select value={searchFilters.startTime} onValueChange={(value) => setSearchFilters(prev => ({ ...prev, startTime: value }))}>
+              <Select value={searchFilters.startTime} onValueChange={handleStartTimeChange}>
                 <SelectTrigger id="search-start">
                   <SelectValue placeholder="Select start time" />
                 </SelectTrigger>
@@ -271,17 +436,24 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                   {timeSlots.map((time) => {
                     const conflictType = getTimeSlotConflictType(time, true);
                     const hasConflicts = conflictType !== 'none';
-                    
+
+                    // Mark as past if the selected date makes this time in the past
+                    const isPast = Boolean(searchFilters.date && isPastBookingTime(searchFilters.date, time));
+
+                    const isDisabled = Boolean(hasConflicts || isPast);
+
                     const getBadgeText = () => {
+                      if (isPast) return 'Past';
                       switch (conflictType) {
                         case 'pending': return 'Pending';
-                        case 'confirmed': return 'Booked';
+                        case 'confirmed': return 'Reserved';
                         case 'both': return 'Limited';
                         default: return '';
                       }
                     };
 
                     const getBadgeClass = () => {
+                      if (isPast) return 'ml-2 text-xs border-gray-300 text-gray-600 bg-gray-50';
                       switch (conflictType) {
                         case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
                         case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
@@ -289,16 +461,17 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         default: return '';
                       }
                     };
-                    
+
                     return (
                       <SelectItem 
                         key={time} 
                         value={time}
-                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                        disabled={isDisabled}
+                        className={isDisabled ? "text-gray-400 opacity-60" : ""}
                       >
                         <div className="flex items-center justify-between w-full">
                           <span>{time}</span>
-                          {hasConflicts && (
+                          {isDisabled && (
                             <Badge variant="outline" className={getBadgeClass()}>
                               {getBadgeText()}
                             </Badge>
@@ -312,52 +485,55 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
             </div>
             <div className="space-y-2">
               <Label htmlFor="search-end">End Time</Label>
-              <Select value={searchFilters.endTime} onValueChange={(value) => setSearchFilters(prev => ({ ...prev, endTime: value }))}>
+              <Select value={searchFilters.endTime} onValueChange={handleEndTimeChange} disabled={!searchFilters.startTime}>
                 <SelectTrigger id="search-end">
-                  <SelectValue placeholder="Select end time" />
+                  <SelectValue placeholder={searchFilters.startTime ? 'Select end time' : 'Select start time first'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {timeSlots.map((time) => {
-                    const isDisabled = Boolean(searchFilters.startTime && time <= searchFilters.startTime);
-                    const conflictType = !isDisabled ? getTimeSlotConflictType(time, false) : 'none';
-                    const hasConflicts = conflictType !== 'none';
-                    
-                    const getBadgeText = () => {
-                      switch (conflictType) {
-                        case 'pending': return 'Pending';
-                        case 'confirmed': return 'Booked';
-                        case 'both': return 'Limited';
-                        default: return '';
-                      }
-                    };
+                  {(() => {
+                    const validEndTimes = searchFilters.startTime ? getValidEndTimes(searchFilters.startTime, timeSlots) : timeSlots;
+                    return validEndTimes.map((time) => {
+                      const isDisabled = false; // already filtered by validEndTimes
+                      const conflictType = getTimeSlotConflictType(time, false);
+                      const hasConflicts = conflictType !== 'none';
 
-                    const getBadgeClass = () => {
-                      switch (conflictType) {
-                        case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
-                        case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
-                        case 'both': return 'ml-2 text-xs border-orange-300 text-orange-600 bg-orange-50';
-                        default: return '';
-                      }
-                    };
-                    
-                    return (
-                      <SelectItem 
-                        key={time} 
-                        value={time}
-                        disabled={isDisabled}
-                        className={hasConflicts ? "text-gray-400 opacity-60" : ""}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span>{time}</span>
-                          {hasConflicts && !isDisabled && (
-                            <Badge variant="outline" className={getBadgeClass()}>
-                              {getBadgeText()}
-                            </Badge>
-                          )}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
+                      const getBadgeText = () => {
+                        switch (conflictType) {
+                          case 'pending': return 'Pending';
+                          case 'confirmed': return 'Reserved';
+                          case 'both': return 'Limited';
+                          default: return '';
+                        }
+                      };
+
+                      const getBadgeClass = () => {
+                        switch (conflictType) {
+                          case 'pending': return 'ml-2 text-xs border-yellow-300 text-yellow-700 bg-yellow-50';
+                          case 'confirmed': return 'ml-2 text-xs border-red-300 text-red-700 bg-red-50';
+                          case 'both': return 'ml-2 text-xs border-orange-300 text-orange-600 bg-orange-50';
+                          default: return '';
+                        }
+                      };
+
+                      return (
+                        <SelectItem 
+                          key={time} 
+                          value={time}
+                          disabled={isDisabled}
+                          className={hasConflicts ? "text-gray-400 opacity-60" : ""}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>{time}</span>
+                            {hasConflicts && (
+                              <Badge variant="outline" className={getBadgeClass()}>
+                                {getBadgeText()}
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    });
+                  })()}
                 </SelectContent>
               </Select>
             </div>
@@ -464,7 +640,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                           <div className="flex flex-wrap gap-1">
                             {classroom.equipment.map((eq, index) => (
                               <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
-                                {equipmentIcons[eq] && <span>{equipmentIcons[eq]}</span>}
+                                {getIconForEquipment(eq) && <span>{getIconForEquipment(eq)}</span>}
                                 <span>{eq}</span>
                               </Badge>
                             ))}

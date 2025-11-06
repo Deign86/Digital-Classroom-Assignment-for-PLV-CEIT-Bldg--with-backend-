@@ -1,4 +1,6 @@
 import React, { Component, ReactNode } from 'react';
+import { Button } from './ui/button';
+import { logClientError } from '../lib/errorLogger';
 
 interface Props {
   children: ReactNode;
@@ -22,15 +24,51 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    // Log timeout-related errors specifically
-    if (error.message.includes('timeout') || error.message.includes('timed out')) {
-      console.error('Timeout error detected:', error);
+
+    // Best-effort write to client error log collection for debugging
+    try {
+      const payload = {
+        message: error?.message ?? String(error),
+        stack: error?.stack ?? null,
+        info: errorInfo ?? null,
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        userId: null,
+      };
+      // Fire-and-forget
+      logClientError(payload).then((id) => {
+        if (id) console.info('Logged client error id=', id);
+      });
+    } catch (e) {
+      // swallow any logging failure
+      console.warn('Failed to send client error log', e);
     }
   }
 
   render() {
     if (this.state.hasError) {
+      const supportEmail = process.env.REACT_APP_SUPPORT_EMAIL || process.env.VITE_SUPPORT_EMAIL || 'support@plv.edu';
+
+      const handleReport = async () => {
+        try {
+          const payload = {
+            message: this.state.error?.message ?? 'Unknown client error',
+            stack: this.state.error?.stack ?? null,
+            info: null,
+            url: typeof window !== 'undefined' ? window.location.href : undefined,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+            userId: null,
+          };
+          const id = await logClientError(payload);
+          const body = [`Error ID: ${id ?? 'n/a'}`, `URL: ${payload.url}`, `User agent: ${payload.userAgent}`, '', 'Please describe what you were doing when the error happened:'].join('\n');
+          // Open mail client so user can send additional context to support
+          window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent('App error report')}&body=${encodeURIComponent(body)}`;
+        } catch (e) {
+          // fallback to mailto even if logging failed
+          window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent('App error report')}`;
+        }
+      };
+
       return this.props.fallback || (
         <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-pink-50 flex items-center justify-center">
           <div className="text-center max-w-md mx-auto p-6">
@@ -41,15 +79,11 @@ export default class ErrorBoundary extends Component<Props, State> {
             <p className="text-red-600 mb-6">
               {this.state.error?.message || 'An unexpected error occurred'}
             </p>
-            <button 
-              onClick={() => {
-                this.setState({ hasError: false, error: undefined });
-                window.location.reload();
-              }}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Refresh Page
-            </button>
+            <div className="flex gap-3 justify-center">
+              <Button variant="destructive" onClick={() => { this.setState({ hasError: false, error: undefined }); window.location.reload(); }} className="px-6 py-3 rounded-lg">Reload app</Button>
+              <Button variant="outline" onClick={handleReport} className="px-6 py-3 rounded-lg">Report problem</Button>
+            </div>
+            <p className="text-sm text-gray-600 mt-4">If the issue persists, contact <a className="underline" href={`mailto:${supportEmail}`}>{supportEmail}</a> with the error ID.</p>
           </div>
         </div>
       );

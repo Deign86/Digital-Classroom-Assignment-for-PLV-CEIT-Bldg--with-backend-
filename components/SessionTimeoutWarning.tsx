@@ -68,7 +68,7 @@ export default function SessionTimeoutWarning({
         </AlertDialogHeader>
         <AlertDialogFooter className="flex gap-2">
           <Button
-            variant="outline" 
+            variant="destructive"
             onClick={onLogout}
             className="flex-1"
           >
@@ -76,7 +76,8 @@ export default function SessionTimeoutWarning({
           </Button>
           <Button 
             onClick={onExtendSession}
-            className="flex-1 bg-blue-600 hover:bg-blue-700"
+            className="flex-1"
+            variant="default"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Stay Logged In

@@ -1,8 +1,8 @@
 # Digital Classroom Assignment System
 
-> 🔥 **Firebase Edition** — A modern, production-ready classroom booking and management system built with React, TypeScript, and Firebase.
+> 🔥 **Firebase Edition** — A modern, production-ready classroom reservation and management system built with React, TypeScript, and Firebase.
 
-A comprehensive web-based classroom booking and management system for **Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology (PLV CEIT)**. Features role-based dashboards, real-time conflict detection, comprehensive reporting, Firebase authentication, and a modern Apple-inspired UI.
+A comprehensive web-based classroom reservation and management system for **Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology (PLV CEIT)**. Features role-based dashboards, real-time conflict detection, comprehensive reporting, Firebase authentication, and a modern Apple-inspired UI.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)
 
@@ -17,17 +17,17 @@ A comprehensive web-based classroom booking and management system for **Pamantas
 
 ### 👨‍💼 **Admin Dashboard**
 - **Classroom Management**: Full CRUD operations for classroom inventory
-- **Booking Approval**: Review and approve/reject booking requests with feedback
+- **Reservation Approval**: Review and approve/reject reservation requests with feedback
 - **Conflict Detection**: Automatic scheduling conflict detection and prevention
 - **User Management**: Approve faculty signups and manage user accounts
-- **Comprehensive Reports**: Generate utilization, booking, and analytics reports
+- **Comprehensive Reports**: Generate utilization, reservation, and analytics reports
 - **Real-time Updates**: Live updates of all system activities
 
-### 👨‍🏫 **Faculty Dashboard**
-- **Smart Room Booking**: Request classrooms with intelligent availability checking
+-### 👨‍🏫 **Faculty Dashboard**
+- **Smart Room Reservation**: Reserve classrooms with intelligent availability checking
 - **Advanced Search**: Filter classrooms by date, time, capacity, and equipment
 - **Schedule Management**: View personal schedules and all classroom schedules
-- **Request Tracking**: Real-time status updates on booking requests
+- **Request Tracking**: Real-time status updates on reservation requests
 - **Profile Settings**: Update personal information and account preferences
 
 ### 🏢 **Classroom & Schedule Management**
@@ -37,8 +37,8 @@ A comprehensive web-based classroom booking and management system for **Pamantas
 - Equipment tracking (TV, Projector, Whiteboard, Computer, Audio, AC)
 - Building and floor organization
 
-### 📊 **Real-time Features**
-- Live booking status updates
+-### 📊 **Real-time Features**
+- Live reservation status updates
 - Instant conflict detection
 - Real-time schedule synchronization
 - Push notifications for request approvals
@@ -159,8 +159,8 @@ A comprehensive web-based classroom booking and management system for **Pamantas
 │   ├── 🔑 LoginForm.tsx               # Authentication interface
 │   ├── 🔒 PasswordResetPage.tsx       # Password reset functionality
 │   ├── ⚙️ ProfileSettings.tsx         # User profile management
-│   ├── ✅ RequestApproval.tsx         # Booking request approval
-│   ├── 📝 RoomBooking.tsx             # Booking form with validation
+│   ├── ✅ RequestApproval.tsx         # Reservation request approval
+│   ├── 📝 RoomBooking.tsx             # Reservation form with validation
 │   ├── 🔍 RoomSearch.tsx              # Advanced classroom search
 │   ├── 📋 ScheduleViewer.tsx          # Schedule visualization
 │   ├── 👥 SignupApproval.tsx          # Faculty signup approval
@@ -306,14 +306,14 @@ A comprehensive web-based classroom booking and management system for **Pamantas
 
 ## 📊 System Workflows
 
-### 👨‍🏫 Faculty Booking Process
+### 👨‍🏫 Faculty Reservation Process
 1. **Login** → Secure authentication with Firebase Auth
 2. **Search** → Filter available classrooms by criteria
-3. **Book** → Fill detailed booking form with validation
-4. **Submit** → Real-time request submission to admin
-5. **Track** → Monitor request status with live updates
+3. **Reserve** → Fill detailed reservation form with validation
+4. **Submit** → Real-time reservation request submission to admin
+5. **Track** → Monitor reservation request status with live updates
 6. **Notification** → Receive instant approval/rejection alerts
-7. **Confirmed** → Approved booking appears in live schedules
+7. **Confirmed** → Approved reservation appears in live schedules
 
 ### 👨‍💼 Admin Approval Process
 1. **Dashboard** → Real-time view of all pending requests

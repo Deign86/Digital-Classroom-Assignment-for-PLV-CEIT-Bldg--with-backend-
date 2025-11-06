@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+/* spinner removed by request; fallbacks reverted to text */
+// Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -18,12 +20,17 @@ import {
   BookOpen,
   Settings
 } from 'lucide-react';
-import { convertTo12Hour, formatTimeRange } from '../utils/timeUtils';
-import RoomBooking from './RoomBooking';
-import RoomSearch from './RoomSearch';
-import FacultySchedule from './FacultySchedule';
-import ProfileSettings from './ProfileSettings';
+import { convertTo12Hour, convertTo24Hour, formatTimeRange, isPastBookingTime, isReasonableBookingDuration, addDaysToDateString } from '../utils/timeUtils';
+import { toast } from 'sonner';
+// Lazy-load heavier, non-critical components to reduce initial bundle size.
+const RoomBooking = React.lazy(() => import('./RoomBooking'));
+const RoomSearch = React.lazy(() => import('./RoomSearch'));
+const FacultySchedule = React.lazy(() => import('./FacultySchedule'));
+const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
+import NotificationBell from './NotificationBell';
+import NotificationCenter from './NotificationCenter';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
+import ThemeToggle from './ThemeToggle';
 
 interface FacultyDashboardProps {
   user: User;
@@ -33,7 +40,7 @@ interface FacultyDashboardProps {
   bookingRequests: BookingRequest[];
   allBookingRequests: BookingRequest[];
   onLogout: () => void;
-  onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => void;
+  onBookingRequest: (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean) => boolean | Promise<boolean>;
 }
 
@@ -48,7 +55,91 @@ export default function FacultyDashboard({
   onBookingRequest,
   checkConflicts
 }: FacultyDashboardProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const allowedTabs = ['overview','booking','search','schedule','settings'] as const;
+  type FacultyTab = typeof allowedTabs[number];
+
+  // Default to overview; don't persist last-active tab across logout/login.
+  const [activeTab, setActiveTab] = useState<FacultyTab>('overview');
+
+  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
+
+  // When user clicks "Book Similar", we store initial data and switch to booking tab
+  const [bookingInitialData, setBookingInitialData] = useState<{
+    classroomId?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    purpose?: string;
+  } | null>(null);
+
+  // Quick rebook: attempt to submit immediately, otherwise fall back to opening the booking form with prefill
+  const handleQuickRebook = async (initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+    if (!initial || !initial.classroomId || !initial.date || !initial.startTime || !initial.endTime) {
+      toast.error('Missing booking information for quick rebook.');
+      setBookingInitialData(initial);
+      toast('Form pre-filled with available information. Please review and submit.');
+      setActiveTab('booking');
+      return;
+    }
+
+    // For quick rebook, shift the booking to the same weekday next week to avoid immediate conflicts
+    const targetDate = addDaysToDateString(initial.date, 7);
+
+    // Basic validations (use the shifted date)
+    if (isPastBookingTime(targetDate, initial.startTime)) {
+      toast.error('Cannot quick-rebook a past time. Opening the booking form for adjustments.');
+      setBookingInitialData({ ...initial, date: targetDate });
+      toast('Form pre-filled with the previous booking — please review and submit.');
+      setActiveTab('booking');
+      return;
+    }
+
+    if (!isReasonableBookingDuration(initial.startTime, initial.endTime)) {
+      toast.error('Requested duration is invalid (min 30 minutes, max 8 hours). Opening form to adjust.');
+      setBookingInitialData(initial);
+      toast('Form pre-filled with the previous booking — please review and submit.');
+      setActiveTab('booking');
+      return;
+    }
+
+  const start24 = convertTo24Hour(initial.startTime);
+  const end24 = convertTo24Hour(initial.endTime);
+
+    try {
+      const conflict = await Promise.resolve(checkConflicts(initial.classroomId, targetDate, start24, end24, true));
+      if (conflict) {
+        toast.error('Time slot is no longer available. Opening booking form so you can choose another time.');
+        setBookingInitialData({ ...initial, date: targetDate });
+        toast('Form pre-filled with the previous booking — please review and submit.');
+        setActiveTab('booking');
+        return;
+      }
+
+      // Build request payload
+      const request = {
+        facultyId: user.id,
+        facultyName: user.name,
+        classroomId: initial.classroomId,
+        classroomName: (classrooms.find(c => c.id === initial.classroomId)?.name) || '',
+        date: targetDate,
+        startTime: start24,
+        endTime: end24,
+        purpose: initial.purpose || ''
+      } as Omit<BookingRequest, 'id' | 'requestDate' | 'status'>;
+
+    // Suppress the default booking toast and show a specialized quick-rebook toast
+    await Promise.resolve(onBookingRequest(request, true));
+    toast.success('Reservation request submitted (Quick Rebook).');
+    } catch (err) {
+      console.error('Quick rebook failed', err);
+      toast.error('Failed to submit quick rebook. Opening booking form for manual retry.');
+      setBookingInitialData(initial);
+      toast('Form pre-filled with the previous booking — please review and submit.');
+      setActiveTab('booking');
+    }
+  };
+
+  // Tab persistence removed: no storage side-effects for active tab
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -62,8 +153,9 @@ export default function FacultyDashboard({
     return scheduleDate >= today && s.status === 'confirmed';
   }).length;
 
-  const pendingRequests = bookingRequests.filter(r => r.status === 'pending').length;
+  const pendingRequests = bookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
   const approvedRequests = bookingRequests.filter(r => r.status === 'approved').length;
+  const rejectedRequests = bookingRequests.filter(r => r.status === 'rejected').length;
   const totalRequests = bookingRequests.length;
 
   const getStatusBadgeVariant = (status: string) => {
@@ -96,6 +188,9 @@ export default function FacultyDashboard({
     }
   };
 
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -116,19 +211,38 @@ export default function FacultyDashboard({
                 <p className="text-sm font-medium text-gray-900 truncate max-w-[280px]">{user.name}</p>
                 <p className="text-xs text-gray-500 truncate max-w-[280px]">{user.department} • {user.email}</p>
               </div>
-              <div className="transition-transform hover:scale-105 active:scale-95">
-                <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
-                  <LogOut className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
+              <div className="flex items-center space-x-2">
+                <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
+                <ThemeToggle compact />
+                <div className="transition-transform hover:scale-105 active:scale-95">
+                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200">
+                    <LogOut className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </Button>
+                </div>
               </div>
+              {showNotifications && (
+                <div className="fixed right-4 top-20 z-50">
+                  <NotificationCenter
+                    userId={user.id}
+                    onClose={() => setShowNotifications(false)}
+                    onAcknowledgeAll={(newCount) => {
+                      // Immediately show the new unread count on the bell. If null, force to 0.
+                      setForceBellUnread(typeof newCount === 'number' ? newCount : 0);
+                      // Clear the forced value after 1.5s so the real-time listener resumes control
+                      setTimeout(() => setForceBellUnread(null), 1500);
+                      setShowNotifications(false);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
 
       <div className="p-4 sm:p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FacultyTab)} className="space-y-4 sm:space-y-6">
           {/* Desktop Tab Layout */}
           <TabsList className="hidden sm:flex w-full h-12">
             <TabsTrigger value="overview" className="flex-1 px-4 py-2">
@@ -137,7 +251,7 @@ export default function FacultyDashboard({
             </TabsTrigger>
             <TabsTrigger value="booking" className="flex-1 px-4 py-2">
               <Plus className="h-4 w-4 mr-2" />
-              Request a Classroom
+              Reserve a Classroom
             </TabsTrigger>
             <TabsTrigger value="search" className="flex-1 px-4 py-2">
               <Search className="h-4 w-4 mr-2" />
@@ -162,7 +276,7 @@ export default function FacultyDashboard({
               </TabsTrigger>
               <TabsTrigger value="booking" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
                 <Plus className="h-4 w-4 flex-shrink-0" />
-                <span>Request a Classroom</span>
+                <span>Reserve a Classroom</span>
               </TabsTrigger>
               <TabsTrigger value="search" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
                 <Search className="h-4 w-4 flex-shrink-0" />
@@ -182,7 +296,7 @@ export default function FacultyDashboard({
 
           <TabsContent value="overview" className="space-y-6">
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 animate-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 animate-in">
               <div className="transition-all duration-300 hover:-translate-y-1">
                 <Card 
                   className="h-full stat-card-clickable cursor-pointer" 
@@ -204,7 +318,23 @@ export default function FacultyDashboard({
               </div>
 
               <div className="transition-all duration-300 hover:-translate-y-1">
-                <Card className="h-full">
+                <Card
+                  className="h-full stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view your pending requests"
+                  onClick={() => {
+                    setScheduleInitialTab('requests');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('requests');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -219,8 +349,56 @@ export default function FacultyDashboard({
                 </Card>
               </div>
 
+            <div className="transition-all duration-300 hover:-translate-y-1">
+              <Card
+                className="h-full stat-card-clickable cursor-pointer"
+                role="button"
+                tabIndex={0}
+                title="Click to view your rejected requests"
+                onClick={() => {
+                  setScheduleInitialTab('rejected');
+                  setActiveTab('schedule');
+                }}
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setScheduleInitialTab('rejected');
+                    setActiveTab('schedule');
+                  }
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Rejected Requests</p>
+                      <p className="text-3xl font-bold text-red-600">{rejectedRequests}</p>
+                    </div>
+                    <div className="transition-transform hover:scale-110">
+                      <X className="h-8 w-8 text-red-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
               <div className="transition-all duration-300 hover:-translate-y-1">
-                <Card className="h-full">
+                <Card
+                  className="h-full stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view your approved requests"
+                  onClick={() => {
+                    setScheduleInitialTab('approved');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('approved');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -236,10 +414,22 @@ export default function FacultyDashboard({
               </div>
 
               <div className="transition-all duration-300 hover:-translate-y-1">
-                <Card 
-                  className="h-full stat-card-clickable cursor-pointer" 
-                  onClick={() => setActiveTab('booking')}
-                  title="Click to book a new room"
+                <Card
+                  className="h-full stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view request history"
+                  onClick={() => {
+                    setScheduleInitialTab('history');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('history');
+                      setActiveTab('schedule');
+                    }
+                  }}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -258,23 +448,39 @@ export default function FacultyDashboard({
 
             {/* Recent Requests and Upcoming Schedule */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Recent Booking Requests */}
+              {/* Recent Reservation Requests */}
               <div className="animate-in" style={{ animationDelay: '0.2s' }}>
-                <Card className="h-full transition-shadow duration-200 hover:shadow-lg">
-                  <CardHeader>
+                <Card
+                  className="h-full transition-shadow duration-200 hover:shadow-lg stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view your requests"
+                  onClick={() => {
+                    setScheduleInitialTab('requests');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('requests');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
+                    <CardHeader>
                     <CardTitle>Recent Requests</CardTitle>
-                    <CardDescription>Your latest classroom booking requests</CardDescription>
+                    <CardDescription>Your latest classroom reservation requests</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {bookingRequests.length === 0 ? (
                       <div className="text-center py-8">
                         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-500">No booking requests yet</p>
+                        <p className="text-gray-500">No reservation requests yet</p>
                         <Button 
                           onClick={() => setActiveTab('booking')} 
                           className="mt-4 transition-transform hover:scale-105"
                         >
-                          Book Your First Room
+                          Reserve Your First Room
                         </Button>
                       </div>
                     ) : (
@@ -314,10 +520,26 @@ export default function FacultyDashboard({
 
               {/* Upcoming Schedule */}
               <div className="animate-in" style={{ animationDelay: '0.4s' }}>
-                <Card className="h-full transition-shadow duration-200 hover:shadow-lg">
-                  <CardHeader>
+                <Card
+                  className="h-full transition-shadow duration-200 hover:shadow-lg stat-card-clickable cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  title="Click to view upcoming classes"
+                  onClick={() => {
+                    setScheduleInitialTab('upcoming');
+                    setActiveTab('schedule');
+                  }}
+                  onKeyDown={(e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setScheduleInitialTab('upcoming');
+                      setActiveTab('schedule');
+                    }
+                  }}
+                >
+                    <CardHeader>
                     <CardTitle>Upcoming Classes</CardTitle>
-                    <CardDescription>Your confirmed classroom bookings</CardDescription>
+                    <CardDescription>Your confirmed classroom reservations</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {schedules.filter(s => {
@@ -332,7 +554,7 @@ export default function FacultyDashboard({
                           onClick={() => setActiveTab('booking')} 
                           className="mt-4 transition-transform hover:scale-105"
                         >
-                          Book a Room
+                          Reserve a Room
                         </Button>
                       </div>
                     ) : (
@@ -375,39 +597,53 @@ export default function FacultyDashboard({
 
           <TabsContent value="booking">
             <div className="animate-in">
-              <RoomBooking
-                classrooms={classrooms}
-                schedules={allSchedules}
-                bookingRequests={allBookingRequests}
-                onBookingRequest={onBookingRequest}
-                user={user}
-                checkConflicts={checkConflicts}
-              />
+              <Suspense fallback={<div className="p-4">Loading booking form…</div>}>
+                <RoomBooking
+                  classrooms={classrooms}
+                  schedules={allSchedules}
+                  bookingRequests={allBookingRequests}
+                  onBookingRequest={onBookingRequest}
+                  initialData={bookingInitialData ?? undefined}
+                  user={user}
+                  checkConflicts={checkConflicts}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="search">
             <div className="animate-in">
-              <RoomSearch
-                classrooms={classrooms}
-                schedules={allSchedules}
-                bookingRequests={allBookingRequests}
-              />
+              <Suspense fallback={<div className="p-4">Loading search…</div>}>
+                <RoomSearch
+                  classrooms={classrooms}
+                  schedules={allSchedules}
+                  bookingRequests={allBookingRequests}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="schedule">
             <div className="animate-in">
-              <FacultySchedule
-                schedules={schedules}
-                bookingRequests={bookingRequests}
-              />
+              <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
+                <FacultySchedule
+                  schedules={schedules}
+                  bookingRequests={bookingRequests}
+                  initialTab={scheduleInitialTab}
+                  userId={user?.id}
+                  onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+                    void handleQuickRebook(initial);
+                  }}
+                />
+              </Suspense>
             </div>
           </TabsContent>
 
           <TabsContent value="settings">
             <div className="animate-in">
-              <ProfileSettings user={user} />
+              <Suspense fallback={<div className="p-4">Loading settings…</div>}>
+                <ProfileSettings user={user} />
+              </Suspense>
             </div>
           </TabsContent>
         </Tabs>

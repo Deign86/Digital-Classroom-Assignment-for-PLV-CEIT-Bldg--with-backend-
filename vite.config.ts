@@ -1,3 +1,4 @@
+import path from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -16,9 +17,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // Simple vendor chunk splitting for better compatibility
+          // React and core libs
           'react-vendor': ['react', 'react-dom'],
-          'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          // Firebase split into sub-packages to reduce single huge vendor chunk
+          'firebase-core': ['firebase/app'],
+          'firebase-auth': ['firebase/auth'],
+          'firebase-firestore': ['firebase/firestore'],
+          'firebase-functions': ['firebase/functions'],
+          // Radix/UI and UI libraries
           'radix-vendor': [
             '@radix-ui/react-accordion',
             '@radix-ui/react-alert-dialog',
@@ -31,11 +37,17 @@ export default defineConfig({
             '@radix-ui/react-tabs',
             '@radix-ui/react-tooltip'
           ],
-          'ui-vendor': ['lucide-react', '@vercel/analytics', 'sonner'],
+          'phosphor-icons': ['@phosphor-icons/react'],
+          'lucide-react': ['lucide-react'],
+          'analytics-sonner': ['@vercel/analytics', 'sonner'],
           'utils-vendor': ['date-fns', 'clsx', 'class-variance-authority', 'tailwind-merge']
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    // Temporarily raise the warning threshold to accommodate large icon package.
+    // NOTE: For best performance, consider replacing '@phosphor-icons/react' with
+    // individual icon imports, a lighter icon set, or dynamic imports so tree-shaking
+    // can remove unused icons. This will allow keeping chunkSizeWarningLimit low.
+    chunkSizeWarningLimit: 6000
   }
 })

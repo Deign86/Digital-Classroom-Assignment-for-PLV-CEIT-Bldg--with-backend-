@@ -205,13 +205,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Booking Requests collection
-    match /bookingRequests/{requestId} {
-      allow read: if isAuthenticated();
-      allow create: if isApproved() && isFaculty();
-      allow update: if isAdmin() || (isFaculty() && isOwner(resource.data.facultyId));
-      allow delete: if isAdmin();
-    }
+      // Booking Requests collection (reservation requests)
+      match /bookingRequests/{requestId} {
+         allow read: if isAuthenticated();
+         allow create: if isApproved() && isFaculty();
+         allow update: if isAdmin() || (isFaculty() && isOwner(resource.data.facultyId));
+         allow delete: if isAdmin();
+      }
     
     // Schedules collection
     match /schedules/{scheduleId} {
@@ -237,7 +237,7 @@ service cloud.firestore {
    - These rules will:
      - ✅ Allow only authenticated users to read most data
      - ✅ Allow admins full control over all collections
-     - ✅ Allow faculty to create booking requests
+   - ✅ Allow faculty to create reservation requests
      - ✅ Allow anonymous users to submit signup requests
      - ✅ Prevent unauthorized access and modifications
 
@@ -274,7 +274,7 @@ Classroom inventory
 | `createdAt` | timestamp | Creation date | ✅ |
 
 #### `bookingRequests`
-Pending and processed booking requests
+Pending and processed reservation requests
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
@@ -285,7 +285,7 @@ Pending and processed booking requests
 | `date` | string | Date in YYYY-MM-DD format | ✅ |
 | `startTime` | string | Time in HH:mm format (24hr) | ✅ |
 | `endTime` | string | Time in HH:mm format (24hr) | ✅ |
-| `purpose` | string | Booking purpose/reason | ✅ |
+| `purpose` | string | Reservation purpose/reason | ✅ |
 | `status` | string | `"pending"`, `"approved"`, or `"rejected"` | ✅ |
 | `adminFeedback` | string | Admin's comment | ❌ |
 | `requestDate` | timestamp | When request was made | ✅ |
@@ -433,7 +433,7 @@ Firestore requires indexes for complex queries. Create these indexes to avoid ru
    - Query scope: Collection
    - Click **Create**
 
-   **Index 2: Booking Requests by Date**
+   **Index 2: Reservation Requests by Date**
    - Collection ID: `bookingRequests`
    - Fields to index:
      - `requestDate` (Descending)
@@ -506,7 +506,7 @@ Your Digital Classroom Assignment System is now connected to Firebase! You can:
 ✅ **Start developing**
 - Run `npm run dev` to start the development server
 - Login with your admin credentials
-- Test all features (booking, approvals, reports)
+- Test all features (reservation flows, approvals, reports)
 
 ✅ **Deploy to production**
 - Run `npm run build` to create production build

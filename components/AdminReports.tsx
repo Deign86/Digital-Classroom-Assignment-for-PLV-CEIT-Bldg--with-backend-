@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download } from 'lucide-react';
+import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download, PieChart as PieChartIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import type { Classroom, Schedule, BookingRequest, SignupRequest } from '../App';
 
@@ -16,48 +16,52 @@ interface AdminReportsProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
-export default function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }: AdminReportsProps) {
+const renderPieLabel = (props: { name: string; percent: number }) => {
+  const { name, percent } = props;
+  return `${name} ${(percent * 100).toFixed(0)}%`;
+};
+
+function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }: AdminReportsProps) {
   const [reportPeriod, setReportPeriod] = useState<'week' | 'month' | 'semester'>('month');
 
-  // Calculate date range based on period
-  const getDateRange = () => {
-    const today = new Date();
-    const start = new Date();
-    
-    switch (reportPeriod) {
-      case 'week':
-        start.setDate(today.getDate() - 7);
-        break;
-      case 'month':
-        start.setMonth(today.getMonth() - 1);
-        break;
-      case 'semester':
-        start.setMonth(today.getMonth() - 4);
-        break;
-    }
-    
-    return { start, end: today };
-  };
-
-  const { start, end } = getDateRange();
+  const { start, end } = useMemo(() => {
+      const today = new Date();
+      const startDate = new Date();
+      
+      switch (reportPeriod) {
+        case 'week':
+          startDate.setDate(today.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(today.getMonth() - 1);
+          break;
+        case 'semester':
+          startDate.setMonth(today.getMonth() - 4);
+          break;
+      }
+      
+      return { start: startDate, end: today };
+  }, [reportPeriod]);
 
   // Filter data based on date range
-  const filteredSchedules = schedules.filter(s => {
-    const scheduleDate = new Date(s.date);
-    return scheduleDate >= start && scheduleDate <= end && s.status === 'confirmed';
-  });
+  const filteredSchedules = useMemo(() => 
+    schedules.filter(s => {
+      const scheduleDate = new Date(s.date);
+      return scheduleDate >= start && scheduleDate <= end && s.status === 'confirmed';
+    }), [schedules, start, end]);
 
-  const filteredRequests = bookingRequests.filter(r => {
-    const requestDate = new Date(r.requestDate);
-    return requestDate >= start && requestDate <= end;
-  });
+  const filteredRequests = useMemo(() => 
+    bookingRequests.filter(r => {
+      const requestDate = new Date(r.requestDate);
+      return requestDate >= start && requestDate <= end;
+    }), [bookingRequests, start, end]);
 
   // Calculate statistics
   const stats = useMemo(() => {
     const totalRequests = filteredRequests.length;
     const approvedRequests = filteredRequests.filter(r => r.status === 'approved').length;
     const rejectedRequests = filteredRequests.filter(r => r.status === 'rejected').length;
-    const pendingRequests = filteredRequests.filter(r => r.status === 'pending').length;
+  const pendingRequests = filteredRequests.filter(r => r.status === 'pending' && !(new Date(r.date) < new Date())).length;
     
     const approvalRate = totalRequests > 0 ? (approvedRequests / totalRequests * 100).toFixed(1) : '0';
     
@@ -106,31 +110,31 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
     return usage.sort((a, b) => b.classes - a.classes);
   }, [classrooms, filteredSchedules]);
 
-  // Request status distribution
-  const requestStatusData = [
+  // Request status distribution (memoized to keep identity stable between renders)
+  const requestStatusData = useMemo(() => [
     { name: 'Approved', value: stats.approvedRequests, color: '#00C49F' },
     { name: 'Rejected', value: stats.rejectedRequests, color: '#FF8042' },
     { name: 'Pending', value: stats.pendingRequests, color: '#FFBB28' }
-  ].filter(item => item.value > 0);
-
+  ].filter(item => item.value > 0), [stats.approvedRequests, stats.rejectedRequests, stats.pendingRequests]);
+  
   // Weekly usage trend
   const weeklyTrend = useMemo(() => {
-    const weeks = [];
+    const weeks: { week: string; classes: number; requests: number }[] = [];
     const currentWeek = new Date();
-    
+
     for (let i = 7; i >= 0; i--) {
       const weekStart = new Date(currentWeek);
       weekStart.setDate(currentWeek.getDate() - (i * 7));
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 6);
-      
+
       const weekSchedules = schedules.filter(s => {
         const scheduleDate = new Date(s.date);
         return scheduleDate >= weekStart && scheduleDate <= weekEnd && s.status === 'confirmed';
       });
 
       weeks.push({
-        week: `Week ${8-i}`,
+        week: `Week ${8 - i}`,
         classes: weekSchedules.length,
         requests: bookingRequests.filter(r => {
           const requestDate = new Date(r.requestDate);
@@ -138,7 +142,7 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
         }).length
       });
     }
-    
+
     return weeks;
   }, [schedules, bookingRequests]);
 
@@ -190,7 +194,7 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
             <div>
               <CardTitle>Classroom Utilization Reports</CardTitle>
-              <CardDescription>Analytics and insights on classroom usage and booking patterns</CardDescription>
+                          <CardDescription>Analytics and insights on classroom usage and reservation patterns</CardDescription>
             </div>
             <div className="flex items-center space-x-4">
               <Select value={reportPeriod} onValueChange={(value: 'week' | 'month' | 'semester') => setReportPeriod(value)}>
@@ -208,11 +212,13 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
                 Export
               </Button>
             </div>
-          </div>
+            </div>
+        </CardHeader>
+        <CardHeader>
+          <CardTitle>Reports</CardTitle>
+            <CardDescription>Analytics and insights on classroom usage and reservation patterns</CardDescription>
         </CardHeader>
       </Card>
-
-      {/* Key Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -292,7 +298,7 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
         <Card>
           <CardHeader>
             <CardTitle>Request Status Distribution</CardTitle>
-            <CardDescription>Breakdown of booking request statuses</CardDescription>
+            <CardDescription>Breakdown of reservation request statuses</CardDescription>
           </CardHeader>
           <CardContent>
             {requestStatusData.length > 0 ? (
@@ -300,13 +306,15 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
                 <PieChart>
                   <Pie
                     data={requestStatusData}
+                    isAnimationActive={true}
+                    animationDuration={800}
+                    animationEasing="ease"
+                    // force remount when values change so animation replays
+                    key={requestStatusData.map(d => d.value).join('-')}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={(props: any) => {
-                      const { name, percent } = props;
-                      return `${name} ${(percent * 100).toFixed(0)}%`;
-                    }}
+                    labelLine={false} // @ts-ignore
+                    label={renderPieLabel}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -384,7 +392,7 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
             {classroomUtilization.slice(0, 5).map((classroom, index) => (
               <div key={classroom.name} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full font-semibold">
+                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-ios font-semibold">
                     {index + 1}
                   </div>
                   <div>
@@ -410,3 +418,5 @@ export default function AdminReports({ classrooms, schedules, bookingRequests, s
     </div>
   );
 }
+
+    export default React.memo(AdminReports);

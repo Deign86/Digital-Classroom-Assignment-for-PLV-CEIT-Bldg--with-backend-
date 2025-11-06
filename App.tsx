@@ -1,14 +1,21 @@
 import './styles/globals.css';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import LoginForm from './components/LoginForm';
-import AdminDashboard from './components/AdminDashboard';
-import FacultyDashboard from './components/FacultyDashboard';
+// Lazy-load heavy dashboard components to reduce initial bundle size
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
+
+// Use a single inline loader (the PLV loader below) as the Suspense fallback.
 import Footer from './components/Footer';
+import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
+import { buttonVariants } from './components/ui/button';
+import { cn } from './components/ui/utils';
 import useIdleTimeout from './hooks/useIdleTimeout';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import {
@@ -16,17 +23,33 @@ import {
   userService,
   classroomService,
   signupRequestService,
+  signupHistoryService,
   bookingRequestService,
   scheduleService,
   realtimeService
 } from './lib/firebaseService';
+import { getFirebaseDb } from './lib/firebaseConfig';
+import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
+// Theme: keep imports with other imports
+import ThemeProvider from './hooks/themeContext';
+import ThemeToggle from './components/ThemeToggle';
+import NotificationBell from './components/NotificationBell';
 
 // Expose services to window for debugging in development
 if (import.meta.env.DEV) {
   (window as any).authService = authService;
   (window as any).realtimeService = realtimeService;
   (window as any).classroomService = classroomService;
-  console.log('🛠️ Services exposed to window for debugging');
+  // Expose pushService for test push sending from the console
+  try {
+    // Dynamically import to avoid circular import issues
+    import('./lib/pushService').then((m) => {
+      (window as any).pushService = m.pushService;
+      console.log('🛠️ pushService exposed to window for debugging');
+    }).catch((e) => console.warn('Could not expose pushService to window', e));
+  } catch (err) {
+    console.warn('Could not dynamically load pushService for dev exposure', err);
+  }
 }
 
 // Types
@@ -37,6 +60,15 @@ export interface User {
   role: 'admin' | 'faculty';
   department?: string;
   status: 'pending' | 'approved' | 'rejected';
+  failedLoginAttempts?: number;
+  accountLocked?: boolean;
+  lockedUntil?: string;
+  // If true, the account was manually disabled by an admin and should remain locked until an admin unlocks it.
+  lockedByAdmin?: boolean;
+  // Whether the user has enabled browser/service-worker push notifications
+  pushEnabled?: boolean;
+  // ISO timestamp of the user's last sign-in. Used to infer recent activity sessions.
+  lastSignInAt?: string;
 }
 
 export interface SignupRequest {
@@ -49,6 +81,19 @@ export interface SignupRequest {
   status: 'pending' | 'approved' | 'rejected';
   adminFeedback?: string;
   resolvedAt?: string;
+}
+
+export interface SignupHistory {
+  id: string;
+  userId: string;
+  email: string;
+  name: string;
+  department: string;
+  requestDate: string;
+  status: 'approved' | 'rejected';
+  adminFeedback: string;
+  resolvedAt: string;
+  processedBy: string; // Admin user ID who processed the request
 }
 
 export interface Classroom {
@@ -71,7 +116,7 @@ export interface BookingRequest {
   startTime: string;
   endTime: string;
   purpose: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
   requestDate: string;
   adminFeedback?: string;
 }
@@ -94,13 +139,46 @@ export default function App() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
   const [signupRequests, setSignupRequests] = useState<SignupRequest[]>([]);
+  const [signupHistory, setSignupHistory] = useState<SignupHistory[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthChecked, setIsAuthChecked] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  // Overlay manager for a single top-level loader shared across init & Suspense
+  const overlayCountRef = React.useRef(0);
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
+
+  const showOverlay = React.useCallback((msg?: string) => {
+    overlayCountRef.current = overlayCountRef.current + 1;
+    setOverlayMessage(msg ?? 'Loading...');
+    setOverlayVisible(true);
+  }, []);
+
+  const hideOverlay = React.useCallback(() => {
+    overlayCountRef.current = Math.max(0, overlayCountRef.current - 1);
+    if (overlayCountRef.current === 0) {
+      setOverlayVisible(false);
+      setOverlayMessage(null);
+    }
+  }, []);
   const [error, setError] = useState<string | null>(null);
+  const [showAccountLockedDialog, setShowAccountLockedDialog] = useState(false);
+  const [accountLockedMessage, setAccountLockedMessage] = useState<string | null>(null);
+  // Use Vite's import.meta.env in the browser. Fall back to a sensible default.
+  const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL ?? import.meta.env.REACT_APP_SUPPORT_EMAIL ?? 'it-support@plv.edu.ph') as string;
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
+  // Pending destructive reject action (replaces window.confirm)
+  // Include the signup request's userId so we can reliably remove the correct user record
+  const [pendingRejectAction, setPendingRejectAction] = useState<{
+    requestId: string;
+    userId: string;
+    feedback: string;
+    requestName: string;
+  } | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -115,7 +193,14 @@ export default function App() {
 
  
   const setupRealtimeListeners = useCallback((user: User | null) => {
-    console.log('🔄 Setting up real-time data listeners...');
+    // Track which user we've already logged setup for to avoid noisy duplicate logs
+    const lastLoggedRealtimeUserIdRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null> | undefined;
+    if (!lastLoggedRealtimeUserIdRef) {
+      (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef = { current: null } as React.MutableRefObject<string | null>;
+    }
+    const lastLoggedRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>;
+    const shouldLogSetup = Boolean(user && lastLoggedRef.current !== user.id);
+    if (shouldLogSetup) console.log('🔄 Setting up real-time data listeners...');
     
     if (!user) {
      
@@ -125,31 +210,40 @@ export default function App() {
       setBookingRequests([]);
       setSchedules([]);
       realtimeService.cleanup();
+      try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = null; } catch (_) {}
       return;
     }
 
     try {
+  setLoadingMessage('Loading...');
       setIsLoading(true);
       
       realtimeService.subscribeToData(user, {
         onClassroomsUpdate: (classrooms) => {
           console.log('📍 Real-time update: Classrooms', classrooms.length);
           setClassrooms(classrooms);
+          setLoadingMessage('Loading...');
         },
         
         onBookingRequestsUpdate: (requests) => {
           console.log('📋 Real-time update: Booking Requests', requests.length);
           setBookingRequests(requests);
+          setLoadingMessage('Loading...');
         },
         
         onSchedulesUpdate: (schedules) => {
           console.log('📅 Real-time update: Schedules', schedules.length);
           setSchedules(schedules);
+          setLoadingMessage('Loading...');
         },
         
         onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
           console.log('👥 Real-time update: Signup Requests', requests.length);
           setSignupRequests(requests);
+        } : undefined,
+        onSignupHistoryUpdate: user.role === 'admin' ? (history) => {
+          console.log('📜 Real-time update: Signup History', history.length);
+          setSignupHistory(history);
         } : undefined,
         
         onUsersUpdate: user.role === 'admin' ? (users) => {
@@ -167,18 +261,148 @@ export default function App() {
       if (user.role === 'faculty') {
         setUsers([user]);
         setSignupRequests([]);
+        setSignupHistory([]);
+      } else if (user.role === 'admin') {
+        // Load signup history for admins
+        signupHistoryService.getAll()
+          .then((history) => {
+            console.log('📜 Loaded signup history:', history.length);
+            setSignupHistory(history);
+          })
+          .catch((err) => {
+            // Log full error for debugging
+            console.error('❌ Failed to load signup history:', err);
+
+            // Surface a user-facing toast so admins know history may be stale
+            try {
+              const message = err instanceof Error ? err.message : String(err);
+              toast.error('Failed to load signup history', {
+                description: message || 'Please refresh the page or try again later.',
+                duration: 7000,
+              });
+            } catch (toastErr) {
+              // If toasting fails for any reason, still keep the original error logged
+              console.warn('Could not show toast for signup history error:', toastErr);
+            }
+          });
       }
       
-      console.log('✅ Real-time listeners setup complete');
-    } catch (err) {
+      if (shouldLogSetup) {
+        console.log('✅ Real-time listeners setup complete');
+        try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) {}
+      }
+      } catch (err) {
       console.error('❌ Failed to setup real-time listeners:', err);
       toast.error('Failed to setup real-time data sync');
     } finally {
       setIsLoading(false);
+      setLoadingMessage(null);
     }
   }, []);
 
   const handleLogin = useCallback(async (email: string, password: string) => {
+    // Show immediate feedback
+    const loginPromise = authService.signIn(email, password);
+
+    toast.promise(loginPromise, {
+      // Removed loading message because the LoginForm already shows a "Signing In..." button state.
+      // Keeping success/error messages only to avoid duplicate feedback.
+      success: (user) => {
+        if (!user) {
+          // This case should ideally be handled by the error part, but as a fallback:
+          return 'Login failed. Please check your credentials.';
+        }
+  // Set current user; the auth state listener will set up listeners
+  setCurrentUser(user);
+
+        const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
+        return `${greeting}, ${user.name}!`;
+      },
+      error: (err) => {
+        // The authService.signIn method is designed to throw specific, user-friendly errors.
+        // We can display them directly.
+        if (err instanceof Error) {
+          return err.message;
+        }
+        return 'An unknown login error occurred.';
+      },
+      duration: 4000,
+    });
+
+    try {
+      const user = await loginPromise;
+      return !!user;
+    } catch (err) {
+      // If the sign-in failed due to an account lock (tracked server-side),
+      // surface the blocking account-locked dialog immediately by setting
+      // sessionStorage flags and local state. This covers the case where the
+      // user attempted to sign in but the server-side lock prevented sign-in
+      // (so the Firestore snapshot listener won't run because there's no
+      // authenticated session yet).
+      try {
+        if (err instanceof Error) {
+          const msg = err.message || '';
+          if (msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining')) {
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
+            setAccountLockedMessage(msg);
+
+            const ts = Date.now();
+            // Record a lightweight debug event and log timestamps (dev only)
+            try {
+              if (import.meta.env.DEV) {
+                console.debug(`DEBUG[lock] set sessionStorage at ${new Date(ts).toISOString()} for`, email, { msg });
+              }
+              try {
+                (window as any).__loginLockDebug = (window as any).__loginLockDebug || [];
+                (window as any).__loginLockDebug.push({ event: 'sessionSet', ts, email, msg });
+              } catch (_) {}
+            } catch (_) {}
+
+            // Defer opening the modal slightly so the LoginForm submit
+            // lifecycle can finish. This also helps if the form is controlling
+            // focus or preventing new modals from stealing focus immediately.
+            // A short delay reduces the "modal only appears on second
+            // attempt" race observed in some browsers/environments.
+            setTimeout(() => setShowAccountLockedDialog(true), 50);
+
+            // Dev-only debug helpers: log to console and show a short toast so
+            // we can verify this code path executed on the first failed attempt.
+            if (import.meta.env.DEV) {
+              try {
+                console.debug('DEBUG: accountLocked scheduled dialog for', email, 'message:', msg);
+                toast(`${msg} (debug: lock dialog scheduled)`, { duration: 5000 });
+              } catch (e) {
+                console.warn('Could not show debug toast for account lock:', e);
+              }
+
+              // Force-open fallback: if the modal hasn't opened after 5s,
+              // open it and log a warning (dev only). This reduces the
+              // perceived wait while we diagnose the underlying race.
+              setTimeout(() => {
+                try {
+                  if (!showAccountLockedDialog) {
+                    console.warn('DEBUG[lock] fallback forced opening of account-locked dialog after 5s');
+                    setShowAccountLockedDialog(true);
+                    try { (window as any).__loginLockDebug.push({ event: 'fallbackOpen', ts: Date.now(), email }); } catch (_) {}
+                  }
+                } catch (e) {
+                  console.warn('DEBUG[lock] fallback open failed:', e);
+                }
+              }, 5000);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not set accountLocked session flag:', e);
+      }
+
+      // Error is already handled by the toast.promise, but we need to return false for the form.
+      return false;
+    }
+  }, [setupRealtimeListeners]);
+
+  const oldHandleLogin = useCallback(async (email: string, password: string) => {
     try {
       const user = await authService.signIn(email, password);
       if (user) {
@@ -191,8 +415,8 @@ export default function App() {
           duration: 4000,
         });
         
-        // Setup real-time listeners after successful login
-        setupRealtimeListeners(user);
+  // Real-time listeners will be set up by the auth state listener
+  // to centralize lifecycle handling and avoid duplicates.
         
         return true;
       }
@@ -239,7 +463,7 @@ export default function App() {
             message = 'Incorrect password. Please try again.';
             break;
           case 'auth/too-many-requests':
-            message = 'Too many failed login attempts. Please try again later.';
+            message = 'Too many login attempts from this device. Access temporarily restricted by Firebase security. Please wait 15-30 minutes or try password reset.';
             break;
           case 'auth/user-disabled':
             message = 'This account has been disabled.';
@@ -256,32 +480,63 @@ export default function App() {
             }
         }
       } else if (err instanceof Error && err.message) {
-        message = err.message;
+        // Check for account locked error
+        if (err.message.includes('Account locked') || err.message.includes('Account is locked')) {
+          message = err.message;
+        } else if (err.message.includes('attempts remaining')) {
+          message = err.message;
+        } else {
+          message = err.message;
+        }
       }
       
       toast.error('Login failed', { description: message, duration: 6000 });
       return false;
     }
-  }, [setupRealtimeListeners]);
+  }, [setupRealtimeListeners]); // Note: I'm keeping the old function here for reference, but the new one is active.
 
   const handleSignup = useCallback(
     async (email: string, name: string, department: string, password: string) => {
       try {
         // Check for duplicate requests (optional - don't fail signup if this fails)
+        // Only attempt reads if we have an authenticated client session to avoid permission errors
         try {
-          const pendingRequest = await signupRequestService.getByEmail(email);
-          if (pendingRequest) {
-            toast.error('Request already pending', {
-              description: 'Please wait for an administrator to review your existing request.',
-            });
-            return false;
+          const currentAuth = await authService.getCurrentUser();
+          if (currentAuth) {
+            const pendingRequest = await signupRequestService.getByEmail(email);
+            if (pendingRequest) {
+              toast.error('Request already pending', {
+                description: 'Please wait for an administrator to review your existing request.',
+              });
+              return false;
+            }
           }
         } catch (checkError) {
-          console.warn('Could not check for existing requests:', checkError);
-          // Continue with signup anyway
+          // Do not surface permission errors for unauthenticated users. Log only unexpected errors.
+          console.warn('Could not check for existing requests (possibly unauthenticated):', checkError instanceof Error ? checkError.message : checkError);
         }
 
-        const { request } = await authService.registerFaculty(email, password, name, department);
+        let request: SignupRequest;
+        
+        try {
+          const result = await authService.registerFaculty(email, password, name, department);
+          request = result.request;
+        } catch (registerError: any) {
+          // If registration fails because the email is already in use,
+          // it means an Auth account exists. We should not allow a new signup.
+          // This covers both active users and users whose accounts might be in a limbo state
+          // after a rejected signup. We will treat them all as "account exists".
+          if (registerError?.code === 'auth/email-already-in-use') {
+            console.log('Signup failed: email already in use. Directing user to sign in.');
+            toast.error('Account already exists', {
+              description: 'This email is already associated with an account. Please sign in or use the password reset link if you forgot your password.',
+              duration: 8000,
+            });
+            return false;
+          } else {
+            throw registerError; // Re-throw other registration errors
+          }
+        }
 
         setSignupRequests((prev) => {
           const withoutDuplicate = prev.filter((existing) => existing.id !== request.id);
@@ -290,23 +545,29 @@ export default function App() {
 
         // Try to load user data (optional - don't fail signup if this fails)
         try {
-          const maybeUser = await userService.getByEmail(email);
-          if (maybeUser) {
-            setUsers((prev) => {
-              const others = prev.filter((user) => user.id !== maybeUser.id);
-              return [...others, maybeUser];
-            });
+          const currentAuth = await authService.getCurrentUser();
+          if (currentAuth) {
+            const maybeUser = await userService.getByEmail(email);
+            if (maybeUser) {
+              setUsers((prev) => {
+                const others = prev.filter((user) => user.id !== maybeUser.id);
+                return [...others, maybeUser];
+              });
+            }
           }
         } catch (userError) {
-          console.warn('Could not load user data:', userError);
+          console.warn('Could not load user data (possibly unauthenticated):', userError instanceof Error ? userError.message : userError);
           // Continue anyway - the signup was successful
         }
 
-        toast.success('Signup request submitted!', {
-          description:
-            'Your account has been created with pending status. An administrator will approve your access shortly.',
-          duration: 6000,
-        });
+        // Only show success toast if a request was actually created.
+        if (request) {
+          toast.success('Signup request submitted!', {
+            description:
+              'Your account has been created with pending status. An administrator will approve your access shortly.',
+            duration: 6000,
+          });
+        }
         return true;
       } catch (err) {
         console.error('Signup error:', err);
@@ -355,49 +616,59 @@ export default function App() {
   const handleLogout = useCallback(async () => {
     try {
       console.log('🔴 Logout clicked - user:', currentUser?.email);
-      
       await authService.signOut();
+
+      // Set flag for login page to show success notification
+      sessionStorage.setItem('logoutSuccess', 'true');
+
+      // Clear user state and listeners
       setCurrentUser(null);
-      
+
       // Cleanup real-time listeners
       realtimeService.cleanup();
-      
+
       // Clear all cached data
       setClassrooms([]);
       setBookingRequests([]);
       setSignupRequests([]);
       setSchedules([]);
       setUsers([]);
-      
+
       console.log('✅ User state cleared');
-      toast.success('Logged out successfully');
     } catch (err) {
       console.error('❌ Logout error:', err);
       // Force logout even if auth service fails
       setCurrentUser(null);
-      
+
+      // Set flag for logout with error
+      sessionStorage.setItem('logoutError', 'true');
+
       // Cleanup real-time listeners
       realtimeService.cleanup();
-      
+
       setClassrooms([]);
       setBookingRequests([]);
       setSignupRequests([]);
       setSchedules([]);
       setUsers([]);
-      toast.error('Logged out (with errors). Please refresh if needed.');
     }
   }, [currentUser]);
 
   // Idle timeout handlers
   const handleIdleTimeout = useCallback(async () => {
     console.log('🕒 Session expired due to inactivity');
-    toast.warning('Session expired due to inactivity', {
-      description: 'You have been logged out for security reasons',
-      duration: 5000
-    });
-    
+
     try {
-      await authService.signOutDueToIdleTimeout();
+      // Prefer specialized idle sign-out if available, otherwise fall back to regular signOut
+      if (typeof (authService as any).signOutDueToIdleTimeout === 'function') {
+        await (authService as any).signOutDueToIdleTimeout();
+      } else {
+        await authService.signOut();
+      }
+
+      // Mark session expired for the login page and clear local state
+      try { sessionStorage.setItem('sessionExpired', 'true'); } catch (_) {}
+
       setCurrentUser(null);
       setClassrooms([]);
       setBookingRequests([]);
@@ -408,6 +679,7 @@ export default function App() {
     } catch (err) {
       console.error('❌ Idle timeout logout error:', err);
       // Force logout even if service fails
+      try { sessionStorage.setItem('sessionExpired', 'true'); } catch (_) {}
       setCurrentUser(null);
       setShowSessionWarning(false);
     }
@@ -417,10 +689,10 @@ export default function App() {
     console.log(`⚠️ Session warning - ${Math.ceil(timeRemaining / 1000)}s remaining`);
     setSessionTimeRemaining(timeRemaining);
     setShowSessionWarning(true);
-    
+
     toast.warning('Session Expiring Soon', {
       description: `Your session will expire in ${Math.ceil(timeRemaining / 60000)} minutes due to inactivity`,
-      duration: 8000
+      duration: 8000,
     });
   }, []);
 
@@ -429,6 +701,14 @@ export default function App() {
     setShowSessionWarning(false);
     toast.success('Session extended successfully');
   }, []);
+
+  function SuspenseFallback({ message, show, hide }: { message?: string | null; show: (m?: string) => void; hide: () => void; }) {
+    useEffect(() => {
+      try { show(message ?? 'Loading...'); } catch (e) {}
+      return () => { try { hide(); } catch (e) {} };
+    }, [message, show, hide]);
+    return null;
+  }
 
   // Initialize idle timeout hook (30 minutes = 30 * 60 * 1000 ms)
   const { extendSession } = useIdleTimeout({
@@ -472,7 +752,7 @@ export default function App() {
     }
   }, []);
 
-  const handleBookingRequest = useCallback(async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>) => {
+  const handleBookingRequest = useCallback(async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => {
     try {
       // Check if the booking time is in the past
       if (isPastBookingTime(request.date, convertTo12Hour(request.startTime))) {
@@ -500,7 +780,9 @@ export default function App() {
       const newRequest = await bookingRequestService.create(request);
       
       setBookingRequests(prev => [...prev, newRequest]);
-      toast.success('Classroom request submitted!');
+      if (!suppressToast) {
+        toast.success('Reservation request submitted!');
+      }
     } catch (err) {
       console.error('Booking request error:', err);
       // Check if it's a duplicate/conflict error from the database
@@ -513,7 +795,7 @@ export default function App() {
     }
   }, [checkConflicts]);
 
-  const handleRequestApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string) => {
+  const handleRequestApproval = useCallback(async (requestId: string, approved: boolean, feedback?: string, suppressToast?: boolean) => {
     try {
       // Find the request first
       const request = bookingRequests.find(req => req.id === requestId);
@@ -564,11 +846,15 @@ export default function App() {
       
       const updatedRequest = await bookingRequestService.update(requestId, updateData);
 
+      // Notification creation is handled by the bookingRequest service boundary
+      // (it will create a server-side notification when status transitions). Avoid
+      // duplicating the creation here which caused duplicate notifications.
+
       setBookingRequests(prev =>
         prev.map(req => req.id === requestId ? updatedRequest : req)
       );
       
-      // Create schedule only if approved
+  // Create schedule only if approved
       if (approved) {
         const newSchedule = await scheduleService.create({
           classroomId: request.classroomId,
@@ -585,15 +871,20 @@ export default function App() {
         setSchedules(prev => [...prev, newSchedule]);
       }
       
-      toast.success(approved ? 'Request approved!' : 'Request rejected.');
+      // Only show a per-item toast when the caller hasn't requested suppression
+      if (!suppressToast) {
+        toast.success(approved ? 'Reservation approved!' : 'Reservation rejected.');
+      }
     } catch (err) {
       console.error('Approval error:', err);
-      toast.error('Failed to process request');
+      if (!suppressToast) {
+        toast.error('Failed to process request');
+      }
     }
   }, [bookingRequests]);
 
   const handleSignupApproval = useCallback(
-    async (requestId: string, approved: boolean, feedback?: string) => {
+    async (requestId: string, approved: boolean, feedback?: string, skipConfirm: boolean = false) => {
       try {
         const request = signupRequests.find((r) => r.id === requestId);
         if (!request) {
@@ -645,32 +936,40 @@ export default function App() {
             return;
           }
 
-          const updatedRequest = await signupRequestService.update(requestId, {
-            status: 'rejected',
-            adminFeedback: feedback,
-            resolvedAt,
-          });
+          if (!currentUser) {
+            toast.error('Admin user information not available');
+            return;
+          }
 
-          const updatedUser = await userService.updateStatus(request.userId, 'rejected');
+          // If this is part of a bulk confirmed action, skip the per-item confirmation
+          if (skipConfirm) {
+            try {
+              const historyRecord = await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback.trim());
 
-          setSignupRequests((prev) =>
-            prev.map((entry) => (entry.id === requestId ? updatedRequest : entry))
-          );
+              // Remove the signup request from local list
+              setSignupRequests((prev) => prev.filter((entry) => entry.id !== requestId));
 
-          setUsers((prev) => {
-            const existingIndex = prev.findIndex((user) => user.id === updatedUser.id);
-            if (existingIndex === -1) {
-              return [...prev, updatedUser];
+              // Append the history record so processed items appear in Recent History
+              setSignupHistory((prev) => [historyRecord, ...prev]);
+
+              // Remove the corresponding user by the signup request's userId
+              setUsers((prev) => prev.filter((user) => user.id !== request.userId));
+
+              toast.success(`Signup request rejected for ${request.name}.`, {
+                description: 'The account has been completely removed. They can submit a new signup request.',
+                duration: 6000,
+              });
+            } catch (err) {
+              console.error('Signup rejection error (bulk):', err);
+              toast.error('Failed to reject signup request');
             }
-            const copy = [...prev];
-            copy[existingIndex] = updatedUser;
-            return copy;
-          });
+            return;
+          }
 
-          toast.success(`Signup request rejected for ${request.name}.`, {
-            description: 'The applicant will not be able to sign in until a new request is approved.',
-            duration: 6000,
-          });
+          // Open the app-styled confirmation dialog instead of using window.confirm
+          setPendingRejectAction({ requestId, userId: request.userId, feedback: feedback.trim(), requestName: request.name });
+          // Actual rejection will be performed when admin confirms in the dialog
+          return;
         }
       } catch (err) {
         console.error('Signup approval error:', err);
@@ -684,27 +983,39 @@ export default function App() {
     [signupRequests]
   );
 
-  const handleCancelSchedule = useCallback(async (scheduleId: string) => {
+  const handleCancelSchedule = useCallback(async (scheduleId: string, reason: string) => {
     try {
-      await scheduleService.cancelApprovedBooking(scheduleId);
-      
+      const feedback = typeof reason === 'string' ? reason.trim() : '';
+      if (!feedback) {
+        toast.error('Cancellation reason is required');
+        return;
+      }
+
+      await scheduleService.cancelApprovedBooking(scheduleId, feedback);
+
       setSchedules(prev =>
         prev.map(schedule => 
           schedule.id === scheduleId 
-            ? { ...schedule, status: 'cancelled' as const }
+            ? { ...schedule, status: 'cancelled' as const, adminFeedback: feedback }
             : schedule
         )
       );
-      
-      toast.success('Booking cancelled!');
+
+      toast.success('Reservation cancelled!');
     } catch (err) {
       console.error('Cancel schedule error:', err);
       toast.error('Failed to cancel booking');
     }
   }, []);
 
-  const handleCancelApprovedBooking = useCallback(async (requestId: string) => {
+  const handleCancelApprovedBooking = useCallback(async (requestId: string, reason: string) => {
     try {
+      const feedback = typeof reason === 'string' ? reason.trim() : '';
+      if (!feedback) {
+        toast.error('Cancellation reason is required');
+        return;
+      }
+
       // Find the corresponding schedule for this booking request
       const correspondingSchedule = schedules.find(schedule => 
         schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
@@ -715,34 +1026,109 @@ export default function App() {
       );
 
       if (correspondingSchedule) {
-        await scheduleService.cancelApprovedBooking(correspondingSchedule.id);
-        
+        // Use server-side callable to cancel the approved booking (server will
+        // update schedules and related bookingRequests and create the faculty
+        // notification). Avoid calling bookingRequestService.update here to
+        // prevent duplicate notifications.
+        await scheduleService.cancelApprovedBooking(correspondingSchedule.id, feedback);
+
         setSchedules(prev =>
           prev.map(schedule => 
             schedule.id === correspondingSchedule.id 
-              ? { ...schedule, status: 'cancelled' as const }
+              ? { ...schedule, status: 'cancelled' as const, ...(feedback ? { adminFeedback: feedback } : {}) }
               : schedule
+          )
+        );
+
+        // Optimistically update bookingRequests in the UI — the server will
+        // also update Firestore; this local update prevents a visual race.
+        setBookingRequests(prev =>
+          prev.map(request => 
+            request.id === requestId 
+              ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
+              : request
+          )
+        );
+      } else {
+        // No corresponding schedule found: perform a direct booking request update
+        // (this path should create the appropriate notification server-side).
+        await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
+
+        setBookingRequests(prev =>
+          prev.map(request => 
+            request.id === requestId 
+              ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
+              : request
           )
         );
       }
 
-      // Update the booking request status to rejected
-      await bookingRequestService.update(requestId, { status: 'rejected', adminFeedback: 'Booking cancelled by administrator' });
-      
-      setBookingRequests(prev =>
-        prev.map(request => 
-          request.id === requestId 
-            ? { ...request, status: 'rejected' as const, adminFeedback: 'Booking cancelled by administrator' }
-            : request
-        )
-      );
-      
-      toast.success('Approved booking cancelled!');
+      toast.success('Approved reservation cancelled!');
     } catch (err) {
       console.error('Cancel approved booking error:', err);
       toast.error('Failed to cancel approved booking');
     }
   }, [schedules, bookingRequests]);
+
+  const handleUnlockAccount = useCallback(async (userId: string) => {
+    try {
+      const unlockedUser = await userService.unlockAccount(userId);
+      
+      // Update the user in the users list
+      setUsers(prev =>
+        prev.map(user => 
+          user.id === userId ? unlockedUser : user
+        )
+      );
+      
+      toast.success('Account unlocked successfully!', {
+        description: `${unlockedUser.name}'s account has been unlocked and can now login.`,
+        duration: 5000,
+      });
+    } catch (err) {
+      console.error('Unlock account error:', err);
+      toast.error('Failed to unlock account', {
+        description: 'Please try again or contact support.',
+        duration: 5000,
+      });
+    }
+  }, []);
+
+  // Handlers for the app-styled confirmation dialog for rejecting signup requests
+  const confirmPendingReject = useCallback(async () => {
+    if (!pendingRejectAction || !currentUser) return;
+    const { requestId, userId, feedback, requestName } = pendingRejectAction;
+    setIsRejecting(true);
+    try {
+      const historyRecord = await signupRequestService.rejectAndCleanup(requestId, currentUser.id, feedback);
+
+      // Remove the signup request entry
+      setSignupRequests((prev) => prev.filter((entry) => entry.id !== requestId));
+
+      // Append to signup history so it appears in Recent Processed Requests
+      setSignupHistory((prev) => [historyRecord, ...prev]);
+
+      // Remove the corresponding user by userId provided in the pending action
+      setUsers((prev) => prev.filter((user) => user.id !== userId));
+
+      toast.success(`Signup request rejected for ${requestName}.`, {
+        description: 'The account has been completely removed. They can submit a new signup request.',
+        duration: 6000,
+      });
+    } catch (err) {
+      console.error('Failed to reject signup request:', err);
+      toast.error('Failed to reject signup request');
+    } finally {
+      setIsRejecting(false);
+      // Close dialog after processing completes
+      setPendingRejectAction(null);
+    }
+  }, [pendingRejectAction, currentUser]);
+
+  const cancelPendingReject = useCallback(() => {
+    setPendingRejectAction(null);
+    toast.info('Rejection cancelled');
+  }, []);
 
   // Create dashboard props objects to prevent prop drilling and improve performance
   const adminDashboardProps = useMemo(() => ({
@@ -750,15 +1136,18 @@ export default function App() {
     classrooms,
     bookingRequests,
     signupRequests,
+    signupHistory,
     schedules,
+    users,
     onLogout: handleLogout,
     onClassroomUpdate: handleClassroomUpdate,
     onRequestApproval: handleRequestApproval,
     onSignupApproval: handleSignupApproval,
     onCancelSchedule: handleCancelSchedule,
     onCancelApprovedBooking: handleCancelApprovedBooking,
+    onUnlockAccount: handleUnlockAccount,
     checkConflicts
-  }), [currentUser, classrooms, bookingRequests, signupRequests, schedules, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, checkConflicts]);
+  }), [currentUser, classrooms, bookingRequests, signupRequests, signupHistory, schedules, users, handleLogout, handleClassroomUpdate, handleRequestApproval, handleSignupApproval, handleCancelSchedule, handleCancelApprovedBooking, handleUnlockAccount, checkConflicts]);
 
   const facultyDashboardProps = useMemo(() => ({
     user: currentUser!,
@@ -776,17 +1165,20 @@ export default function App() {
     const initializeApp = async () => {
       try {
         console.log('🚀 Initializing app...');
+  setLoadingMessage('Loading...');
+  // show the shared overlay while initializing
+  showOverlay('Loading...');
 
         const user = await authService.getCurrentUser();
         
         if (user) {
           console.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
-          
-          // Setup real-time listeners if user is authenticated
-          console.log('📊 Setting up real-time listeners...');
-          setupRealtimeListeners(user);
-          console.log('✅ Real-time listeners setup');
+
+          // Do NOT set up real-time listeners here. The auth state listener
+          // centralizes real-time lifecycle management and will perform setup
+          // so we avoid duplicate registrations from multiple code paths.
+          console.log('📊 Authenticated session found; deferring real-time listener setup to auth state handler');
         } else {
           console.log('ℹ️ No valid session found');
         }
@@ -801,6 +1193,8 @@ export default function App() {
         console.log('✅ Setting isLoading to false');
         setIsAuthChecked(true);
         setIsLoading(false);
+        setLoadingMessage(null);
+        hideOverlay();
       }
     };
 
@@ -850,6 +1244,99 @@ export default function App() {
       realtimeService.cleanup();
     };
   }, []);
+
+  // Check for logout notifications when user state changes to show them on login page
+  useEffect(() => {
+    if (!currentUser) {
+      // Check for logout success notification
+      if (sessionStorage.getItem('logoutSuccess') === 'true') {
+        sessionStorage.removeItem('logoutSuccess');
+        toast.success('Logged out successfully', {
+          description: 'You have been signed out',
+          duration: 4000
+        });
+      }
+      
+      // Check for logout error notification
+      if (sessionStorage.getItem('logoutError') === 'true') {
+        sessionStorage.removeItem('logoutError');
+        toast.error('Logged out with errors', {
+          description: 'Please refresh if you experience any issues',
+          duration: 5000
+        });
+      }
+      
+      // Check for session expired notification
+      if (sessionStorage.getItem('sessionExpired') === 'true') {
+        sessionStorage.removeItem('sessionExpired');
+        toast.warning('Session expired', {
+          description: 'You have been logged out due to inactivity',
+          duration: 5000
+        });
+      }
+
+      // Check for account locked notification (set when server/admin forced a lock)
+      if (sessionStorage.getItem('accountLocked') === 'true') {
+        // Keep the flag in sessionStorage until the user dismisses the dialog so
+        // it can be shown persistently on the login page. We'll show a blocking
+        // AlertDialog to make the lock state explicit and actionable.
+        setShowAccountLockedDialog(true);
+        try {
+          const msg = sessionStorage.getItem('accountLockedMessage');
+          if (msg) setAccountLockedMessage(msg);
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+  }, [currentUser]);
+
+  // Subscribe to the current user's Firestore document so we can react to admin actions
+  // (e.g., accountLocked). When an admin locks the account we immediately sign the user out
+  // and set a sessionStorage flag so the login page can show an explanatory message.
+  useEffect(() => {
+    if (!currentUser || !currentUser.id) return;
+
+    let unsub: (() => void) | null = null;
+    try {
+      const db = getFirebaseDb();
+      const userRef = fsDoc(db, 'users', currentUser.id);
+      unsub = fsOnSnapshot(userRef, (snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data() as any;
+
+        // If accountLocked is true on the server, force local sign-out immediately.
+        if (data?.accountLocked) {
+          console.log('🔒 Detected account lock for current user. Signing out.');
+          // Attempt to sign out via auth service, but proceed to clear state regardless.
+          authService.signOut().catch(() => undefined).finally(() => {
+            // Mark the login page to show the lock notification
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+            // Clear local user state and real-time listeners
+            setCurrentUser(null);
+            realtimeService.cleanup();
+            setClassrooms([]);
+            setBookingRequests([]);
+            setSignupRequests([]);
+            setSchedules([]);
+            setUsers([]);
+          });
+        }
+      }, (error) => {
+        console.error('Error listening to user doc for lock status:', error);
+      });
+    } catch (err) {
+      console.error('Could not create user doc listener for lock status:', err);
+    }
+
+    return () => {
+      try {
+        if (unsub) unsub();
+      } catch (e) {
+        /* ignore */
+      }
+    };
+  }, [currentUser?.id]);
 
   // Expose services after app initialization (for debugging)
   React.useEffect(() => {
@@ -909,7 +1396,7 @@ export default function App() {
           <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4 animate-pulse">
             <div className="text-white text-lg font-bold">PLV</div>
           </div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">{loadingMessage ?? 'Loading...'}</p>
           <Analytics />
         </div>
       </div>
@@ -931,17 +1418,60 @@ export default function App() {
               <p className="text-blue-600 mb-2">PLV CEIT</p>
               <h1 className="mb-6">Digital Classroom</h1>
               <p className="text-gray-600 mb-8">
-                Streamlined classroom assignment and booking system for PLV CEIT.
+                Streamlined classroom assignment and reservation system for PLV CEIT.
               </p>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
-              <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} />
-            </div>
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
+                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} accountLockedMessage={accountLockedMessage} />
+              </div>
           </div>
         </div>
         <Footer />
         <Toaster />
+
+        {/* Account locked AlertDialog — blocking modal shown on login when sessionStorage.accountLocked is set */}
+        <AlertDialog open={showAccountLockedDialog} onOpenChange={(open) => {
+          // Only update the controlled open state here. Don't clear sessionStorage
+          // automatically on open-change events — the Dismiss button should be
+          // the explicit user action that clears the stored flag. This avoids
+          // library-internal focus/open lifecycle events from removing the flag
+          // prematurely (which caused the dialog to flash and close on some devices).
+          setShowAccountLockedDialog(open);
+        }}>
+          <AlertDialogContent className="sm:max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Your account has been locked</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription>
+              {accountLockedMessage ? (
+                <div className="space-y-2">
+                  <p className="font-medium">{accountLockedMessage}</p>
+                  <p className="text-sm text-muted-foreground">You were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+                </div>
+              ) : (
+                <p>Your account was locked by an administrator and you were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+              )}
+            </AlertDialogDescription>
+            <div className="mt-4 flex gap-2 justify-end">
+              <a href={`mailto:${supportEmail}`} className={buttonVariants({ variant: 'outline' })}>
+                Contact Administrator
+              </a>
+              <AlertDialogAction asChild>
+                <button className={buttonVariants({ variant: 'destructive' })} onClick={() => {
+                  // ensure removal of both flags when dismissed
+                  try { sessionStorage.removeItem('accountLocked'); } catch (_) {}
+                  try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
+                  setShowAccountLockedDialog(false);
+                  setAccountLockedMessage(null);
+                }}>
+                  Dismiss
+                </button>
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Analytics />
       </div>
     );
@@ -949,29 +1479,156 @@ export default function App() {
 
   const activeUser = currentUser!;
 
+  // Simple toggle component to enable/disable screen reader announcements
+  function ToggleAnnouncer() {
+    const { enabled, setEnabled, announce, useTTS, setUseTTS } = useAnnouncer();
+
+    // Track mount so we don't announce the initial state when the component first renders
+    const mountedRef = React.useRef(false);
+
+    React.useEffect(() => { mountedRef.current = true; }, []);
+
+    const onToggleEnabled = () => {
+      // Toggle state first (so the persisted value is updated)
+      setEnabled(!enabled);
+      // Only announce when action is user-initiated after mount
+      if (mountedRef.current) {
+        try {
+          announce(!enabled ? 'Screen reader enabled' : 'Screen reader disabled', 'polite');
+        } catch (e) {}
+      }
+    };
+
+    const onToggleTTS = () => {
+      setUseTTS(!useTTS);
+      if (mountedRef.current) {
+        try {
+          announce(!useTTS ? 'Browser text to speech enabled' : 'Browser text to speech disabled', 'polite');
+        } catch (e) {}
+      }
+    };
+
+    return (
+      // Move to bottom-left as a small, unobtrusive control so it doesn't block header elements
+      <div className="fixed bottom-4 left-4 z-40 flex items-center gap-2">
+        <button
+          onClick={onToggleEnabled}
+          className="bg-white text-xs px-2 py-1 rounded-full border border-gray-200 shadow-sm"
+          aria-pressed={!enabled ? 'false' : 'true'}
+          aria-label={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
+          title={enabled ? 'Disable screen reader announcements' : 'Enable screen reader announcements'}
+        >
+          {enabled ? 'SR: On' : 'SR: Off'}
+        </button>
+
+        {/* TTS toggle - optional built-in speech for users without a screen reader */}
+        <button
+          onClick={onToggleTTS}
+          className="bg-white text-xs px-2 py-1 rounded-full border border-gray-200 shadow-sm"
+          aria-pressed={!useTTS ? 'false' : 'true'}
+          aria-label={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
+          title={useTTS ? 'Disable browser text to speech' : 'Enable browser text to speech'}
+        >
+          {useTTS ? 'TTS: On' : 'TTS: Off'}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="flex-1">
-          {activeUser.role === 'admin' ? (
-            <AdminDashboard {...adminDashboardProps} />
-          ) : (
-            <FacultyDashboard {...facultyDashboardProps} />
-          )}
-        </div>
-        <Footer />
-        <SessionTimeoutWarning
-          isOpen={showSessionWarning}
-          timeRemaining={sessionTimeRemaining}
-          onExtendSession={() => {
-            extendSession();
-            handleExtendSession();
-          }}
-          onLogout={handleIdleTimeout}
-        />
-        <Toaster />
-        <Analytics />
-      </div>
+      <ThemeProvider>
+      <AnnouncerProvider>
+           {/* Skip link for keyboard users */}
+           <a
+             href="#main"
+             className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow"
+           >
+             Skip to main
+           </a>
+
+          <div className="min-h-screen bg-background flex flex-col">
+            {/* Header: use original container layout (px-4 sm:px-6 py-4).
+                Place notification bell and theme toggle at the right side. */}
+            <div className="w-full header-border flex items-center justify-between">
+              {/* Left side: logo / title / other controls (NO notification bell here) */}
+              <div className="flex items-center gap-3">
+                {/* keep any existing left-hand content here; do NOT add NotificationBell */}
+                <div className="sr-only">PLV header</div>
+              </div>
+
+              {/* Right side: single notification bell + compact theme toggle */}
+              
+            </div>
+
+            <ToggleAnnouncer />
+            <div className="flex-1">
+              {/* Top-level shared loader overlay */}
+              {overlayVisible ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
+                  <div className="text-center">
+                    <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
+                      <div className="text-white text-lg font-bold">PLV</div>
+                    </div>
+                    <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
+                  </div>
+                </div>
+              ) : null}
+
+            <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
+              {/* Render the appropriate dashboard directly (react-router removed). */}
+              {activeUser.role === 'admin' ? (
+                <AdminDashboard {...adminDashboardProps} />
+              ) : (
+                <FacultyDashboard {...facultyDashboardProps} />
+              )}
+            </Suspense>
+            {/* Using the single inline PLV loader for Suspense fallback; no portal loader mounted */}
+          </div>
+          <Footer />
+          <SessionTimeoutWarning
+            isOpen={showSessionWarning}
+            timeRemaining={sessionTimeRemaining}
+            onExtendSession={() => {
+              extendSession();
+              handleExtendSession();
+            }}
+            onLogout={handleIdleTimeout}
+          />
+          <Toaster />
+
+          {/* App-styled confirm dialog for destructive signup rejection */}
+          <AlertDialog open={!!pendingRejectAction}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reject and Delete Account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the account and associated data for{' '}
+                  <strong>{pendingRejectAction?.requestName}</strong>. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={cancelPendingReject} disabled={isRejecting}>Cancel</AlertDialogCancel>
+                {/* Use a plain button here to avoid Radix auto-closing the dialog before our handler runs.
+                    Apply the same visual style as the AlertDialogCancel by using the shared buttonVariants
+                    with the 'outline' variant so both buttons match visually (pill-shaped, same size).
+                */}
+                <button
+                  type="button"
+                  onClick={confirmPendingReject}
+                  className={cn(buttonVariants({ variant: 'outline' }), 'ml-2')}
+                  disabled={isRejecting}
+                >
+                  {isRejecting ? 'Processing...' : 'Confirm Delete'}
+                </button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Analytics />
+          </div>
+      </AnnouncerProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

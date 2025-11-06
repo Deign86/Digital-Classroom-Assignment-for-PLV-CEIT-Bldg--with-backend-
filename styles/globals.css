@@ -62,6 +62,7 @@
   --radius-xl: 1.5rem;
   --radius-2xl: 2rem;
   --radius: 1rem;
+  /* iOS-style corner smoothing value (approx 60% smoothing as in Figma for iOS pills) */
   
   /* Apple-style Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -312,6 +313,13 @@
     background: rgba(255, 255, 255, 0.3);
   }
 
+  /* iOS-style rounded pill helper removed: Rounded smoothing caused cross-browser issues.
+     Use standard `border-radius` utilities (e.g., `rounded-full`) instead. */
+  .rounded-ios {
+    border-radius: 9999px !important;
+    overflow: visible !important;
+  }
+
   /* Booking conflict indicators */
   .time-slot-conflicted {
     position: relative;
@@ -394,6 +402,14 @@
     min-height: fit-content;
   }
 
+  /* Force mobile tab list to flow left-to-right and allow scrolling when items overflow */
+  .mobile-tab-scroll {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    width: 100%;
+  }
+
   .mobile-tab-scroll::-webkit-scrollbar {
     display: none;
   }
@@ -418,6 +434,14 @@
     min-width: fit-content;
     font-size: 0.875rem;
     font-weight: 500;
+  }
+
+  /* Ensure tab triggers don't stretch on small screens */
+  @media (max-width: 640px) {
+    .mobile-tab-item {
+      display: inline-flex !important;
+      flex-shrink: 0 !important;
+    }
   }
 
   /* Better mobile tab spacing */
@@ -558,6 +582,110 @@
   .will-change-transform {
     will-change: transform;
   }
+
+  /* Tiny mobile fixes: constrain popovers/calendars on very small screens (<=320px) */
+  @media (max-width: 320px) {
+    /* Make popover content use the full viewport width minus padding */
+    [data-slot="popover-content"],
+    [data-radix-popover-content],
+    .calendar-popover,
+    [data-radix-popper-content-wrapper] {
+      position: fixed !important;
+      left: 8px !important;
+      right: 8px !important;
+      top: auto !important;
+      bottom: 72px !important; /* leave space for bottom nav / safe area */
+      max-width: calc(100vw - 16px) !important;
+      width: calc(100vw - 16px) !important;
+      max-height: calc(100vh - 160px) !important;
+      overflow: auto !important;
+      border-radius: 8px !important;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25) !important;
+    }
+
+    /* Ensure calendar grid scales down a bit on very small screens */
+    .calendar-popover .rdp {
+      font-size: 13px;
+    }
+  }
+
+  /* Scoped calendar tweaks to match app: make selected day square and use app accent */
+.app-calendar .rdp-day {
+  border-radius: 6px; /* slightly rounded square */
+}
+
+.app-calendar .rdp-day_selected {
+  /* enforce filled square for selected day */
+  background: var(--color-primary) !important;
+  color: var(--color-primary-foreground) !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 6px !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 !important;
+}
+
+/* target other DayPicker button variants to ensure no circular ring remains */
+.app-calendar .rdp-button.rdp-day_selected,
+.app-calendar .rdp-day.rdp-day_selected > .rdp-button,
+.app-calendar .rdp-button.rdp-selected,
+.app-calendar .rdp-day.rdp-selected > .rdp-button,
+.app-calendar .rdp-day.rdp-selected {
+  background: var(--color-primary) !important;
+  color: var(--color-primary-foreground) !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 6px !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  padding: 0 !important;
+}
+
+/* Remove any pseudo-element rings and unset DayPicker selection variables */
+.app-calendar .rdp-root {
+  /* make the DayPicker buttons default to square-ish */
+  --rdp-day_button-border-radius: 6px !important;
+  --rdp-selected-border: none !important;
+  --rdp-day_button-border: none !important;
+}
+
+/* Hide pseudo-elements that some DayPicker versions use for inner ring/highlight */
+.app-calendar .rdp-day_button::after,
+.app-calendar .rdp-day_button::before,
+.app-calendar .rdp-day_button > *::after,
+.app-calendar .rdp-day_button > *::before {
+  content: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Extra precaution: hide ring/outlines on selected day button variants */
+.app-calendar .rdp-button.rdp-day_selected:focus,
+.app-calendar .rdp-button.rdp-selected:focus,
+.app-calendar .rdp-day.rdp-selected:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* remove any pseudo-element rings */
+.app-calendar .rdp-day_selected::before,
+.app-calendar .rdp-day_selected::after,
+.app-calendar .rdp-button.rdp-day_selected::before,
+.app-calendar .rdp-button.rdp-day_selected::after {
+  display: none !important;
+  box-shadow: none !important;
+}
+
+.app-calendar .rdp-day:not(.rdp-day_disabled):hover {
+  background: rgba(0,0,0,0.03);
+}
+
+.app-calendar .rdp-caption {
+  color: var(--muted-foreground);
+}
 
   .will-change-opacity {
     will-change: opacity;
@@ -755,3 +883,639 @@ html {
 .dark [data-sonner-toast][data-type="success"] [data-description] {
   color: rgb(134, 239, 172) !important; /* green-300 - for dark mode */
 }
+
+/* === APPENDED: dark-mode icon/text adjustments (do not remove existing light-theme rules) ===
+   This block only augments dark theme: sets variables and ensures icons/texts inherit readable colors.
+*/
+:root {
+  --_hover-surface-light: rgba(0,0,0,0.04);
+}
+
+/* ensure .dark variable fallbacks (will not affect light theme rules) */
+.dark {
+  /* core overrides (some already exist earlier; these are safe no-ops if present) */
+  --background: #000000;
+  --foreground: #f2f2f7;
+  --card: #121213;
+  --card-foreground: #f2f2f7;
+  --muted-foreground: #9aa6b2;
+  --primary: #0a84ff;
+  --border: rgba(255,255,255,0.08);
+  --ring: #0a84ff;
+  --hover-surface: rgba(255,255,255,0.03);
+}
+
+/* Make header/button/tab icons/texts inherit and be readable in dark mode */
+.btn-theme,
+.header-theme-controls button,
+[role="tablist"] [role="tab"],
+[data-sonner-toast] [data-description] {
+  color: var(--foreground);
+}
+
+.btn-theme svg,
+.header-theme-controls svg {
+  color: currentColor;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* Tab hover: only change background; keep text/icon color readable */
+[role="tablist"] [role="tab"]:hover { background: var(--hover-surface, var(--_hover-surface-light)); color: inherit !important; }
+.dark [role="tablist"] [role="tab"]:hover { background: var(--hover-surface, rgba(255,255,255,0.03)); }
+
+/* Sonner toast descriptions in dark: ensure contrast */
+.dark [data-sonner-toast] [data-description] {
+  color: rgba(242, 242, 247, 0.9) !important;
+}
+
+/* Prevent utilities that force dark text from breaking icons/text in dark */
+.dark .text-black,
+.dark .text-gray-900,
+.dark .hover\:text-gray-900:hover {
+  color: inherit !important;
+}
+
+/* Ensure focus ring is visible in dark */
+:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0a84ff) 20%, transparent); }
+
+html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
+  background-color: #f3f4f6 !important; /* light gray */
+  background-image: none !important;
+  color: var(--foreground) !important;
+}
+
+/* end appended dark-mode block */
+
+/* === APPENDED: stronger dark-theme container / tab / hover fixes ===
+   Only affects dark theme (.dark). Keeps light theme rules intact.
+*/
+:root {
+  /* ensure these helper classes exist for Tailwind-less fallbacks */
+  --tab-inactive-bg: transparent;
+  --tab-active-overlay: rgba(255,255,255,0.04);
+  --hover-surface-dark: rgba(255,255,255,0.03);
+}
+
+/* Make base background/card utility classes respect CSS tokens */
+.bg-background { background-color: var(--background); color: var(--foreground); }
+.bg-card { background-color: var(--card); color: var(--card-foreground); }
+.bg-popover { background-color: var(--popover); color: var(--popover-foreground); }
+
+/* Dark-mode specific adjustments */
+.dark {
+  /* Ensure main page surface is dark */
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Force the main layout / page container to use dark background when .dark is present */
+.dark .min-h-screen,
+.dark .bg-background {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Cards, panels, popovers use card color (not white) */
+.dark .bg-card,
+.dark .card,
+.dark .panel,
+.dark .popover,
+.dark .modal {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Sidebar / nav panels */
+.dark .sidebar,
+.dark .nav,
+.dark .side-panel {
+  background-color: var(--sidebar) !important;
+  color: var(--sidebar-foreground) !important;
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Tabs: keep text readable, hover subtle, and active not white */
+[role="tablist"] [role="tab"] {
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+/* Hover: only subtle darkening (no white flash) */
+.dark [role="tablist"] [role="tab"]:hover,
+.dark .btn-theme:hover,
+.dark .card-content:hover {
+  background: var(--hover-surface, var(--hover-surface, rgba(255,255,255,0.03))) !important;
+  color: inherit !important;
+}
+
+/* Active/selected tabs - use card surface / subtle overlay (never pure white) */
+.dark [role="tablist"] [role="tab"][data-state="active"],
+.dark [role="tablist"] [role="tab"][aria-selected="true"],
+.dark [role="tablist"] [role="tab"].active,
+.dark [role="tablist"] [role="tab"].is-active {
+  /* slightly lighter/darker overlay on top of card to indicate active state */
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03)) ;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Defensive: neutralize utility classes that might force white backgrounds or black text */
+.dark .bg-white, .dark .text-black, .dark .text-gray-900 {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* Ensure SVG icons inside tabs/panels inherit correct color and remain outline where intended */
+.dark [role="tablist"] [role="tab"] svg,
+.dark .tab-icon,
+.dark .nav-icon,
+.dark .card svg,
+.dark .stat-card svg,
+.dark .list-item svg {
+  color: currentColor;
+  stroke: currentColor !important;
+  fill: none !important; /* keep outline default; use .icon-filled for solid icons */
+}
+
+/* Solid icons opt-in */
+.icon-filled, .icon-filled svg {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+/* Sonner/toast ensure contrast */
+.dark [data-sonner-toast] {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+.dark [data-sonner-toast] [data-description] {
+  color: rgba(242,242,247,0.9) !important;
+}
+
+/* Small helpers so hover/active never use white backgrounds */
+.dark .hover\:bg-white:hover,
+.dark .bg-white:hover,
+.dark .active\:bg-white:active {
+  background: var(--hover-surface, rgba(255,255,255,0.03)) !important;
+}
+
+/* Keep focus rings visible but not white */
+.dark :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0a84ff) 18%, transparent) !important;
+  border-radius: 6px;
+}
+
+/* === APPENDED: ensure nav/tabs/footer use dark surfaces in .dark theme === */
+.dark {
+  /* prefer semantic vars already defined above */
+  --surface-nav: var(--sidebar);
+  --surface-tabs: var(--card);
+  --surface-footer: var(--card);
+}
+
+/* Navigation / topbar / sidebar surfaces */
+.dark .nav,
+.dark .navbar,
+.dark .topbar,
+.dark .sidebar,
+.dark .side-panel,
+.dark .main-nav,
+.dark .primary-nav {
+  background-color: var(--surface-nav) !important;
+  color: var(--sidebar-foreground) !important;
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Tabs container (tablist) background and individual tab surfaces */
+.dark [role="tablist"],
+.dark .tabs,
+.dark .tab-bar,
+.dark .tab-list,
+.dark .tabs-container {
+  background-color: var(--surface-tabs) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Tab triggers: subtle hover + active styles (no white) */
+.dark [role="tablist"] [role="tab"],
+.dark .tab-item,
+.dark .tab-trigger {
+  background: transparent;
+  color: var(--card-foreground);
+  transition: background-color 160ms ease, color 120ms ease;
+}
+
+/* Tab hover: darker overlay (not white) */
+.dark [role="tablist"] [role="tab"]:hover,
+.dark .tab-item:hover,
+.dark .tab-trigger:hover {
+  background: rgba(255,255,255,0.025) !important; /* subtle lightening on dark surface */
+  color: inherit !important;
+}
+
+/* Active/selected tabs: gentle overlay, not pure white */
+.dark [role="tablist"] [role="tab"][data-state="active"],
+.dark [role="tablist"] [role="tab"][aria-selected="true"],
+.dark .tab-item.active,
+.dark .tab-trigger.active {
+  background: rgba(255,255,255,0.04) !important;
+  color: var(--card-foreground) !important;
+  box-shadow: none !important;
+}
+
+/* Links / nav items: ensure background stays on dark surfaces and not white on hover/focus */
+.dark .nav a,
+.dark .nav-item,
+.dark .nav-link,
+.dark .menu-item {
+  color: var(--sidebar-foreground) !important;
+}
+.dark .nav a:hover,
+.dark .nav-item:hover,
+.dark .nav-link:hover,
+.dark .menu-item:hover {
+  background: rgba(255,255,255,0.02) !important;
+  color: inherit !important;
+}
+
+/* Footer: dark surface (not grey) */
+footer,
+.footer,
+.site-footer,
+.app-footer {
+  background-color: var(--surface-footer);
+  color: var(--card-foreground);
+  border-top: 1px solid var(--border);
+}
+
+/* Ensure footer links and small text are readable */
+footer a,
+.footer a,
+.site-footer a {
+  color: var(--card-foreground);
+}
+.dark footer,
+.dark .footer,
+.dark .site-footer,
+.dark .app-footer {
+  background-color: var(--surface-footer) !important;
+  color: var(--card-foreground) !important;
+  border-top-color: var(--border) !important;
+}
+
+/* Defensive: avoid white backgrounds from utility classes inside nav/tabs/footer */
+.dark .nav .bg-white,
+.dark .tabs .bg-white,
+.dark footer .bg-white,
+.dark .footer .bg-white {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* === APPENDED: profile/input dark-theme fixes ===
+   Ensures profile/profile-form inputs use dark surfaces and light text in .dark
+   Does not change light theme behavior.
+*/
+.dark .profile,
+.dark .profile-form,
+.dark .profile-info,
+.dark .user-profile,
+.dark .profile-card,
+.dark .card .profile-fields,
+.dark .bg-card .profile-fields {
+  color: var(--card-foreground);
+}
+
+/* Inputs, textareas, selects used for profile info */
+.dark .profile-form input,
+.dark .profile-form textarea,
+.dark .profile-form select,
+.dark .profile-info input,
+.dark .profile-info textarea,
+.dark .profile-info select,
+.dark .user-profile input,
+.dark .user-profile textarea,
+.dark .user-profile select,
+.dark .profile-card input,
+.dark .profile-card textarea,
+.dark .profile-card select,
+.dark .card input,
+.dark .card textarea,
+.dark .card select,
+.dark .bg-card input,
+.dark .bg-card textarea,
+.dark .bg-card select,
+.dark input.profile-input,
+.dark textarea.profile-input,
+.dark select.profile-input {
+  background-color: var(--input) !important; /* dark input surface (uses --input from :root/.dark) */
+  color: var(--card-foreground) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+/* Placeholder and muted helper text */
+.dark .profile-form input::placeholder,
+.dark .profile-form textarea::placeholder,
+.dark .profile-info input::placeholder,
+.dark .profile-info textarea::placeholder,
+.dark input.profile-input::placeholder,
+.dark textarea.profile-input::placeholder {
+  color: rgba(242,242,247,0.6) !important;
+  opacity: 1;
+}
+
+/* Focus ring for accessibility */
+.dark .profile-form input:focus,
+.dark .profile-form textarea:focus,
+.dark .profile-form select:focus,
+.dark .profile-info input:focus,
+.dark .profile-info textarea:focus,
+.dark .profile-info select:focus,
+.dark .card input:focus,
+.dark .card textarea:focus,
+.dark input.profile-input:focus,
+.dark textarea.profile-input:focus,
+.dark select.profile-input:focus {
+  outline: none !important;
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ring) 18%, transparent) !important;
+}
+
+/* Disabled/readonly fields */
+.dark .profile-form input:disabled,
+.dark .profile-form textarea:disabled,
+.dark .profile-info input:disabled,
+.dark .profile-info textarea:disabled {
+  opacity: 0.7;
+  background: rgba(255,255,255,0.02) !important;
+  color: rgba(242,242,247,0.65) !important;
+}
+
+/* Ensure elements using the utility `space-y-2` get a dark surface in .dark theme.
+   This keeps spacing behavior but gives the container a dark background and readable text. */
+.dark .space-y-2 {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Make direct children transparent so their own backgrounds don't conflict,
+   and ensure they inherit the dark text color when needed. */
+.dark .space-y-2 > * {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* If any children use utility classes that force light backgrounds, neutralize them here */
+.dark .space-y-2 .bg-white,
+.dark .space-y-2 .bg-gray-50,
+.dark .space-y-2 .bg-gray-100 {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* Ensure the modal/card that uses the utility combination below uses a dark surface in .dark */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative {
+  background-color: var(--card) !important;
+  color: rgba(255,255,255,0.95) !important; /* brighter text */
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Ensure all direct children inherit the brighter text color */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative * {
+  color: rgba(255,255,255,0.95) !important;
+}
+
+/* Specific adjustments for common elements inside the modal */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative a {
+  color: var(--primary) !important;
+  text-decoration: none;
+}
+
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h1,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h2,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h3,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h4,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative p,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative label {
+  color: rgba(255,255,255,0.95) !important;
+}
+
+/* Form fields inside modal: ensure text is bright and placeholders are slightly muted */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative input,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative textarea,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative select {
+  color: rgba(255,255,255,0.95) !important;
+  background: transparent !important; /* keep card surface consistent */
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative input::placeholder,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative textarea::placeholder {
+  color: rgba(255,255,255,0.65) !important;
+}
+
+/* end modal text brightness adjustments */
+
+/* === APPENDED: make small right-side header/control container visible in dark mode
+   Targets elements that use the utility combination: `flex items-center gap-2 p-3 bg-gray-50 rounded-lg`
+   In dark mode we add a subtle white outline, ensure a dark background and readable text.
+*/
+.dark .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
+  background-color: var(--card) !important;            /* dark surface */
+  color: var(--card-foreground) !important;            /* readable text */
+  border: 1px solid rgba(255,255,255,0.06) !important; /* subtle white outline */
+  box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;     /* slight inner highlight */
+}
+
+/* If the element needs a stronger outline (use sparingly) */
+.dark .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg.strong-outline {
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45) !important;
+}
+
+/* ensure children don't force light backgrounds that clash with the dark surface */
+.dark .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg .bg-white,
+.dark .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg .bg-gray-50 {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* === end appended patch === */
+
+/* === PATCH: fix icon + text overlapping inside .space-y-2 containers === */
+.space-y-2 > * {
+  display: flex;              /* align icon + text horizontally */
+  align-items: center;        /* vertically center icon and text */
+  gap: 0.5rem;                /* consistent spacing between icon and text */
+  line-height: 1.25;         /* avoid text wrapping on top of icon */
+  min-height: 1.75rem;       /* prevent very small children from overlapping */
+}
+
+/* Ensure SVG/icon sizing and behavior is consistent */
+.space-y-2 svg,
+.space-y-2 .icon,
+.space-y-2 img {
+  flex-shrink: 0;
+  width: 1.125rem;            /* 18px */
+  height: 1.125rem;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Text within items should wrap normally and sit beside the icon */
+.space-y-2 > * > .text,
+.space-y-2 > * > p,
+.space-y-2 > * > span {
+  display: inline-block;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* Keep earlier dark-mode overrides (ensure children inherit dark styles) */
+.dark .space-y-2,
+.dark .space-y-2 > * {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Defensive: neutralize utility classes that force conflicting bg/text inside the group */
+.space-y-2 .bg-white,
+.space-y-2 .bg-gray-50,
+.dark .space-y-2 .bg-white,
+.dark .space-y-2 .bg-gray-50 {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* === end patch === */
+
+/* === PATCH: prevent icon & placeholder/text overlap for inputs using pl-10/pr-10 ===
+   - Ensures left/right padding is enforced (important) so placeholder/text won't overlap icons.
+   - Positions SVG/icon elements inside the same container so they sit visually inside the padding area.
+   - Narrow, specific selectors to avoid broad side-effects.
+*/
+input[class*="pl-10"][class*="pr-10"],
+textarea[class*="pl-10"][class*="pr-10"] {
+  box-sizing: border-box;
+  /* pl-10 / pr-10 -> 2.5rem in Tailwind, enforce with !important to avoid utility overrides */
+  padding-left: 2.5rem !important;
+  padding-right: 2.5rem !important;
+  min-height: 2.25rem;
+}
+
+/* If a wrapper element uses the long utility string, ensure it's positioned so child icons can be absolute */
+[class*="pl-10"][class*="pr-10"].relative,
+[class*="pl-10"][class*="pr-10"].input-with-icon,
+.input-with-icon {
+  position: relative;
+}
+
+/* Common patterns where the icon is placed as a sibling or child - position it inside the input padding */
+.input-with-icon svg,
+.input-with-icon .icon,
+input[class*="pl-10"][class*="pr-10"] + svg,
+input[class*="pl-10"][class*="pr-10"] ~ svg,
+.input-with-icon > svg.icon-left,
+.input-with-icon .icon-left {
+  position: absolute;
+  left: 0.75rem; /* sits comfortably inside 2.5rem padding */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;  /* 18px */
+  height: 1.125rem;
+  pointer-events: none; /* allow clicks to target the input */
+  display: inline-block;
+  color: currentColor;
+  fill: none;      /* prefer stroke icons; use .icon-filled to force fill */
+  stroke: currentColor;
+}
+
+/* Right-side icons (if any) */
+.input-with-icon .icon-right,
+input[class*="pl-10"][class*="pr-10"] + .icon-right,
+input[class*="pl-10"][class*="pr-10"] ~ .icon-right {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.125rem;
+  height: 1.125rem;
+  pointer-events: none;
+  color: currentColor;
+  fill: none;
+  stroke: currentColor;
+}
+
+/* If any icon must be filled (solid), opt-in via .icon-filled */
+.icon-filled,
+.icon-filled svg {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+/* Ensure placeholder text uses the input padding and won't overlap when styled by utilities */
+input[class*="pl-10"]::placeholder,
+textarea[class*="pl-10"]::placeholder {
+  opacity: 1;
+  color: inherit;
+}
+
+/* Defensive: neutralize child elements that force negative margins or absolute positioning inside these inputs */
+.input-with-icon > *:not(input):not(svg):not(.icon):not(.icon-left):not(.icon-right) {
+  position: relative;
+  z-index: 1;
+}
+
+/* End patch */
+
+/* Dark-mode override: elements using `hover:bg-gray-50` should darken (not flash white) */
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-50:focus,
+.dark .hover\:bg-gray-50:active {
+  background-color: rgba(255,255,255,0.03) !important; /* subtle lightening on dark surface */
+  color: inherit !important;
+  /* keep the hover shadow but make it suitable for dark mode */
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45) !important;
+}
+
+/* Center .space-y-2 content when it's used inside footers */
+footer .space-y-2,
+.footer .space-y-2,
+.site-footer .space-y-2,
+.app-footer .space-y-2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem; /* keep the spaced-y behavior */
+}
+
+/* Ensure children don't override centering with forced widths */
+footer .space-y-2 > *,
+.footer .site-footer .space-y-2 > *,
+.app-footer .space-y-2 > * {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: auto;
+}
+
+/* Light-theme: disabled buttons inside `.flex items-center gap-2` use muted gray */
+html:not(.dark) .flex.items-center.gap-2 :is(button[disabled], .btn:disabled, [disabled]) {
+  color: var(--color-gray-500, #6b7280) !important;
+  background-color: var(--color-gray-200);
+  opacity: 1 !important;      /* keep legible (do not fade) */
+  cursor: not-allowed !important;
+}
+
+/* end patch */

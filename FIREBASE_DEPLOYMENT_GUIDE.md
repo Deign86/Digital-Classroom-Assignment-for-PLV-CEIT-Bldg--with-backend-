@@ -239,34 +239,34 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
     
-    // Bookings collection rules
+   // Bookings collection rules (represents reservation requests)
     match /bookings/{bookingId} {
-      // Faculty can read their own bookings
+   // Faculty can read their own reservations
       allow read: if isSignedIn() && 
                   (isOwner(resource.data.userId) || isAdmin());
       
-      // Admins can read all bookings
+   // Admins can read all reservations
       allow list: if isAdmin();
       
-      // Faculty can create bookings
+   // Faculty can create reservation requests
       allow create: if isFaculty() && 
                     request.resource.data.userId == request.auth.uid &&
                     request.resource.data.status == 'pending';
       
-      // Faculty can update their own pending bookings
+   // Faculty can update their own pending reservation requests
       allow update: if isFaculty() && 
                     isOwner(resource.data.userId) && 
                     resource.data.status == 'pending';
       
-      // Admins can update any booking (for approval/rejection)
+   // Admins can update any reservation (for approval/rejection)
       allow update: if isAdmin();
       
-      // Users can delete their own pending bookings
+   // Users can delete their own pending reservation requests
       allow delete: if isSignedIn() && 
                     isOwner(resource.data.userId) && 
                     resource.data.status == 'pending';
       
-      // Admins can delete any booking
+   // Admins can delete any reservation
       allow delete: if isAdmin();
     }
     
@@ -444,7 +444,7 @@ The app should start at `http://localhost:5173`
 2. Try accessing Admin Dashboard
 3. Test creating classrooms
 4. Test approving users
-5. Test managing bookings
+5. Test managing reservations
 
 ---
 
@@ -612,6 +612,11 @@ Use this checklist when setting up a new Firebase project:
 - [ ] Test classroom creation
 - [ ] Test booking system
 - [ ] Verify email sending
+
+ - [ ] Test admin dashboard
+ - [ ] Test classroom creation
+ - [ ] Test reservation system
+ - [ ] Verify email sending
 - [ ] Check security rules in production mode
 
 ---
