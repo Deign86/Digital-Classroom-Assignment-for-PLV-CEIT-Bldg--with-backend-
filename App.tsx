@@ -113,12 +113,12 @@ export default function App() {
     return bookingRequests.filter(r => r.facultyId === currentUser.id);
   }, [bookingRequests, currentUser]);
 
-  // Setup real-time data listeners based on user role and permissions
+ 
   const setupRealtimeListeners = useCallback((user: User | null) => {
     console.log('🔄 Setting up real-time data listeners...');
     
     if (!user) {
-      // Clear data when no user
+     
       setUsers([]);
       setClassrooms([]);
       setSignupRequests([]);
