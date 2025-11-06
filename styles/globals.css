@@ -1247,6 +1247,14 @@ html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* Fix form field container backgrounds in dark mode - remove gray boxes */
+.dark .space-y-2,
+.dark .space-y-4,
+.dark .space-y-6,
+.dark .grid > div {
+  background: transparent !important;
+}
+
 /* === APPENDED: ensure nav/tabs/footer use dark surfaces in .dark theme === */
 .dark {
   /* prefer semantic vars already defined above */
