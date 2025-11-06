@@ -1,23 +1,42 @@
 import React, { useState } from 'react';
-import { classroomService } from '../lib/firebaseService';
+import { classroomService, bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
+import { notificationService } from '../lib/notificationService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch';
-import { Plus, Edit, Trash2, Users, MapPin, Loader2, X } from 'lucide-react';
+import { Textarea } from './ui/textarea';
+import { Plus, Edit, Trash2, Users, MapPin, Loader2, X, AlertCircle, AlertTriangle, Calendar, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Classroom } from '../App';
+import type { Classroom, BookingRequest, Schedule } from '../App';
 import { getIconForEquipment } from '../lib/equipmentIcons';
+import { sanitizeText } from '../utils/inputValidation';
+import { getAuth } from 'firebase/auth';
 
 interface ClassroomManagementProps {
   classrooms: Classroom[];
   onClassroomUpdate: (classrooms: Classroom[]) => void;
+}
+
+// Validation limits
+const LIMITS = {
+  ROOM_NAME: 50,
+  BUILDING: 100,
+  CAPACITY_MIN: 1,
+  CAPACITY_MAX: 200,
+};
+
+// Validation error messages
+interface ValidationErrors {
+  name?: string;
+  capacity?: string;
+  building?: string;
 }
 
 // Available equipment options with their icons
@@ -47,9 +66,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     floor: '1',
     isAvailable: true
   });
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
   const [loadingRows, setLoadingRows] = useState<Record<string, boolean>>({});
+  
+  // Disable warning dialog state
+  const [disableWarningOpen, setDisableWarningOpen] = useState(false);
+  const [classroomToDisable, setClassroomToDisable] = useState<Classroom | null>(null);
+  const [affectedBookings, setAffectedBookings] = useState<BookingRequest[]>([]);
+  const [affectedSchedules, setAffectedSchedules] = useState<Schedule[]>([]);
+  const [disableReason, setDisableReason] = useState('');
 
   const resetForm = () => {
     setFormData({
@@ -60,12 +87,69 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       floor: '1',
       isAvailable: true
     });
+    setValidationErrors({});
+  };
+
+  // Validate room name
+  const validateRoomName = (name: string): string | undefined => {
+    const sanitized = sanitizeText(name, LIMITS.ROOM_NAME);
+    if (!sanitized.trim()) {
+      return 'Room name is required';
+    }
+    if (sanitized.length > LIMITS.ROOM_NAME) {
+      return `Room name must be ${LIMITS.ROOM_NAME} characters or less`;
+    }
+    return undefined;
+  };
+
+  // Validate capacity
+  const validateCapacity = (capacity: string): string | undefined => {
+    if (!capacity.trim()) {
+      return 'Capacity is required';
+    }
+    const num = parseInt(capacity);
+    if (isNaN(num)) {
+      return 'Capacity must be a number';
+    }
+    if (num < LIMITS.CAPACITY_MIN) {
+      return `Capacity must be at least ${LIMITS.CAPACITY_MIN}`;
+    }
+    if (num > LIMITS.CAPACITY_MAX) {
+      return `Capacity cannot exceed ${LIMITS.CAPACITY_MAX}`;
+    }
+    return undefined;
+  };
+
+  // Validate building
+  const validateBuilding = (building: string): string | undefined => {
+    const sanitized = sanitizeText(building, LIMITS.BUILDING);
+    if (!sanitized.trim()) {
+      return 'Building is required';
+    }
+    if (sanitized.length > LIMITS.BUILDING) {
+      return `Building name must be ${LIMITS.BUILDING} characters or less`;
+    }
+    return undefined;
+  };
+
+  // Validate entire form
+  const validateForm = (): boolean => {
+    const errors: ValidationErrors = {
+      name: validateRoomName(formData.name),
+      capacity: validateCapacity(formData.capacity),
+      building: validateBuilding(formData.building),
+    };
+
+    setValidationErrors(errors);
+    return !errors.name && !errors.capacity && !errors.building;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.capacity || !formData.building) {
-      toast.error('Please fill in all required fields');
+    
+    // Validate form
+    if (!validateForm()) {
+      toast.error('Please fix the errors before submitting');
       return;
     }
     
@@ -175,6 +259,69 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   };
 
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
+    // If disabling, check for affected bookings first
+    if (!isAvailable) {
+      const classroom = classrooms.find(c => c.id === classroomId);
+      if (!classroom) return;
+      
+      // Check for affected bookings and schedules
+      const result = await executeWithNetworkHandling(
+        async () => {
+          const allBookings = await bookingRequestService.getAll();
+          const allSchedules = await scheduleService.getAll();
+          
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Find approved/pending bookings for this classroom from today onwards
+          const affected = allBookings.filter(booking => {
+            const bookingDate = new Date(booking.date);
+            return (
+              booking.classroomId === classroomId &&
+              (booking.status === 'approved' || booking.status === 'pending') &&
+              bookingDate >= today
+            );
+          });
+          
+          // Find confirmed schedules for this classroom from today onwards
+          const affectedScheds = allSchedules.filter(schedule => {
+            const schedDate = new Date(schedule.date);
+            return (
+              schedule.classroomId === classroomId &&
+              schedule.status === 'confirmed' &&
+              schedDate >= today
+            );
+          });
+          
+          return { bookings: affected, schedules: affectedScheds };
+        },
+        {
+          operationName: 'check affected bookings',
+          successMessage: undefined,
+          maxAttempts: 3,
+          showLoadingToast: true,
+        }
+      );
+      
+      if (result.success && result.data) {
+        const { bookings, schedules } = result.data;
+        
+        // If there are affected bookings, show warning dialog
+        if (bookings.length > 0 || schedules.length > 0) {
+          setClassroomToDisable(classroom);
+          setAffectedBookings(bookings);
+          setAffectedSchedules(schedules);
+          setDisableWarningOpen(true);
+          return; // Don't proceed with toggle yet
+        }
+      }
+    }
+    
+    // If enabling or no affected bookings, proceed normally
+    await performAvailabilityToggle(classroomId, isAvailable);
+  };
+
+  const performAvailabilityToggle = async (classroomId: string, isAvailable: boolean, reason?: string) => {
     // show per-row loader while updating
     setLoadingRows(prev => ({ ...prev, [classroomId]: true }));
     
@@ -183,6 +330,41 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         await classroomService.update(classroomId, { isAvailable });
         const updatedClassrooms = await classroomService.getAll();
         onClassroomUpdate(updatedClassrooms);
+        
+        // If disabling with affected bookings, send notifications
+        if (!isAvailable && (affectedBookings.length > 0 || affectedSchedules.length > 0)) {
+          const auth = getAuth();
+          const currentUserId = auth.currentUser?.uid;
+          
+          // Get unique faculty IDs from both bookings and schedules
+          const facultyIds = new Set<string>();
+          affectedBookings.forEach(b => facultyIds.add(b.facultyId));
+          affectedSchedules.forEach(s => facultyIds.add(s.facultyId));
+          
+          // Send notification to each affected faculty
+          const classroom = classrooms.find(c => c.id === classroomId);
+          const classroomName = classroom?.name || 'Classroom';
+          
+          for (const facultyId of facultyIds) {
+            try {
+              const message = reason 
+                ? `The classroom "${classroomName}" has been disabled. Reason: ${reason}. Please contact admin regarding your affected reservations.`
+                : `The classroom "${classroomName}" has been disabled. Please contact admin regarding your affected reservations.`;
+              
+              await notificationService.createNotification(
+                facultyId,
+                'classroom_disabled',
+                message,
+                {
+                  actorId: currentUserId || undefined,
+                }
+              );
+            } catch (error) {
+              console.error(`Failed to notify faculty ${facultyId}:`, error);
+            }
+          }
+        }
+        
         return { isAvailable };
       },
       {
@@ -194,7 +376,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     );
 
     if (result.success) {
-      toast.success(`Classroom ${result.data?.isAvailable ? 'enabled' : 'disabled'} successfully`);
+      const affectedCount = affectedBookings.length + affectedSchedules.length;
+      const message = !isAvailable && affectedCount > 0
+        ? `Classroom disabled successfully. ${affectedCount} affected reservation(s) notified.`
+        : `Classroom ${result.data?.isAvailable ? 'enabled' : 'disabled'} successfully`;
+      toast.success(message);
     } else if (!result.success && !result.isNetworkError) {
       toast.error('Error updating availability');
     }
@@ -204,6 +390,27 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       delete copy[classroomId];
       return copy;
     });
+  };
+
+  const handleDisableConfirm = async () => {
+    if (!classroomToDisable) return;
+    
+    await performAvailabilityToggle(classroomToDisable.id, false, disableReason);
+    
+    // Reset state
+    setDisableWarningOpen(false);
+    setClassroomToDisable(null);
+    setAffectedBookings([]);
+    setAffectedSchedules([]);
+    setDisableReason('');
+  };
+
+  const handleDisableCancel = () => {
+    setDisableWarningOpen(false);
+    setClassroomToDisable(null);
+    setAffectedBookings([]);
+    setAffectedSchedules([]);
+    setDisableReason('');
   };
 
   const closeDialog = () => {
@@ -247,9 +454,25 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       id="name"
                       placeholder="e.g., CEIT-101"
                       value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => {
+                        const sanitized = sanitizeText(e.target.value, LIMITS.ROOM_NAME);
+                        setFormData(prev => ({ ...prev, name: sanitized }));
+                        setValidationErrors(prev => ({ ...prev, name: validateRoomName(sanitized) }));
+                      }}
+                      onBlur={() => setValidationErrors(prev => ({ ...prev, name: validateRoomName(formData.name) }))}
+                      maxLength={LIMITS.ROOM_NAME}
+                      className={validationErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {validationErrors.name && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.name}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {formData.name.length}/{LIMITS.ROOM_NAME} characters
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -259,11 +482,26 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         id="capacity"
                         type="number"
                         placeholder="50"
-                        min="1"
+                        min={LIMITS.CAPACITY_MIN}
+                        max={LIMITS.CAPACITY_MAX}
                         value={formData.capacity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, capacity: e.target.value }))}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, capacity: e.target.value }));
+                          setValidationErrors(prev => ({ ...prev, capacity: validateCapacity(e.target.value) }));
+                        }}
+                        onBlur={() => setValidationErrors(prev => ({ ...prev, capacity: validateCapacity(formData.capacity) }))}
+                        className={validationErrors.capacity ? 'border-red-500 focus-visible:ring-red-500' : ''}
                         required
                       />
+                      {validationErrors.capacity && (
+                        <p className="text-sm text-red-500 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {validationErrors.capacity}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Range: {LIMITS.CAPACITY_MIN}-{LIMITS.CAPACITY_MAX}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="floor">Floor *</Label>
@@ -287,9 +525,25 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       id="building"
                       placeholder="e.g., CEIT Building"
                       value={formData.building}
-                      onChange={(e) => setFormData(prev => ({ ...prev, building: e.target.value }))}
+                      onChange={(e) => {
+                        const sanitized = sanitizeText(e.target.value, LIMITS.BUILDING);
+                        setFormData(prev => ({ ...prev, building: sanitized }));
+                        setValidationErrors(prev => ({ ...prev, building: validateBuilding(sanitized) }));
+                      }}
+                      onBlur={() => setValidationErrors(prev => ({ ...prev, building: validateBuilding(formData.building) }))}
+                      maxLength={LIMITS.BUILDING}
+                      className={validationErrors.building ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required
                     />
+                    {validationErrors.building && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {validationErrors.building}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {formData.building.length}/{LIMITS.BUILDING} characters
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -351,7 +605,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     <Button type="button" variant="outline" onClick={closeDialog}>
                       Cancel
                     </Button>
-                    <Button type="submit">
+                    <Button 
+                      type="submit"
+                      disabled={
+                        !formData.name.trim() || 
+                        !formData.capacity.trim() || 
+                        !formData.building.trim() ||
+                        !!validationErrors.name || 
+                        !!validationErrors.capacity || 
+                        !!validationErrors.building
+                      }
+                    >
                       {editingClassroom ? 'Update Classroom' : 'Add Classroom'}
                     </Button>
                   </div>
@@ -482,6 +746,148 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               Delete
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable Classroom Warning Dialog */}
+      <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              Warning: Active Reservations Found
+            </DialogTitle>
+            <DialogDescription>
+              This classroom has <b>{affectedBookings.length + affectedSchedules.length}</b> active or upcoming reservation(s). 
+              Disabling it will affect the following:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Affected Bookings */}
+            {affectedBookings.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Pending/Approved Booking Requests ({affectedBookings.length})
+                </h4>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {affectedBookings.map((booking) => (
+                    <div 
+                      key={booking.id} 
+                      className="p-3 border rounded-lg bg-gray-50 text-sm"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <p className="font-medium">{booking.facultyName}</p>
+                          <p className="text-gray-600">
+                            {new Date(booking.date).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p className="text-gray-600 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {booking.startTime} - {booking.endTime}
+                          </p>
+                          <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                        </div>
+                        <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
+                          {booking.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Affected Schedules */}
+            {affectedSchedules.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Confirmed Schedules ({affectedSchedules.length})
+                </h4>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {affectedSchedules.map((schedule) => (
+                    <div 
+                      key={schedule.id} 
+                      className="p-3 border rounded-lg bg-gray-50 text-sm"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <p className="font-medium">{schedule.facultyName}</p>
+                          <p className="text-gray-600">
+                            {new Date(schedule.date).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </p>
+                          <p className="text-gray-600 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {schedule.startTime} - {schedule.endTime}
+                          </p>
+                          <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                        </div>
+                        <Badge variant="default">
+                          {schedule.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Optional Reason Field */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label htmlFor="disable-reason">
+                Reason for disabling (optional)
+                <span className="text-sm text-gray-500 font-normal ml-2">
+                  This will be included in the notification
+                </span>
+              </Label>
+              <Textarea
+                id="disable-reason"
+                placeholder="e.g., Maintenance work scheduled, Equipment malfunction, etc."
+                value={disableReason}
+                onChange={(e) => setDisableReason(e.target.value)}
+                maxLength={200}
+                rows={3}
+              />
+              <p className="text-xs text-gray-500">
+                {disableReason.length}/200 characters
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <p className="font-medium mb-1">What happens next?</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>All affected faculty members will receive an in-app notification</li>
+                <li>If push notifications are enabled, they'll also receive a push notification</li>
+                <li>They will be informed to contact admin about their reservations</li>
+                <li>The classroom will be marked as unavailable for new bookings</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDisableCancel}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDisableConfirm}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Disable Classroom & Notify
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

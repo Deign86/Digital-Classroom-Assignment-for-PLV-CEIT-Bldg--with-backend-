@@ -21,7 +21,7 @@ import { logger } from './logger';
 /**
  * Types of notifications that can be sent to users
  */
-export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup';
+export type NotificationType = 'approved' | 'rejected' | 'info' | 'cancelled' | 'signup' | 'classroom_disabled';
 
 /**
  * Represents a notification in the system
