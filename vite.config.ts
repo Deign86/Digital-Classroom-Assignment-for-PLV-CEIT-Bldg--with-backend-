@@ -1,5 +1,5 @@
 import path from 'path'
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -14,6 +14,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // @ts-expect-error - Vitest config is optional and only used during testing
   test: {
     globals: true,
     environment: 'jsdom',
