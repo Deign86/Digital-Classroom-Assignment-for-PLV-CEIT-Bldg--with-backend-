@@ -600,9 +600,27 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                       </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Information Technology">Information Technology</SelectItem>
-                      <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
-                      <SelectItem value="Electrical Engineering">Electrical Engineering</SelectItem>
+                      <SelectItem 
+                        value="Information Technology"
+                        disabled={profileData.departments.includes('Information Technology')}
+                        className={profileData.departments.includes('Information Technology') ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        Information Technology
+                      </SelectItem>
+                      <SelectItem 
+                        value="Civil Engineering"
+                        disabled={profileData.departments.includes('Civil Engineering')}
+                        className={profileData.departments.includes('Civil Engineering') ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        Civil Engineering
+                      </SelectItem>
+                      <SelectItem 
+                        value="Electrical Engineering"
+                        disabled={profileData.departments.includes('Electrical Engineering')}
+                        className={profileData.departments.includes('Electrical Engineering') ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        Electrical Engineering
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   

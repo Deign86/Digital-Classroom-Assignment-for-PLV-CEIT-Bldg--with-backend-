@@ -573,15 +573,14 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <Select
                     value=""
                     onValueChange={(value: string) => {
-                      const isSelected = signupData.departments.includes(value);
-                      setSignupData(prev => ({
-                        ...prev,
-                        departments: isSelected
-                          ? prev.departments.filter(d => d !== value)
-                          : [...prev.departments, value]
-                      }));
-                      if (signupErrors.department) {
-                        setSignupErrors(prev => ({ ...prev, department: '' }));
+                      if (value && !signupData.departments.includes(value)) {
+                        setSignupData(prev => ({
+                          ...prev,
+                          departments: [...prev.departments, value]
+                        }));
+                        if (signupErrors.department) {
+                          setSignupErrors(prev => ({ ...prev, department: '' }));
+                        }
                       }
                     }}
                   >
@@ -594,6 +593,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           key={dept} 
                           value={dept}
                           disabled={signupData.departments.includes(dept)}
+                          className={signupData.departments.includes(dept) ? 'opacity-50 cursor-not-allowed' : ''}
                         >
                           {dept}
                         </SelectItem>
