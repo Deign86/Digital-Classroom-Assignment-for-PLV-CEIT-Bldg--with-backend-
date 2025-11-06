@@ -1005,3 +1005,455 @@ body.authenticated .grecaptcha-badge {
   visibility: hidden;
   pointer-events: none;
 }
+
+/* === DARK MODE ENHANCEMENTS === */
+
+/* === APPENDED: dark-mode icon/text adjustments (do not remove existing light-theme rules) ===
+   This block only augments dark theme: sets variables and ensures icons/texts inherit readable colors.
+*/
+:root {
+  --_hover-surface-light: rgba(0,0,0,0.04);
+}
+
+/* ensure .dark variable fallbacks (will not affect light theme rules) */
+.dark {
+  /* core overrides (some already exist earlier; these are safe no-ops if present) */
+  --background: #000000;
+  --foreground: #f2f2f7;
+  --card: #121213;
+  --card-foreground: #f2f2f7;
+  --muted-foreground: #9aa6b2;
+  --primary: #0a84ff;
+  --border: rgba(255,255,255,0.08);
+  --ring: #0a84ff;
+  --hover-surface: rgba(255,255,255,0.03);
+}
+
+/* Make header/button/tab icons/texts inherit and be readable in dark mode */
+.btn-theme,
+.header-theme-controls button,
+[role="tablist"] [role="tab"],
+[data-sonner-toast] [data-description] {
+  color: var(--foreground);
+}
+
+.btn-theme svg,
+.header-theme-controls svg {
+  color: currentColor;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* Tab hover: only change background; keep text/icon color readable */
+[role="tablist"] [role="tab"]:hover { background: var(--hover-surface, var(--_hover-surface-light)); color: inherit !important; }
+.dark [role="tablist"] [role="tab"]:hover { background: var(--hover-surface, rgba(255,255,255,0.03)); }
+
+/* Sonner toast descriptions in dark: ensure contrast */
+.dark [data-sonner-toast] [data-description] {
+  color: rgba(242, 242, 247, 0.9) !important;
+}
+
+/* Prevent utilities that force dark text from breaking icons/text in dark */
+.dark .text-black,
+.dark .text-gray-900,
+.dark .hover\:text-gray-900:hover {
+  color: inherit !important;
+}
+
+/* Ensure focus ring is visible in dark */
+:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0a84ff) 20%, transparent); }
+
+html:not(.dark) .flex.items-center.gap-2.p-3.bg-gray-50.rounded-lg {
+  background-color: #f3f4f6 !important; /* light gray */
+  background-image: none !important;
+  color: var(--foreground) !important;
+}
+
+/* end appended dark-mode block */
+
+/* === APPENDED: stronger dark-theme container / tab / hover fixes ===
+   Only affects dark theme (.dark). Keeps light theme rules intact.
+*/
+:root {
+  /* ensure these helper classes exist for Tailwind-less fallbacks */
+  --tab-inactive-bg: transparent;
+  --tab-active-overlay: rgba(255,255,255,0.04);
+  --hover-surface-dark: rgba(255,255,255,0.03);
+}
+
+/* Make base background/card utility classes respect CSS tokens */
+.bg-background { background-color: var(--background); color: var(--foreground); }
+.bg-card { background-color: var(--card); color: var(--card-foreground); }
+.bg-popover { background-color: var(--popover); color: var(--popover-foreground); }
+
+/* Dark-mode specific adjustments */
+.dark {
+  /* Ensure main page surface is dark */
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Force the main layout / page container to use dark background when .dark is present */
+.dark .min-h-screen,
+.dark .bg-background {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Cards, panels, popovers use card color (not white) */
+.dark .bg-card,
+.dark .card,
+.dark .panel,
+.dark .popover,
+.dark .modal {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Sidebar / nav panels */
+.dark .sidebar,
+.dark .nav,
+.dark .side-panel {
+  background-color: var(--sidebar) !important;
+  color: var(--sidebar-foreground) !important;
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Tabs: keep text readable, hover subtle, and active not white */
+[role="tablist"] [role="tab"] {
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+/* Hover: only subtle darkening (no white flash) */
+.dark [role="tablist"] [role="tab"]:hover,
+.dark .btn-theme:hover,
+.dark .card-content:hover {
+  background: var(--hover-surface, var(--hover-surface, rgba(255,255,255,0.03))) !important;
+  color: inherit !important;
+}
+
+/* Active/selected tabs - use card surface / subtle overlay (never pure white) */
+.dark [role="tablist"] [role="tab"][data-state="active"],
+.dark [role="tablist"] [role="tab"][aria-selected="true"],
+.dark [role="tablist"] [role="tab"].active,
+.dark [role="tablist"] [role="tab"].is-active {
+  /* slightly lighter/darker overlay on top of card to indicate active state */
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.03)) ;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Defensive: neutralize utility classes that might force white backgrounds or black text */
+.dark .bg-white, .dark .text-black, .dark .text-gray-900 {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* Ensure SVG icons inside tabs/panels inherit correct color and remain outline where intended */
+.dark [role="tablist"] [role="tab"] svg,
+.dark .tab-icon,
+.dark .nav-icon,
+.dark .card svg,
+.dark .stat-card svg,
+.dark .list-item svg {
+  color: currentColor;
+  stroke: currentColor !important;
+  fill: none !important; /* keep outline default; use .icon-filled for solid icons */
+}
+
+/* Solid icons opt-in */
+.icon-filled, .icon-filled svg {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+
+/* Sonner/toast ensure contrast */
+.dark [data-sonner-toast] {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+.dark [data-sonner-toast] [data-description] {
+  color: rgba(242,242,247,0.9) !important;
+}
+
+/* Small helpers so hover/active never use white backgrounds */
+.dark .hover\:bg-white:hover,
+.dark .bg-white:hover,
+.dark .active\:bg-white:active {
+  background: var(--hover-surface, rgba(255,255,255,0.03)) !important;
+}
+
+/* Keep focus rings visible but not white */
+.dark :focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, #0a84ff) 18%, transparent) !important;
+  border-radius: 6px;
+}
+
+/* === APPENDED: ensure nav/tabs/footer use dark surfaces in .dark theme === */
+.dark {
+  /* prefer semantic vars already defined above */
+  --surface-nav: var(--sidebar);
+  --surface-tabs: var(--card);
+  --surface-footer: var(--card);
+}
+
+/* Navigation / topbar / sidebar surfaces */
+.dark .nav,
+.dark .navbar,
+.dark .topbar,
+.dark .sidebar,
+.dark .side-panel,
+.dark .main-nav,
+.dark .primary-nav {
+  background-color: var(--surface-nav) !important;
+  color: var(--sidebar-foreground) !important;
+  border-color: var(--sidebar-border) !important;
+}
+
+/* Tabs container (tablist) background and individual tab surfaces */
+.dark [role="tablist"],
+.dark .tabs,
+.dark .tab-bar,
+.dark .tab-list,
+.dark .tabs-container {
+  background-color: var(--surface-tabs) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Tab triggers: subtle hover + active styles (no white) */
+.dark [role="tablist"] [role="tab"],
+.dark .tab-item,
+.dark .tab-trigger {
+  background: transparent;
+  color: var(--card-foreground);
+  transition: background-color 160ms ease, color 120ms ease;
+}
+
+/* Tab hover: darker overlay (not white) */
+.dark [role="tablist"] [role="tab"]:hover,
+.dark .tab-item:hover,
+.dark .tab-trigger:hover {
+  background: rgba(255,255,255,0.025) !important; /* subtle lightening on dark surface */
+  color: inherit !important;
+}
+
+/* Active/selected tabs: gentle overlay, not pure white */
+.dark [role="tablist"] [role="tab"][data-state="active"],
+.dark [role="tablist"] [role="tab"][aria-selected="true"],
+.dark .tab-item.active,
+.dark .tab-trigger.active {
+  background: rgba(255,255,255,0.04) !important;
+  color: var(--card-foreground) !important;
+  box-shadow: none !important;
+}
+
+/* Links / nav items: ensure background stays on dark surfaces and not white on hover/focus */
+.dark .nav a,
+.dark .nav-item,
+.dark .nav-link,
+.dark .menu-item {
+  color: var(--sidebar-foreground) !important;
+}
+.dark .nav a:hover,
+.dark .nav-item:hover,
+.dark .nav-link:hover,
+.dark .menu-item:hover {
+  background: rgba(255,255,255,0.02) !important;
+  color: inherit !important;
+}
+
+/* Footer: dark surface (not grey) */
+footer,
+.footer,
+.site-footer,
+.app-footer {
+  background-color: var(--surface-footer);
+  color: var(--card-foreground);
+  border-top: 1px solid var(--border);
+}
+
+/* Ensure footer links and small text are readable */
+footer a,
+.footer a,
+.site-footer a {
+  color: var(--card-foreground);
+}
+.dark footer,
+.dark .footer,
+.dark .site-footer,
+.dark .app-footer {
+  background-color: var(--surface-footer) !important;
+  color: var(--card-foreground) !important;
+  border-top-color: var(--border) !important;
+}
+
+/* Defensive: avoid white backgrounds from utility classes inside nav/tabs/footer */
+.dark .nav .bg-white,
+.dark .tabs .bg-white,
+.dark footer .bg-white,
+.dark .footer .bg-white {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* === APPENDED: profile/input dark-theme fixes ===
+   Ensures profile/profile-form inputs use dark surfaces and light text in .dark
+   Does not change light theme behavior.
+*/
+.dark .profile,
+.dark .profile-form,
+.dark .profile-info,
+.dark .user-profile,
+.dark .profile-card,
+.dark .card .profile-fields,
+.dark .bg-card .profile-fields {
+  color: var(--card-foreground);
+}
+
+/* Inputs, textareas, selects used for profile info */
+.dark .profile-form input,
+.dark .profile-form textarea,
+.dark .profile-form select,
+.dark .profile-info input,
+.dark .profile-info textarea,
+.dark .profile-info select,
+.dark .user-profile input,
+.dark .user-profile textarea,
+.dark .user-profile select,
+.dark .profile-card input,
+.dark .profile-card textarea,
+.dark .profile-card select,
+.dark .card input,
+.dark .card textarea,
+.dark .card select,
+.dark .bg-card input,
+.dark .bg-card textarea,
+.dark .bg-card select,
+.dark input.profile-input,
+.dark textarea.profile-input,
+.dark select.profile-input {
+  background-color: var(--input) !important; /* dark input surface (uses --input from :root/.dark) */
+  color: var(--card-foreground) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+/* Placeholder and muted helper text */
+.dark .profile-form input::placeholder,
+.dark .profile-form textarea::placeholder,
+.dark .profile-info input::placeholder,
+.dark .profile-info textarea::placeholder,
+.dark input.profile-input::placeholder,
+.dark textarea.profile-input::placeholder {
+  color: rgba(242,242,247,0.6) !important;
+  opacity: 1;
+}
+
+/* Focus ring for accessibility */
+.dark .profile-form input:focus,
+.dark .profile-form textarea:focus,
+.dark .profile-form select:focus,
+.dark .profile-info input:focus,
+.dark .profile-info textarea:focus,
+.dark .profile-info select:focus,
+.dark .card input:focus,
+.dark .card textarea:focus,
+.dark input.profile-input:focus,
+.dark textarea.profile-input:focus,
+.dark select.profile-input:focus {
+  outline: none !important;
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ring) 18%, transparent) !important;
+}
+
+/* Disabled/readonly fields */
+.dark .profile-form input:disabled,
+.dark .profile-form textarea:disabled,
+.dark .profile-info input:disabled,
+.dark .profile-info textarea:disabled {
+  opacity: 0.7;
+  background: rgba(255,255,255,0.02) !important;
+  color: rgba(242,242,247,0.65) !important;
+}
+
+/* Ensure elements using the utility `space-y-2` get a dark surface in .dark theme.
+   This keeps spacing behavior but gives the container a dark background and readable text. */
+.dark .space-y-2 {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Make direct children transparent so their own backgrounds don't conflict,
+   and ensure they inherit the dark text color when needed. */
+.dark .space-y-2 > * {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* If any children use utility classes that force light backgrounds, neutralize them here */
+.dark .space-y-2 .bg-white,
+.dark .space-y-2 .bg-gray-50,
+.dark .space-y-2 .bg-gray-100 {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* Ensure the modal/card that uses the utility combination below uses a dark surface in .dark */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative {
+  background-color: var(--card) !important;
+  color: rgba(255,255,255,0.95) !important; /* brighter text */
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Ensure all direct children inherit the brighter text color */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative * {
+  color: rgba(255,255,255,0.95) !important;
+}
+
+/* Specific adjustments for common elements inside the modal */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative a {
+  color: var(--primary) !important;
+  text-decoration: none;
+}
+
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h1,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h2,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h3,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative h4,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative p,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative label {
+  color: rgba(255,255,255,0.95) !important;
+}
+
+/* Form fields inside modal: ensure text is bright and placeholders are slightly muted */
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative input,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative textarea,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative select {
+  color: rgba(255,255,255,0.95) !important;
+  background: transparent !important; /* keep card surface consistent */
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative input::placeholder,
+.dark .p-4.bg-white.shadow-2xl.rounded-lg.w-full.max-w-md.sm\:w-96.relative textarea::placeholder {
+  color: rgba(255,255,255,0.65) !important;
+}
+
+/* Dark-mode override: elements using `hover:bg-gray-50` should darken (not flash white) */
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-50:focus,
+.dark .hover\:bg-gray-50:active {
+  background-color: rgba(255,255,255,0.03) !important; /* subtle lightening on dark surface */
+  color: inherit !important;
+  /* keep the hover shadow but make it suitable for dark mode */
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45) !important;
+}

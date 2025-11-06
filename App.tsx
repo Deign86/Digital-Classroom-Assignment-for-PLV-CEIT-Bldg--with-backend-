@@ -33,6 +33,9 @@ import {
 } from './lib/firebaseService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
+// Theme: keep imports with other imports
+import ThemeProvider from './hooks/themeContext';
+import ThemeToggle from './components/ThemeToggle';
 
 // Expose services to window for debugging in development
 if (import.meta.env.DEV) {
@@ -1684,16 +1687,17 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <AnnouncerProvider>
-          {/* Network status indicator */}
-          <NetworkStatusIndicator />
-          
-          {/* Skip link for keyboard users */}
-          <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
-          <div className="min-h-screen bg-background flex flex-col">
-            <ToggleAnnouncer />
-          <div className="flex-1">
+    <ThemeProvider>
+      <ErrorBoundary>
+        <AnnouncerProvider>
+            {/* Network status indicator */}
+            <NetworkStatusIndicator />
+            
+            {/* Skip link for keyboard users */}
+            <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
+            <div className="min-h-screen bg-background flex flex-col">
+              <ToggleAnnouncer />
+            <div className="flex-1">
             {/* Top-level shared loader overlay */}
             {overlayVisible ? (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
@@ -1760,7 +1764,8 @@ export default function App() {
 
           <Analytics />
           </div>
-      </AnnouncerProvider>
-    </ErrorBoundary>
+        </AnnouncerProvider>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
