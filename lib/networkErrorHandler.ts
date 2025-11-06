@@ -19,6 +19,8 @@ export interface NetworkAwareOptions {
   maxAttempts?: number;
   /** Whether to show a loading toast (default: true) */
   showLoadingToast?: boolean;
+  /** Whether to show an error toast (default: true) */
+  showErrorToast?: boolean;
   /** Custom success message (optional) */
   successMessage?: string;
   /** Custom error message prefix (optional) */
@@ -116,6 +118,7 @@ export async function executeWithNetworkHandling<T>(
     operationName,
     maxAttempts = 3,
     showLoadingToast = true,
+    showErrorToast = true,
     successMessage,
     errorMessagePrefix,
     silent = false,
@@ -218,23 +221,26 @@ export async function executeWithNetworkHandling<T>(
 
   const wasNetworkError = isNetworkError(lastError) || checkIsOffline();
 
-  if (wasNetworkError) {
-    toast.error('Network Error', {
-      description: `Unable to ${operationName} due to network issues. Please check your connection and try again.`,
-      duration: 7000,
-      action: {
-        label: 'Retry',
-        onClick: () => {
-          // User can manually retry through UI
+  // Only show error toast if showErrorToast is true
+  if (showErrorToast) {
+    if (wasNetworkError) {
+      toast.error('Network Error', {
+        description: `Unable to ${operationName} due to network issues. Please check your connection and try again.`,
+        duration: 7000,
+        action: {
+          label: 'Retry',
+          onClick: () => {
+            // User can manually retry through UI
+          },
         },
-      },
-    });
-  } else {
-    const errorMessage = lastError?.message || 'Unknown error occurred';
-    toast.error(errorMessagePrefix || 'Operation Failed', {
-      description: `Failed to ${operationName}: ${errorMessage}`,
-      duration: 6000,
-    });
+      });
+    } else {
+      const errorMessage = lastError?.message || 'Unknown error occurred';
+      toast.error(errorMessagePrefix || 'Operation Failed', {
+        description: `Failed to ${operationName}: ${errorMessage}`,
+        duration: 6000,
+      });
+    }
   }
 
   logger.error(`Failed to ${operationName} after ${attempt} attempts:`, lastError);

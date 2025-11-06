@@ -255,6 +255,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           successMessage: undefined, // App.tsx handles the welcome message
           maxAttempts: 2, // Fewer retries for auth operations
           showLoadingToast: false, // We'll show our own loading state
+          showErrorToast: false, // App.tsx handles error messages via toast.promise()
         }
       );
 
