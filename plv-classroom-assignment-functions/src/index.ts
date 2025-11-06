@@ -882,8 +882,8 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
   if (!userId || typeof userId !== 'string') {
     throw new HttpsError('invalid-argument', 'userId is required and must be a string');
   }
-  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled' && type !== 'signup')) {
-    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info', 'cancelled' or 'signup'");
+  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled' && type !== 'signup' && type !== 'classroom_disabled')) {
+    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info', 'cancelled', 'signup' or 'classroom_disabled'");
   }
   if (!message || typeof message !== 'string') {
     throw new HttpsError('invalid-argument', 'message is required and must be a string');

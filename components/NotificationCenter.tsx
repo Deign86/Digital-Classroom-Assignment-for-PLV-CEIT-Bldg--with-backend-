@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '../lib/logger';
 import { notificationService, type Notification } from '../lib/notificationService';
-import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus } from '@phosphor-icons/react';
+import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus, Warning } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 
 type Props = {
@@ -23,6 +23,8 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
               <XCircle size={20} className="text-red-600" />
             ) : n.type === 'cancelled' ? (
               <XCircle size={20} className="text-orange-600" />
+            ) : n.type === 'classroom_disabled' ? (
+              <Warning size={20} className="text-amber-600" />
             ) : n.type === 'signup' ? (
               <UserPlus size={20} className="text-blue-600" />
             ) : (
@@ -31,7 +33,12 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
           </div>
           <div>
             <div className="text-sm font-semibold text-slate-900">
-              {n.type === 'approved' ? 'Reservation approved' : n.type === 'rejected' ? 'Reservation rejected' : n.type === 'cancelled' ? 'Reservation cancelled' : n.type === 'signup' ? 'New signup request' : 'Info'}
+              {n.type === 'approved' ? 'Reservation approved' 
+               : n.type === 'rejected' ? 'Reservation rejected' 
+               : n.type === 'cancelled' ? 'Reservation cancelled' 
+               : n.type === 'classroom_disabled' ? 'Classroom disabled' 
+               : n.type === 'signup' ? 'New signup request' 
+               : 'Info'}
             </div>
             <div className="text-xs text-gray-600 mt-1">{n.message}</div>
             {n.adminFeedback && <div className="mt-2 text-xs italic text-gray-700 rounded px-2 py-1 bg-slate-50">Admin Feedback: {n.adminFeedback}</div>}
