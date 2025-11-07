@@ -1454,7 +1454,8 @@ export default function App() {
         const data = snapshot.data() as any;
 
         // If accountLocked is true on the server, force local sign-out immediately.
-        if (data?.accountLocked) {
+        // IMPORTANT: Never lock out admin accounts - only faculty users can be locked.
+        if (data?.accountLocked && data?.role !== 'admin') {
           logger.log('🔒 Detected account lock for current user. Signing out.');
           // Attempt to sign out via auth service, but proceed to clear state regardless.
           authService.signOut().catch(() => undefined).finally(() => {

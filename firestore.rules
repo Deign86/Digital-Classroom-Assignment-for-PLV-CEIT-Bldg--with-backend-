@@ -23,6 +23,7 @@ service cloud.firestore {
       
       // Users can update their own specific fields (cannot change role/status)
       // Admins can update any user's fields
+      // IMPORTANT: Admin accounts cannot be locked (accountLocked field)
       allow update: if (request.auth.uid == userId 
                    && request.resource.data.keys().hasOnly([
                      'name', 'department', 'departments', 'photoURL', 'pushEnabled', 
@@ -35,7 +36,9 @@ service cloud.firestore {
                    && (!request.resource.data.keys().hasAny(['accountLocked', 'lockedByAdmin']) 
                        || request.resource.data.accountLocked == resource.data.accountLocked)  // Cannot unlock self
                    && request.resource.data.email == resource.data.email)  // Cannot change email directly
-                   || request.auth.token.admin == true;  // Admins can update any user
+                   || (request.auth.token.admin == true 
+                       && !(request.resource.data.keys().hasAny(['accountLocked']) 
+                            && resource.data.role == 'admin'));  // Admins can update any user BUT cannot lock admin accounts
       
       // Admins can delete users
       allow delete: if request.auth.token.admin == true;

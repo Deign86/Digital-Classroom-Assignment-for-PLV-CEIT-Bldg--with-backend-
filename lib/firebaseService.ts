@@ -1567,6 +1567,17 @@ export const userService = {
   async lockAccount(id: string, minutes = 30): Promise<User> {
     const database = getDb();
     const userRef = doc(database, COLLECTIONS.USERS, id);
+    
+    // Check if user is an admin - NEVER lock admin accounts
+    const checkSnapshot = await getDoc(userRef);
+    if (!checkSnapshot.exists()) {
+      throw new Error('User not found');
+    }
+    const userData = ensureUserData(checkSnapshot);
+    if (userData.role === 'admin') {
+      throw new Error('Cannot lock admin accounts');
+    }
+    
     const lockedUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
 
     await updateDoc(userRef, {
@@ -1602,6 +1613,16 @@ export const userService = {
   async lockAccountByAdmin(id: string): Promise<User> {
     const database = getDb();
     const userRef = doc(database, COLLECTIONS.USERS, id);
+
+    // Check if user is an admin - NEVER lock admin accounts
+    const checkSnapshot = await getDoc(userRef);
+    if (!checkSnapshot.exists()) {
+      throw new Error('User not found');
+    }
+    const userData = ensureUserData(checkSnapshot);
+    if (userData.role === 'admin') {
+      throw new Error('Cannot lock admin accounts');
+    }
 
     await updateDoc(userRef, {
       accountLocked: true,
