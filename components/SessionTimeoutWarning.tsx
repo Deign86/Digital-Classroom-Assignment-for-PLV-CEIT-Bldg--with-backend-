@@ -54,7 +54,7 @@ export default function SessionTimeoutWarning({
       <AlertDialogContent className="sm:max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-amber-500" />
+            <Clock className="h-5 w-5 text-amber-500 dark:text-amber-400" />
             Session Timeout Warning
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
@@ -63,14 +63,14 @@ export default function SessionTimeoutWarning({
               logged out in:
             </p>
             <div className="text-center">
-              <div className="text-3xl font-mono font-bold text-amber-600">
+              <div className="text-3xl font-mono font-bold text-amber-600 dark:text-amber-500">
                 {formatTime(countdown)}
               </div>
-              <div className="text-sm text-gray-500 mt-1">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 minutes:seconds
               </div>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               Click "Stay Logged In" to extend your session, or you will be 
               redirected to the login page.
             </p>

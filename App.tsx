@@ -633,8 +633,9 @@ export default function App() {
           message = err.message;
         }
 
-        toast.error('Signup failed', { description: message, duration: 8000 });
-        return false;
+        // Don't show toast here - executeWithNetworkHandling in LoginForm will handle error display
+        // This prevents double toast notifications
+        throw new Error(message);
       }
     },
     []
