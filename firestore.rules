@@ -21,9 +21,9 @@ service cloud.firestore {
                    && request.resource.data.status == 'pending'  // New signups start as pending
                    && request.resource.data.email == request.auth.token.email;  // Email must match auth token
       
-      // Users can only update their own specific fields (cannot change role/status)
-      // Admins update users via Cloud Functions with Admin SDK (bypasses these rules)
-      allow update: if request.auth.uid == userId 
+      // Users can update their own specific fields (cannot change role/status)
+      // Admins can update any user's fields
+      allow update: if (request.auth.uid == userId 
                    && request.resource.data.keys().hasOnly([
                      'name', 'department', 'departments', 'photoURL', 'pushEnabled', 
                      'updatedAt', 'email', 'emailLower', 'role', 'status',
@@ -34,9 +34,11 @@ service cloud.firestore {
                    && request.resource.data.status == resource.data.status  // Cannot change own status
                    && (!request.resource.data.keys().hasAny(['accountLocked', 'lockedByAdmin']) 
                        || request.resource.data.accountLocked == resource.data.accountLocked)  // Cannot unlock self
-                   && request.resource.data.email == resource.data.email;  // Cannot change email directly
+                   && request.resource.data.email == resource.data.email)  // Cannot change email directly
+                   || request.auth.token.admin == true;  // Admins can update any user
       
-      // Delete operations are handled by Cloud Functions with Admin SDK only
+      // Admins can delete users
+      allow delete: if request.auth.token.admin == true;
     }
     
     // Classrooms collection
