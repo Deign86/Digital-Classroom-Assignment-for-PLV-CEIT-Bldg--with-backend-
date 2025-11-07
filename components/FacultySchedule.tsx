@@ -476,7 +476,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           <DialogTitle>Cancel selected reservations</DialogTitle>
                         </DialogHeader>
                           <DialogDescription className="text-sm text-muted-foreground">
-                            Cancelling approved reservations requires a reason. Please enter a brief explanation that will be shown to the faculty member(s).
+                            Please provide a reason for cancelling your approved reservation(s). This will be sent to the administrators.
                           </DialogDescription>
 
                         <div className="mt-4">
@@ -509,7 +509,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                               maxLength={500}
                               rows={4}
                               autoFocus
-                              placeholder="Explain briefly why the reservation(s) are being cancelled"
+                              placeholder="Explain why you need to cancel your reservation(s)"
                               aria-label="Cancellation reason"
                               aria-invalid={!!bulkReasonError}
                               className="mt-0"
