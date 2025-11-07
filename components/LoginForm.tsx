@@ -129,11 +129,16 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   // Shared sanitizer for password fields
   const sanitizePassword = (pwd: string) => {
     if (!pwd) return pwd;
-    let cleaned = pwd.replace(/[[\r\n\t]]/g, '');
-    cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    // Remove common whitespace characters (newlines, carriage returns, tabs)
+    let cleaned = pwd.replace(/[\r\n\t]/g, '');
+    // Remove zero-width / format characters using Unicode property escape
+    // \p{Cf} matches Unicode Format characters (zero-width, BOM, etc.)
+    cleaned = cleaned.replace(/\p{Cf}/gu, '');
     cleaned = cleaned.trim();
     return cleaned;
   };
+  // Check for at least one non-alphanumeric, non-space character
+  const hasSpecialChar = /[^A-Za-z0-9\s]/.test(data.password);
 
   const validateSignupData = (data: typeof signupData) => {
     const errors = {

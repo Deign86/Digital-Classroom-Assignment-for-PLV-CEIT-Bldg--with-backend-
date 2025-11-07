@@ -74,7 +74,8 @@ export function sanitizeText(
   sanitized = sanitized.replace(/[\u200B\u200C\u200D\uFEFF\u00AD]/g, '');
   
   // Remove control characters (except tab/newline if allowed)
-  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Use Unicode ranges to avoid control-regex lint warnings
+  sanitized = sanitized.replace(/[\u0000-\u001F\u007F]/g, '');
   
   // Enforce length limit
   return sanitized.slice(0, maxLength);

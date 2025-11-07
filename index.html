@@ -5,7 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PLV CEIT - Digital Classroom Assignment System</title>
-    <!-- reCAPTCHA script now loaded dynamically in LoginForm.tsx to use env variable -->
+  <!-- Preconnect to Firebase origins that appear in the critical request chain (saves ~100ms) -->
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+  <!-- Preload critical stylesheet to reduce render-blocking delays on first paint -->
+  <link rel="preload" href="/styles/globals.css" as="style">
+  <link rel="stylesheet" href="/styles/globals.css">
+  <!-- reCAPTCHA script now loaded dynamically in LoginForm.tsx to use env variable -->
   </head>
   <body>
     <div id="root"></div>

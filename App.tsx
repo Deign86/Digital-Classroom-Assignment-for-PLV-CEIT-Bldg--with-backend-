@@ -29,7 +29,7 @@ import {
   bookingRequestService,
   scheduleService,
   realtimeService
-} from './lib/firebaseService';
+} from './lib/lazyFirebaseService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
 
