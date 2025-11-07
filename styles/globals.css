@@ -1055,9 +1055,6 @@ body.authenticated .grecaptcha-badge {
   stroke: currentColor;
 }
 
-/* Tab hover: only for dark mode to provide subtle feedback */
-.dark [role="tablist"] [role="tab"]:hover { background: var(--hover-surface, rgba(255,255,255,0.03)); }
-
 /* Sonner toast descriptions in dark: ensure contrast */
 .dark [data-sonner-toast] [data-description] {
   color: rgba(242, 242, 247, 0.9) !important;
@@ -1316,24 +1313,6 @@ html:not(.dark) button:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Specific button variant hover effects for dark mode */
-.dark button[class*="bg-primary"]:hover:not(:disabled),
-.dark button[class*="bg-blue"]:hover:not(:disabled) {
-  background-color: #5391E7 !important;
-  border-color: #6B9EFF !important;
-}
-
-.dark button[class*="bg-destructive"]:hover:not(:disabled),
-.dark button[class*="bg-red"]:hover:not(:disabled) {
-  background-color: #DC2626 !important;
-  border-color: #EF4444 !important;
-}
-
-.dark button[class*="bg-amber"]:hover:not(:disabled) {
-  background-color: #D97706 !important;
-  border-color: #F59E0B !important;
-}
-
 .dark button[class*="variant-outline"]:hover:not(:disabled),
 .dark button[class*="border"]:hover:not(:disabled):not([class*="bg-"]) {
   background-color: rgba(255, 255, 255, 0.05) !important;
@@ -1399,14 +1378,6 @@ html:not(.dark) button:hover:not(:disabled) {
   background: transparent;
   color: var(--card-foreground);
   transition: background-color 160ms ease, color 120ms ease;
-}
-
-/* Tab hover: darker overlay (not white) */
-.dark [role="tablist"] [role="tab"]:hover,
-.dark .tab-item:hover,
-.dark .tab-trigger:hover {
-  background: rgba(255,255,255,0.025) !important; /* subtle lightening on dark surface */
-  color: inherit !important;
 }
 
 /* Active/selected tabs: gentle overlay, not pure white */
