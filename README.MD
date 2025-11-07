@@ -1332,6 +1332,16 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
   - README.md updates with new features
   - Test case documentation
 
+### v3.1.1 (Hotfix - Delete Warning & Cascade Deletion)
+- ✅ **Delete Warning Modal & Cascade Deletion**:
+  - New safety flow when deleting a classroom that has active or upcoming reservations
+  - UI shows a detailed "Delete Warning" dialog listing affected pending/approved booking requests and confirmed schedules
+  - Admins must provide a reason (included in notifications) before deletion is allowed when affected reservations exist
+  - Deletion calls `classroomService.delete(id)` which performs chunked cascade deletion of non-lapsed booking requests and schedules
+  - Affected faculty receive in-app notifications (re-using `classroom_disabled` notification type for compatibility)
+  - Keeps original simple delete confirmation for classrooms without affected reservations
+  - Added tests and build verification during development (local build successful)
+
 #### v2.1.0 (Firebase Edition)
 - Initial Firebase migration from Supabase
 - Cloud Functions implementation
@@ -1356,8 +1366,8 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 
 **⭐ Star this repository if you find it helpful!**
 
-**Last Updated**: November 7, 2025  
-**Version**: 3.1.0 (Latest - Classroom Disable Warning Feature)  
+**Last Updated**: November 8, 2025  
+**Version**: 3.1.1 (Hotfix - Delete Warning & Cascade Deletion)  
 **Status**: ✅ Actively Maintained  
 **Branch**: `stable-v3` (Recommended)
 
