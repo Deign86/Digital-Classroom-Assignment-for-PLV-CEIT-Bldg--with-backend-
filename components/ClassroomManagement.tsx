@@ -523,6 +523,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           <SelectItem value="2">2nd Floor</SelectItem>
                           <SelectItem value="3">3rd Floor</SelectItem>
                           <SelectItem value="4">4th Floor</SelectItem>
+                          <SelectItem value="5">5th Floor</SelectItem>
+                          <SelectItem value="6">6th Floor</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

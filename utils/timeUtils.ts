@@ -58,9 +58,9 @@ export function convertTo24Hour(time12: string): string {
 /**
  * Generates all available time slots for classroom booking.
  * 
- * Creates slots from 7:00 AM to 7:30 PM in 30-minute intervals,
- * representing school operating hours. The last available start time is 7:30 PM
- * since the latest classes run from 7:30 PM to 8:30 PM.
+ * Creates slots from 7:00 AM to 8:30 PM in 30-minute intervals,
+ * representing school operating hours. The last available start time is 8:30 PM
+ * so classes can run up to 9:30 PM if needed (but our policies cap at 8:30 PM end).
  * 
  * @returns Array of time slots in 12-hour format
  * 
@@ -73,9 +73,9 @@ export function convertTo24Hour(time12: string): string {
 export function generateTimeSlots(): string[] {
   const slots: string[] = [];
   
-  // Start from 7:00 AM (07:00) to 7:30 PM (19:30)
-  // Latest classes run from 7:30 PM to 8:30 PM
-  for (let hour = 7; hour <= 19; hour++) {
+  // Start from 7:00 AM (07:00) to 8:30 PM (20:30) inclusive
+  // Latest classes and end-times include 8:30 PM
+  for (let hour = 7; hour <= 20; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       slots.push(convertTo12Hour(time24));
