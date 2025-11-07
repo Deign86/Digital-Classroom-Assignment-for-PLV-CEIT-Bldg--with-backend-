@@ -331,8 +331,8 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" className="rounded-full" onClick={() => setSelectedUserToDelete(null)} disabled={selectedUserToDelete && processingActions[selectedUserToDelete.id] === 'delete'}>Cancel</Button>
-              <Button variant="destructive" className="rounded-full" onClick={doDelete} disabled={selectedUserToDelete && processingActions[selectedUserToDelete.id] === 'delete'}>
+              <Button variant="ghost" className="rounded-full" onClick={() => setSelectedUserToDelete(null)} disabled={!!(selectedUserToDelete && processingActions[selectedUserToDelete.id] === 'delete')}>Cancel</Button>
+              <Button variant="destructive" className="rounded-full" onClick={doDelete} disabled={!!(selectedUserToDelete && processingActions[selectedUserToDelete.id] === 'delete')}>
                 {selectedUserToDelete && processingActions[selectedUserToDelete.id] === 'delete' ? 'Deleting...' : 'Delete'}
               </Button>
             </DialogFooter>
