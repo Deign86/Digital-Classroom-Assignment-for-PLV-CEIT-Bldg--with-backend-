@@ -137,10 +137,19 @@
 **Notes:** All signup approval workflows tested successfully. Individual and bulk operations working correctly. Confirmation dialogs, feedback validation, toast notifications, and real-time count updates all functioning as expected.
 
 ### 5. Push Notifications
+- [x] **Test notification bell** - ✅ PASS
+- [x] **Test disable push notifications** - ✅ PASS
+- [x] **Test enable push notifications** - ✅ PASS
+- [x] **Test acknowledge notification** - ✅ PASS
+
+**Status:** ✅ COMPLETE (All 4 tests passed)
+
 ### 6. Real-time Features
-- [ ] Test live reservation updates
-- [ ] Test conflict detection
-- [ ] Test auto-expiration of bookings
+- [x] **Test live reservation updates** - ✅ PASS (Test 6.1)
+- [x] **Test conflict detection** - ✅ PASS (Test 6.2)
+- [ ] Test auto-expiration of bookings - ⏳ PENDING
+
+**Status:** ✅ MOSTLY COMPLETE (2/3 tests passed, auto-expiration not yet tested)
 
 ### 7. Faculty Dashboard Features
 - [ ] Test classroom reservation
@@ -148,11 +157,15 @@
 - [ ] Test schedule view
 - [ ] Test request tracking
 
+**Status:** ⏳ PENDING - Ready to test
+
 ### 8. Admin Dashboard Features
 - [ ] Test classroom management CRUD
 - [ ] Test reservation approval workflow
 - [ ] Test user management
 - [ ] Test reports
+
+**Status:** ⏳ PENDING - Ready to test
 
 ---
 
@@ -160,13 +173,13 @@
 
 **Currently Testing:** Comprehensive workflow validation  
 **Status:** ✅ 6 tests complete - All admin, notification, and real-time features validated  
-**Next:** Continue with Test 7 (Faculty Dashboard Features)
+**Next:** Test 7 (Faculty Dashboard Features) - IN PROGRESS
 
 ---
 
 ## Testing Summary
 
-### ✅ Completed Tests:
+### ✅ Completed Tests (Chrome DevTools MCP):
 1. **Account Lock/Unlock Flow** - All 6 sub-tests passed
 2. **Brute Force Protection** - Core features working, bug fixed
 3. **Session Management** - Implementation verified via code review
@@ -176,6 +189,12 @@
 
 ### 🔧 Bugs Found & Fixed:
 - **Bug #2**: Wrong modal type for brute force lockout ✅ FIXED
+
+### 🐛 Bugs Found (Not Yet Fixed):
+- **Bug #3**: Faculty dashboard shows duplicate pending requests (UI display issue)
+  - Admin dashboard shows correct count (1 request)
+  - Appears to be a transient UI rendering bug
+  - Needs investigation
 
 ### 📝 Notes:
 - Individual signup approval/rejection working perfectly
@@ -333,5 +352,28 @@ Also updated `handleLogin` error detection (lines ~350-370) to include "too many
 
 ---
 
+### 7. Faculty Dashboard Features
+**Status:** 🔄 IN PROGRESS
+
+**Planned Tests:**
+- [ ] Request creation and display
+- [ ] View schedule (My Schedule tab)
+- [ ] "Book Similar" feature (prefill form from existing booking)
+- [ ] Search classrooms with filters
+- [ ] View request history
+
+---
+
+### 8. Admin Dashboard Features  
+**Status:** ⏳ PENDING
+
+**Planned Tests:**
+- [ ] Reports & Analytics (view charts, metrics)
+- [ ] Classroom management (CRUD operations)
+- [ ] User management (lock/unlock, role changes, delete)
+- [ ] Settings (push notifications, password change)
+- [ ] Schedule viewer (view all bookings)
+
+---
 
 
