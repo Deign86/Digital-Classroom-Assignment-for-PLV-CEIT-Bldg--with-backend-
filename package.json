@@ -7,6 +7,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
+    "lint": "eslint . --ext .ts,.tsx --fix",
     "build": "tsc && vite build",
     "vercel-build": "npm ci && tsc -p ./tsconfig.json && ./node_modules/.bin/vite build",
     "preview": "vite preview",
@@ -95,6 +96,14 @@
     "@vitest/ui": "^4.0.7",
     "jsdom": "^27.1.0",
     "playwright": "^1.56.1",
-    "vitest": "^4.0.7"
+    "vitest": "^4.0.7",
+    "eslint": "^8.59.0",
+    "@typescript-eslint/parser": "^6.9.0",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-config-prettier": "^9.0.0"
   }
 }
