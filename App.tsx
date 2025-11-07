@@ -366,7 +366,7 @@ export default function App() {
             let lockReason: 'failed_attempts' | 'admin_lock' | 'realtime_lock' = 'admin_lock';
             if (msg.includes('disabled by an administrator')) {
               lockReason = 'admin_lock';
-            } else if (msg.includes('failed login attempts') || msg.includes('attempts remaining')) {
+            } else if (msg.includes('failed login attempts') || msg.includes('attempts remaining') || msg.includes('too many failed attempts')) {
               lockReason = 'failed_attempts';
             }
             try { sessionStorage.setItem('accountLockReason', lockReason); } catch (_) {}
@@ -1449,11 +1449,26 @@ export default function App() {
           logger.log('🔒 Detected account lock for current user. Signing out.');
           // Attempt to sign out via auth service, but proceed to clear state regardless.
           authService.signOut().catch(() => undefined).finally(() => {
-            // Determine if it was locked by admin or auto-locked
-            const reason = data?.lockedByAdmin ? 'admin_lock' : 'realtime_lock';
-            const msg = reason === 'admin_lock' 
-              ? 'Your account has been disabled by an administrator.'
-              : 'Your account has been locked for security reasons.';
+            // Determine lock reason: admin lock, failed attempts (brute force), or other realtime lock
+            let reason: 'failed_attempts' | 'admin_lock' | 'realtime_lock' = 'realtime_lock';
+            let msg = 'Your account has been locked for security reasons.';
+            
+            if (data?.lockedByAdmin) {
+              reason = 'admin_lock';
+              msg = 'Your account has been disabled by an administrator.';
+            } else if (data?.lockedUntil) {
+              // If there's a lockedUntil timestamp, it's a brute force protection lock
+              reason = 'failed_attempts';
+              const lockedUntil = data.lockedUntil?.toDate ? data.lockedUntil.toDate() : new Date(data.lockedUntil);
+              const now = new Date();
+              const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
+              
+              if (minutesRemaining > 0) {
+                msg = `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`;
+              } else {
+                msg = 'Account locked due to too many failed login attempts. Please try again.';
+              }
+            }
             
             // Mark the login page to show the lock notification
             try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
