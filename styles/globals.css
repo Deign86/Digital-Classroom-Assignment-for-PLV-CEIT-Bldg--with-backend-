@@ -1323,6 +1323,13 @@ html:not(.dark) button.hover\:bg-accent:hover:not(:disabled) {
   color: var(--accent-foreground) !important;
 }
 
+/* Default button hover - Light mode: blue background (from master) */
+html:not(.dark) button[class*="hover:bg-primary"]:hover:not(:disabled),
+html:not(.dark) button.hover\:bg-primary:hover:not(:disabled) {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
 /* Button hover effects - Dark mode (new subtle effects) */
 .dark button:hover:not(:disabled) {
   transform: translateY(-1px);
