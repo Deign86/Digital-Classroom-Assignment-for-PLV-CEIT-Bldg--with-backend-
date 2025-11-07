@@ -626,7 +626,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                 isClassroomAvailable(classroom.id, searchFilters.date, searchFilters.startTime, searchFilters.endTime);
 
               return (
-                <Card key={classroom.id} className={`${isAvailableForSearch ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+                <Card key={classroom.id} className={`${isAvailableForSearch ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}`}>
                   <CardContent className="p-6">
                     <div className="space-y-3">
                       {/* Header */}
@@ -634,9 +634,9 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                         <h3 className="font-semibold text-lg">{classroom.name}</h3>
                         <div className="flex items-center space-x-1">
                           {isAvailableForSearch ? (
-                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                           ) : (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                           )}
                           <Badge variant={isAvailableForSearch ? 'default' : 'destructive'}>
                             {isAvailableForSearch ? 'Available' : 'Occupied'}
@@ -673,10 +673,10 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
 
                       {/* Time Display */}
                       {searchFilters.date && searchFilters.startTime && searchFilters.endTime && (
-                        <div className="pt-2 border-t border-gray-200">
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                           <div className="flex items-center space-x-2 text-sm">
-                            <Clock className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-600">
+                            <Clock className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                            <span className="text-gray-600 dark:text-gray-300">
                               {searchFilters.date} • {searchFilters.startTime}-{searchFilters.endTime}
                             </span>
                           </div>
