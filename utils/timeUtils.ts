@@ -58,21 +58,23 @@ export function convertTo24Hour(time12: string): string {
 /**
  * Generates all available time slots for classroom booking.
  * 
- * Creates slots from 7:00 AM to 8:00 PM in 30-minute intervals,
- * representing school operating hours.
+ * Creates slots from 7:00 AM to 8:30 PM in 30-minute intervals,
+ * representing school operating hours. The last available start time is 8:30 PM
+ * so classes can run up to 9:30 PM if needed (but our policies cap at 8:30 PM end).
  * 
  * @returns Array of time slots in 12-hour format
  * 
  * @example
  * ```typescript
  * const slots = generateTimeSlots();
- * // ["7:00 AM", "7:30 AM", "8:00 AM", ..., "8:00 PM"]
+ * // ["7:00 AM", "7:30 AM", "8:00 AM", ..., "7:30 PM"]
  * ```
  */
 export function generateTimeSlots(): string[] {
   const slots: string[] = [];
   
-  // Start from 7:00 AM (07:00) to 8:00 PM (20:00)
+  // Start from 7:00 AM (07:00) to 8:30 PM (20:30) inclusive
+  // Latest classes and end-times include 8:30 PM
   for (let hour = 7; hour <= 20; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -86,7 +88,8 @@ export function generateTimeSlots(): string[] {
 /**
  * Validates if a time falls within school operating hours.
  * 
- * School hours are defined as 7:00 AM to 8:00 PM.
+ * School hours are defined as 7:00 AM to 8:30 PM (for end times).
+ * Start times are limited to 7:30 PM max.
  * 
  * @param time12 - Time in 12-hour format
  * @returns true if time is within school hours
@@ -94,14 +97,20 @@ export function generateTimeSlots(): string[] {
  * @example
  * ```typescript
  * isValidSchoolTime("8:00 AM")  // true
- * isValidSchoolTime("10:00 PM") // false
+ * isValidSchoolTime("8:30 PM")  // true
+ * isValidSchoolTime("9:00 PM")  // false
  * ```
  */
 export function isValidSchoolTime(time12: string): boolean {
   const time24 = convertTo24Hour(time12);
-  const [hours] = time24.split(':').map(Number);
+  const [hours, minutes] = time24.split(':').map(Number);
   
-  return hours >= 7 && hours <= 20;
+  // Allow 7:00 AM to 8:30 PM
+  if (hours < 7) return false;
+  if (hours > 20) return false;
+  if (hours === 20 && minutes > 30) return false;
+  
+  return true;
 }
 
 /**
@@ -191,7 +200,7 @@ export function isReasonableBookingDuration(startTime: string, endTime: string):
  * Filters time slots to only show times that are:
  * - After the start time
  * - Within reasonable booking duration (up to 8 hours)
- * - Within school hours
+ * - Within school hours (up to 8:30 PM)
  * 
  * @param startTime - Selected start time in 12-hour format
  * @param allTimeSlots - Array of all available time slots
@@ -210,7 +219,7 @@ export function getValidEndTimes(startTime: string, allTimeSlots: string[]): str
   const [startHour, startMinute] = start24.split(':').map(Number);
   const startTotalMinutes = startHour * 60 + startMinute;
   
-  return allTimeSlots.filter(timeSlot => {
+  const validTimes = allTimeSlots.filter(timeSlot => {
     const end24 = convertTo24Hour(timeSlot);
     const [endHour, endMinute] = end24.split(':').map(Number);
     const endTotalMinutes = endHour * 60 + endMinute;
@@ -218,11 +227,26 @@ export function getValidEndTimes(startTime: string, allTimeSlots: string[]): str
     const durationMinutes = endTotalMinutes - startTotalMinutes;
     const durationHours = durationMinutes / 60;
     
-    // Must be after start time, max 8 hours, within school hours
+    // Must be after start time, max 8 hours, end by 8:30 PM (20:30)
     return endTotalMinutes > startTotalMinutes && 
            durationHours <= 8 && 
-           endHour <= 20; // End by 8 PM
+           (endHour < 20 || (endHour === 20 && endMinute <= 30));
   });
+  
+  // Add 8:30 PM as a valid end time if it's not already included and it's valid
+  const eightThirtyPM = '8:30 PM';
+  const eightThirtyPM24 = convertTo24Hour(eightThirtyPM);
+  const [eightThirtyHour, eightThirtyMinute] = eightThirtyPM24.split(':').map(Number);
+  const eightThirtyTotalMinutes = eightThirtyHour * 60 + eightThirtyMinute;
+  const durationToEightThirty = (eightThirtyTotalMinutes - startTotalMinutes) / 60;
+  
+  if (!validTimes.includes(eightThirtyPM) && 
+      eightThirtyTotalMinutes > startTotalMinutes && 
+      durationToEightThirty <= 8) {
+    validTimes.push(eightThirtyPM);
+  }
+  
+  return validTimes;
 }
 
 // Format time range for display

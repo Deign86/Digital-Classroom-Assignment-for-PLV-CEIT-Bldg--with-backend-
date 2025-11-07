@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
@@ -68,10 +68,23 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
     .filter(s => new Date(s.date) < today && (s.status === 'confirmed' || s.status === 'cancelled'))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  // Deduplicate booking requests by ID (defensive programming to prevent duplicate rendering)
+  const uniqueBookingRequests = useMemo(() => {
+    const seen = new Set<string>();
+    return bookingRequests.filter(r => {
+      if (seen.has(r.id)) {
+        logger.warn(`⚠️ Duplicate booking request detected and filtered: ${r.id}`);
+        return false;
+      }
+      seen.add(r.id);
+      return true;
+    });
+  }, [bookingRequests]);
+
   // Filter requests
-  const pendingRequests = bookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime)));
-  const approvedRequests = bookingRequests.filter(r => r.status === 'approved');
-  const rejectedRequests = bookingRequests.filter(r => r.status === 'rejected');
+  const pendingRequests = uniqueBookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime)));
+  const approvedRequests = uniqueBookingRequests.filter(r => r.status === 'approved');
+  const rejectedRequests = uniqueBookingRequests.filter(r => r.status === 'rejected');
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -463,7 +476,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           <DialogTitle>Cancel selected reservations</DialogTitle>
                         </DialogHeader>
                           <DialogDescription className="text-sm text-muted-foreground">
-                            Cancelling approved reservations requires a reason. Please enter a brief explanation that will be shown to the faculty member(s).
+                            Please provide a reason for cancelling your approved reservation(s). This will be sent to the administrators.
                           </DialogDescription>
 
                         <div className="mt-4">
@@ -496,7 +509,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                               maxLength={500}
                               rows={4}
                               autoFocus
-                              placeholder="Explain briefly why the reservation(s) are being cancelled"
+                              placeholder="Explain why you need to cancel your reservation(s)"
                               aria-label="Cancellation reason"
                               aria-invalid={!!bulkReasonError}
                               className="mt-0"

@@ -23,6 +23,8 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
               <XCircle size={20} className="text-red-600" />
             ) : n.type === 'cancelled' ? (
               <XCircle size={20} className="text-orange-600" />
+            ) : n.type === 'faculty_cancelled' ? (
+              <XCircle size={20} className="text-purple-600" />
             ) : n.type === 'classroom_disabled' ? (
               <Warning size={20} className="text-amber-600" />
             ) : n.type === 'signup' ? (
@@ -36,6 +38,7 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
               {n.type === 'approved' ? 'Reservation approved' 
                : n.type === 'rejected' ? 'Reservation rejected' 
                : n.type === 'cancelled' ? 'Reservation cancelled' 
+               : n.type === 'faculty_cancelled' ? 'Faculty cancelled reservation'
                : n.type === 'classroom_disabled' ? 'Classroom disabled' 
                : n.type === 'signup' ? 'New signup request' 
                : 'Info'}

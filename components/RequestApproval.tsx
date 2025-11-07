@@ -580,14 +580,16 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               }}
               disabled={isProcessingBulk}
             >
-              {isProcessingBulk ? 'Processing…' : 'Cancel'}
+              Cancel
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >
-                {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}
+              {isProcessingBulk 
+                ? 'Processing...' 
+                : (actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation')}
             </Button>
           </div>
         </DialogContent>
