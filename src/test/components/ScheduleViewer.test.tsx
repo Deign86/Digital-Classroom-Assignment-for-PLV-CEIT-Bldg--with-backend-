@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+// add jest-dom matchers for DOM assertions (toBeInTheDocument, toBeDisabled, etc.)
+import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ScheduleViewer from '../../../components/ScheduleViewer';
@@ -333,19 +335,24 @@ describe('ScheduleViewer', () => {
     it('should call onCancelSchedule with reason', async () => {
       const user = userEvent.setup();
       
-      // Create a future schedule so the cancel button will appear (isLapsed check)
+      // Create a future schedule (use tomorrow's date) so the cancel button will appear (isLapsed check)
       const futureSchedules: Schedule[] = [
         {
           ...mockSchedules[0],
           id: 'future-schedule-1',
-          startTime: '23:00', // Future time
-          endTime: '23:30',
+          date: tomorrow,
+          startTime: '10:00', // time on the future date
+          endTime: '10:30',
         }
       ];
       
       render(<ScheduleViewer schedules={futureSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
-      // Wait for schedule to be rendered
+      // Navigate to the next day (the schedule uses tomorrow's date) then wait for schedule to be rendered
+      const allNavButtons = screen.getAllByRole('button');
+      const nextButton = allNavButtons[1];
+      await user.click(nextButton);
+
       await waitFor(() => {
         expect(screen.getByText('Math Lecture')).toBeInTheDocument();
       });
