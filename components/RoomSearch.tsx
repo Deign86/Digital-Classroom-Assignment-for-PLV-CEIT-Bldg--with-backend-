@@ -662,7 +662,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                           <p className="text-sm font-medium text-foreground">Equipment:</p>
                           <div className="flex flex-wrap gap-1">
                             {classroom.equipment.map((eq, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs flex items-center space-x-1">
+                              <Badge key={index} variant="outline" className="text-xs flex items-center space-x-1 bg-transparent">
                                 {getIconForEquipment(eq) && <span>{getIconForEquipment(eq)}</span>}
                                 <span>{eq}</span>
                               </Badge>
