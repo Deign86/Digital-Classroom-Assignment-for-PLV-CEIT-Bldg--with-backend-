@@ -69,6 +69,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null);
+  // Delete-warning dialog state (shows when classroom has pending/approved reservations)
+  const [deleteWarningOpen, setDeleteWarningOpen] = useState(false);
+  const [classroomToDeleteWarning, setClassroomToDeleteWarning] = useState<Classroom | null>(null);
+  const [affectedBookingsForDelete, setAffectedBookingsForDelete] = useState<BookingRequest[]>([]);
+  const [affectedSchedulesForDelete, setAffectedSchedulesForDelete] = useState<Schedule[]>([]);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [loadingRows, setLoadingRows] = useState<Record<string, boolean>>({});
   
   // Disable warning dialog state
@@ -226,7 +233,61 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     }));
   };
 
-  const handleDeleteClick = (classroom: Classroom) => {
+  const handleDeleteClick = async (classroom: Classroom) => {
+    // Before showing simple delete confirmation, check for pending/approved bookings or confirmed schedules
+    try {
+      const result = await executeWithNetworkHandling(
+        async () => {
+          const allBookings = await bookingRequestService.getAll();
+          const allSchedules = await scheduleService.getAll();
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const affected = allBookings.filter(booking => {
+            const bookingDate = new Date(booking.date);
+            return (
+              booking.classroomId === classroom.id &&
+              (booking.status === 'approved' || booking.status === 'pending') &&
+              bookingDate >= today
+            );
+          });
+
+          const affectedScheds = allSchedules.filter(schedule => {
+            const schedDate = new Date(schedule.date);
+            return (
+              schedule.classroomId === classroom.id &&
+              schedule.status === 'confirmed' &&
+              schedDate >= today
+            );
+          });
+
+          return { bookings: affected, schedules: affectedScheds };
+        },
+        {
+          operationName: 'check affected bookings for delete',
+          successMessage: undefined,
+          maxAttempts: 3,
+          showLoadingToast: true,
+        }
+      );
+
+      if (result.success && result.data) {
+        const { bookings, schedules } = result.data;
+        if (bookings.length > 0 || schedules.length > 0) {
+          setClassroomToDeleteWarning(classroom);
+          setAffectedBookingsForDelete(bookings);
+          setAffectedSchedulesForDelete(schedules);
+          setDeleteWarningOpen(true);
+          return; // show warning modal instead of direct delete
+        }
+      }
+    } catch (err) {
+      // If check fails, fall back to normal delete dialog to avoid blocking admin actions
+      console.error('Failed to check affected bookings before delete:', err);
+    }
+
+    // No affected reservations, proceed with normal delete confirmation
     setClassroomToDelete(classroom);
     setDeleteDialogOpen(true);
   };
@@ -257,6 +318,88 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     
     setDeleteDialogOpen(false);
     setClassroomToDelete(null);
+  };
+
+  const performDeleteWithNotifications = async (classroomId: string, reason?: string) => {
+    setDeleting(true);
+    const result = await executeWithNetworkHandling(
+      async () => {
+        // delete classroom
+        await classroomService.delete(classroomId);
+        const updatedClassrooms = await classroomService.getAll();
+        onClassroomUpdate(updatedClassrooms);
+
+        // notify affected faculty
+        const facultyIds = new Set<string>();
+        affectedBookingsForDelete.forEach(b => facultyIds.add(b.facultyId));
+        affectedSchedulesForDelete.forEach(s => facultyIds.add(s.facultyId));
+
+        const auth = getAuth();
+        const currentUserId = auth.currentUser?.uid;
+
+        const classroom = classrooms.find(c => c.id === classroomId);
+        const classroomName = classroom?.name || 'Classroom';
+
+        for (const facultyId of facultyIds) {
+          try {
+            const message = reason
+              ? `The classroom "${classroomName}" has been deleted. Reason: ${reason}. Please contact admin regarding your affected reservations.`
+              : `The classroom "${classroomName}" has been deleted. Please contact admin regarding your affected reservations.`;
+
+            await notificationService.createNotification(
+              facultyId,
+              'classroom_disabled',
+              message,
+              { actorId: currentUserId || undefined }
+            );
+          } catch (error) {
+            console.error(`Failed to notify faculty ${facultyId}:`, error);
+          }
+        }
+
+        return true;
+      },
+      {
+        operationName: 'delete classroom with notifications',
+        successMessage: undefined,
+        maxAttempts: 3,
+        showLoadingToast: true,
+      }
+    );
+
+    setDeleting(false);
+
+    if (result.success) {
+      toast.success('Classroom deleted and affected faculty notified');
+    } else if (!result.success && !result.isNetworkError) {
+      toast.error('Error deleting classroom');
+    }
+  };
+
+  const handleDeleteConfirmWithWarning = async () => {
+    if (!classroomToDeleteWarning) return;
+
+    if (!deleteReason.trim()) {
+      toast.error('Please provide a reason for deleting the classroom to notify affected faculty');
+      return;
+    }
+
+    await performDeleteWithNotifications(classroomToDeleteWarning.id, deleteReason);
+
+    // reset state
+    setDeleteWarningOpen(false);
+    setClassroomToDeleteWarning(null);
+    setAffectedBookingsForDelete([]);
+    setAffectedSchedulesForDelete([]);
+    setDeleteReason('');
+  };
+
+  const handleDeleteWarningCancel = () => {
+    setDeleteWarningOpen(false);
+    setClassroomToDeleteWarning(null);
+    setAffectedBookingsForDelete([]);
+    setAffectedSchedulesForDelete([]);
+    setDeleteReason('');
   };
 
   const handleAvailabilityToggle = async (classroomId: string, isAvailable: boolean) => {
@@ -740,7 +883,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           )}
         </CardContent>
       </Card>
-      {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -759,6 +902,167 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           </div>
         </DialogContent>
       </Dialog>
+
+        {/* Delete Warning Dialog (shown when classroom has pending/approved reservations) */}
+        <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600">
+                <AlertTriangle className="h-5 w-5" />
+                Warning: Active Reservations Found
+              </DialogTitle>
+              <DialogDescription>
+                The classroom <b>{classroomToDeleteWarning?.name}</b> has <b>{affectedBookingsForDelete.length + affectedSchedulesForDelete.length}</b> active or upcoming reservation(s). Deleting it will affect the following reservations. You must provide a reason which will be included in notifications to affected faculty.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {/* Affected Bookings */}
+              {affectedBookingsForDelete.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Pending/Approved Booking Requests ({affectedBookingsForDelete.length})
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {affectedBookingsForDelete.map((booking) => (
+                      <div 
+                        key={booking.id} 
+                        className="p-3 border rounded-lg bg-gray-50 text-sm"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-medium">{booking.facultyName}</p>
+                            <p className="text-gray-600">
+                              {new Date(booking.date).toLocaleDateString('en-US', { 
+                                weekday: 'short', 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })}
+                            </p>
+                            <p className="text-gray-600 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {booking.startTime} - {booking.endTime}
+                            </p>
+                            <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                          </div>
+                          <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
+                            {booking.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Affected Schedules */}
+              {affectedSchedulesForDelete.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Confirmed Schedules ({affectedSchedulesForDelete.length})
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {affectedSchedulesForDelete.map((schedule) => (
+                      <div 
+                        key={schedule.id} 
+                        className="p-3 border rounded-lg bg-gray-50 text-sm"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-medium">{schedule.facultyName}</p>
+                            <p className="text-gray-600">
+                              {new Date(schedule.date).toLocaleDateString('en-US', { 
+                                weekday: 'short', 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                              })}
+                            </p>
+                            <p className="text-gray-600 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {schedule.startTime} - {schedule.endTime}
+                            </p>
+                            <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                          </div>
+                          <Badge variant="default">
+                            {schedule.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Required Reason Field */}
+              <div className="space-y-2 pt-2 border-t">
+                <Label htmlFor="delete-reason">
+                  Reason for deleting *
+                  <span className="text-sm text-gray-500 font-normal ml-2">
+                    This will be included in the notification to affected faculty
+                  </span>
+                </Label>
+                <Textarea
+                  id="delete-reason"
+                  placeholder="e.g., Room permanently decommissioned, major renovation, etc."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  maxLength={200}
+                  rows={3}
+                  required
+                  className={!deleteReason.trim() && deleteReason.length > 0 ? 'border-red-500' : ''}
+                />
+                {!deleteReason.trim() && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Reason is required to notify affected faculty
+                  </p>
+                )}
+                <p className="text-xs text-gray-500">
+                  {deleteReason.length}/200 characters
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <p className="font-medium mb-1">What happens next?</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>All affected faculty members will receive an in-app notification</li>
+                  <li>If push notifications are enabled, they'll also receive a push notification</li>
+                  <li>They will be informed to contact admin about their reservations</li>
+                  <li>The classroom will be removed from the inventory</li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={handleDeleteWarningCancel}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteConfirmWithWarning}
+                disabled={!deleteReason.trim() || deleting}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Classroom & Notify'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
