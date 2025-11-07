@@ -13,7 +13,6 @@ import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import NetworkStatusIndicator from './components/NetworkStatusIndicator';
-import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './components/ui/alert-dialog';
 import { buttonVariants } from './components/ui/button';
@@ -1595,8 +1594,7 @@ export default function App() {
               </div>
           </div>
         </div>
-        <Footer />
-        <Toaster />
+  <Footer />
 
         {/* Account locked AlertDialog — blocking modal shown on login when sessionStorage.accountLocked is set */}
         <AlertDialog open={showAccountLockedDialog} onOpenChange={(open) => {
@@ -1818,7 +1816,7 @@ export default function App() {
             }}
             onLogout={handleIdleTimeout}
           />
-          <Toaster />
+          {/* Global Toaster moved to main.tsx */}
 
           {/* App-styled confirm dialog for destructive signup rejection */}
           <AlertDialog open={!!pendingRejectAction}>
