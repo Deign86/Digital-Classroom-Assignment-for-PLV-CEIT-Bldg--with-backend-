@@ -58,23 +58,29 @@ export function convertTo24Hour(time12: string): string {
 /**
  * Generates all available time slots for classroom booking.
  * 
- * Creates slots from 7:00 AM to 8:00 PM in 30-minute intervals,
- * representing school operating hours.
+ * Creates slots from 7:00 AM to 7:00 PM in 30-minute intervals,
+ * representing school operating hours. The last available start time is 7:00 PM
+ * since the latest classes run from 7:00 PM to 8:00 PM.
  * 
  * @returns Array of time slots in 12-hour format
  * 
  * @example
  * ```typescript
  * const slots = generateTimeSlots();
- * // ["7:00 AM", "7:30 AM", "8:00 AM", ..., "8:00 PM"]
+ * // ["7:00 AM", "7:30 AM", "8:00 AM", ..., "7:00 PM"]
  * ```
  */
 export function generateTimeSlots(): string[] {
   const slots: string[] = [];
   
-  // Start from 7:00 AM (07:00) to 8:00 PM (20:00)
-  for (let hour = 7; hour <= 20; hour++) {
+  // Start from 7:00 AM (07:00) to 7:00 PM (19:00)
+  // Latest classes run from 7:00 PM to 8:00 PM
+  for (let hour = 7; hour <= 19; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
+      // Skip 7:30 PM - latest start time is 7:00 PM
+      if (hour === 19 && minute === 30) {
+        continue;
+      }
       const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       slots.push(convertTo12Hour(time24));
     }
@@ -86,7 +92,8 @@ export function generateTimeSlots(): string[] {
 /**
  * Validates if a time falls within school operating hours.
  * 
- * School hours are defined as 7:00 AM to 8:00 PM.
+ * School hours are defined as 7:00 AM to 8:00 PM (for end times).
+ * Start times are limited to 7:00 PM max.
  * 
  * @param time12 - Time in 12-hour format
  * @returns true if time is within school hours
@@ -191,7 +198,7 @@ export function isReasonableBookingDuration(startTime: string, endTime: string):
  * Filters time slots to only show times that are:
  * - After the start time
  * - Within reasonable booking duration (up to 8 hours)
- * - Within school hours
+ * - Within school hours (up to 8:00 PM)
  * 
  * @param startTime - Selected start time in 12-hour format
  * @param allTimeSlots - Array of all available time slots
@@ -210,7 +217,7 @@ export function getValidEndTimes(startTime: string, allTimeSlots: string[]): str
   const [startHour, startMinute] = start24.split(':').map(Number);
   const startTotalMinutes = startHour * 60 + startMinute;
   
-  return allTimeSlots.filter(timeSlot => {
+  const validTimes = allTimeSlots.filter(timeSlot => {
     const end24 = convertTo24Hour(timeSlot);
     const [endHour, endMinute] = end24.split(':').map(Number);
     const endTotalMinutes = endHour * 60 + endMinute;
@@ -218,11 +225,26 @@ export function getValidEndTimes(startTime: string, allTimeSlots: string[]): str
     const durationMinutes = endTotalMinutes - startTotalMinutes;
     const durationHours = durationMinutes / 60;
     
-    // Must be after start time, max 8 hours, within school hours
+    // Must be after start time, max 8 hours, end by 8:00 PM (20:00)
     return endTotalMinutes > startTotalMinutes && 
            durationHours <= 8 && 
-           endHour <= 20; // End by 8 PM
+           (endHour < 20 || (endHour === 20 && endMinute === 0));
   });
+  
+  // Add 8:00 PM as a valid end time if it's not already included and it's valid
+  const eightPM = '8:00 PM';
+  const eightPM24 = convertTo24Hour(eightPM);
+  const [eightHour, eightMinute] = eightPM24.split(':').map(Number);
+  const eightTotalMinutes = eightHour * 60 + eightMinute;
+  const durationToEight = (eightTotalMinutes - startTotalMinutes) / 60;
+  
+  if (!validTimes.includes(eightPM) && 
+      eightTotalMinutes > startTotalMinutes && 
+      durationToEight <= 8) {
+    validTimes.push(eightPM);
+  }
+  
+  return validTimes;
 }
 
 // Format time range for display

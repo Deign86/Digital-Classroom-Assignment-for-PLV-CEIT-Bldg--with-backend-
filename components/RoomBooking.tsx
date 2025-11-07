@@ -665,7 +665,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="endTime">End Time *</Label>
+                  <Label htmlFor="endTime" className="text-sm sm:text-base">End Time *</Label>
                   <Select 
                     value={formData.endTime} 
                     onValueChange={(value) => {
@@ -674,7 +674,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     }}
                     disabled={!formData.startTime}
                   >
-                    <SelectTrigger id="endTime" className={`transition-all duration-200 focus:scale-105 disabled:opacity-50 ${errors.endTime ? 'border-red-500' : ''}`}>
+                    <SelectTrigger id="endTime" className={`transition-all duration-200 focus:scale-105 h-10 sm:h-11 md:h-12 text-sm sm:text-base disabled:opacity-50 ${errors.endTime ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder={formData.startTime ? "Select end time" : "Select start time first"} />
                     </SelectTrigger>
                     <SelectContent>

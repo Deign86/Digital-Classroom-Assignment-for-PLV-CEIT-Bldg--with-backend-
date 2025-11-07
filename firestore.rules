@@ -13,6 +13,14 @@ service cloud.firestore {
       // Authenticated users can read user profiles (needed for app functionality)
       allow read: if request.auth != null;
       
+      // Allow create during signup (when auth user exists but Firestore doc doesn't yet)
+      // The creating user must match the document ID and provide required fields with safe defaults
+      allow create: if request.auth.uid == userId
+                   && request.resource.data.keys().hasAll(['email', 'emailLower', 'name', 'role', 'status', 'createdAt', 'updatedAt'])
+                   && request.resource.data.role == 'faculty'  // Can only create faculty role, admins created via Admin SDK
+                   && request.resource.data.status == 'pending'  // New signups start as pending
+                   && request.resource.data.email == request.auth.token.email;  // Email must match auth token
+      
       // Users can only update their own specific fields (cannot change role/status)
       // Admins update users via Cloud Functions with Admin SDK (bypasses these rules)
       allow update: if request.auth.uid == userId 
@@ -28,7 +36,7 @@ service cloud.firestore {
                        || request.resource.data.accountLocked == resource.data.accountLocked)  // Cannot unlock self
                    && request.resource.data.email == resource.data.email;  // Cannot change email directly
       
-      // Create and delete operations are handled by Cloud Functions with Admin SDK only
+      // Delete operations are handled by Cloud Functions with Admin SDK only
     }
     
     // Classrooms collection

@@ -340,6 +340,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           successMessage: undefined, // App.tsx handles the success message
           maxAttempts: 3,
           showLoadingToast: false,
+          showErrorToast: false, // App.tsx handles error messages
         }
       );
 
