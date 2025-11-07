@@ -1143,8 +1143,15 @@ export const authService = {
         message: error instanceof Error ? error.message : 'unknown'
       });
 
-      // Always try to track failed login for any authentication error
-      if (error && typeof error === 'object' && 'code' in error) {
+      // Check if this is an admin-locked account error (not a failed login attempt)
+      const errorMessage = error instanceof Error ? error.message : '';
+      const isAdminLocked = errorMessage.includes('disabled by an administrator') || 
+                           errorMessage.includes('Account locked') ||
+                           errorMessage.includes('locked by admin');
+
+      // Only track failed login attempts for actual authentication errors,
+      // NOT for accounts that are already locked by admin
+      if (!isAdminLocked && error && typeof error === 'object' && 'code' in error) {
         const code = (error as { code?: string }).code;
         
         // Track any auth-related error
@@ -1201,8 +1208,8 @@ export const authService = {
         }
       }
       
-      // Throw a more generic error if we haven't thrown a specific one yet
-      if (error instanceof Error && (error.message.includes('Account locked') || error.message.includes('attempts remaining'))) {
+      // Throw a more specific error if it's an account lock situation
+      if (error instanceof Error && (error.message.includes('Account locked') || error.message.includes('attempts remaining') || error.message.includes('disabled by an administrator'))) {
         throw error;
       }
 
