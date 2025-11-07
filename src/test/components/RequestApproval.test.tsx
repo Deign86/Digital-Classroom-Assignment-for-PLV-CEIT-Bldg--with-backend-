@@ -3,7 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RequestApproval from '../../../components/RequestApproval'
 import { mockBookingRequests, createMockBooking } from '../mocks/mockData'
-import type { BookingRequest } from '../../../App'
 
 // Mock dependencies
 vi.mock('../../../components/RequestCard', () => ({

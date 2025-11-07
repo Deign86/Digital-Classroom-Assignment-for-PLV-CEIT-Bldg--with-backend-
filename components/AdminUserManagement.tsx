@@ -4,11 +4,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
-import { MoreHorizontal, Trash2, User, UserMinus, UserPlus, Lock, Unlock, Loader2 } from 'lucide-react';
+import { Trash2, User, UserMinus, Lock, Unlock, Loader2 } from 'lucide-react';
 import type { User as AppUser } from '../App';
 
 interface AdminUserManagementProps {

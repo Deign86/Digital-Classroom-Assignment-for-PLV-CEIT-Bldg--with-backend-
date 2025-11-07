@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from './ui/textarea';
 import { toast } from 'sonner';
 import { Label } from './ui/label';
-import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Filter, X, Loader2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, generateTimeSlots } from '../utils/timeUtils';
 import type { Schedule, Classroom } from '../App';
 

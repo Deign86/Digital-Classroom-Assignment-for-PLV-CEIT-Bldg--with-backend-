@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '../lib/logger';
 import { notificationService, type Notification } from '../lib/notificationService';
-import { Bell, BellSimpleSlash, CheckCircle, XCircle, UserCircle, UserPlus, Warning } from '@phosphor-icons/react';
+import { Bell, CheckCircle, XCircle, UserPlus, Warning } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 
 type Props = {

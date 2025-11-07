@@ -1,15 +1,12 @@
 import {
   collection,
   doc,
-  addDoc,
-  updateDoc,
   getDoc,
   getDocs,
   query,
   where,
   orderBy,
   onSnapshot,
-  type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';

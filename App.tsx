@@ -1,5 +1,5 @@
 import './styles/globals.css';
-import React, { useState, useEffect, useMemo, useCallback, Suspense, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { logger } from './lib/logger';
 import LoginForm from './components/LoginForm';

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { 
   authService, 
   userService, 
@@ -6,7 +6,7 @@ import {
   bookingRequestService,
   scheduleService
 } from '../../../lib/firebaseService';
-import type { User, Classroom, BookingRequest, Schedule } from '../../../App';
+import type { Classroom } from '../../../App';
 
 // Mock Firebase modules
 vi.mock('firebase/firestore', () => ({

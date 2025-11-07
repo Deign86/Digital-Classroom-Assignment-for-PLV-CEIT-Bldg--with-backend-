@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download, PieChart as PieChartIcon } from 'lucide-react';
+import { TrendingUp, Users, Calendar, Clock, Building2, MapPin, Download } from 'lucide-react';
 import { Button } from './ui/button';
 import type { Classroom, Schedule, BookingRequest, SignupRequest } from '../App';
 

@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import '@testing-library/jest-dom/vitest'
 import ClassroomManagement from '../../../components/ClassroomManagement'
 import { mockClassrooms } from '../mocks/mockData'
 import { classroomService } from '../../../lib/firebaseService'
-import type { Classroom } from '../../../App'
 
 // Mock dependencies
 vi.mock('../../../lib/firebaseService', () => ({

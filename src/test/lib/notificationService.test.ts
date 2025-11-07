@@ -7,7 +7,6 @@ import {
   getUnreadCount,
   setupNotificationsListener,
   notificationService,
-  type Notification,
   type NotificationType,
 } from '../../../lib/notificationService';
 

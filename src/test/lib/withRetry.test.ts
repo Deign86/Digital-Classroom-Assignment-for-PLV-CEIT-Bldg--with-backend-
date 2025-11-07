@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { withRetry, isNetworkError, type WithRetryOptions } from '../../../lib/withRetry'
+import { withRetry, isNetworkError } from '../../../lib/withRetry'
 
 describe('withRetry - Comprehensive Tests', () => {
   beforeEach(() => {

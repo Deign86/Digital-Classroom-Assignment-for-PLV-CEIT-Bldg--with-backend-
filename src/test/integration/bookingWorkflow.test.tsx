@@ -1,8 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import FacultyDashboard from '../../../components/FacultyDashboard';
-import AdminDashboard from '../../../components/AdminDashboard';
 import type { User, Classroom, BookingRequest, Schedule } from '../../../App';
 
 // Mock Firebase services

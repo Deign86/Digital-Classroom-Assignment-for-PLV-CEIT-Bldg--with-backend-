@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import '@testing-library/jest-dom/vitest'
 import AdminDashboard from '../../../components/AdminDashboard'
 import { mockUsers, mockClassrooms, mockBookingRequests, mockSignupRequests, mockSchedules } from '../mocks/mockData'
-import type { User, Classroom, BookingRequest, SignupRequest, Schedule, SignupHistory } from '../../../App'
+import type { User, Classroom, BookingRequest, SignupRequest, SignupHistory } from '../../../App'
 
 // Mock lazy-loaded components
 vi.mock('../../../components/ClassroomManagement', () => ({

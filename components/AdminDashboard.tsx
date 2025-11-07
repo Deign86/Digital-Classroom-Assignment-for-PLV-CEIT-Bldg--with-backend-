@@ -10,8 +10,7 @@ import {
   Users, 
   Calendar, 
   BarChart3, 
-  LogOut, 
-  Plus,
+  LogOut,
   Clock,
   CheckCircle,
   XCircle,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 // Lazy-load heavier admin panels to reduce initial bundle size
 const ClassroomManagement = React.lazy(() => import('./ClassroomManagement'));
 const RequestApproval = React.lazy(() => import('./RequestApproval'));

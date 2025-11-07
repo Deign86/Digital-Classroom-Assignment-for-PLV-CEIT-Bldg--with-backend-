@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import '@testing-library/jest-dom/vitest'
 import FacultyDashboard from '../../../components/FacultyDashboard'
-import { mockUsers, mockClassrooms, mockBookingRequests, mockSchedules , createMockBooking, createMockSchedule } from '../mocks/mockData'
+import { mockUsers, mockClassrooms, mockBookingRequests,  createMockBooking, createMockSchedule } from '../mocks/mockData'
 
-import type { User, Classroom, BookingRequest, Schedule } from '../../../App'
+import type { User, BookingRequest } from '../../../App'
 
 // Mock lazy-loaded components
 vi.mock('../../../components/RoomBooking', () => ({

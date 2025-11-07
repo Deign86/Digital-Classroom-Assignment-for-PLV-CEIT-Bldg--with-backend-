@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useScroll, useTransform, MotionValue } from 'framer-motion';
+import { useScroll, useTransform } from 'framer-motion';
 
 // Hook for scroll-triggered animations
 export function useScrollTrigger(threshold = 0.1) {

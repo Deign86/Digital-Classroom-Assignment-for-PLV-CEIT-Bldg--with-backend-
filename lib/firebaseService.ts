@@ -38,7 +38,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import notificationServiceImport from './notificationService';
 import type { BookingRequest, Classroom, Schedule, SignupRequest, SignupHistory, User } from '../App';
-import { getFirebaseDb, getFirebaseApp, getFirebaseAuth as getAuthInstance } from './firebaseConfig';
+import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { isPastBookingTime } from '../utils/timeUtils';
 import withRetry, { isNetworkError } from './withRetry';
 import { logger } from './logger';
