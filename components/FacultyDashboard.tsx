@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import { logger } from '../lib/logger';
 import { abbreviateDepartments } from '../utils/timeUtils';
 /* spinner removed by request; fallbacks reverted to text */
@@ -193,6 +193,19 @@ export default function FacultyDashboard({
     }
   }, []);
 
+  // Deduplicate booking requests by ID (defensive programming to prevent duplicate rendering)
+  const uniqueBookingRequests = useMemo(() => {
+    const seen = new Set<string>();
+    return bookingRequests.filter(r => {
+      if (seen.has(r.id)) {
+        logger.warn(`⚠️ Duplicate booking request detected and filtered: ${r.id}`);
+        return false;
+      }
+      seen.add(r.id);
+      return true;
+    });
+  }, [bookingRequests]);
+
   // Statistics
   const upcomingClasses = schedules.filter(s => {
     const scheduleDate = new Date(s.date);
@@ -200,10 +213,10 @@ export default function FacultyDashboard({
     return scheduleDate >= today && s.status === 'confirmed';
   }).length;
 
-  const pendingRequests = bookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
-  const approvedRequests = bookingRequests.filter(r => r.status === 'approved').length;
-  const rejectedRequests = bookingRequests.filter(r => r.status === 'rejected').length;
-  const totalRequests = bookingRequests.length;
+  const pendingRequests = uniqueBookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
+  const approvedRequests = uniqueBookingRequests.filter(r => r.status === 'approved').length;
+  const rejectedRequests = uniqueBookingRequests.filter(r => r.status === 'rejected').length;
+  const totalRequests = uniqueBookingRequests.length;
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -524,7 +537,7 @@ export default function FacultyDashboard({
                     <CardDescription>Your latest classroom reservation requests</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {bookingRequests.length === 0 ? (
+                    {uniqueBookingRequests.length === 0 ? (
                       <div className="text-center py-8">
                         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500">No reservation requests yet</p>
@@ -537,7 +550,7 @@ export default function FacultyDashboard({
                       </div>
                     ) : (
                       <div className="space-y-4 max-h-80 overflow-y-auto">
-                        {bookingRequests
+                        {uniqueBookingRequests
                           .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
                           .slice(0, 5)
                           .map((request, index) => (
