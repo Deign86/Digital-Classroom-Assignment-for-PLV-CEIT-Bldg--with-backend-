@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import { logger } from '../lib/logger';
-import { abbreviateDepartments } from '../utils/timeUtils';
+import { abbreviateDepartments , convertTo12Hour, convertTo24Hour, formatTimeRange, isPastBookingTime, isReasonableBookingDuration, addDaysToDateString } from '../utils/timeUtils';
 /* spinner removed by request; fallbacks reverted to text */
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -22,7 +22,7 @@ import {
   BookOpen,
   Settings
 } from 'lucide-react';
-import { convertTo12Hour, convertTo24Hour, formatTimeRange, isPastBookingTime, isReasonableBookingDuration, addDaysToDateString } from '../utils/timeUtils';
+
 import { toast } from 'sonner';
 // Lazy-load heavier, non-critical components to reduce initial bundle size.
 const RoomBooking = React.lazy(() => import('./RoomBooking'));

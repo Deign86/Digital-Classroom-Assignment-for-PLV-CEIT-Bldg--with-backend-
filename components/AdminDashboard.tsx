@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { abbreviateDepartments } from '../utils/timeUtils';
+import { abbreviateDepartments , convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 // Tab persistence removed: default to overview on login
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -23,7 +23,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
+
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
 // Lazy-load heavier admin panels to reduce initial bundle size
 const ClassroomManagement = React.lazy(() => import('./ClassroomManagement'));

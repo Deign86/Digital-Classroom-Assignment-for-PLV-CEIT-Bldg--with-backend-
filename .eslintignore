@@ -4,4 +4,5 @@ build
 .vercel
 public
 plv-classroom-assignment-functions/lib
+plv-classroom-assignment-functions
 **/*.d.ts
