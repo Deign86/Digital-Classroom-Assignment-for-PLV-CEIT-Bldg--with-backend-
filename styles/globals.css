@@ -1055,6 +1055,16 @@ body.authenticated .grecaptcha-badge {
   stroke: currentColor;
 }
 
+/* Tab hover effects - Light mode: only text color change (from master) */
+[role="tablist"] [role="tab"]:hover {
+  color: #111827 !important; /* text-gray-900 */
+}
+
+/* Tab hover effects - Dark mode: subtle text color change */
+.dark [role="tablist"] [role="tab"]:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
 /* Sonner toast descriptions in dark: ensure contrast */
 .dark [data-sonner-toast] [data-description] {
   color: rgba(242, 242, 247, 0.9) !important;
