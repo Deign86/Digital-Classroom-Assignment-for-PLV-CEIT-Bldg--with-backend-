@@ -622,6 +622,13 @@ export default function App() {
       logger.log('🔴 Logout clicked - user:', currentUser?.email);
       await authService.signOut();
 
+      // Clear any account lock flags from previous sessions
+      try { 
+        sessionStorage.removeItem('accountLocked');
+        sessionStorage.removeItem('accountLockedMessage');
+        sessionStorage.removeItem('accountLockReason');
+      } catch (_) {}
+
       // Set flag for login page to show success notification
       sessionStorage.setItem('logoutSuccess', 'true');
 
@@ -1442,13 +1449,22 @@ export default function App() {
           logger.log('🔒 Detected account lock for current user. Signing out.');
           // Attempt to sign out via auth service, but proceed to clear state regardless.
           authService.signOut().catch(() => undefined).finally(() => {
+            // Determine if it was locked by admin or auto-locked
+            const reason = data?.lockedByAdmin ? 'admin_lock' : 'realtime_lock';
+            const msg = reason === 'admin_lock' 
+              ? 'Your account has been disabled by an administrator.'
+              : 'Your account has been locked for security reasons.';
+            
             // Mark the login page to show the lock notification
             try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
-            try { 
-              // Determine if it was locked by admin or auto-locked
-              const reason = data?.lockedByAdmin ? 'admin_lock' : 'realtime_lock';
-              sessionStorage.setItem('accountLockReason', reason); 
-            } catch (_) {}
+            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
+            try { sessionStorage.setItem('accountLockReason', reason); } catch (_) {}
+            
+            // IMMEDIATELY show the modal dialog
+            setAccountLockedMessage(msg);
+            setAccountLockReason(reason);
+            setShowAccountLockedDialog(true);
+            
             // Clear local user state and real-time listeners
             setCurrentUser(null);
             realtimeService.cleanup();
