@@ -762,7 +762,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="current-password"
                     type={showCurrentPassword ? 'text' : 'password'}
@@ -774,7 +774,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, currentPassword: '' }));
                       }
                     }}
-                    className={`pl-10 pr-10 bg-gray-50 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-11 pr-10 bg-gray-50 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -799,7 +799,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="new-password"
                     type={showPassword ? 'text' : 'password'}
@@ -811,7 +811,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, newPassword: '' }));
                       }
                     }}
-                    className={`pl-10 pr-10 bg-gray-50 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-11 pr-10 bg-gray-50 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -840,7 +840,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -852,7 +852,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, confirmPassword: '' }));
                       }
                     }}
-                    className={`pl-10 pr-10 bg-gray-50 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-11 pr-10 bg-gray-50 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button

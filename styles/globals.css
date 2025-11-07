@@ -1337,10 +1337,18 @@ html:not(.dark) button.hover\:bg-primary:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
+/* Outline button hover - Dark mode: subtle highlight */
 .dark button[class*="variant-outline"]:hover:not(:disabled),
 .dark button[class*="border"]:hover:not(:disabled):not([class*="bg-"]) {
   background-color: rgba(255, 255, 255, 0.05) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Default button hover - Dark mode: blue background with dimmed accent */
+.dark button[class*="hover:bg-primary"]:hover:not(:disabled),
+.dark button.hover\:bg-primary:hover:not(:disabled) {
+  background-color: var(--accent) !important;
+  color: var(--primary-foreground) !important;
 }
 
 /* Input and textarea border visibility in dark mode */
