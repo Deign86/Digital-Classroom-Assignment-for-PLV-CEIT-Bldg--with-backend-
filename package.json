@@ -1,6 +1,6 @@
 {
   "name": "digital-classroom-assignment-for-plv-ceit-bldg",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "type": "module",
   "description": "A comprehensive web-based classroom booking and management system for Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology.",
   "main": "index.js",
@@ -19,6 +19,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=18 <21"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@phosphor-icons/react": "^2.1.10",

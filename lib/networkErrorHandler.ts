@@ -27,6 +27,8 @@ export interface NetworkAwareOptions {
   errorMessagePrefix?: string;
   /** Whether this is a silent operation (no toast on success, default: false) */
   silent?: boolean;
+  /** Custom predicate to decide whether to retry on a given error (default: retry on network errors only) */
+  shouldRetry?: (error: unknown) => boolean;
 }
 
 /**
@@ -122,6 +124,7 @@ export async function executeWithNetworkHandling<T>(
     successMessage,
     errorMessagePrefix,
     silent = false,
+    shouldRetry,
   } = options;
 
   // Check if offline before attempting
@@ -185,14 +188,24 @@ export async function executeWithNetworkHandling<T>(
 
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      const isNetworkIssue = isNetworkError(error) || checkIsOffline();
+      
+      // Use custom shouldRetry predicate if provided, otherwise default to network error detection
+      const shouldRetryError = shouldRetry 
+        ? shouldRetry(error) 
+        : (isNetworkError(error) || checkIsOffline());
 
-      logger.warn(`Attempt ${attempt}/${maxAttempts} failed for ${operationName}:`, lastError);
-
-      // If it's not a network error or we're out of attempts, fail immediately
-      if (!isNetworkIssue || attempt >= maxAttempts) {
+      // If we shouldn't retry or we're out of attempts, fail immediately
+      if (!shouldRetryError || attempt >= maxAttempts) {
+        // Only log if we've attempted multiple times OR if this was a network error
+        // Don't log for single-attempt auth/authorization errors
+        if (attempt > 1 || (isNetworkError(error) || checkIsOffline())) {
+          logger.warn(`Attempt ${attempt}/${maxAttempts} failed for ${operationName}:`, lastError);
+        }
         break;
       }
+
+      // We're going to retry - log the warning
+      logger.warn(`Attempt ${attempt}/${maxAttempts} failed for ${operationName}:`, lastError);
 
       // Network error - retry with backoff
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
@@ -243,7 +256,11 @@ export async function executeWithNetworkHandling<T>(
     }
   }
 
-  logger.error(`Failed to ${operationName} after ${attempt} attempts:`, lastError);
+  // Only log final error if we made multiple attempts OR if it was a network error
+  // Don't spam logs for single-attempt auth/authorization errors
+  if (attempt > 1 || wasNetworkError) {
+    logger.error(`Failed to ${operationName} after ${attempt} attempts:`, lastError);
+  }
 
   return {
     success: false,

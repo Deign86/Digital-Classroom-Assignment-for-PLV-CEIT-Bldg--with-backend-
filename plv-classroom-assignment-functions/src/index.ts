@@ -613,36 +613,36 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
       logger.warn('Failed to update related bookingRequests during cancelApprovedBooking', err);
     }
 
-    // Create notification for faculty via the centralized createNotification callable.
-    // This ensures actor-exclusion (actor won't receive their own notification) and FCM sending.
+    // Create notifications based on who performed the cancellation
     try {
       if (data && data.facultyId) {
         if (callerUid && callerUid === data.facultyId) {
-          // The owner cancelled their own booking; no notification needed
-          logger.info(`Skipping faculty notification for ${data.facultyId} because they performed the cancellation`);
+          // Faculty cancelled their own booking - notify all admins
+          logger.info(`Faculty member ${data.facultyId} cancelled their own reservation - notifying admins`);
+          
+          const facultyName = (callerData && (callerData.name || callerData.displayName)) ? (callerData.name || callerData.displayName) : 'A faculty member';
+          const message = `${facultyName} cancelled their approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime}. Reason: ${feedback}`;
+
+          // Get all admin users to notify them
+          try {
+            const adminsSnap = await admin.firestore().collection('users').where('role', '==', 'admin').get();
+            await Promise.all(
+              adminsSnap.docs.map((adminDoc) => 
+                persistAndSendNotification(adminDoc.id, 'faculty_cancelled', message, { 
+                  bookingRequestId: null, 
+                  adminFeedback: feedback, 
+                  actorId: callerUid 
+                })
+              )
+            );
+            logger.info(`Notified ${adminsSnap.size} admin(s) about faculty cancellation`);
+          } catch (adminNotifErr) {
+            logger.warn('Failed to notify admins about faculty cancellation', adminNotifErr);
+          }
         } else {
-          // Include admin name (if available) in the message for clearer attribution
+          // Admin cancelled the booking - notify the faculty member
           const adminName = (callerData && (callerData.name || callerData.displayName)) ? (callerData.name || callerData.displayName) : 'an administrator';
           const message = `Admin ${adminName} cancelled your approved reservation for ${data.classroomName} on ${data.date} ${data.startTime}-${data.endTime}.`;
-
-          // Call the createNotification callable as the server actor to handle persistence + FCM
-          // Note: createNotification callable requires the caller to be an admin. We're within a callable
-          // already authenticated as the caller, so we'll invoke the same function programmatically via the
-          // Admin SDK by writing to the `notifications` collection through the callable to preserve behavior.
-          // Instead of duplicating the callable logic here, use the Admin SDK to call the callable endpoint
-          // is not available from server code; instead, mimic the expected payload and call the internal
-          // helper by writing the same document and letting the createNotification callable handle FCM.
-          // However, to keep behavior consistent and avoid duplication, we'll call the createNotification
-          // logic by programmatically invoking the functions framework via an HTTP call is unnecessary here.
-
-          // Simplest reliable approach: call admin.firestore().collection('notifications').add(...) AND
-          // trigger FCM send similarly to createNotification — but to avoid duplication we've implemented
-          // a server-side helper below: use the same FCM send code path as in createNotification.
-
-          // For now, call the createNotification callable using the Functions REST API via the Admin SDK's
-          // Google API client is heavier; instead, reuse the same behavior by adding the notification document
-          // and then attempting to send FCM to registered tokens, but ensure we include actorId to allow other
-          // triggers to know who acted. This mirrors the previous behavior while including actor metadata.
 
           // Use shared helper to persist notification and attempt FCM send. Pass actorId
           try {
@@ -653,7 +653,7 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
         }
       }
     } catch (err) {
-      logger.warn('Failed to create faculty notification in cancelApprovedBooking', err);
+      logger.warn('Failed to create notification in cancelApprovedBooking', err);
     }
 
     return { success: true };
@@ -882,8 +882,8 @@ export const createNotification = onCall(async (request: CallableRequest<{ userI
   if (!userId || typeof userId !== 'string') {
     throw new HttpsError('invalid-argument', 'userId is required and must be a string');
   }
-  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled' && type !== 'signup')) {
-    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info', 'cancelled' or 'signup'");
+  if (!type || (type !== 'approved' && type !== 'rejected' && type !== 'info' && type !== 'cancelled' && type !== 'signup' && type !== 'classroom_disabled')) {
+    throw new HttpsError('invalid-argument', "type must be 'approved', 'rejected', 'info', 'cancelled', 'signup' or 'classroom_disabled'");
   }
   if (!message || typeof message !== 'string') {
     throw new HttpsError('invalid-argument', 'message is required and must be a string');
