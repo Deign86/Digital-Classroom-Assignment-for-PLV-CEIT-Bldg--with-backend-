@@ -1,0 +1,52 @@
+﻿{
+    "platform":  "gcfv2",
+    "id":  "syncUserRoleClaims",
+    "project":  "plv-classroom-assigment",
+    "region":  "us-central1",
+    "eventTrigger":  {
+                         "eventType":  "google.cloud.firestore.document.v1.written",
+                         "retry":  false,
+                         "eventFilters":  {
+                                              "database":  "(default)",
+                                              "namespace":  "(default)"
+                                          },
+                         "eventFilterPathPatterns":  {
+                                                         "document":  "users/{userId}"
+                                                     },
+                         "region":  "asia-southeast1"
+                     },
+    "entryPoint":  "syncUserRoleClaims",
+    "runtime":  "nodejs20",
+    "source":  {
+                   "storageSource":  {
+                                         "bucket":  "gcf-v2-sources-361326467083-us-central1",
+                                         "object":  "syncUserRoleClaims/function-source.zip",
+                                         "generation":  "1762526032948791"
+                                     }
+               },
+    "ingressSettings":  "ALLOW_ALL",
+    "environmentVariables":  {
+                                 "FIREBASE_CONFIG":  "{\"projectId\":\"plv-classroom-assigment\",\"storageBucket\":\"plv-classroom-assigment.firebasestorage.app\"}",
+                                 "GCLOUD_PROJECT":  "plv-classroom-assigment",
+                                 "EVENTARC_CLOUD_EVENT_SOURCE":  "projects/plv-classroom-assigment/locations/us-central1/services/syncUserRoleClaims",
+                                 "FUNCTION_SIGNATURE_TYPE":  "cloudevent",
+                                 "FUNCTION_TARGET":  "syncUserRoleClaims",
+                                 "LOG_EXECUTION_ID":  "true"
+                             },
+    "timeoutSeconds":  60,
+    "uri":  "https://us-central1-plv-classroom-assigment.cloudfunctions.net/syncUserRoleClaims",
+    "serviceAccount":  "361326467083-compute@developer.gserviceaccount.com",
+    "availableMemoryMb":  256,
+    "cpu":  1,
+    "maxInstances":  3,
+    "concurrency":  80,
+    "labels":  {
+                   "deployment-tool":  "cli-firebase",
+                   "firebase-functions-codebase":  "plv-classroom-assignment-functions",
+                   "firebase-functions-hash":  "cb3e5d329a33ffa9525269c0e5788eab415835d3"
+               },
+    "runServiceId":  "syncuserroleclaims",
+    "codebase":  "plv-classroom-assignment-functions",
+    "hash":  "cb3e5d329a33ffa9525269c0e5788eab415835d3",
+    "state":  "ACTIVE"
+}
