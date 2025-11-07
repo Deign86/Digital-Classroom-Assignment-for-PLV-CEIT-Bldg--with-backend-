@@ -1341,6 +1341,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
   - Affected faculty receive in-app notifications (re-using `classroom_disabled` notification type for compatibility)
   - Keeps original simple delete confirmation for classrooms without affected reservations
   - Added tests and build verification during development (local build successful)
+  - This delete warning modal was implemented by reusing the existing "Disable Classroom" warning modal pattern and UI components where appropriate.
 
 #### v2.1.0 (Firebase Edition)
 - Initial Firebase migration from Supabase
