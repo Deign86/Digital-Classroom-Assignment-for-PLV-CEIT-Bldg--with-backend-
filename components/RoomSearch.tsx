@@ -563,19 +563,19 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
               
               {/* Selected Equipment Tags */}
               {searchFilters.equipment.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-muted/30">
+                <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-transparent dark:border-gray-700">
                   {searchFilters.equipment.map((eq) => (
                     <Badge 
                       key={eq} 
-                      variant="secondary" 
-                      className="text-xs flex items-center space-x-1 pr-1"
+                      variant="outline" 
+                      className="text-xs flex items-center space-x-1 pr-1 bg-transparent"
                     >
                       {getIconForEquipment(eq)}
                       <span>{eq}</span>
                       <button
                         type="button"
                         onClick={() => removeEquipment(eq)}
-                        className="ml-1 hover:bg-muted rounded-full p-0.5"
+                        className="ml-1 hover:bg-accent/10 dark:hover:bg-accent/20 rounded-full p-0.5"
                       >
                         <X className="h-3 w-3" />
                       </button>
