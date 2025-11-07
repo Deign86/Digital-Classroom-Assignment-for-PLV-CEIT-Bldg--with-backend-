@@ -358,52 +358,31 @@ export default function App() {
       try {
         if (err instanceof Error) {
           const msg = err.message || '';
-          if (msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining')) {
+          if (msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining') || msg.includes('disabled by an administrator')) {
             try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
             try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
+            
+            // Determine lock reason from error message
+            let lockReason: 'failed_attempts' | 'admin_lock' | 'realtime_lock' = 'admin_lock';
+            if (msg.includes('disabled by an administrator')) {
+              lockReason = 'admin_lock';
+            } else if (msg.includes('failed login attempts') || msg.includes('attempts remaining')) {
+              lockReason = 'failed_attempts';
+            }
+            try { sessionStorage.setItem('accountLockReason', lockReason); } catch (_) {}
+            
             setAccountLockedMessage(msg);
+            setAccountLockReason(lockReason);
+            
+            // IMMEDIATELY show the modal - no delay to prevent race conditions
+            setShowAccountLockedDialog(true);
 
             // Record a lightweight debug event and log timestamps (dev only)
             if (import.meta.env.DEV) {
               const ts = Date.now();
               try {
-                logger.debug(`DEBUG[lock] set sessionStorage at ${new Date(ts).toISOString()} for`, email, { msg });
-                (window as any).__loginLockDebug = (window as any).__loginLockDebug || [];
-                (window as any).__loginLockDebug.push({ event: 'sessionSet', ts, email, msg });
+                logger.debug(`DEBUG[lock] Lock modal shown immediately at ${new Date(ts).toISOString()} for`, email, { msg, lockReason });
               } catch (_) {}
-            }
-
-            // Defer opening the modal slightly so the LoginForm submit
-            // lifecycle can finish. This also helps if the form is controlling
-            // focus or preventing new modals from stealing focus immediately.
-            // A short delay reduces the "modal only appears on second
-            // attempt" race observed in some browsers/environments.
-            setTimeout(() => setShowAccountLockedDialog(true), 50);
-
-            // Dev-only debug helpers: log to console and show a short toast so
-            // we can verify this code path executed on the first failed attempt.
-            if (import.meta.env.DEV) {
-              try {
-                logger.debug('DEBUG: accountLocked scheduled dialog for', email, 'message:', msg);
-                toast(`${msg} (debug: lock dialog scheduled)`, { duration: 5000 });
-              } catch (e) {
-                logger.warn('Could not show debug toast for account lock:', e);
-              }
-
-              // Force-open fallback: if the modal hasn't opened after 5s,
-              // open it and log a warning (dev only). This reduces the
-              // perceived wait while we diagnose the underlying race.
-              setTimeout(() => {
-                try {
-                  if (!showAccountLockedDialog) {
-                    logger.warn('DEBUG[lock] fallback forced opening of account-locked dialog after 5s');
-                    setShowAccountLockedDialog(true);
-                    try { (window as any).__loginLockDebug.push({ event: 'fallbackOpen', ts: Date.now(), email }); } catch (_) {}
-                  }
-                } catch (e) {
-                  logger.warn('DEBUG[lock] fallback open failed:', e);
-                }
-              }, 5000);
             }
           }
         }
