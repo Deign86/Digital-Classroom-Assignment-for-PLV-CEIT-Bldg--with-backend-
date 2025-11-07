@@ -762,7 +762,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="current-password"
                     type={showCurrentPassword ? 'text' : 'password'}
@@ -780,7 +780,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
                     aria-pressed={showCurrentPassword}
                     title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
@@ -799,7 +799,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="new-password"
                     type={showPassword ? 'text' : 'password'}
@@ -817,7 +817,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     aria-label={showPassword ? 'Hide new password' : 'Show new password'}
                     aria-pressed={showPassword}
                     title={showPassword ? 'Hide new password' : 'Show new password'}
@@ -840,7 +840,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     id="confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -858,7 +858,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     aria-pressed={showConfirmPassword}
                     title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
