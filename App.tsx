@@ -167,6 +167,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [showAccountLockedDialog, setShowAccountLockedDialog] = useState(false);
   const [accountLockedMessage, setAccountLockedMessage] = useState<string | null>(null);
+  const [accountLockReason, setAccountLockReason] = useState<'failed_attempts' | 'admin_lock' | 'realtime_lock' | null>(null);
   // Use Vite's import.meta.env in the browser. Fall back to a sensible default.
   const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL ?? import.meta.env.REACT_APP_SUPPORT_EMAIL ?? 'it-support@plv.edu.ph') as string;
   const [showSessionWarning, setShowSessionWarning] = useState(false);
@@ -1432,6 +1433,9 @@ export default function App() {
         try {
           const msg = sessionStorage.getItem('accountLockedMessage');
           if (msg) setAccountLockedMessage(msg);
+          
+          const reason = sessionStorage.getItem('accountLockReason') as 'failed_attempts' | 'admin_lock' | 'realtime_lock' | null;
+          if (reason) setAccountLockReason(reason);
         } catch (_) {
           // ignore
         }
@@ -1461,6 +1465,11 @@ export default function App() {
           authService.signOut().catch(() => undefined).finally(() => {
             // Mark the login page to show the lock notification
             try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+            try { 
+              // Determine if it was locked by admin or auto-locked
+              const reason = data?.lockedByAdmin ? 'admin_lock' : 'realtime_lock';
+              sessionStorage.setItem('accountLockReason', reason); 
+            } catch (_) {}
             // Clear local user state and real-time listeners
             setCurrentUser(null);
             realtimeService.cleanup();
@@ -1590,16 +1599,84 @@ export default function App() {
         }}>
           <AlertDialogContent className="sm:max-w-lg">
             <AlertDialogHeader>
-              <AlertDialogTitle>Your account has been locked</AlertDialogTitle>
+              <AlertDialogTitle>
+                {accountLockReason === 'failed_attempts' && '🔒 Account Locked: Too Many Failed Login Attempts'}
+                {accountLockReason === 'admin_lock' && '🔒 Account Locked by Administrator'}
+                {accountLockReason === 'realtime_lock' && '🔒 Account Locked'}
+                {!accountLockReason && '🔒 Your account has been locked'}
+              </AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogDescription>
-              {accountLockedMessage ? (
-                <div className="space-y-2">
-                  <p className="font-medium">{accountLockedMessage}</p>
-                  <p className="text-sm text-muted-foreground">You were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+              {accountLockReason === 'failed_attempts' ? (
+                <div className="space-y-3">
+                  <p className="font-medium text-foreground">
+                    Your account has been temporarily locked due to multiple failed login attempts.
+                  </p>
+                  {accountLockedMessage && (
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 p-3 rounded-md border border-orange-200 dark:border-orange-800">
+                      {accountLockedMessage}
+                    </p>
+                  )}
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>This is a security measure to protect your account from unauthorized access.</p>
+                    <p className="font-medium">What you can do:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Wait for the lockout period to expire (typically 30 minutes)</li>
+                      <li>Make sure you're using the correct password</li>
+                      <li>Use the "Forgot password?" option if needed</li>
+                      <li>Contact your administrator if you need immediate access</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : accountLockReason === 'admin_lock' ? (
+                <div className="space-y-3">
+                  <p className="font-medium text-foreground">
+                    Your account has been disabled by an administrator.
+                  </p>
+                  <div className="text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-3 rounded-md border border-red-200 dark:border-red-800">
+                    <p>⚠️ This lock was manually applied by an administrator and will not automatically expire.</p>
+                  </div>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>You will not be able to sign in until an administrator explicitly unlocks your account.</p>
+                    <p className="font-medium">What you should do:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Contact your administrator to understand why your account was locked</li>
+                      <li>Request that your account be unlocked if this was done in error</li>
+                      <li>Follow any instructions provided by your administrator</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : accountLockReason === 'realtime_lock' ? (
+                <div className="space-y-3">
+                  <p className="font-medium text-foreground">
+                    Your account has been locked and you were signed out for security reasons.
+                  </p>
+                  {accountLockedMessage && (
+                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800">
+                      {accountLockedMessage}
+                    </p>
+                  )}
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>This may be due to:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Security policy changes</li>
+                      <li>Suspicious activity detected</li>
+                      <li>Administrative action</li>
+                    </ul>
+                    <p className="mt-2">Please contact your administrator for assistance and to regain access to your account.</p>
+                  </div>
                 </div>
               ) : (
-                <p>Your account was locked by an administrator and you were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+                <div className="space-y-2">
+                  {accountLockedMessage ? (
+                    <>
+                      <p className="font-medium">{accountLockedMessage}</p>
+                      <p className="text-sm text-muted-foreground">You were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+                    </>
+                  ) : (
+                    <p>Your account was locked by an administrator and you were signed out. If you believe this is an error, contact your administrator for assistance. You will not be able to sign in while the account is locked.</p>
+                  )}
+                </div>
               )}
             </AlertDialogDescription>
             <div className="mt-4 flex gap-2 justify-end">
@@ -1608,11 +1685,13 @@ export default function App() {
               </a>
               <AlertDialogAction asChild>
                 <button className={buttonVariants({ variant: 'destructive' })} onClick={() => {
-                  // ensure removal of both flags when dismissed
+                  // ensure removal of all flags when dismissed
                   try { sessionStorage.removeItem('accountLocked'); } catch (_) {}
                   try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
+                  try { sessionStorage.removeItem('accountLockReason'); } catch (_) {}
                   setShowAccountLockedDialog(false);
                   setAccountLockedMessage(null);
+                  setAccountLockReason(null);
                 }}>
                   Dismiss
                 </button>

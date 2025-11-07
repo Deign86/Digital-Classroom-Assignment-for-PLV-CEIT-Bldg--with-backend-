@@ -1161,6 +1161,7 @@ export const authService = {
           try {
             try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
             try { sessionStorage.setItem('accountLockedMessage', 'Checking account status...'); } catch (_) {}
+            try { sessionStorage.setItem('accountLockReason', 'failed_attempts'); } catch (_) {}
           } catch (_) {}
 
           // Fire-and-forget the callable. Update sessionStorage when the
