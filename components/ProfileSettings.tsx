@@ -774,7 +774,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, currentPassword: '' }));
                       }
                     }}
-                    className={`pl-10 pr-10 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-10 pr-10 bg-gray-50 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -811,7 +811,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, newPassword: '' }));
                       }
                     }}
-                    className={`pl-10 pr-10 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-10 pr-10 bg-gray-50 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
@@ -852,7 +852,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, confirmPassword: '' }));
                       }
                     }}
-                    className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                    className={`pl-10 pr-10 bg-gray-50 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
                   <button
