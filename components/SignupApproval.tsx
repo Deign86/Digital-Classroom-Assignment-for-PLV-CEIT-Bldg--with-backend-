@@ -71,6 +71,12 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   // Per-request processing indicators to show loader on specific approve/reject actions
   // Use a Set so multiple per-item operations can run concurrently without stomping each other.
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  
+  // Confirmation dialog state
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ requestId: string; approved: boolean; request: SignupRequest | null }>({ requestId: '', approved: false, request: null });
+  const [confirmFeedback, setConfirmFeedback] = useState('');
+  const [confirmProcessing, setConfirmProcessing] = useState(false);
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds(prev => ({ ...prev, [id]: checked }));
@@ -147,6 +153,21 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     return result;
   })();
 
+  // Open confirmation dialog before approving/rejecting
+  const openConfirmDialog = (requestId: string, approved: boolean) => {
+    const request = signupRequests.find(r => r.id === requestId);
+    const existingFeedback = feedback[requestId] ?? '';
+    
+    if (!approved && !existingFeedback.trim()) {
+      toast.error('Please provide a reason when rejecting a request.');
+      return;
+    }
+    
+    setConfirmAction({ requestId, approved, request: request || null });
+    setConfirmFeedback(existingFeedback);
+    setConfirmDialogOpen(true);
+  };
+
   const handleApproval = async (requestId: string, approved: boolean) => {
     const feedbackText = (feedback[requestId] ?? '').trim();
 
@@ -173,6 +194,15 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
         return s;
       });
     }
+  };
+
+  const handleConfirmDialogConfirm = async () => {
+    setConfirmProcessing(true);
+    await handleApproval(confirmAction.requestId, confirmAction.approved);
+    setConfirmProcessing(false);
+    setConfirmDialogOpen(false);
+    setConfirmAction({ requestId: '', approved: false, request: null });
+    setConfirmFeedback('');
   };
   const showBulkSummary = (succeeded: string[], failed: { id: string; error?: unknown }[]) => {
     setBulkResults({ succeeded, failed });
@@ -550,7 +580,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
                   <div className="flex space-x-2">
                     <Button
-                      onClick={() => handleApproval(request.id, true)}
+                      onClick={() => openConfirmDialog(request.id, true)}
                       className="flex-1"
                       disabled={processingIds.has(request.id)}
                       aria-busy={processingIds.has(request.id)}
@@ -566,7 +596,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                       )}
                     </Button>
                     <Button
-                      onClick={() => handleApproval(request.id, false)}
+                      onClick={() => openConfirmDialog(request.id, false)}
                       variant="destructive"
                       className="flex-1"
                       disabled={processingIds.has(request.id)}
@@ -699,6 +729,83 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction.approved ? 'Approve Faculty Account' : 'Reject Faculty Account'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction.approved 
+                ? `Are you sure you want to approve the faculty account for ${confirmAction.request?.name || 'this user'}? This will activate their account and grant them access to the system.`
+                : `Are you sure you want to reject the faculty account request for ${confirmAction.request?.name || 'this user'}? This will keep their account inactive.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          {confirmAction.request && (
+            <div className="space-y-3 py-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-sm">
+                  <User className="h-4 w-4 text-gray-600" />
+                  <span className="font-medium">{confirmAction.request.name}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <Mail className="h-4 w-4" />
+                  <span>{confirmAction.request.email}</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <Building className="h-4 w-4" />
+                  <span>{confirmAction.request.department}</span>
+                </div>
+              </div>
+              
+              {confirmFeedback && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-blue-900 mb-1">Admin Feedback:</p>
+                  <p className="text-sm text-blue-800">{confirmFeedback}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmDialogOpen(false);
+                setConfirmAction({ requestId: '', approved: false, request: null });
+                setConfirmFeedback('');
+              }}
+              disabled={confirmProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={confirmAction.approved ? 'default' : 'destructive'}
+              onClick={handleConfirmDialogConfirm}
+              disabled={confirmProcessing}
+            >
+              {confirmProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : confirmAction.approved ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" /> Confirm Approval
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-2" /> Confirm Rejection
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -6,7 +6,8 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge'; 
-import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { getIconForEquipment } from '../lib/equipmentIcons';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
@@ -70,6 +71,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   });
   const [pendingConflicts, setPendingConflicts] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const availableClassrooms = classrooms.filter(c => c.isAvailable);
 
@@ -270,6 +272,12 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
       return;
     }
 
+    // Show confirmation dialog before submitting
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmDialog(false);
     setIsSubmitting(true);
     try {
       if (!isReasonableBookingDuration(formData.startTime, formData.endTime)) {
@@ -990,6 +998,95 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
             </form>
           </CardContent>
         </Card>
+      
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-blue-600" />
+              Confirm Reservation Request
+            </DialogTitle>
+            <DialogDescription>
+              Please review your reservation details before submitting. This will be sent to the admin for approval.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm">
+                <MapPin className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-blue-900">
+                  {classrooms.find(c => c.id === formData.classroomId)?.name || 'Classroom'}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <CalendarIcon className="h-4 w-4 text-blue-600" />
+                <span>
+                  {new Date(formData.date).toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    year: 'numeric' 
+                  })}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2 text-sm text-blue-800">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <span>{formData.startTime} - {formData.endTime}</span>
+              </div>
+              
+              <div className="pt-2 border-t border-blue-200">
+                <p className="text-sm font-medium text-blue-900 mb-1">Purpose:</p>
+                <p className="text-sm text-blue-800">{formData.purpose}</p>
+              </div>
+            </div>
+            
+            {pendingConflicts.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">Pending Requests Detected</p>
+                    <p className="text-sm text-amber-800 mt-1">
+                      There are {pendingConflicts.length} pending request(s) for this time slot. 
+                      Your request will be processed based on submission order.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Confirm & Submit
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

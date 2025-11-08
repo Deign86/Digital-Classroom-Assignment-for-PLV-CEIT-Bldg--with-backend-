@@ -527,27 +527,76 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
     <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation'}
+            <DialogTitle className="text-xl flex items-center gap-2">
+              {actionType === 'approve' ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Approve Reservation
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  Reject Reservation
+                </>
+              )}
             </DialogTitle>
             <DialogDescription>
               {actionType === 'approve' 
-                ? 'Approve this classroom reservation. You can provide feedback to the faculty member.'
-                : 'Reject this classroom reservation. Please provide a reason for rejection.'}
+                ? 'You are about to approve this classroom reservation request. The faculty member will be notified.'
+                : 'You are about to reject this classroom reservation request. Please provide a clear reason for the faculty member.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Show request details if single request */}
+            {selectedRequest && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900">Request Details</span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(selectedRequest.date).toLocaleDateString('en-US', { 
+                      weekday: 'short', 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    })}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <span>{convertTo12Hour(selectedRequest.startTime)} - {convertTo12Hour(selectedRequest.endTime)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Purpose:</span>
+                    <span>{selectedRequest.purpose}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Show count if bulk operation */}
+            {!selectedRequest && (Object.values(selectedIds).filter(Boolean).length > 0 || Object.values(approvedSelectedIds).filter(Boolean).length > 0) && (
+              <div className={`border rounded-lg p-4 ${actionType === 'approve' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <p className={`text-sm font-medium ${actionType === 'approve' ? 'text-green-900' : 'text-red-900'}`}>
+                  {actionType === 'approve' 
+                    ? `You are about to approve ${Object.values(selectedIds).filter(Boolean).length} reservation(s)`
+                    : `You are about to ${activeTab === 'approved' ? 'cancel' : 'reject'} ${Object.values(selectedIds).filter(Boolean).length || Object.values(approvedSelectedIds).filter(Boolean).length} reservation(s)`
+                  }
+                </p>
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="feedback">
-                {actionType === 'approve' ? 'Feedback (Optional)' : 'Rejection Reason (Required)'}
+                {actionType === 'approve' ? 'Feedback (Optional)' : activeTab === 'approved' ? 'Cancellation Reason (Required)' : 'Rejection Reason (Required)'}
               </Label>
               <Textarea
                 id="feedback"
                 placeholder={actionType === 'approve' 
-                  ? 'Enter any additional feedback...'
-                  : 'Enter the reason for rejection...'}
+                  ? 'Enter any additional feedback for the faculty member...'
+                  : 'Enter a clear reason for this decision...'}
                 value={feedback}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -565,6 +614,12 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 <p className="text-xs text-gray-500">{feedback.length}/500</p>
               </div>
               {feedbackError && <p className="text-xs text-red-600 mt-1">{feedbackError}</p>}
+              {actionType === 'reject' && !feedback.trim() && (
+                <p className="text-xs text-amber-600 flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  A reason is required when rejecting requests
+                </p>
+              )}
             </div>
           </div>
             <div className="flex gap-3 justify-end">
@@ -585,9 +640,22 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
               variant={actionType === 'reject' ? 'destructive' : 'default'}
             >
-              {isProcessingBulk 
-                ? 'Processing...' 
-                : (actionType === 'approve' ? 'Approve Reservation' : 'Reject Reservation')}
+              {isProcessingBulk ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : actionType === 'approve' ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve Reservation
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reject Reservation
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
