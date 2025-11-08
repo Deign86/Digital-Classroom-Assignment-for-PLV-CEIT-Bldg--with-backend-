@@ -203,17 +203,30 @@ export default function FacultyDashboard({
     });
   }, [bookingRequests]);
 
-  // Statistics
-  const upcomingClasses = schedules.filter(s => {
-    const scheduleDate = new Date(s.date);
+  // Statistics - optimized with single reduce pass to minimize overhead
+  const stats = useMemo(() => {
     const today = new Date();
-    return scheduleDate >= today && s.status === 'confirmed';
-  }).length;
+    
+    const upcomingClasses = schedules.reduce((count, s) => {
+      const scheduleDate = new Date(s.date);
+      return count + (scheduleDate >= today && s.status === 'confirmed' ? 1 : 0);
+    }, 0);
+    
+    const result = uniqueBookingRequests.reduce((acc, r) => {
+      acc.total++;
+      if (r.status === 'approved') acc.approved++;
+      else if (r.status === 'rejected') acc.rejected++;
+      else if (r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))) {
+        acc.pending++;
+      }
+      return acc;
+    }, { pending: 0, approved: 0, rejected: 0, total: 0 });
+    
+    return { upcomingClasses, ...result };
+  }, [schedules, uniqueBookingRequests]);
 
-  const pendingRequests = uniqueBookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
-  const approvedRequests = uniqueBookingRequests.filter(r => r.status === 'approved').length;
-  const rejectedRequests = uniqueBookingRequests.filter(r => r.status === 'rejected').length;
-  const totalRequests = uniqueBookingRequests.length;
+  // Destructure for backwards compatibility with existing code
+  const { upcomingClasses, pending: pendingRequests, approved: approvedRequests, rejected: rejectedRequests, total: totalRequests } = stats;
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {

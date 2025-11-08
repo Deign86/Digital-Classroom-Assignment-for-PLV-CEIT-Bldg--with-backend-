@@ -65,7 +65,18 @@ const TabsList = React.forwardRef<
     const scrollNodeIntoView = (node: Element) => {
       try {
         if (!shouldAutoRef.current) return;
-        (node as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        // Defer scroll to next frame to avoid forced reflow during initial render
+        requestAnimationFrame(() => {
+          try {
+            (node as HTMLElement).scrollIntoView({ 
+              behavior: 'smooth', 
+              inline: 'center', 
+              block: 'nearest' 
+            });
+          } catch (e) {
+            // ignore
+          }
+        });
       } catch (e) {
         // ignore
       }
