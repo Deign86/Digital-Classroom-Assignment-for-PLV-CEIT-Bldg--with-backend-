@@ -64,6 +64,8 @@ export interface User {
   lockedUntil?: string;
   // If true, the account was manually disabled by an admin and should remain locked until an admin unlocks it.
   lockedByAdmin?: boolean;
+  // Admin-provided reason for locking the account (displayed to user in modal)
+  lockReason?: string;
   // Whether the user has enabled browser/service-worker push notifications
   pushEnabled?: boolean;
   // ISO timestamp of the user's last sign-in. Used to infer recent activity sessions.
@@ -1547,7 +1549,8 @@ export default function App() {
             
             if (data?.lockedByAdmin) {
               reason = 'admin_lock';
-              msg = 'Your account has been disabled by an administrator.';
+              // Use the admin-provided lock reason if available
+              msg = data?.lockReason || 'Your account has been disabled by an administrator.';
             } else if (data?.lockedUntil) {
               // If there's a lockedUntil timestamp, it's a brute force protection lock
               reason = 'failed_attempts';
@@ -1744,9 +1747,17 @@ export default function App() {
                 </div>
               ) : accountLockReason === 'admin_lock' ? (
                 <div className="space-y-3">
-                  <p className="font-medium text-foreground">
-                    Your account has been disabled by an administrator.
-                  </p>
+                  {accountLockedMessage && (
+                    <div className="text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-4 rounded-md border border-red-200 dark:border-red-800">
+                      <p className="font-semibold mb-2">📋 Reason for lock:</p>
+                      <p className="text-foreground">{accountLockedMessage}</p>
+                    </div>
+                  )}
+                  {!accountLockedMessage && (
+                    <p className="font-medium text-foreground">
+                      Your account has been disabled by an administrator.
+                    </p>
+                  )}
                   <div className="text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-3 rounded-md border border-red-200 dark:border-red-800">
                     <p>⚠️ This lock was manually applied by an administrator and will not automatically expire.</p>
                   </div>
@@ -1754,7 +1765,7 @@ export default function App() {
                     <p>You will not be able to sign in until an administrator explicitly unlocks your account.</p>
                     <p className="font-medium">What you should do:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>Contact your administrator to understand why your account was locked</li>
+                      <li>Contact your administrator for more information</li>
                       <li>Request that your account be unlocked if this was done in error</li>
                       <li>Follow any instructions provided by your administrator</li>
                     </ul>

@@ -1105,7 +1105,8 @@ export const authService = {
         if (user.lockedByAdmin) {
           // Explicit admin lock - no expiration
           reason = 'admin_lock';
-          msg = 'Your account has been disabled by an administrator. Please contact support for assistance.';
+          // Use the admin-provided lock reason if available
+          msg = user.lockReason || 'Your account has been disabled by an administrator. Please contact support for assistance.';
         } else if (user.lockedUntil) {
           // Time-bound lock (from failed attempts, but persisted in Firestore)
           reason = 'failed_attempts';
@@ -1635,7 +1636,7 @@ export const userService = {
 
   // Admin-triggered account disable: mark as locked by admin and do NOT set a timed lockedUntil.
   // This prevents auto-unlock behavior; an admin must explicitly call unlockAccount to re-enable.
-  async lockAccountByAdmin(id: string): Promise<User> {
+  async lockAccountByAdmin(id: string, lockReason?: string): Promise<User> {
     const database = getDb();
     const userRef = doc(database, COLLECTIONS.USERS, id);
 
@@ -1653,6 +1654,7 @@ export const userService = {
       accountLocked: true,
       lockedUntil: null,
       lockedByAdmin: true,
+      lockReason: lockReason || 'Account locked by administrator',
       updatedAt: nowIso(),
     });
 

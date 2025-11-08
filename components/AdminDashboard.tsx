@@ -708,12 +708,12 @@ export default function AdminDashboard({
             <div className="animate-in">
               <Suspense fallback={<div className="p-4">Loading user management…</div>}>
                 <AdminUserManagement users={users} processingUserId={processingUserId}
-                onDisableUser={async (id: string) => {
+                onDisableUser={async (id: string, lockReason: string) => {
                   // Use admin-specific lock so the account is marked as admin-disabled
                   // and does not auto-unlock.
                   setProcessingUserId(id);
                   try {
-                    const res: any = await userService.lockAccountByAdmin(id);
+                    const res: any = await userService.lockAccountByAdmin(id, lockReason);
                     const out = res || { success: true, message: 'Account locked by admin' };
                     if (out?.message) toast.success(out.message);
                     return out;

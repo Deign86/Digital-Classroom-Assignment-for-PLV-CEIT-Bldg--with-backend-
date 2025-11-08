@@ -3,6 +3,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Checkbox } from './ui/checkbox';
@@ -14,7 +15,7 @@ import type { User as AppUser } from '../App';
 interface AdminUserManagementProps {
   users?: AppUser[];
   processingUserId?: string | null;
-  onDisableUser?: (userId: string) => Promise<void>;
+  onDisableUser?: (userId: string, lockReason: string) => Promise<void>;
   onEnableUser?: (userId: string) => Promise<void>;
   onDeleteUser?: (userId: string, hard?: boolean) => Promise<any>;
   onChangeRole?: (userId: string, role: AppUser['role']) => Promise<{ success: boolean; message: string; notifyCurrentlyLoggedIn?: boolean }>;
@@ -37,6 +38,8 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
   // actions for that user.
   const [processingActions, setProcessingActions] = useState<Record<string, string | null>>({});
   const [pendingPromotionUser, setPendingPromotionUser] = useState<AppUser | null>(null);
+  const [userToLock, setUserToLock] = useState<AppUser | null>(null);
+  const [lockReason, setLockReason] = useState('');
 
   const setProcessingFor = (id: string, action: string | null) => setProcessingActions(prev => ({ ...prev, [id]: action }));
 
@@ -128,11 +131,23 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
     }
   };
 
-  const handleDisableUser = async (userId: string) => {
-    if (!onDisableUser) return;
+  const startLockAccount = (user: AppUser) => {
+    setUserToLock(user);
+    setLockReason('');
+  };
+
+  const doLockAccount = async () => {
+    if (!userToLock || !onDisableUser) return;
+    if (!lockReason.trim()) {
+      toast.error('Please provide a reason for locking this account');
+      return;
+    }
+    const userId = userToLock.id;
     setProcessingFor(userId, 'disable');
     try {
-      await onDisableUser(userId);
+      await onDisableUser(userId, lockReason.trim());
+      setUserToLock(null);
+      setLockReason('');
       // Toast is already shown by parent AdminDashboard
     } catch (err: any) {
       // Error is already handled by parent
@@ -293,8 +308,8 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
                         {currentAction === 'unlock' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Unlock className="h-4 w-4 mr-2" />} Unlock
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleDisableUser(u.id)} disabled={!!currentAction || isOtherRowDisabled}>
-                        {currentAction === 'disable' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <UserMinus className="h-4 w-4 mr-2" />} Disable
+                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => startLockAccount(u)} disabled={!!currentAction || isOtherRowDisabled}>
+                        {currentAction === 'disable' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />} Lock
                       </Button>
                     )}
 
@@ -363,6 +378,47 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
                 disabled={!pendingPromotionUser || !!activeUserId && activeUserId !== pendingPromotionUser.id}
               >
                 {pendingPromotionUser && processingActions[pendingPromotionUser.id] === 'changeRole:admin' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null} Promote
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Lock account with reason dialog */}
+        <Dialog open={!!userToLock} onOpenChange={(open) => { if (!open) { setUserToLock(null); setLockReason(''); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Lock Account</DialogTitle>
+            </DialogHeader>
+            <div className="py-2 space-y-4">
+              <p className="text-sm">You are about to lock the account for <strong>{userToLock?.name}</strong> ({userToLock?.email}).</p>
+              <div className="space-y-2">
+                <Label htmlFor="lockReason" className="text-sm font-medium">
+                  Reason for locking <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="lockReason"
+                  placeholder="e.g., Policy violation, Security concern, Requested by user, etc."
+                  value={lockReason}
+                  onChange={(e) => setLockReason(e.target.value)}
+                  className="rounded-md min-h-[100px]"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This reason will be displayed to the user when they try to sign in. Be clear and professional.
+                </p>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-800 dark:text-amber-400">
+                  <strong>Note:</strong> This lock is permanent until you manually unlock the account. The user will be immediately signed out if they are currently logged in.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" className="rounded-full" onClick={() => { setUserToLock(null); setLockReason(''); }} disabled={!!(userToLock && processingActions[userToLock.id] === 'disable')}>
+                Cancel
+              </Button>
+              <Button variant="destructive" className="rounded-full" onClick={doLockAccount} disabled={!!(userToLock && processingActions[userToLock.id] === 'disable')}>
+                {userToLock && processingActions[userToLock.id] === 'disable' ? <><Loader2 className="animate-spin h-4 w-4 mr-2" /> Locking...</> : <><Lock className="h-4 w-4 mr-2" /> Lock Account</>}
               </Button>
             </DialogFooter>
           </DialogContent>
