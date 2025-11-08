@@ -261,7 +261,8 @@
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+    /* Change from optimizeLegibility to optimizeSpeed for faster LCP */
+    text-rendering: optimizeSpeed;
   }
 
   /* Apple-style backdrop blur */
