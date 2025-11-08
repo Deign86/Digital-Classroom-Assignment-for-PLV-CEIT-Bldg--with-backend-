@@ -19,9 +19,10 @@ This document describes the complete account lock handling system including **fa
 - **Trigger**: Administrator manually locks account via User Management
 - **Duration**: Permanent (until admin unlocks)
 - **Handler**: Direct Firestore update by admin
-- **Fields**: `accountLocked: true`, `lockedByAdmin: true`
-- **Modal Context**: Red alert box, no expiration timer
+- **Fields**: `accountLocked: true`, `lockedByAdmin: true`, `lockReason: string` (required)
+- **Modal Context**: Red alert box with admin-provided reason, no expiration timer
 - **Reason**: `'admin_lock'`
+- **Admin Workflow**: Admin must provide a reason in a dialog before locking the account
 
 ### 3. Realtime Lock
 - **Trigger**: Account locked while user is signed in
@@ -232,7 +233,8 @@ useEffect(() => {
         
         if (data?.lockedByAdmin) {
           reason = 'admin_lock';
-          msg = 'Your account has been disabled by an administrator.';
+          // Use the admin-provided lock reason if available
+          msg = data?.lockReason || 'Your account has been disabled by an administrator.';
         } else if (data?.lockedUntil) {
           reason = 'failed_attempts';
           const lockedUntil = data.lockedUntil.toDate();
@@ -264,7 +266,121 @@ useEffect(() => {
 }, [currentUser]);
 ```
 
-### 3. App.tsx - Modal Component
+### 3. AdminUserManagement.tsx - Lock Account Dialog
+
+```tsx
+// State for lock dialog
+const [userToLock, setUserToLock] = useState<AppUser | null>(null);
+const [lockReason, setLockReason] = useState('');
+
+// Open lock dialog
+const startLockAccount = (user: AppUser) => {
+  setUserToLock(user);
+  setLockReason('');
+};
+
+// Execute lock with reason
+const doLockAccount = async () => {
+  if (!userToLock || !onDisableUser) return;
+  if (!lockReason.trim()) {
+    toast.error('Please provide a reason for locking this account');
+    return;
+  }
+  const userId = userToLock.id;
+  setProcessingFor(userId, 'disable');
+  try {
+    await onDisableUser(userId, lockReason.trim());
+    setUserToLock(null);
+    setLockReason('');
+  } catch (err: any) {
+    console.error('Disable user error:', err);
+  } finally {
+    setProcessingFor(userId, null);
+  }
+};
+
+// Lock button in table
+<Button size="sm" variant="outline" onClick={() => startLockAccount(u)}>
+  <Lock className="h-4 w-4 mr-2" /> Lock
+</Button>
+
+// Lock reason dialog
+<Dialog open={!!userToLock} onOpenChange={(open) => { 
+  if (!open) { setUserToLock(null); setLockReason(''); } 
+}}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Lock Account</DialogTitle>
+    </DialogHeader>
+    <div className="py-2 space-y-4">
+      <p className="text-sm">
+        You are about to lock the account for <strong>{userToLock?.name}</strong> ({userToLock?.email}).
+      </p>
+      <div className="space-y-2">
+        <Label htmlFor="lockReason" className="text-sm font-medium">
+          Reason for locking <span className="text-red-500">*</span>
+        </Label>
+        <Textarea
+          id="lockReason"
+          placeholder="e.g., Policy violation, Security concern, Requested by user, etc."
+          value={lockReason}
+          onChange={(e) => setLockReason(e.target.value)}
+          className="rounded-md min-h-[100px]"
+          maxLength={500}
+        />
+        <p className="text-xs text-muted-foreground">
+          This reason will be displayed to the user when they try to sign in. Be clear and professional.
+        </p>
+      </div>
+      <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+        <p className="text-xs text-amber-800">
+          <strong>Note:</strong> This lock is permanent until you manually unlock the account. 
+          The user will be immediately signed out if they are currently logged in.
+        </p>
+      </div>
+    </div>
+    <DialogFooter>
+      <Button variant="ghost" onClick={() => { setUserToLock(null); setLockReason(''); }}>
+        Cancel
+      </Button>
+      <Button variant="destructive" onClick={doLockAccount}>
+        <Lock className="h-4 w-4 mr-2" /> Lock Account
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+### 4. lib/firebaseService.ts - Lock Account with Reason
+
+```typescript
+async lockAccountByAdmin(id: string, lockReason?: string): Promise<User> {
+  const database = getDb();
+  const userRef = doc(database, COLLECTIONS.USERS, id);
+
+  // Check if user is an admin - NEVER lock admin accounts
+  const checkSnapshot = await getDoc(userRef);
+  if (!checkSnapshot.exists()) {
+    throw new Error('User not found');
+  }
+  const userData = ensureUserData(checkSnapshot);
+  if (userData.role === 'admin') {
+    throw new Error('Cannot lock admin accounts');
+  }
+
+  await updateDoc(userRef, {
+    accountLocked: true,
+    lockedUntil: null,
+    lockedByAdmin: true,
+    lockReason: lockReason || 'Account locked by administrator',
+    updatedAt: nowIso(),
+  });
+
+  // ... rest of function (revoke tokens, etc.)
+}
+```
+
+### 5. App.tsx - Modal Component
 
 ```tsx
 <AlertDialog open={showAccountLockedDialog}>
@@ -298,16 +414,24 @@ useEffect(() => {
         </div>
       ) : accountLockReason === 'admin_lock' ? (
         <div className="space-y-3">
-          <p className="font-medium text-foreground">
-            Your account has been disabled by an administrator.
-          </p>
+          {accountLockedMessage && (
+            <div className="text-sm font-medium text-red-600 bg-red-50 p-4 rounded-md border border-red-200">
+              <p className="font-semibold mb-2">📋 Reason for lock:</p>
+              <p className="text-foreground">{accountLockedMessage}</p>
+            </div>
+          )}
+          {!accountLockedMessage && (
+            <p className="font-medium text-foreground">
+              Your account has been disabled by an administrator.
+            </p>
+          )}
           <div className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
             <p>⚠️ This lock was manually applied and will not automatically expire.</p>
           </div>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>You will not be able to sign in until an administrator unlocks your account.</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Contact administrator to understand why your account was locked</li>
+              <li>Contact administrator for more information</li>
               <li>Request account unlock if this was done in error</li>
             </ul>
           </div>
@@ -358,16 +482,21 @@ useEffect(() => {
 └─────────────────────────────────────────────┘
 ```
 
-### Admin Lock Modal (Red)
+### Admin Lock Modal (Red) - With Custom Reason
 ```
 ┌─────────────────────────────────────────────┐
 │ 🔒 Account Locked by Administrator          │
 ├─────────────────────────────────────────────┤
-│ Your account has been disabled by an        │
-│ administrator.                              │
+│ ┌─────────────────────────────────────────┐ │
+│ │ 📋 Reason for lock:                     │ │ (RED BOX - PRIMARY)
+│ │                                         │ │
+│ │ Policy violation: Unauthorized access   │ │
+│ │ attempt detected on January 15, 2025.   │ │
+│ │ Please contact IT security department.  │ │
+│ └─────────────────────────────────────────┘ │
 │                                             │
 │ ┌─────────────────────────────────────────┐ │
-│ │ ⚠️ This lock was manually applied by an │ │ (RED BOX)
+│ │ ⚠️ This lock was manually applied by an │ │ (RED BOX - SECONDARY)
 │ │ administrator and will not automatically│ │
 │ │ expire.                                 │ │
 │ └─────────────────────────────────────────┘ │
@@ -377,7 +506,7 @@ useEffect(() => {
 │ account.                                    │
 │                                             │
 │ What you should do:                         │
-│ • Contact administrator to understand why   │
+│ • Contact administrator for more info       │
 │ • Request account unlock if error           │
 │ • Follow administrator's instructions       │
 │                                             │
@@ -436,11 +565,17 @@ useEffect(() => {
 
 ### Admin Lock
 - [ ] Admin can manually lock user account
-- [ ] Modal shows red alert box
+- [ ] Lock dialog opens when clicking "Lock" button
+- [ ] Lock reason textarea is required (validation)
+- [ ] Lock reason is stored in Firestore `lockReason` field
+- [ ] Modal shows red alert box with custom reason prominently displayed
+- [ ] Lock reason displays in red box above warning
 - [ ] No countdown timer displayed
 - [ ] Lock persists until admin unlocks
 - [ ] Correct password does NOT bypass lock
 - [ ] Admin accounts cannot be locked
+- [ ] Lock reason is visible in both login and realtime lock scenarios
+- [ ] Maximum 500 characters for lock reason
 
 ### Realtime Lock
 - [ ] User signed out immediately when locked
