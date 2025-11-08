@@ -1075,8 +1075,7 @@ export const authService = {
       const record = await ensureUserRecordFromAuth(firebaseUser);
       const user = toUser(firebaseUser.uid, record);
 
-      // Only check account status (approved/pending/rejected)
-      // Account lock checks are handled by the Cloud Function trackFailedLogin
+      // Check account status (approved/pending/rejected)
       if (user.status !== 'approved') {
         await firebaseSignOut(auth);
         currentUserCache = null;
@@ -1088,6 +1087,47 @@ export const authService = {
             ? 'Your account is awaiting administrator approval.'
             : 'Your account was rejected. Please contact the administrator.'
         );
+      }
+
+      // IMPORTANT: Check for admin lock AFTER successful auth
+      // Admin locks are NOT handled by trackFailedLogin Cloud Function (that only handles failed attempts)
+      // Only lock faculty accounts - never lock admin accounts
+      if (user.accountLocked && user.role !== 'admin') {
+        await firebaseSignOut(auth);
+        currentUserCache = null;
+        notifyAuthListeners(null);
+        unsubscribeAllListeners();
+
+        // Determine lock type and set appropriate flags
+        let reason: 'failed_attempts' | 'admin_lock' = 'admin_lock';
+        let msg = 'Your account has been disabled by an administrator.';
+
+        if (user.lockedByAdmin) {
+          // Explicit admin lock - no expiration
+          reason = 'admin_lock';
+          msg = 'Your account has been disabled by an administrator. Please contact support for assistance.';
+        } else if (user.lockedUntil) {
+          // Time-bound lock (from failed attempts, but persisted in Firestore)
+          reason = 'failed_attempts';
+          const lockedUntil = new Date(user.lockedUntil);
+          const now = new Date();
+          const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
+
+          if (minutesRemaining > 0) {
+            msg = `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`;
+            try { sessionStorage.setItem('accountLockedUntil', lockedUntil.toISOString()); } catch (_) {}
+          } else {
+            // Lock has expired but Firestore hasn't been updated yet
+            msg = 'Account lock has expired. Please try logging in again.';
+          }
+        }
+
+        // Set sessionStorage flags for the modal
+        try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+        try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
+        try { sessionStorage.setItem('accountLockReason', reason); } catch (_) {}
+
+        throw new Error(msg);
       }
 
       // Success! Call Cloud Function to reset failed login attempts (with retries)
