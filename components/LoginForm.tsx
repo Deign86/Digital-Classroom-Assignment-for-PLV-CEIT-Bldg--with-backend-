@@ -87,14 +87,15 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   const allowed = ['login', 'signup'];
   const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'login', allowed));
 
-  // Load reCAPTCHA script on component mount
+  // Lazy-load reCAPTCHA only when signup tab is activated (not on initial mount)
+  // This improves LCP by deferring non-critical third-party scripts
   useEffect(() => {
-    if (typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
+    if (activeTab === 'signup' && typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
       loadRecaptchaScript().catch((error) => {
-        logger.error('Failed to load reCAPTCHA on mount:', error);
+        logger.error('Failed to load reCAPTCHA on tab switch:', error);
       });
     }
-  }, []);
+  }, [activeTab]);
 
   useEffect(() => {
     try {
