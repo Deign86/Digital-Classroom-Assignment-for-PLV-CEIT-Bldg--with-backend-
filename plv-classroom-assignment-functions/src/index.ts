@@ -1473,6 +1473,74 @@ export const resetFailedLogins = onCall(async (request: CallableRequest) => {
 });
 
 /**
+ * Admin-callable function to reset failed login attempts for any user
+ * This is used when an admin unlocks a user's account to also clear the
+ * Cloud Function brute force protection lock, not just the Firestore lock.
+ * Only callable by admin users.
+ */
+export const adminResetFailedLogins = onCall(async (request: CallableRequest<{ userId?: string }>) => {
+  // Verify admin authentication
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated");
+  }
+
+  const callerUid = request.auth.uid;
+  const callerDoc = await admin.firestore().collection("users").doc(callerUid).get();
+  
+  if (!callerDoc.exists) {
+    throw new HttpsError("permission-denied", "Caller user data not found");
+  }
+
+  const callerData = callerDoc.data();
+  if (!callerData || callerData.role !== "admin") {
+    throw new HttpsError("permission-denied", "Only admin users can reset failed logins for other users");
+  }
+
+  const { userId } = request.data || {};
+  if (!userId || typeof userId !== "string") {
+    throw new HttpsError("invalid-argument", "userId is required and must be a string");
+  }
+
+  try {
+    logger.info(`Admin ${callerUid} resetting failed login attempts for user: ${userId}`);
+
+    const userDoc = admin.firestore().collection("users").doc(userId);
+    const userData = await userDoc.get();
+
+    if (!userData.exists) {
+      logger.warn(`User document not found: ${userId}`);
+      throw new HttpsError("not-found", "User document not found");
+    }
+
+    // Reset all lock-related fields
+    await userDoc.update({
+      failedLoginAttempts: 0,
+      accountLocked: false,
+      lockedUntil: null,
+      lockedByAdmin: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`Admin ${callerUid} successfully reset failed login attempts for ${userId}`);
+
+    return {
+      success: true,
+      message: "Failed login attempts reset successfully by admin",
+    };
+  } catch (error: unknown) {
+    const err = error as {message?: string};
+    logger.error(`Error resetting failed logins for ${userId}:`, error);
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    throw new HttpsError("internal",
+      `Failed to reset login attempts: ${err.message}`);
+  }
+});
+
+/**
  * Sets custom claims for a user based on their role in Firestore.
  * This is called when a user's role is changed to sync the JWT token claims.
  * Only callable by admin users.

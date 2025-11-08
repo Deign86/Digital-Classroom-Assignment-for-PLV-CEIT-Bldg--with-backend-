@@ -1555,6 +1555,7 @@ export const userService = {
     const database = getDb();
     const userRef = doc(database, COLLECTIONS.USERS, id);
 
+    // First update Firestore directly
     await updateDoc(userRef, {
       failedLoginAttempts: 0,
       accountLocked: false,
@@ -1562,6 +1563,18 @@ export const userService = {
       lockedByAdmin: false,
       updatedAt: nowIso(),
     });
+
+    // Then call the Cloud Function to also clear the brute force protection lock
+    // This ensures both the Firestore lock AND the Cloud Function tracking are cleared
+    try {
+      const functions = getFunctions();
+      const adminResetFailedLogins = httpsCallable(functions, 'adminResetFailedLogins');
+      await adminResetFailedLogins({ userId: id });
+      logger.log('Successfully cleared Cloud Function brute force protection for user:', id);
+    } catch (err) {
+      // Log the error but don't fail the unlock - Firestore lock is already cleared
+      logger.warn('Failed to clear Cloud Function brute force protection (Firestore lock already cleared):', err);
+    }
 
     const snapshot = await getDoc(userRef);
     if (!snapshot.exists()) {
