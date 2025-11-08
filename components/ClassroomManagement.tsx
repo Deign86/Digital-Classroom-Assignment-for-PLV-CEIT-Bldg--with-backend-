@@ -680,11 +680,16 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       placeholder="e.g., CEIT Building"
                       value={formData.building}
                       onChange={(e) => {
+                        setFormData(prev => ({ ...prev, building: e.target.value }));
+                        if (validationErrors.building) {
+                          setValidationErrors(prev => ({ ...prev, building: undefined }));
+                        }
+                      }}
+                      onBlur={(e) => {
                         const sanitized = sanitizeText(e.target.value, LIMITS.BUILDING);
                         setFormData(prev => ({ ...prev, building: sanitized }));
                         setValidationErrors(prev => ({ ...prev, building: validateBuilding(sanitized) }));
                       }}
-                      onBlur={() => setValidationErrors(prev => ({ ...prev, building: validateBuilding(formData.building) }))}
                       maxLength={LIMITS.BUILDING}
                       className={validationErrors.building ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       required

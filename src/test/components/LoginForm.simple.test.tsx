@@ -69,7 +69,7 @@ describe('LoginForm', () => {
 
       expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
       expect(screen.getByRole('tab', { name: /faculty sign in/i })).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: /faculty request/i })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: /faculty signup/i })).toBeInTheDocument()
     })
 
     it('should show account locked message when isLocked is true', () => {
@@ -197,7 +197,7 @@ describe('LoginForm', () => {
   })
 
   describe('Tab Switching', () => {
-    it('should switch to faculty request tab', async () => {
+    it('should switch to faculty signup tab', async () => {
       render(
         <LoginForm
           onLogin={mockOnLogin}
@@ -206,7 +206,7 @@ describe('LoginForm', () => {
         />
       )
 
-      const signupTab = screen.getByRole('tab', { name: /faculty request/i })
+      const signupTab = screen.getByRole('tab', { name: /faculty signup/i })
       await userEvent.click(signupTab)
 
       await waitFor(() => {

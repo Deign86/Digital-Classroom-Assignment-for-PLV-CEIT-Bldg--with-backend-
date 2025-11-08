@@ -316,37 +316,19 @@ export default function App() {
   }, []);
 
   const handleLogin = useCallback(async (email: string, password: string) => {
-    // Show immediate feedback
-    const loginPromise = authService.signIn(email, password);
-
-    toast.promise(loginPromise, {
-      // Removed loading message because the LoginForm already shows a "Signing In..." button state.
-      // Keeping success/error messages only to avoid duplicate feedback.
-      success: (user) => {
-        if (!user) {
-          // This case should ideally be handled by the error part, but as a fallback:
-          return 'Login failed. Please check your credentials.';
-        }
-  // Set current user; the auth state listener will set up listeners
-  setCurrentUser(user);
-
-        const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
-        return `${greeting}, ${user.name}!`;
-      },
-      error: (err) => {
-        // The authService.signIn method is designed to throw specific, user-friendly errors.
-        // We can display them directly.
-        if (err instanceof Error) {
-          return err.message;
-        }
-        return 'An unknown login error occurred.';
-      },
-      duration: 4000,
-    });
-
     try {
-      const user = await loginPromise;
-      return !!user;
+      const user = await authService.signIn(email, password);
+      
+      if (user) {
+        setCurrentUser(user);
+        const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
+        toast.success(`${greeting}, ${user.name}!`, {
+          duration: 4000,
+        });
+        return true;
+      }
+      
+      return false;
     } catch (err) {
       // If the sign-in failed due to an account lock (tracked server-side),
       // surface the blocking account-locked dialog immediately by setting
@@ -389,7 +371,17 @@ export default function App() {
         logger.warn('Could not set accountLocked session flag:', e);
       }
 
-      // Error is already handled by the toast.promise, but we need to return false for the form.
+      // Show error toast with the error message (only once)
+      if (err instanceof Error) {
+        toast.error(err.message, {
+          duration: 4000,
+        });
+      } else {
+        toast.error('An unknown login error occurred.', {
+          duration: 4000,
+        });
+      }
+
       return false;
     }
   }, [setupRealtimeListeners]);
@@ -1427,6 +1419,57 @@ export default function App() {
       }
     }
   }, [currentUser]);
+
+  // Poll sessionStorage for account lock status to catch locks that happen during failed login
+  // This ensures the modal shows immediately even if the lock happens async
+  useEffect(() => {
+    if (currentUser) return; // Only check when logged out
+
+    const checkAccountLockStatus = () => {
+      if (sessionStorage.getItem('accountLocked') === 'true') {
+        const msg = sessionStorage.getItem('accountLockedMessage');
+        
+        // Only show modal if we have a real lock message (not the temporary "Checking..." placeholder)
+        // This prevents showing the modal during the brief async trackFailedLogin call
+        if (msg && msg !== 'Checking account status...') {
+          // Always update the message and reason, even if modal is already showing
+          // This ensures subsequent login attempts show the correct details
+          let reason = sessionStorage.getItem('accountLockReason') as 'failed_attempts' | 'admin_lock' | 'realtime_lock' | null;
+          
+          // If no reason in storage, infer it from the message
+          if (!reason) {
+            if (msg.includes('disabled by an administrator')) {
+              reason = 'admin_lock';
+            } else if (msg.includes('failed login attempts') || msg.includes('attempts remaining') || msg.includes('too many failed attempts')) {
+              reason = 'failed_attempts';
+            } else if (msg.includes('locked')) {
+              reason = 'realtime_lock';
+            }
+            // Store the inferred reason for consistency
+            if (reason) {
+              try { sessionStorage.setItem('accountLockReason', reason); } catch (_) {}
+            }
+          }
+          
+          setAccountLockedMessage(msg);
+          setAccountLockReason(reason);
+          
+          if (!showAccountLockedDialog) {
+            logger.log('🔒 Detected account lock flag in sessionStorage, showing modal');
+            setShowAccountLockedDialog(true);
+          }
+        }
+      }
+    };
+
+    // Check immediately
+    checkAccountLockStatus();
+
+    // Then poll every 500ms to catch async locks and keep message/reason updated
+    const pollInterval = setInterval(checkAccountLockStatus, 500);
+
+    return () => clearInterval(pollInterval);
+  }, [currentUser, showAccountLockedDialog]);
 
   // Subscribe to the current user's Firestore document so we can react to admin actions
   // (e.g., accountLocked). When an admin locks the account we immediately sign the user out

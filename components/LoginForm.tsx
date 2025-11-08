@@ -199,12 +199,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     // Defensive guard: if the app has flagged this account as locked,
     // prevent any submission attempt (defends against races or manual JS triggers).
     if (isLocked) {
-      try {
-        if (accountLockedMessage) toast.error(accountLockedMessage);
-        else toast.error('Your account is currently locked. Please contact your administrator or support.');
-      } catch (toastErr) {
-        /* swallow toast errors */
-      }
+      // Don't show a toast here - the modal is already displayed
+      // This prevents duplicate toasts (one immediate, one after button processing)
       try { announce('Account locked. Sign in is disabled.'); } catch (e) {}
       return;
     }
@@ -392,12 +388,10 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
       {/* Login/Signup Form */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-  <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-5 bg-gray-100 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
+        <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-5 bg-gray-100 rounded-xl p-0.5 sm:p-1 mx-auto max-w-full sm:max-w-md md:max-w-lg overflow-hidden login-tabs">
           <TabsTrigger value="login" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Sign In</TabsTrigger>
-          <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Request</TabsTrigger>
-        </TabsList>
-      
-        <TabsContent value="login" className="space-y-4 sm:space-y-5 mt-4 sm:mt-5">
+          <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Signup</TabsTrigger>
+        </TabsList>        <TabsContent value="login" className="space-y-4 sm:space-y-5 mt-4 sm:mt-5">
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 max-w-md mx-auto" noValidate>
             <div className="space-y-3.5 sm:space-y-4">
               <div className="space-y-2">
@@ -448,7 +442,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                    tabIndex={0}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md p-1 transition-colors"
                     aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                     aria-pressed={showLoginPassword}
                     title={showLoginPassword ? 'Hide password' : 'Show password'}
@@ -466,7 +461,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   <PasswordResetDialog>
                     <button
                       type="button"
-                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                      tabIndex={0}
+                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded px-1"
                     >
                       Forgot password?
                     </button>
@@ -639,7 +635,9 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                                 departments: prev.departments.filter(d => d !== dept)
                               }));
                             }}
-                            className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                            tabIndex={0}
+                            aria-label={`Remove ${dept}`}
+                            className="ml-1 hover:bg-gray-300 focus:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full p-0.5 transition-colors"
                           >
                             <X className="h-3 w-3" />
                           </button>
@@ -679,7 +677,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     <button
                       type="button"
                       onClick={() => setShowSignupPassword(!showSignupPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                      tabIndex={0}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md p-1 transition-colors"
                       aria-label={showSignupPassword ? 'Hide password' : 'Show password'}
                       aria-pressed={showSignupPassword}
                       title={showSignupPassword ? 'Hide password' : 'Show password'}
@@ -716,7 +715,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                     <button
                       type="button"
                       onClick={() => setShowSignupConfirmPassword(!showSignupConfirmPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-0 shadow-none focus:outline-none focus:ring-0"
+                      tabIndex={0}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-md p-1 transition-colors"
                       aria-label={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                       aria-pressed={showSignupConfirmPassword}
                       title={showSignupConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
