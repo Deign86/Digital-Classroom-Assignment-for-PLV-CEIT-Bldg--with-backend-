@@ -232,49 +232,20 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     setIsLoading(true);
     
     try {
-      // Execute login with network error handling
-      // Note: We use a custom shouldRetry predicate to skip retries for
-      // authentication/authorization errors (like account locks) which are
-      // not transient network failures.
-      const result = await executeWithNetworkHandling(
-        async () => {
-          const success = await onLogin(email, password);
-          if (!success) {
-            throw new Error('Invalid email or password');
-          }
-          return success;
-        },
-        {
-          operationName: 'sign in',
-          successMessage: undefined, // App.tsx handles the welcome message
-          maxAttempts: 2, // Fewer retries for auth operations
-          showLoadingToast: false, // We'll show our own loading state
-          showErrorToast: false, // App.tsx handles error messages via toast.promise()
-          shouldRetry: (error: unknown) => {
-            // Don't retry if error is account-related (locked, disabled, pending approval, etc.)
-            // These are not transient network failures and will always fail
-            const errorMsg = error instanceof Error ? error.message : '';
-            const isAccountError = errorMsg.includes('Account locked') ||
-                                  errorMsg.includes('disabled by an administrator') ||
-                                  errorMsg.includes('attempts remaining') ||
-                                  errorMsg.includes('locked by admin') ||
-                                  errorMsg.includes('Awaiting approval') ||
-                                  errorMsg.includes('pending administrator approval') ||
-                                  errorMsg.includes('Account rejected') ||
-                                  errorMsg.includes('invalid-email') ||
-                                  errorMsg.includes('user-not-found') ||
-                                  errorMsg.includes('wrong-password');
-            return !isAccountError;
-          },
-        }
-      );
-
-      if (!result.success) {
+      // Call onLogin directly - App.tsx handles all error messages and toasts
+      // This prevents duplicate toast notifications (one immediate, one after processing)
+      const success = await onLogin(email, password);
+      
+      if (!success) {
         setPassword('');
         try { announce('Login failed. Please check your email and password.', 'assertive'); } catch (e) {}
       } else {
         try { announce('Login successful. Redirecting to your dashboard.', 'polite'); } catch (e) {}
       }
+    } catch (error) {
+      // Just clear password on error - App.tsx handles the toast
+      setPassword('');
+      try { announce('Login failed. Please check your email and password.', 'assertive'); } catch (e) {}
     } finally {
       setIsLoading(false);
     }
