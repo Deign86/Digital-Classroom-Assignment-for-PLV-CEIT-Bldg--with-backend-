@@ -129,8 +129,10 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   // Shared sanitizer for password fields
   const sanitizePassword = (pwd: string) => {
     if (!pwd) return pwd;
-    let cleaned = pwd.replace(/[[\r\n\t]]/g, '');
+    // Remove line breaks, tabs, and invisible Unicode characters
+    let cleaned = pwd.replace(/[\r\n\t]/g, '');
     cleaned = cleaned.replace(/[\u200B\u200C\u200D\uFEFF]/g, '');
+    // Trim leading/trailing whitespace
     cleaned = cleaned.trim();
     return cleaned;
   };
@@ -403,6 +405,16 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, password: '' }));
                       }
                     }}
+                    onPaste={(e) => {
+                      // Sanitize pasted passwords to remove invisible characters
+                      e.preventDefault();
+                      const pastedText = e.clipboardData.getData('text');
+                      const cleaned = sanitizePassword(pastedText);
+                      setPassword(cleaned);
+                      if (loginErrors.password) {
+                        setLoginErrors(prev => ({ ...prev, password: '' }));
+                      }
+                    }}
                     className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
@@ -638,6 +650,16 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, password: '' }));
                         }
                       }}
+                      onPaste={(e) => {
+                        // Sanitize pasted passwords to remove invisible characters
+                        e.preventDefault();
+                        const pastedText = e.clipboardData.getData('text');
+                        const cleaned = sanitizePassword(pastedText);
+                        setSignupData(prev => ({ ...prev, password: cleaned }));
+                        if (signupErrors.password) {
+                          setSignupErrors(prev => ({ ...prev, password: '' }));
+                        }
+                      }}
                       className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
@@ -672,6 +694,16 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                       value={signupData.confirmPassword}
                       onChange={(e) => {
                         setSignupData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                        if (signupErrors.confirmPassword) {
+                          setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
+                        }
+                      }}
+                      onPaste={(e) => {
+                        // Sanitize pasted passwords to remove invisible characters
+                        e.preventDefault();
+                        const pastedText = e.clipboardData.getData('text');
+                        const cleaned = sanitizePassword(pastedText);
+                        setSignupData(prev => ({ ...prev, confirmPassword: cleaned }));
                         if (signupErrors.confirmPassword) {
                           setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
                         }
