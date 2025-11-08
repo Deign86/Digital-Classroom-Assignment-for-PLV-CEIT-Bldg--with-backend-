@@ -118,9 +118,8 @@ export default function AdminDashboard({
     setProcessingUserId(userId);
     try {
       if (onUnlockAccount) {
-        const res: any = await onUnlockAccount(userId);
-        if (res && res.message) toast.success(res.message);
-        else toast.success('Account unlocked');
+        // App.tsx handles the success toast, don't show duplicate
+        await onUnlockAccount(userId);
       } else {
         // Fallback to direct service call
         await userService.unlockAccount(userId);
