@@ -372,10 +372,16 @@ export default function App() {
       }
 
       // Show error toast with the error message (only once)
+      // BUT skip toast if it's an account lock error (modal will be shown instead)
       if (err instanceof Error) {
-        toast.error(err.message, {
-          duration: 4000,
-        });
+        const msg = err.message || '';
+        const isLockError = msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining') || msg.includes('disabled by an administrator');
+        
+        if (!isLockError) {
+          toast.error(err.message, {
+            duration: 4000,
+          });
+        }
       } else {
         toast.error('An unknown login error occurred.', {
           duration: 4000,

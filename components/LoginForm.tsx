@@ -208,12 +208,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     // Clear previous errors
     setLoginErrors({ email: '', password: '' });
     
-    // Don't attempt login if fields are empty
-    // Sanitize password in case user pasted it
-    const cleanedPassword = sanitizePassword(password);
-    if (cleanedPassword !== password) setPassword(cleanedPassword);
-
-    // Validate fields
+    // Validate fields - DON'T sanitize password here, it breaks authentication
+    // Password sanitization happens only on paste events (handlePasswordPaste)
     const errors = { email: '', password: '' };
     let hasErrors = false;
 
@@ -222,7 +218,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       hasErrors = true;
     }
 
-    if (!cleanedPassword.trim()) {
+    if (!password.trim()) {
       errors.password = 'Password is required';
       hasErrors = true;
     }
@@ -242,7 +238,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       // not transient network failures.
       const result = await executeWithNetworkHandling(
         async () => {
-          const success = await onLogin(email, cleanedPassword);
+          const success = await onLogin(email, password);
           if (!success) {
             throw new Error('Invalid email or password');
           }
