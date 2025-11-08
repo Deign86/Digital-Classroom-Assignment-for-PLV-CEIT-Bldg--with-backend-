@@ -945,7 +945,8 @@ export const authService = {
         logger.warn('Failed to notify admins of new signup:', err);
       }
 
-      await sendEmailVerification(firebaseUser).catch(() => undefined);
+      // Email verification disabled - not required for this system
+      // await sendEmailVerification(firebaseUser).catch(() => undefined);
 
       return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
     } finally {
@@ -1020,7 +1021,8 @@ export const authService = {
         logger.warn('Failed to notify admins of new signup:', err);
       }
 
-      await sendEmailVerification(firebaseUser).catch(() => undefined);
+      // Email verification disabled - not required for this system
+      // await sendEmailVerification(firebaseUser).catch(() => undefined);
 
       return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
     } catch (error) {
