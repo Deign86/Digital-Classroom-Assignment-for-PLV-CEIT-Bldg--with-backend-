@@ -377,16 +377,31 @@ export default function App() {
 
       // Show error toast with the error message (only once)
       // BUT skip toast if it's an account lock error (modal will be shown instead)
+      // Check both error message content AND sessionStorage/state flags to avoid showing
+      // toast when the lock modal is already displayed
+      const accountLockedFlagSet = (() => {
+        try {
+          return sessionStorage.getItem('accountLocked') === 'true';
+        } catch {
+          return false;
+        }
+      })();
+      
       if (err instanceof Error) {
         const msg = err.message || '';
         const isLockError = msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining') || msg.includes('disabled by an administrator');
         
-        if (!isLockError) {
+        // Don't show toast if:
+        // 1. Error message indicates a lock, OR
+        // 2. Account lock modal is already shown, OR
+        // 3. sessionStorage has accountLocked flag set
+        if (!isLockError && !showAccountLockedDialog && !accountLockedFlagSet) {
           toast.error(err.message, {
             duration: 4000,
           });
         }
-      } else {
+      } else if (!showAccountLockedDialog && !accountLockedFlagSet) {
+        // Only show unknown error toast if lock modal is not active
         toast.error('An unknown login error occurred.', {
           duration: 4000,
         });
@@ -394,7 +409,7 @@ export default function App() {
 
       return false;
     }
-  }, [setupRealtimeListeners]);
+  }, [setupRealtimeListeners, showAccountLockedDialog]);
 
   const oldHandleLogin = useCallback(async (email: string, password: string) => {
     try {
