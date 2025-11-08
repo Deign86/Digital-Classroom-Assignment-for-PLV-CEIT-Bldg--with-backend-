@@ -61,11 +61,23 @@ export default class ErrorBoundary extends Component<Props, State> {
           };
           const id = await logClientError(payload);
           const body = [`Error ID: ${id ?? 'n/a'}`, `URL: ${payload.url}`, `User agent: ${payload.userAgent}`, '', 'Please describe what you were doing when the error happened:'].join('\n');
-          // Open mail client so user can send additional context to support
-          window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent('App error report')}&body=${encodeURIComponent(body)}`;
+          const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent('App error report')}&body=${encodeURIComponent(body)}`;
+          
+          // Open mail client with better cross-platform compatibility
+          try {
+            window.location.href = mailtoUrl;
+          } catch (err) {
+            // Fallback for Mac/browsers that block mailto:
+            window.open(mailtoUrl, '_blank');
+          }
         } catch (e) {
-          // fallback to mailto even if logging failed
-          window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent('App error report')}`;
+          // Final fallback to basic mailto
+          const mailtoUrl = `mailto:${supportEmail}?subject=${encodeURIComponent('App error report')}`;
+          try {
+            window.location.href = mailtoUrl;
+          } catch (err) {
+            window.open(mailtoUrl, '_blank');
+          }
         }
       };
 
@@ -83,7 +95,17 @@ export default class ErrorBoundary extends Component<Props, State> {
               <Button variant="destructive" onClick={() => { this.setState({ hasError: false, error: undefined }); window.location.reload(); }} className="px-6 py-3 rounded-lg">Reload app</Button>
               <Button variant="outline" onClick={handleReport} className="px-6 py-3 rounded-lg">Report problem</Button>
             </div>
-            <p className="text-sm text-gray-600 mt-4">If the issue persists, contact <a className="underline" href={`mailto:${supportEmail}`}>{supportEmail}</a> with the error ID.</p>
+            <p className="text-sm text-gray-600 mt-4">If the issue persists, contact <button 
+              type="button"
+              className="underline cursor-pointer"
+              onClick={() => {
+                try {
+                  window.location.href = `mailto:${supportEmail}`;
+                } catch (err) {
+                  window.open(`mailto:${supportEmail}`, '_blank');
+                }
+              }}
+            >{supportEmail}</button> with the error ID.</p>
           </div>
         </div>
       );

@@ -401,21 +401,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       toast.info('No matching signup request found in memory.');
       return;
     }
-    // Try to navigate to the full-screen history route for a deterministic view
-    // Prefer matching by userId/requestDate to find the history item id
-    const historyEntry = signupHistory.find(h => (h.userId && req.userId && h.userId === req.userId) || (h.email === req.email && h.requestDate === req.requestDate));
-
-    if (historyEntry) {
-      // Try to navigate with a full-page location change (avoids dependency on react-router here)
-      try {
-        window.location.href = `/admin/signups/history/${historyEntry.id}`;
-        return;
-      } catch (e) {
-        // ignore and fallback to scroll behavior
-      }
-    }
-
-    // Final fallback: scroll to processed list in current view
+    // Scroll to processed list to show the history
+    // Note: Full-page history routes are not implemented, using in-page navigation instead
     const listEl = document.getElementById('processed-requests');
     if (listEl) {
       highlightAndScroll(listEl);

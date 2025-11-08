@@ -1731,9 +1731,30 @@ export default function App() {
               )}
             </AlertDialogDescription>
             <div className="mt-4 flex gap-2 justify-end">
-              <a href={`mailto:${supportEmail}`} className={buttonVariants({ variant: 'outline' })}>
+              <button 
+                type="button"
+                className={buttonVariants({ variant: 'outline' })}
+                onClick={() => {
+                  try {
+                    // Use window.location for better cross-browser/platform compatibility
+                    window.location.href = `mailto:${supportEmail}`;
+                  } catch (err) {
+                    // Fallback: try to open in new window (some Mac browsers block mailto:)
+                    try {
+                      window.open(`mailto:${supportEmail}`, '_blank');
+                    } catch (e) {
+                      // Last resort: copy email to clipboard and notify user
+                      navigator.clipboard?.writeText(supportEmail).then(() => {
+                        toast.info(`Email copied: ${supportEmail}`, { duration: 5000 });
+                      }).catch(() => {
+                        toast.error(`Please contact: ${supportEmail}`, { duration: 5000 });
+                      });
+                    }
+                  }
+                }}
+              >
                 Contact Administrator
-              </a>
+              </button>
               <AlertDialogAction asChild>
                 <button className={buttonVariants({ variant: 'destructive' })} onClick={() => {
                   // ensure removal of all flags when dismissed
