@@ -190,30 +190,31 @@ export default function FacultyDashboard({
     }
   }, []);
 
-  // Deduplicate booking requests by ID (defensive programming to prevent duplicate rendering)
-  const uniqueBookingRequests = useMemo(() => {
-    const seen = new Set<string>();
-    return bookingRequests.filter(r => {
-      if (seen.has(r.id)) {
-        logger.warn(`⚠️ Duplicate booking request detected and filtered: ${r.id}`);
-        return false;
-      }
-      seen.add(r.id);
-      return true;
-    });
-  }, [bookingRequests]);
-
-  // Statistics
-  const upcomingClasses = schedules.filter(s => {
-    const scheduleDate = new Date(s.date);
+  // Statistics - optimized with single reduce pass to minimize overhead
+  // Note: Deduplication now handled at service layer (lib/firebaseService.ts)
+  const stats = useMemo(() => {
     const today = new Date();
-    return scheduleDate >= today && s.status === 'confirmed';
-  }).length;
+    
+    const upcomingClasses = schedules.reduce((count, s) => {
+      const scheduleDate = new Date(s.date);
+      return count + (scheduleDate >= today && s.status === 'confirmed' ? 1 : 0);
+    }, 0);
+    
+    const result = bookingRequests.reduce((acc, r) => {
+      acc.total++;
+      if (r.status === 'approved') acc.approved++;
+      else if (r.status === 'rejected') acc.rejected++;
+      else if (r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))) {
+        acc.pending++;
+      }
+      return acc;
+    }, { pending: 0, approved: 0, rejected: 0, total: 0 });
+    
+    return { upcomingClasses, ...result };
+  }, [schedules, bookingRequests]);
 
-  const pendingRequests = uniqueBookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime))).length;
-  const approvedRequests = uniqueBookingRequests.filter(r => r.status === 'approved').length;
-  const rejectedRequests = uniqueBookingRequests.filter(r => r.status === 'rejected').length;
-  const totalRequests = uniqueBookingRequests.length;
+  // Destructure for backwards compatibility with existing code
+  const { upcomingClasses, pending: pendingRequests, approved: approvedRequests, rejected: rejectedRequests, total: totalRequests } = stats;
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -534,7 +535,7 @@ export default function FacultyDashboard({
                     <CardDescription>Your latest classroom reservation requests</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {uniqueBookingRequests.length === 0 ? (
+                    {bookingRequests.length === 0 ? (
                       <div className="text-center py-8">
                         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500">No reservation requests yet</p>
@@ -547,7 +548,7 @@ export default function FacultyDashboard({
                       </div>
                     ) : (
                       <div className="space-y-4 max-h-80 overflow-y-auto">
-                        {uniqueBookingRequests
+                        {bookingRequests
                           .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
                           .slice(0, 5)
                           .map((request, index) => (

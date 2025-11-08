@@ -69,15 +69,148 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Cache configuration
+const CACHE_VERSION = 'v1';
+const CACHE_NAME = `plv-ceit-classroom-${CACHE_VERSION}`;
+
+// Assets to cache on install
+const STATIC_CACHE_URLS = [
+  '/',
+  '/index.html',
+  '/favicon.ico',
+];
+
+// Firebase SDK URLs to cache (these are large and don't change often)
+const FIREBASE_CACHE_URLS = [
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js',
+];
+
 // Service worker lifecycle events
 self.addEventListener('install', (event) => {
   console.log('[firebase-messaging-sw.js] Service worker installing...');
-  // Skip waiting to activate immediately
-  self.skipWaiting();
+  
+  // Pre-cache static assets and Firebase SDK
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('[firebase-messaging-sw.js] Caching static assets and Firebase SDK');
+      return Promise.all([
+        cache.addAll(STATIC_CACHE_URLS).catch((err) => {
+          console.warn('[firebase-messaging-sw.js] Failed to cache some static assets:', err);
+        }),
+        cache.addAll(FIREBASE_CACHE_URLS).catch((err) => {
+          console.warn('[firebase-messaging-sw.js] Failed to cache Firebase SDK:', err);
+        })
+      ]);
+    }).then(() => {
+      // Skip waiting to activate immediately
+      return self.skipWaiting();
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {
   console.log('[firebase-messaging-sw.js] Service worker activating...');
-  // Claim all clients immediately
-  event.waitUntil(clients.claim());
+  
+  // Clean up old caches
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName.startsWith('plv-ceit-classroom-') && cacheName !== CACHE_NAME)
+          .map((cacheName) => {
+            console.log('[firebase-messaging-sw.js] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          })
+      );
+    }).then(() => {
+      // Claim all clients immediately
+      return clients.claim();
+    })
+  );
+});
+
+// Fetch event handler - implement caching strategy
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Skip non-GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Skip Firebase Auth/Firestore/Functions requests (must always be fresh)
+  if (
+    url.hostname.includes('firebaseapp.com') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('cloudfunctions.net') ||
+    url.pathname.includes('/__/auth/') ||
+    url.pathname.includes('/__/firebase/')
+  ) {
+    return;
+  }
+
+  // Strategy: Cache First for static assets, Network First for everything else
+  if (
+    url.hostname === 'www.gstatic.com' || // Firebase SDK
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.woff2') ||
+    url.pathname.endsWith('.woff') ||
+    url.pathname.endsWith('.ttf') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.jpeg') ||
+    url.pathname.endsWith('.svg') ||
+    url.pathname.endsWith('.ico')
+  ) {
+    // Cache First strategy for static assets
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          console.log('[firebase-messaging-sw.js] Serving from cache:', request.url);
+          return cachedResponse;
+        }
+
+        return fetch(request).then((response) => {
+          // Cache successful responses
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        }).catch((error) => {
+          console.error('[firebase-messaging-sw.js] Fetch failed:', error);
+          throw error;
+        });
+      })
+    );
+  } else {
+    // Network First strategy for HTML and dynamic content
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Cache successful responses
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch((error) => {
+          console.log('[firebase-messaging-sw.js] Network failed, trying cache:', request.url);
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            throw error;
+          });
+        })
+    );
+  }
 });

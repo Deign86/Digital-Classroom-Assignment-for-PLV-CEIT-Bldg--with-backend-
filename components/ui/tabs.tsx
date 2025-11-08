@@ -33,18 +33,50 @@ const TabsList = React.forwardRef<
     const el = localRef.current;
     if (!el) return;
 
+    // Use IntersectionObserver-based approach to avoid forced reflows
     const recomputeShouldAuto = () => {
       try {
-        shouldAutoRef.current = el.classList.contains('mobile-tab-scroll') || el.scrollWidth > el.clientWidth;
+        // Check class first (no layout cost)
+        if (el.classList.contains('mobile-tab-scroll')) {
+          shouldAutoRef.current = true;
+          return;
+        }
+        // Defer geometry check - assume true initially to prevent layout thrashing
+        shouldAutoRef.current = true;
+        
+        // Use ResizeObserver to update the flag asynchronously (avoids forced reflow)
+        if (typeof ResizeObserver !== 'undefined') {
+          const observer = new ResizeObserver(() => {
+            try {
+              shouldAutoRef.current = el.scrollWidth > el.clientWidth;
+            } catch (e) {
+              shouldAutoRef.current = false;
+            }
+          });
+          observer.observe(el);
+          return () => observer.disconnect();
+        }
       } catch (e) {
         shouldAutoRef.current = false;
       }
+      return undefined;
     };
 
     const scrollNodeIntoView = (node: Element) => {
       try {
         if (!shouldAutoRef.current) return;
-        (node as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        // Defer scroll to next frame to avoid forced reflow during initial render
+        requestAnimationFrame(() => {
+          try {
+            (node as HTMLElement).scrollIntoView({ 
+              behavior: 'smooth', 
+              inline: 'center', 
+              block: 'nearest' 
+            });
+          } catch (e) {
+            // ignore
+          }
+        });
       } catch (e) {
         // ignore
       }
@@ -75,7 +107,7 @@ const TabsList = React.forwardRef<
     };
 
     // initial compute and scroll to active
-    recomputeShouldAuto();
+    const cleanupRecompute = recomputeShouldAuto();
     const initialActive = el.querySelector('[data-state="active"]');
     if (initialActive) scrollNodeIntoView(initialActive);
 
@@ -99,19 +131,11 @@ const TabsList = React.forwardRef<
   // listen for focusin events to handle keyboard navigation (focus) so the focused tab slides into view
   el.addEventListener('focusin', onFocusIn as EventListener, true);
 
-    // also watch for resize changes to recompute overflow behavior
-    let ro: ResizeObserver | null = null;
-    try {
-      ro = new ResizeObserver(() => recomputeShouldAuto());
-      ro.observe(el);
-    } catch (e) {
-      // ResizeObserver may not be available in some envs; ignore
-      ro = null;
-    }
+    // Removed redundant ResizeObserver - now handled in recomputeShouldAuto
 
     return () => {
       mo.disconnect();
-      if (ro) try { ro.disconnect(); } catch {}
+      if (cleanupRecompute) cleanupRecompute();
       try { el.removeEventListener('focusin', onFocusIn as EventListener, true); } catch (e) {}
     };
   }, []);
