@@ -302,10 +302,20 @@ const setupBookingRequestsListener = (
   
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
-      const requests = snapshot.docs.map((doc) => {
-        const data = doc.data() as FirestoreBookingRequestRecord;
-        return toBookingRequest(doc.id, data);
+      // Deduplicate at service layer to reduce component overhead
+      const seen = new Set<string>();
+      const requests: BookingRequest[] = [];
+      
+      snapshot.docs.forEach((doc) => {
+        if (!seen.has(doc.id)) {
+          seen.add(doc.id);
+          const data = doc.data() as FirestoreBookingRequestRecord;
+          requests.push(toBookingRequest(doc.id, data));
+        } else {
+          logger.warn(`⚠️ Duplicate booking request filtered at service layer: ${doc.id}`);
+        }
       });
+      
       callback(requests);
     } catch (error) {
       logger.error('BookingRequests listener error:', error);
