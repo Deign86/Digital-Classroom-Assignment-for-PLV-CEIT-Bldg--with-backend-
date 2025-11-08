@@ -403,9 +403,14 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
                   className="rounded-md min-h-[100px]"
                   maxLength={500}
                 />
-                <p className="text-xs text-muted-foreground">
-                  This reason will be displayed to the user when they try to sign in. Be clear and professional.
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    This reason will be displayed to the user when they try to sign in. Be clear and professional.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {lockReason.length}/500
+                  </p>
+                </div>
               </div>
               <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800">
                 <p className="text-xs text-amber-800 dark:text-amber-400">
