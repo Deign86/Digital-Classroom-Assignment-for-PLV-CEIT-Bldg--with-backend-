@@ -167,6 +167,8 @@ export default function App() {
   const [showAccountLockedDialog, setShowAccountLockedDialog] = useState(false);
   const [accountLockedMessage, setAccountLockedMessage] = useState<string | null>(null);
   const [accountLockReason, setAccountLockReason] = useState<'failed_attempts' | 'admin_lock' | 'realtime_lock' | null>(null);
+  const [accountLockedUntil, setAccountLockedUntil] = useState<string | null>(null); // ISO timestamp
+  const [lockTimeRemaining, setLockTimeRemaining] = useState<string | null>(null); // Formatted countdown
   // Use Vite's import.meta.env in the browser. Fall back to a sensible default.
   const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL ?? import.meta.env.REACT_APP_SUPPORT_EMAIL ?? 'it-support@plv.edu.ph') as string;
   const [showSessionWarning, setShowSessionWarning] = useState(false);
@@ -1460,6 +1462,12 @@ export default function App() {
           setAccountLockedMessage(msg);
           setAccountLockReason(reason);
           
+          // Restore lockedUntil timestamp if available
+          const lockedUntil = sessionStorage.getItem('accountLockedUntil');
+          if (lockedUntil) {
+            setAccountLockedUntil(lockedUntil);
+          }
+          
           if (!showAccountLockedDialog) {
             logger.log('🔒 Detected account lock flag in sessionStorage, showing modal');
             setShowAccountLockedDialog(true);
@@ -1476,6 +1484,42 @@ export default function App() {
 
     return () => clearInterval(pollInterval);
   }, [currentUser, showAccountLockedDialog]);
+
+  // Countdown timer for account lock expiration
+  useEffect(() => {
+    if (!accountLockedUntil || accountLockReason !== 'failed_attempts') {
+      setLockTimeRemaining(null);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = new Date();
+      const lockExpiry = new Date(accountLockedUntil);
+      const diffMs = lockExpiry.getTime() - now.getTime();
+
+      if (diffMs <= 0) {
+        setLockTimeRemaining('Lock expired - you can try logging in again');
+        return;
+      }
+
+      const minutes = Math.floor(diffMs / 60000);
+      const seconds = Math.floor((diffMs % 60000) / 1000);
+
+      if (minutes > 0) {
+        setLockTimeRemaining(`${minutes} minute${minutes !== 1 ? 's' : ''} and ${seconds} second${seconds !== 1 ? 's' : ''}`);
+      } else {
+        setLockTimeRemaining(`${seconds} second${seconds !== 1 ? 's' : ''}`);
+      }
+    };
+
+    // Update immediately
+    updateCountdown();
+
+    // Then update every second
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [accountLockedUntil, accountLockReason]);
 
   // Subscribe to the current user's Firestore document so we can react to admin actions
   // (e.g., accountLocked). When an admin locks the account we immediately sign the user out
@@ -1508,6 +1552,7 @@ export default function App() {
               // If there's a lockedUntil timestamp, it's a brute force protection lock
               reason = 'failed_attempts';
               const lockedUntil = data.lockedUntil?.toDate ? data.lockedUntil.toDate() : new Date(data.lockedUntil);
+              const lockedUntilISO = lockedUntil.toISOString();
               const now = new Date();
               const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
               
@@ -1516,6 +1561,10 @@ export default function App() {
               } else {
                 msg = 'Account locked due to too many failed login attempts. Please try again.';
               }
+              
+              // Store the lockedUntil timestamp for countdown
+              try { sessionStorage.setItem('accountLockedUntil', lockedUntilISO); } catch (_) {}
+              setAccountLockedUntil(lockedUntilISO);
             }
             
             // Mark the login page to show the lock notification
@@ -1669,7 +1718,15 @@ export default function App() {
                   <p className="font-medium text-foreground">
                     Your account has been temporarily locked due to multiple failed login attempts.
                   </p>
-                  {accountLockedMessage && (
+                  {lockTimeRemaining && (
+                    <div className="text-sm font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 p-3 rounded-md border border-orange-200 dark:border-orange-800">
+                      <p className="font-semibold mb-1">⏱️ Time remaining: {lockTimeRemaining}</p>
+                      {accountLockedMessage && (
+                        <p className="text-xs mt-2 opacity-80">{accountLockedMessage}</p>
+                      )}
+                    </div>
+                  )}
+                  {!lockTimeRemaining && accountLockedMessage && (
                     <p className="text-sm font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 p-3 rounded-md border border-orange-200 dark:border-orange-800">
                       {accountLockedMessage}
                     </p>
@@ -1678,7 +1735,7 @@ export default function App() {
                     <p>This is a security measure to protect your account from unauthorized access.</p>
                     <p className="font-medium">What you can do:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>Wait for the lockout period to expire (typically 30 minutes)</li>
+                      <li>Wait for the lockout period to expire</li>
                       <li>Make sure you're using the correct password</li>
                       <li>Use the "Forgot password?" option if needed</li>
                       <li>Contact your administrator if you need immediate access</li>
