@@ -1075,35 +1075,8 @@ export const authService = {
       const record = await ensureUserRecordFromAuth(firebaseUser);
       const user = toUser(firebaseUser.uid, record);
 
-      // Check if account is locked (after authentication but before allowing login)
-      if (user.accountLocked) {
-        const now = new Date();
-
-        // If locked by admin, prevent login until an admin explicitly unlocks
-        if (user.lockedByAdmin) {
-          await firebaseSignOut(auth);
-          currentUserCache = null;
-          notifyAuthListeners(null);
-          throw new Error('Your account has been disabled by an administrator. Please contact your administrator to re-enable this account.');
-        }
-
-        // Otherwise, treat it as a system lockout (time-bound)
-        if (user.lockedUntil) {
-          const lockedUntilDate = new Date(user.lockedUntil);
-          if (now < lockedUntilDate) {
-            // Account is still locked - sign them out
-            await firebaseSignOut(auth);
-            currentUserCache = null;
-            notifyAuthListeners(null);
-
-            const minutesRemaining = Math.ceil((lockedUntilDate.getTime() - now.getTime()) / 60000);
-            throw new Error(`Account is locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`);
-          } else {
-            // Lockout period has expired, will be unlocked below in success handler
-          }
-        }
-      }
-
+      // Only check account status (approved/pending/rejected)
+      // Account lock checks are handled by the Cloud Function trackFailedLogin
       if (user.status !== 'approved') {
         await firebaseSignOut(auth);
         currentUserCache = null;
@@ -1147,7 +1120,7 @@ export const authService = {
         throw error;
       }
 
-      // Handle failed login attempts - call Cloud Function to track
+      // Handle failed login attempts - call Cloud Function to track and check for locks
       // Log the error to see what we're getting
       logger.log('🔍 Login error details:', {
         error,
@@ -1155,74 +1128,53 @@ export const authService = {
         message: error instanceof Error ? error.message : 'unknown'
       });
 
-      // Check if this is an admin-locked account error (not a failed login attempt)
-      const errorMessage = error instanceof Error ? error.message : '';
-      const isAdminLocked = errorMessage.includes('disabled by an administrator') || 
-                           errorMessage.includes('Account locked') ||
-                           errorMessage.includes('locked by admin');
-
-      // Only track failed login attempts for actual authentication errors,
-      // NOT for accounts that are already locked by admin
-      if (!isAdminLocked && error && typeof error === 'object' && 'code' in error) {
+      // Track failed login attempts via Cloud Function for any auth-related error
+      if (error && typeof error === 'object' && 'code' in error) {
         const code = (error as { code?: string }).code;
         
-        // Track any auth-related error
         if (code?.startsWith('auth/')) {
           logger.log('🔒 Calling trackFailedLogin for:', email);
 
-          // Optimisation: do the tracking call in the background so we can
-          // return control to the UI immediately. In some environments the
-          // callable or network retries can take a long time which blocks the
-          // sign-in error propagation and delays any UI reaction (such as
-          // opening the account-locked modal). We set a lightweight
-          // sessionStorage placeholder so the UI can open a modal immediately
-          // and update it when the callable returns.
+          // Call the Cloud Function to track the failed attempt and check for locks
+          // This is done synchronously (not fire-and-forget) so we get the lock status immediately
           try {
-            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
-            try { sessionStorage.setItem('accountLockedMessage', 'Checking account status...'); } catch (_) {}
-            try { sessionStorage.setItem('accountLockReason', 'failed_attempts'); } catch (_) {}
-          } catch (_) {}
+            const trackFailedLoginFn = httpsCallable(functions, 'trackFailedLogin');
+            const result = await withRetry(() => trackFailedLoginFn({ email }), { attempts: 3, shouldRetry: isNetworkError });
+            const data = result.data as {
+              locked?: boolean;
+              attemptsRemaining?: number;
+              message?: string;
+              lockedUntil?: string;
+            };
 
-          // Fire-and-forget the callable. Update sessionStorage when the
-          // callable completes so the UI can show the server-provided message.
-          (async () => {
-            try {
-              const trackFailedLoginFn = httpsCallable(functions, 'trackFailedLogin');
-              const result = await withRetry(() => trackFailedLoginFn({ email }), { attempts: 3, shouldRetry: isNetworkError });
-              const data = result.data as {
-                locked?: boolean;
-                attemptsRemaining?: number;
-                message?: string;
-                lockedUntil?: string;
-              };
+            logger.log('✅ trackFailedLogin response:', data);
 
-              logger.log('✅ trackFailedLogin response (background):', data);
-
-              if (data.message) {
-                try { sessionStorage.setItem('accountLockedMessage', data.message); } catch (_) {}
+            // If the Cloud Function indicates the account is locked, set sessionStorage
+            // flags and throw a specific error with the server message
+            if (data.locked && data.message) {
+              try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
+              try { sessionStorage.setItem('accountLockedMessage', data.message); } catch (_) {}
+              try { sessionStorage.setItem('accountLockReason', 'failed_attempts'); } catch (_) {}
+              if (data.lockedUntil) {
+                try { sessionStorage.setItem('accountLockedUntil', data.lockedUntil); } catch (_) {}
               }
-
-              if (data.locked) {
-                // If the server explicitly locked the account, keep the flag
-                // and set the message. The UI will already have opened the
-                // modal because we set the sessionStorage above.
-                try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
-              } else {
-                // If not locked, remove the placeholder flag so UI can clear
-                // the modal if desired.
-                try { sessionStorage.removeItem('accountLocked'); } catch (_) {}
-                try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
-              }
-            } catch (bgErr) {
-              logger.error('❌ trackFailedLogin background error:', bgErr);
+              
+              // Throw error with the Cloud Function's message
+              throw new Error(data.message);
             }
-          })();
+            
+            // If not locked but we have attempts remaining info, we could show it
+            // (but we'll just fall through to the generic error below)
+          } catch (cloudFunctionError) {
+            // If the Cloud Function call itself failed, log it but don't block the error flow
+            logger.warn('⚠️ Failed to call trackFailedLogin cloud function:', cloudFunctionError);
+            
+            // If the error is an Error with a message (thrown from above), re-throw it
+            if (cloudFunctionError instanceof Error && cloudFunctionError.message.includes('locked')) {
+              throw cloudFunctionError;
+            }
+          }
         }
-      }
-      
-      // Throw a more specific error if it's an account lock situation
-      if (error instanceof Error && (error.message.includes('Account locked') || error.message.includes('attempts remaining') || error.message.includes('disabled by an administrator'))) {
-        throw error;
       }
 
       throw new Error('Invalid credentials. Please check your email and password.');
