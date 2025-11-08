@@ -422,7 +422,12 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
               <Button variant="ghost" className="rounded-full" onClick={() => { setUserToLock(null); setLockReason(''); }} disabled={!!(userToLock && processingActions[userToLock.id] === 'disable')}>
                 Cancel
               </Button>
-              <Button variant="destructive" className="rounded-full" onClick={doLockAccount} disabled={!!(userToLock && processingActions[userToLock.id] === 'disable')}>
+              <Button 
+                variant="destructive" 
+                className="rounded-full" 
+                onClick={doLockAccount} 
+                disabled={!lockReason.trim() || !!(userToLock && processingActions[userToLock.id] === 'disable')}
+              >
                 {userToLock && processingActions[userToLock.id] === 'disable' ? <><Loader2 className="animate-spin h-4 w-4 mr-2" /> Locking...</> : <><Lock className="h-4 w-4 mr-2" /> Lock Account</>}
               </Button>
             </DialogFooter>

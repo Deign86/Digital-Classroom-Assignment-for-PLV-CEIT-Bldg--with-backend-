@@ -1566,6 +1566,7 @@ export const userService = {
       accountLocked: false,
       lockedUntil: null,
       lockedByAdmin: false,
+      lockReason: null, // Clear the lock reason when unlocking
       updatedAt: nowIso(),
     });
 

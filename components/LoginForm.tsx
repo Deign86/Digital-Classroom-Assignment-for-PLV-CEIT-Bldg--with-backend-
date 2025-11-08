@@ -348,6 +348,71 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     }
   };
 
+  // Validation handlers for onBlur
+  const handleLoginEmailBlur = () => {
+    if (email && !email.trim()) {
+      setLoginErrors(prev => ({ ...prev, email: 'Email is required' }));
+    }
+  };
+
+  const handleLoginPasswordBlur = () => {
+    if (password && !password.trim()) {
+      setLoginErrors(prev => ({ ...prev, password: 'Password is required' }));
+    }
+  };
+
+  const handleSignupFieldBlur = (fieldName: keyof typeof signupData) => {
+    const errors = { ...signupErrors };
+    
+    switch (fieldName) {
+      case 'firstName':
+        if (!signupData.firstName.trim()) {
+          errors.firstName = 'First name is required';
+        }
+        break;
+      case 'lastName':
+        if (!signupData.lastName.trim()) {
+          errors.lastName = 'Last name is required';
+        }
+        break;
+      case 'email':
+        if (!signupData.email.trim()) {
+          errors.email = 'Email is required';
+        }
+        break;
+      case 'password':
+        if (!signupData.password) {
+          errors.password = 'Please create a password';
+        } else {
+          const hasMinLength = signupData.password.length >= 8;
+          const hasUpperCase = /[A-Z]/.test(signupData.password);
+          const hasLowerCase = /[a-z]/.test(signupData.password);
+          const hasNumber = /[0-9]/.test(signupData.password);
+          const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(signupData.password);
+
+          if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+            errors.password = 'Password does not meet all requirements';
+          }
+        }
+        break;
+      case 'confirmPassword':
+        if (!signupData.confirmPassword) {
+          errors.confirmPassword = 'Please confirm your password';
+        } else if (signupData.password !== signupData.confirmPassword) {
+          errors.confirmPassword = 'Passwords do not match';
+        }
+        break;
+    }
+    
+    setSignupErrors(errors);
+  };
+
+  const handleDepartmentBlur = () => {
+    if (!signupData.departments || signupData.departments.length === 0) {
+      setSignupErrors(prev => ({ ...prev, department: 'Please select at least one department' }));
+    }
+  };
+
   return (
     <div className="w-full space-y-3 sm:space-y-4 lg:space-y-5">
       {/* Header */}
@@ -379,6 +444,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, email: '' }));
                       }
                     }}
+                    onBlur={handleLoginEmailBlur}
                     className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${loginErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
@@ -416,6 +482,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                         setLoginErrors(prev => ({ ...prev, password: '' }));
                       }
                     }}
+                    onBlur={handleLoginPasswordBlur}
                     className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${loginErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
@@ -495,6 +562,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, firstName: '' }));
                         }
                       }}
+                      onBlur={() => handleSignupFieldBlur('firstName')}
                       className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.firstName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
@@ -521,6 +589,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, lastName: '' }));
                         }
                       }}
+                      onBlur={() => handleSignupFieldBlur('lastName')}
                       className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.lastName ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
@@ -550,6 +619,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, email: '' }));
                         }
                       }}
+                      onBlur={() => handleSignupFieldBlur('email')}
                       className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
@@ -580,7 +650,10 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                       }
                     }}
                   >
-                    <SelectTrigger className={`h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
+                    <SelectTrigger 
+                      className={`h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.department ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      onBlur={handleDepartmentBlur}
+                    >
                       <SelectValue placeholder="Select department(s) you teach in" />
                     </SelectTrigger>
                     <SelectContent>
@@ -661,6 +734,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, password: '' }));
                         }
                       }}
+                      onBlur={() => handleSignupFieldBlur('password')}
                       className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
@@ -709,6 +783,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                           setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
                         }
                       }}
+                      onBlur={() => handleSignupFieldBlur('confirmPassword')}
                       className={`pl-9 sm:pl-11 h-10 sm:h-11 md:h-12 rounded-xl text-sm sm:text-base ${signupErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
