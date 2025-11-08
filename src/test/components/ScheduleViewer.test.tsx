@@ -173,7 +173,7 @@ describe('ScheduleViewer', () => {
       
       // Should have cancel buttons (might be just icons on mobile)
       const buttons = screen.getAllByRole('button');
-      const cancelButtons = buttons.filter(btn => 
+      const cancelButtons = buttons.filter((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') || btn.querySelector('svg')
       );
       expect(cancelButtons.length).toBeGreaterThan(0);
@@ -263,7 +263,7 @@ describe('ScheduleViewer', () => {
       
       // Find and click a cancel button
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
+      const cancelButton = buttons.find((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
       );
       
@@ -281,7 +281,7 @@ describe('ScheduleViewer', () => {
       render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
+      const cancelButton = buttons.find((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
       );
       
@@ -299,7 +299,7 @@ describe('ScheduleViewer', () => {
       render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
+      const cancelButton = buttons.find((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
       );
       
@@ -319,7 +319,7 @@ describe('ScheduleViewer', () => {
       render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
+      const cancelButton = buttons.find((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
       );
       
@@ -359,7 +359,7 @@ describe('ScheduleViewer', () => {
       
       // Look specifically for cancel button with X icon class
       const allButtons = screen.getAllByRole('button');
-      const cancelButton = allButtons.find(btn => {
+      const cancelButton = allButtons.find((btn: HTMLElement) => {
         const hasXIcon = !!btn.querySelector('svg.lucide-x');
         return hasXIcon;
       });
@@ -402,7 +402,7 @@ describe('ScheduleViewer', () => {
       render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
+      const cancelButton = buttons.find((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
       );
       
@@ -464,7 +464,7 @@ describe('ScheduleViewer', () => {
       render(<ScheduleViewer schedules={mockSchedules} classrooms={mockClassrooms} onCancelSchedule={mockOnCancelSchedule} />);
       
       const buttons = screen.getAllByRole('button');
-      const cancelButton = buttons.find(btn => 
+      const cancelButton = buttons.find((btn: HTMLElement) => 
         btn.textContent?.includes('Cancel') && !btn.textContent?.includes('Keep')
       );
       
