@@ -14,6 +14,7 @@ import { Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../lib/firebaseService';
 import { logger } from '../lib/logger';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 
 interface PasswordResetDialogProps {
   children: React.ReactNode;
@@ -119,7 +120,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
 
         {!emailSent ? (
           <form onSubmit={handleSubmit} className="space-y-6 pt-4" noValidate>
-            <div className="space-y-2">
+            <ProcessingFieldset isProcessing={isLoading} className="space-y-2">
               <Label htmlFor="reset-email">Email Address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -137,7 +138,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
               <p className="text-xs text-gray-500">
                 You'll receive an email with a link to reset your password.
               </p>
-            </div>
+            </ProcessingFieldset>
 
             <div className="flex gap-3">
               <Button

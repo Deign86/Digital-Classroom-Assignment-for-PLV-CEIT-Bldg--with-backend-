@@ -12,6 +12,7 @@ import { CheckCircle, XCircle, Clock, Calendar, MapPin, User, AlertTriangle, Loa
 import { toast } from 'sonner';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 
 export default function RequestCard({
   request,
@@ -99,6 +100,7 @@ export default function RequestCard({
                   aria-label={`Select request ${request.id}`}
                   checked={!!selected}
                   onChange={(e) => onToggleSelect?.(e.target.checked)}
+                  disabled={!!disabled}
                   className="h-4 w-4 text-indigo-600 rounded border-gray-300"
                 />
               </div>
@@ -265,6 +267,7 @@ export default function RequestCard({
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
+                  <ProcessingFieldset isProcessing={isCancelling}>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -343,6 +346,7 @@ export default function RequestCard({
                       ) : 'Cancel Reservation'}
                     </Button>
                   </AlertDialogFooter>
+                </ProcessingFieldset>
                 </AlertDialogContent>
               </AlertDialog>
             ) : (

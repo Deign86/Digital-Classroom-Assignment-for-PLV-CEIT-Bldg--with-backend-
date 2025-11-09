@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
 import { CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 import { convertTo12Hour, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 import RequestCard from './RequestCard';
@@ -353,7 +354,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <input
@@ -411,7 +412,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     />
                   ))}
                 </div>
-              </div>
+              </ProcessingFieldset>
             )}
           </TabsContent>
 
@@ -549,6 +550,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <ProcessingFieldset isProcessing={isProcessingBulk}>
             {/* Show request details if single request */}
             {selectedRequest && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
@@ -621,6 +623,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </p>
               )}
             </div>
+            </ProcessingFieldset>
           </div>
             <div className="flex gap-3 justify-end">
             <Button

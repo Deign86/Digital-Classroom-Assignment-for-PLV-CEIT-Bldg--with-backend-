@@ -36,9 +36,14 @@ export default class ErrorBoundary extends Component<Props, State> {
         userId: null,
       };
       // Fire-and-forget
-      logClientError(payload).then((id) => {
-        if (id) console.info('Logged client error id=', id);
-      });
+      logClientError(payload)
+        .then((id) => {
+          if (id) console.info('Logged client error id=', id);
+        })
+        .catch((e) => {
+          // Handle promise rejection
+          console.warn('Failed to send client error log', e);
+        });
     } catch (e) {
       // swallow any logging failure
       console.warn('Failed to send client error log', e);

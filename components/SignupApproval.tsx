@@ -21,6 +21,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { SignupRequest, SignupHistory } from '../App';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 
 interface SignupApprovalProps {
   signupRequests?: SignupRequest[];
@@ -487,7 +488,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       </Card>
 
       {pendingRequests.length > 0 ? (
-        <div className="space-y-4">
+        <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-4">
+          
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <input
@@ -617,7 +619,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
               </Card>
             ))}
           </div>
-        </div>
+        </ProcessingFieldset>
       ) : (
         <Card>
           <CardContent className="text-center py-8">
@@ -632,48 +634,50 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       <Dialog open={isBulkDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setBulkDialogOpen(v); }}>
         {isBulkDialogOpen && (
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{bulkActionApprove ? 'Approve Selected Requests' : 'Reject Selected Requests'}</DialogTitle>
-              <DialogDescription>
-                {bulkActionApprove
-                  ? 'Optionally add admin feedback to apply to all selected approvals.'
-                  : 'Provide a reason for rejecting the selected requests. This feedback will be sent to the users.'}
-              </DialogDescription>
-            </DialogHeader>
+            <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-3">
+              <DialogHeader>
+                <DialogTitle>{bulkActionApprove ? 'Approve Selected Requests' : 'Reject Selected Requests'}</DialogTitle>
+                <DialogDescription>
+                  {bulkActionApprove
+                    ? 'Optionally add admin feedback to apply to all selected approvals.'
+                    : 'Provide a reason for rejecting the selected requests. This feedback will be sent to the users.'}
+                </DialogDescription>
+              </DialogHeader>
 
-            <div className="mt-2">
-              {/* Move label slightly upward and ensure it renders above the textarea focus ring */}
-              <Label htmlFor="bulk-feedback" className="relative z-10 inline-block -translate-y-2 bg-background px-1">
-                Admin Feedback {bulkActionApprove ? '(optional)' : '(required)'}
-              </Label>
-              {/* Increase rows and add padding so the textarea doesn't clip text and looks spacious like the design */}
-              <Textarea
-                id="bulk-feedback"
-                rows={6}
-                value={bulkFeedback}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setBulkFeedback(v);
-                  setBulkFeedbackError(v.length > 500 ? 'Feedback must be 500 characters or less.' : null);
-                }}
-                placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'}
-                className="min-h-[120px] p-3 mt-0"
-                maxLength={500}
-              />
-              {/* Keep a compact live character counter (per request) */}
-              <div className="flex items-center justify-end mt-1">
-                <p className="text-xs text-gray-500">{bulkFeedback.length}/500</p>
+              <div className="mt-2">
+                {/* Move label slightly upward and ensure it renders above the textarea focus ring */}
+                <Label htmlFor="bulk-feedback" className="relative z-10 inline-block -translate-y-2 bg-background px-1">
+                  Admin Feedback {bulkActionApprove ? '(optional)' : '(required)'}
+                </Label>
+                {/* Increase rows and add padding so the textarea doesn't clip text and looks spacious like the design */}
+                <Textarea
+                  id="bulk-feedback"
+                  rows={6}
+                  value={bulkFeedback}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setBulkFeedback(v);
+                    setBulkFeedbackError(v.length > 500 ? 'Feedback must be 500 characters or less.' : null);
+                  }}
+                  placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'}
+                  className="min-h-[120px] p-3 mt-0"
+                  maxLength={500}
+                />
+                {/* Keep a compact live character counter (per request) */}
+                <div className="flex items-center justify-end mt-1">
+                  <p className="text-xs text-gray-500">{bulkFeedback.length}/500</p>
+                </div>
+                {bulkFeedbackError && <p className="text-xs text-red-600 mt-1">{bulkFeedbackError}</p>}
               </div>
-              {bulkFeedbackError && <p className="text-xs text-red-600 mt-1">{bulkFeedbackError}</p>}
-            </div>
 
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
-              <Button onClick={confirmBulkAction} className="ml-2" disabled={!canConfirmBulk}>
-                {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
-              </Button>
-            </DialogFooter>
-            {!isProcessingBulk && <DialogClose />}
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
+                <Button onClick={confirmBulkAction} className="ml-2" disabled={!canConfirmBulk}>
+                  {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
+                </Button>
+              </DialogFooter>
+              {!isProcessingBulk && <DialogClose />}
+            </ProcessingFieldset>
           </DialogContent>
         )}
       </Dialog>
