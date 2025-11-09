@@ -94,7 +94,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     query: '',
     minCapacity: '',
     equipment: [] as string[],
-    building: '',
+    building: '__all__',
     onlyAvailable: false,
   });
   
@@ -130,7 +130,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     if (filters.equipment.length > 0) {
       filtered = filtered.filter(c => filters.equipment.every(eq => c.equipment.includes(eq)));
     }
-    if (filters.building) filtered = filtered.filter(c => c.building === filters.building);
+  if (filters.building && filters.building !== '__all__') filtered = filtered.filter(c => c.building === filters.building);
     if (filters.onlyAvailable) filtered = filtered.filter(c => c.isAvailable);
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [classrooms, filters]);
@@ -940,7 +940,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 <SelectValue placeholder="Filter by building" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Buildings</SelectItem>
+                <SelectItem value="__all__">All Buildings</SelectItem>
                 <SelectItem value={DEFAULT_BUILDING}>{DEFAULT_BUILDING}</SelectItem>
               </SelectContent>
             </Select>
