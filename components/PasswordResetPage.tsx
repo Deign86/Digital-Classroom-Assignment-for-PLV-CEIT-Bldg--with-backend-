@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { authService } from '../lib/firebaseService';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 
 interface PasswordResetPageProps {
   onSuccess: () => void;
@@ -192,7 +193,8 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <ProcessingFieldset isProcessing={isLoading}>
+            <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
               <div className="relative">
@@ -304,7 +306,8 @@ export default function PasswordResetPage({ onSuccess, onCancel }: PasswordReset
                 {isLoading ? 'Resetting...' : 'Reset Password'}
               </Button>
             </div>
-          </form>
+            </form>
+          </ProcessingFieldset>
         </CardContent>
       </Card>
     </div>
