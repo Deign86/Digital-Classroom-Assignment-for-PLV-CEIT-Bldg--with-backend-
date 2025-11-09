@@ -485,8 +485,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
         </Tabs>
       </div>
 
-    <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-        <DialogContent className="sm:max-w-[700px]">
+  <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
+    <DialogContent className="sm:max-w-[700px] p-6">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               {actionType === 'approve' ? (
@@ -548,8 +548,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </div>
             )}
             
-            <div className="space-y-2">
-              <Label htmlFor="feedback">
+            <div className="space-y-4 mt-6">
+              <Label htmlFor="feedback" className="mb-2 block">
                 {actionType === 'approve' ? 'Feedback (Optional)' : activeTab === 'approved' ? 'Cancellation Reason (Required)' : 'Rejection Reason (Required)'}
               </Label>
               <Textarea
@@ -570,20 +570,14 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 className="min-h-[100px]"
                 maxLength={500}
               />
-              <div className="flex items-center justify-end mt-1">
+              <div className="flex items-center justify-end mt-2">
                 <p className="text-xs text-gray-500">{feedback.length}/500</p>
               </div>
-              {feedbackError && <p className="text-xs text-red-600 mt-1">{feedbackError}</p>}
-              {actionType === 'reject' && !feedback.trim() && (
-                <p className="text-xs text-amber-600 flex items-center gap-1">
-                  <XCircle className="h-3 w-3" />
-                  A reason is required when rejecting requests
-                </p>
-              )}
+              {feedbackError && <p className="text-sm text-destructive">{feedbackError}</p>}
             </div>
             </ProcessingFieldset>
           </div>
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end mt-6">
             <Button
               variant="outline"
               onClick={() => {

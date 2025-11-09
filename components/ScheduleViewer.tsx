@@ -221,31 +221,29 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                         <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone. The faculty member will need to submit a new request if they need this classroom again.</AlertDialogDescription>
                       </AlertDialogHeader>
 
-                      <div className="mt-4 w-full">
-                        <Label className="block">Reason (required)</Label>
-                        <div className="mt-2">
-                          <Textarea
-                            id={`schedule-cancel-reason-${schedule.id}`}
-                            aria-label="Cancellation reason"
-                            placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
-                            value={cancelReasons[schedule.id] || ''}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCancelReasons(prev => ({ ...prev, [schedule.id]: v }));
-                              setCancelErrors(prev => ({ ...prev, [schedule.id]: v.length > 500 ? 'Reason must be 500 characters or less.' : null }));
-                            }}
-                            maxLength={500}
-                            rows={4}
-                            className="w-full mt-0"
-                          />
-                        </div>
-                        <div className="flex items-center justify-end mt-1">
+                      <div className="space-y-4 mt-6">
+                        <Label className="mb-2 block">Reason (required)</Label>
+                        <Textarea
+                          id={`schedule-cancel-reason-${schedule.id}`}
+                          aria-label="Cancellation reason"
+                          placeholder="Explain why this reservation is being cancelled (this will be sent to the faculty member)"
+                          value={cancelReasons[schedule.id] || ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setCancelReasons(prev => ({ ...prev, [schedule.id]: v }));
+                            setCancelErrors(prev => ({ ...prev, [schedule.id]: v.length > 500 ? 'Reason must be 500 characters or less.' : null }));
+                          }}
+                          maxLength={500}
+                          rows={4}
+                          className="w-full"
+                        />
+                        <div className="flex items-center justify-end mt-2">
                           <p className="text-xs text-gray-500">{(cancelReasons[schedule.id] || '').length}/500</p>
                         </div>
-                        {cancelErrors[schedule.id] && <p role="alert" className="text-xs text-red-600 mt-1">{cancelErrors[schedule.id]}</p>}
+                        {cancelErrors[schedule.id] && <p role="alert" className="text-sm text-destructive mt-1">{cancelErrors[schedule.id]}</p>}
                       </div>
 
-                      <AlertDialogFooter>
+                      <AlertDialogFooter className="mt-6">
                         <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
                         {((cancelReasons[schedule.id] || '').trim().length === 0) ? (
                           <Button disabled>Cancel Reservation</Button>
@@ -342,7 +340,7 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                     <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
                                     <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
                                   </AlertDialogHeader>
-                                  <div className="px-6">
+                                  <div className="space-y-4 px-6 mt-6">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
                                     <textarea
                                       id={`schedule-week-cancel-reason-${schedule.id}`}
@@ -357,12 +355,12 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                       }}
                                       maxLength={500}
                                     />
-                                    <div className="flex items-center justify-end mt-1">
+                                    <div className="flex items-center justify-end mt-2">
                                       <p className="text-xs text-gray-500">{(cancelReasons[schedule.id] || '').length}/500</p>
                                     </div>
-                                    {cancelErrors[schedule.id] && <p className="text-xs text-red-600 mt-1">{cancelErrors[schedule.id]}</p>}
+                                    {cancelErrors[schedule.id] && <p className="text-sm text-destructive mt-1">{cancelErrors[schedule.id]}</p>}
                                   </div>
-                                  <AlertDialogFooter>
+                                  <AlertDialogFooter className="mt-6">
                                     <AlertDialogCancel disabled={!!isCanceling[schedule.id]}>Keep Reservation</AlertDialogCancel>
                                     <AlertDialogAction
                                       variant="destructive"
