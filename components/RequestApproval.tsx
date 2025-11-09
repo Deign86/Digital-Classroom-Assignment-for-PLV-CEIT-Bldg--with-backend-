@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -12,6 +12,8 @@ import { convertTo12Hour, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 import RequestCard from './RequestCard';
 import { toast } from 'sonner';
+import BulkProgressDialog from './BulkProgressDialog';
+import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useAnnouncer } from './Announcer';
 
 interface RequestApprovalProps {
@@ -75,36 +77,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
     setIsDialogOpen(true);
   };
 
-  // Throttled concurrency runner used by multiple handlers (bulk confirm + retry)
-  const runWithConcurrency = async <T,>(
-    tasks: Array<() => Promise<T>>,
-    concurrency: number,
-    onProgress?: (processed: number, total: number) => void
-  ): Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
-    const results: Array<any> = [];
-    let index = 0;
-    let processed = 0;
-    const total = tasks.length;
-
-    const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
-      while (true) {
-        const i = index++;
-        if (i >= tasks.length) return;
-        try {
-          const value = await tasks[i]();
-          results[i] = { status: 'fulfilled', value };
-        } catch (err) {
-          results[i] = { status: 'rejected', reason: err };
-        } finally {
-          processed += 1;
-          if (onProgress) onProgress(processed, total);
-        }
-      }
-    });
-
-    await Promise.all(workers);
-    return results;
-  };
+  // Bulk runner for cancellable, per-item progress (shares implementation used elsewhere)
+  const bulkRunner = useBulkRunner();
+  const lastTasksRef = useRef<BulkTask[] | null>(null);
+  const [lastItems, setLastItems] = useState<{ id: string; label?: string }[]>([]);
+  const [showBulkProgress, setShowBulkProgress] = useState(false);
 
   // Approved-tab bulk cancel state
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
@@ -143,36 +120,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       return;
     }
 
-    // Use a throttled runner for bulk operations so UI stays responsive and we can show progress
-    const runWithConcurrency = async <T,>(
-      tasks: Array<() => Promise<T>>,
-      concurrency: number,
-      onProgress?: (processed: number, total: number) => void
-    ) : Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
-      const results: Array<any> = [];
-      let index = 0;
-      let processed = 0;
-      const total = tasks.length;
-
-      const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
-        while (true) {
-          const i = index++;
-          if (i >= tasks.length) return;
-          try {
-            const value = await tasks[i]();
-            results[i] = { status: 'fulfilled', value };
-          } catch (err) {
-            results[i] = { status: 'rejected', reason: err };
-          } finally {
-            processed += 1;
-            if (onProgress) onProgress(processed, total);
-          }
-        }
-      });
-
-      await Promise.all(workers);
-      return results;
-    };
+    // bulk processing now uses shared useBulkRunner for cancellable per-item progress
 
   (async () => {
       if (targetIds.length === 0) {
@@ -210,19 +158,25 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
           return { id, ok: true };
         });
 
-      const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+      // Save tasks/items for retrying or progress dialog
+      const itemsForDialog = targetIds.map(id => ({ id, label: `Request ${id}` }));
+      lastTasksRef.current = tasks;
+      setLastItems(itemsForDialog);
+      setShowBulkProgress(true);
+
+      const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
       const succeeded: string[] = [];
       const failed: { id: string; error?: unknown }[] = [];
 
-      results.forEach((res, idx) => {
+      results.forEach((res: any, idx: number) => {
         const id = targetIds[idx];
         if (res?.status === 'fulfilled') succeeded.push(id);
         else failed.push({ id, error: res?.reason });
       });
 
-    setBulkResults({ succeeded, failed });
-    showBulkSummary(succeeded, failed);
+      setBulkResults({ succeeded, failed });
+      showBulkSummary(succeeded, failed);
 
       setIsProcessingBulk(false);
       setBulkProgress({ processed: 0, total: 0 });
@@ -265,23 +219,27 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
     const ids = bulkResults.failed.map(f => f.id);
     setBulkProgress({ processed: 0, total: ids.length });
 
-    const tasks = ids.map((id) => async () => {
-  await onRequestApproval(id, actionType === 'approve', feedback || undefined, true);
+    const tasks: BulkTask[] = ids.map((id) => async () => {
+      await onRequestApproval(id, actionType === 'approve', feedback || undefined, true);
       return { id, ok: true };
     });
 
-    const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+    lastTasksRef.current = tasks;
+    setLastItems(ids.map(id => ({ id, label: `Request ${id}` })));
+    setShowBulkProgress(true);
+
+    const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
     const succeeded: string[] = [];
     const failed: { id: string; error?: unknown }[] = [];
-    results.forEach((res, idx) => {
+    results.forEach((res: any, idx: number) => {
       const id = ids[idx];
       if (res?.status === 'fulfilled') succeeded.push(id);
       else failed.push({ id, error: res?.reason });
     });
 
-  setBulkResults({ succeeded, failed });
-  showBulkSummary(succeeded, failed);
+    setBulkResults({ succeeded, failed });
+    showBulkSummary(succeeded, failed);
     setIsProcessingBulk(false);
     setBulkProgress({ processed: 0, total: 0 });
   };
@@ -528,7 +486,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
     <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-          <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               {actionType === 'approve' ? (
@@ -663,8 +621,42 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
           </div>
         </DialogContent>
       </Dialog>
+        {/* Bulk results are now shown as a single Sonner toast summary via showBulkSummary() */}
 
-      {/* Bulk results are now shown as a single Sonner toast summary via showBulkSummary() */}
+        <BulkProgressDialog
+          open={showBulkProgress}
+          onOpenChange={(open) => setShowBulkProgress(open)}
+          items={lastItems}
+          processed={bulkRunner.processed}
+          total={bulkRunner.total}
+          results={bulkRunner.results}
+          running={bulkRunner.running}
+          onCancel={() => bulkRunner.cancel()}
+          onRetry={async () => {
+            // Re-run failed items using bulkRunner
+            const failedIds = bulkResults.failed.map(f => f.id);
+            if (failedIds.length === 0) return;
+            const fb = (feedback || '').trim();
+            const tasks: BulkTask[] = failedIds.map((id) => async () => {
+              await onRequestApproval(id, actionType === 'approve', fb || undefined, true);
+              return { id, ok: true };
+            });
+            lastTasksRef.current = tasks;
+            setLastItems(failedIds.map(id => ({ id, label: `Request ${id}` })));
+            bulkRunner.retry();
+            await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+            const results = bulkRunner.results;
+            const succeeded: string[] = [];
+            const failed: { id: string; error?: unknown }[] = [];
+            results.forEach((res: any, idx: number) => {
+              const id = failedIds[idx];
+              if (res?.status === 'fulfilled') succeeded.push(id);
+              else failed.push({ id, error: res?.reason });
+            });
+            setBulkResults({ succeeded, failed });
+            showBulkSummary(succeeded, failed);
+          }}
+        />
     </div>
   );
 }

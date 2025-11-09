@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
+import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
+import BulkProgressDialog from './BulkProgressDialog';
 import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -54,6 +56,24 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   
   const [bulkCancelReason, setBulkCancelReason] = useState('');
   const [bulkReasonError, setBulkReasonError] = useState<string | null>(null);
+  // bulk runner for cancellable, per-item progress
+  const bulkRunner = useBulkRunner();
+  const [showBulkProgress, setShowBulkProgress] = useState(false);
+  const lastCancelTasksRef = useRef<BulkTask[] | null>(null);
+  const lastCancelIdsRef = useRef<string[] | null>(null);
+
+  // reflect runner's processing statuses into the per-item processing map used by the UI
+  useEffect(() => {
+    const map: Record<string, boolean> = {};
+    if (lastCancelIdsRef.current && bulkRunner.results && bulkRunner.results.length > 0) {
+      bulkRunner.results.forEach((res, idx) => {
+        const id = lastCancelIdsRef.current?.[idx];
+        if (!id) return;
+        map[id] = res.status === 'processing';
+      });
+    }
+    setProcessingCancelIds(map);
+  }, [bulkRunner.results, bulkRunner.running]);
 
   // Filter schedules
   const today = new Date();
@@ -538,85 +558,73 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                   return;
                                 }
 
-                                setIsCancelling(true);
-
-                                const successfulScheduleCancellations: string[] = [];
-                                const failedScheduleCancellations: Array<{ id: string; error: unknown }> = [];
-
-                                for (const requestId of ids) {
+                                // Build per-item tasks so we can show progress and allow cancel
+                                const tasks: BulkTask<string>[] = ids.map((requestId) => async () => {
+                                  // per-item cancellation and booking request update
                                   try {
-                                    // mark this request as processing (for per-item UI)
-                                    setProcessingCancelIds(prev => ({ ...prev, [requestId]: true }));
+                                    const req = bookingRequests.find(r => r.id === requestId);
                                     const correspondingSchedule = schedules.find(schedule =>
-                                      schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
-                                      schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
-                                      schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
-                                      schedule.endTime === bookingRequests.find(req => req.id === requestId)?.endTime &&
-                                      schedule.classroomId === bookingRequests.find(req => req.id === requestId)?.classroomId
+                                      schedule.facultyId === req?.facultyId &&
+                                      schedule.date === req?.date &&
+                                      schedule.startTime === req?.startTime &&
+                                      schedule.endTime === req?.endTime &&
+                                      schedule.classroomId === req?.classroomId
                                     );
 
                                     if (correspondingSchedule) {
-                                      try {
-                                        if (onCancelSelected) {
-                                          // Delegate cancellation to parent when provided (awaitable)
-                                          await onCancelSelected(correspondingSchedule.id as string);
-                                          successfulScheduleCancellations.push(requestId);
-                                        } else {
-                                          await scheduleService.cancelApprovedBooking(correspondingSchedule.id, reason);
-                                          successfulScheduleCancellations.push(requestId);
-                                        }
-                                      } catch (err) {
-                                        logger.error('Failed to cancel schedule for request', requestId, err);
-                                        failedScheduleCancellations.push({ id: requestId, error: err });
+                                      if (onCancelSelected) {
+                                        await onCancelSelected(correspondingSchedule.id as string);
+                                      } else {
+                                        await scheduleService.cancelApprovedBooking(correspondingSchedule.id, reason);
                                       }
-                                    } else {
-                                      successfulScheduleCancellations.push(requestId);
                                     }
-                                  } catch (err) {
-                                    logger.error('Failed to cancel schedule for request', requestId, err);
-                                    failedScheduleCancellations.push({ id: requestId, error: err });
-                                  } finally {
-                                    // clear processing state for this request
-                                    setProcessingCancelIds(prev => {
-                                      const copy = { ...prev };
-                                      delete copy[requestId];
-                                      return copy;
-                                    });
-                                  }
-                                }
 
-                                // Prepare booking request updates for all ids that we attempted (mark cancelled and add adminFeedback)
-                                const bookingUpdates = ids.map(id => ({ id, data: { status: 'cancelled' as const, adminFeedback: reason } }));
+                                    // update booking request state per-item
+                                    try {
+                                      await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: reason } as Partial<any>);
+                                    } catch (err) {
+                                      // bubble up per-item failure (the runner will record rejection)
+                                      throw err;
+                                    }
+
+                                    return requestId;
+                                  } catch (err) {
+                                    throw err;
+                                  }
+                                });
+
+                                // store ids/tasks for mapping results and potential retry
+                                lastCancelTasksRef.current = tasks;
+                                lastCancelIdsRef.current = ids;
+
+                                // open progress dialog before starting so Cancel works
+                                setShowBulkProgress(true);
 
                                 try {
-                                  await bookingRequestService.bulkUpdate(bookingUpdates);
-                                } catch (err) {
-                                  logger.error('Bulk update of booking requests failed', err);
-                                  for (const u of bookingUpdates) {
-                                    try {
-                                      await bookingRequestService.update(u.id, u.data as Partial<any>);
-                                    } catch (innerErr) {
-                                      logger.error('Fallback per-item update failed for', u.id, innerErr);
-                                      failedScheduleCancellations.push({ id: u.id, error: innerErr });
-                                    }
+                                  const results = await bulkRunner.start(tasks, 4, undefined);
+
+                                  // compute succeeded/failed
+                                  const succeeded = results.filter(r => r.status === 'fulfilled').length;
+                                  const failed = results.filter(r => r.status === 'rejected').length;
+
+                                  setApprovedSelectedIds({});
+                                  setBulkCancelReason('');
+                                  setShowBulkCancelDialog(false);
+                                  if (failed === 0) {
+                                    const message = `Successfully cancelled ${succeeded} reservation(s).`;
+                                    toast.success(message);
+                                    announce?.(message, 'polite');
+                                  } else {
+                                    const message = `Cancelled ${succeeded} reservation(s). ${failed} failed.`;
+                                    toast.error(message);
+                                    announce?.(message, 'assertive');
                                   }
-                                }
-
-                                setIsCancelling(false);
-                                setApprovedSelectedIds({});
-                                setBulkCancelReason('');
-                                // close dialog after processing completes
-                                setShowBulkCancelDialog(false);
-
-                                const successCount = ids.length - failedScheduleCancellations.length;
-                                if (failedScheduleCancellations.length === 0) {
-                                  const message = `Successfully cancelled ${successCount} reservation(s).`;
-                                  toast.success(message);
-                                  announce?.(message, 'polite');
-                                } else {
-                                  const message = `Cancelled ${successCount} reservation(s). ${failedScheduleCancellations.length} failed.`;
-                                  toast.error(message);
-                                  announce?.(message, 'assertive');
+                                } catch (err) {
+                                  logger.error('Bulk cancellation failed', err);
+                                  toast.error('Bulk cancellation encountered an error. Some items may have been processed.');
+                                  announce?.('Bulk cancellation encountered an error.', 'assertive');
+                                } finally {
+                                  setIsCancelling(false);
                                 }
                               }}
                               disabled={isCancelling || bulkCancelReason.trim().length === 0 || Object.values(approvedSelectedIds).filter(Boolean).length === 0}
@@ -637,6 +645,54 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
+                    {/* Bulk Progress Dialog for cancellable, long-running operations */}
+                    <BulkProgressDialog
+                      open={showBulkProgress}
+                      onOpenChange={(open) => setShowBulkProgress(open)}
+                      items={lastCancelIdsRef.current ? lastCancelIdsRef.current.map(id => ({ id, label: bookingRequests.find(r => r.id === id)?.classroomName ?? id })) : []}
+                      processed={bulkRunner.processed}
+                      total={bulkRunner.total}
+                      results={bulkRunner.results}
+                      running={bulkRunner.running}
+                      onCancel={() => {
+                        bulkRunner.cancel();
+                        toast('Bulk cancel cancelled.');
+                        setShowBulkProgress(false);
+                      }}
+                      onRetry={async () => {
+                        const failedIds = (bulkRunner.results || []).map((r, idx) => r.status === 'rejected' ? lastCancelIdsRef.current?.[idx] : null).filter(Boolean) as string[];
+                        if (!failedIds.length) return;
+                        const retryTasks: BulkTask<string>[] = failedIds.map((requestId) => async () => {
+                          const req = bookingRequests.find(r => r.id === requestId);
+                          const correspondingSchedule = schedules.find(schedule =>
+                            schedule.facultyId === req?.facultyId &&
+                            schedule.date === req?.date &&
+                            schedule.startTime === req?.startTime &&
+                            schedule.endTime === req?.endTime &&
+                            schedule.classroomId === req?.classroomId
+                          );
+                          if (correspondingSchedule) {
+                            if (onCancelSelected) {
+                              await onCancelSelected(correspondingSchedule.id as string);
+                            } else {
+                              await scheduleService.cancelApprovedBooking(correspondingSchedule.id, bulkCancelReason);
+                            }
+                          }
+                          await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: bulkCancelReason } as Partial<any>);
+                          return requestId;
+                        });
+
+                        lastCancelTasksRef.current = retryTasks;
+                        bulkRunner.retry();
+                        setShowBulkProgress(true);
+                        try {
+                          await bulkRunner.start(retryTasks, 4, undefined);
+                        } catch (err) {
+                          logger.error('Retry bulk cancellation failed', err);
+                          toast.error('Retry encountered an error.');
+                        }
+                      }}
+                    />
                   </>
                 </div>
               </div>
