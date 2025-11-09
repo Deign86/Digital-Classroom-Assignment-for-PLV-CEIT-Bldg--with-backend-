@@ -270,6 +270,9 @@ describe('RoomBooking - Comprehensive Tests', () => {
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
 
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
+
       await waitFor(() => {
         // Should be allowed - 2 months is the maximum allowed
         expect(mockOnBookingRequest).toHaveBeenCalled()
@@ -694,10 +697,14 @@ describe('RoomBooking - Comprehensive Tests', () => {
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
 
+      // The component shows a confirmation dialog before final submission.
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
+
       await waitFor(() => {
         expect(mockOnBookingRequest).toHaveBeenCalledWith(
           expect.objectContaining({
-            purpose: expect.stringContaining('O\'Brien')
+            purpose: expect.stringContaining("O'Brien")
           })
         )
       })
@@ -732,6 +739,9 @@ describe('RoomBooking - Comprehensive Tests', () => {
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
 
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
+
       await waitFor(() => {
         // Should handle long text gracefully
         expect(mockOnBookingRequest).toHaveBeenCalled()
@@ -763,6 +773,9 @@ describe('RoomBooking - Comprehensive Tests', () => {
 
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
+
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
 
       await waitFor(() => {
         expect(mockOnBookingRequest).toHaveBeenCalledWith(
@@ -832,6 +845,9 @@ describe('RoomBooking - Comprehensive Tests', () => {
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
 
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
+
       await waitFor(() => {
         expect(mockOnBookingRequest).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -870,9 +886,13 @@ describe('RoomBooking - Comprehensive Tests', () => {
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
 
-      // Button should be disabled immediately
+      // Click the confirmation dialog to actually submit
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
+
+      // Confirm button should reflect submitting state / be disabled while submitting
       await waitFor(() => {
-        expect(submitButton).toBeDisabled()
+        expect(confirmButton).toBeDisabled()
       })
     })
 
@@ -915,14 +935,16 @@ describe('RoomBooking - Comprehensive Tests', () => {
 
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       
-      // Click button
+      // Click button and confirm submission
       await user.click(submitButton)
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
 
       // Wait for the submission to be attempted
       await waitFor(() => {
         expect(callCount).toBeGreaterThan(0)
       }, { timeout: 2000 })
-      
+
       // Component should still be functional after error
       expect(submitButton).toBeInTheDocument()
     })
@@ -1024,8 +1046,11 @@ describe('RoomBooking - Comprehensive Tests', () => {
       const submitButton = screen.getByRole('button', { name: /submit reservation request/i })
       await user.click(submitButton)
 
+      const confirmButton = await screen.findByRole('button', { name: /confirm & submit/i })
+      await user.click(confirmButton)
+
       await waitFor(() => {
-        expect(submitButton).toHaveTextContent(/requesting|loading|submitting/i)
+        expect(confirmButton).toHaveTextContent(/submitting/i)
       })
     })
   })

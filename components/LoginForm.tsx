@@ -10,6 +10,7 @@ import { Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff, X } from 'lucid
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
 import { logger } from '../lib/logger';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
@@ -428,7 +429,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           <TabsTrigger value="signup" className="text-xs sm:text-sm md:text-base px-2 sm:px-3 py-1.5 sm:py-2">Faculty Signup</TabsTrigger>
         </TabsList>        <TabsContent value="login" className="space-y-4 sm:space-y-5 mt-4 sm:mt-5">
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 max-w-md mx-auto" noValidate>
-            <div className="space-y-3.5 sm:space-y-4">
+            <ProcessingFieldset isProcessing={isLoading || isLocked} className="space-y-3.5 sm:space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm sm:text-base">Email Address</Label>
                 <div className="relative">
@@ -516,7 +517,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   </PasswordResetDialog>
                 </div>
               </div>
-            </div>
+            </ProcessingFieldset>
 
             {isLocked && (
               <div className="mb-3 text-xs sm:text-sm text-red-600">
@@ -545,7 +546,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
         <TabsContent value="signup" className="space-y-4 sm:space-y-5 mt-4 sm:mt-5">
           <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5 max-w-2xl mx-auto" noValidate>
-            <div className="space-y-3 sm:space-y-3.5">
+            <ProcessingFieldset isProcessing={signupIsLoading} className="space-y-3 sm:space-y-3.5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-firstName" className="text-sm sm:text-base">First Name</Label>
@@ -831,7 +832,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                   </div>
                 </div>
               </div>
-            </div>
+            </ProcessingFieldset>
 
             <Button
               type="submit"

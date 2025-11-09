@@ -11,6 +11,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCir
 import { getIconForEquipment } from '../lib/equipmentIcons';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { generateTimeSlots, convertTo24Hour, convertTo12Hour, getValidEndTimes, isPastBookingTime, isValidSchoolTime, isReasonableBookingDuration } from '../utils/timeUtils';
@@ -404,6 +405,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
             className="space-y-2 sm:space-y-2.5 md:space-y-3"
             style={{ isolation: 'auto', transform: 'none' }}
           >
+            <ProcessingFieldset isProcessing={isSubmitting}>
               {/* Classroom Selection */}
               <div className="space-y-1">
                 <Label htmlFor="classroom" className="text-sm sm:text-base">Classroom *</Label>
@@ -995,7 +997,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   </Button>
                 </motion.div>
               </div>
-            </form>
+            </ProcessingFieldset>
+          </form>
           </CardContent>
         </Card>
       

@@ -27,6 +27,7 @@ import { authService, userService } from '../lib/firebaseService';
 import { pushService } from '../lib/pushService';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 
 interface ProfileSettingsProps {
   user: User;
@@ -536,7 +537,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ProcessingFieldset isProcessing={isSavingProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Name Field */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-600">Full Name</Label>
@@ -687,7 +688,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                 </div>
               )}
             </div>
-          </div>
+          </ProcessingFieldset>
         </CardContent>
       </Card>
 
@@ -703,7 +704,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
+          <ProcessingFieldset isProcessing={isTogglingPush} className="flex items-center justify-between">
             <div className="flex-1 min-w-0 pr-4">
               <p className="font-medium">Browser & Device Push</p>
               <p className="text-sm text-muted-foreground">Receive push notifications even when the app is closed (via browser/service worker).</p>
@@ -719,7 +720,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                 <Loader2 className="h-4 w-4 text-gray-500 animate-spin" />
               )}
             </div>
-          </div>
+          </ProcessingFieldset>
           {!pushSupported && (
             <p className="mt-2 text-xs text-muted-foreground">Push notifications are not supported in this browser or device. On iOS use Safari 16.4+ and enable Web Push in system settings.</p>
           )}
@@ -758,7 +759,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               </ul>
             </div>
 
-            <div className="space-y-4">
+            <ProcessingFieldset isProcessing={isChangingPassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
                 <div className="relative">
@@ -878,7 +879,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                   </p>
                 )}
               </div>
-            </div>
+            </ProcessingFieldset>
 
             <div className="flex gap-3">
               <Button
