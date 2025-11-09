@@ -1846,6 +1846,17 @@ export const classroomService = {
     const result = await withRetry(() => deleteClassroomCascade({ classroomId: id }), { attempts: 3, shouldRetry: isNetworkError });
     return result.data as { success: boolean; deletedRelated: number };
   },
+  
+  // Bulk update multiple classrooms using a Firestore write batch.
+  // Accepts an array of { id, data } where data is a partial Classroom payload.
+  // This delegates to the generic bulkUpdateDocs helper so behavior is consistent
+  // with other bulk update flows in the codebase.
+  async bulkUpdate(updates: Array<{ id: string; data: Partial<Classroom> }>): Promise<void> {
+    if (!updates || updates.length === 0) return;
+    // Ensure we remove undefined values from each payload and use internal helper
+    const payloads = updates.map(u => ({ id: u.id, data: removeUndefinedValues(u.data) as Record<string, unknown> }));
+    await bulkUpdateDocs(COLLECTIONS.CLASSROOMS, payloads);
+  },
 };
 
 // ============================================
