@@ -94,7 +94,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     query: '',
     minCapacity: '',
     equipment: [] as string[],
-    building: '__all__',
+    floor: '__all__',
     onlyAvailable: false,
   });
   
@@ -130,7 +130,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     if (filters.equipment.length > 0) {
       filtered = filtered.filter(c => filters.equipment.every(eq => c.equipment.includes(eq)));
     }
-  if (filters.building && filters.building !== '__all__') filtered = filtered.filter(c => c.building === filters.building);
+    if (filters.floor && filters.floor !== '__all__') {
+      const floorNum = parseInt(filters.floor, 10);
+      if (!isNaN(floorNum)) filtered = filtered.filter(c => c.floor === floorNum);
+    }
     if (filters.onlyAvailable) filtered = filtered.filter(c => c.isAvailable);
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [classrooms, filters]);
@@ -935,13 +938,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               value={filters.minCapacity}
               onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
             />
-            <Select value={filters.building} onValueChange={(v: string) => setFilters(prev => ({ ...prev, building: v }))}>
+            <Select value={filters.floor} onValueChange={(v: string) => setFilters(prev => ({ ...prev, floor: v }))}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by building" />
+                <SelectValue placeholder="Filter by floor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All Buildings</SelectItem>
-                <SelectItem value={DEFAULT_BUILDING}>{DEFAULT_BUILDING}</SelectItem>
+                <SelectItem value="__all__">All Floors</SelectItem>
+                <SelectItem value="1">1st Floor</SelectItem>
+                <SelectItem value="2">2nd Floor</SelectItem>
+                <SelectItem value="3">3rd Floor</SelectItem>
+                <SelectItem value="4">4th Floor</SelectItem>
+                <SelectItem value="5">5th Floor</SelectItem>
+                <SelectItem value="6">6th Floor</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center space-x-2">
