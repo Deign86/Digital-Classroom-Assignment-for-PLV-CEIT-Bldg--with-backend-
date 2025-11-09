@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { logger } from '../lib/logger';
 // react-router navigation removed for bulk results to avoid unexpected full-screen navigation
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -8,6 +8,8 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { toast } from 'sonner';
+import BulkProgressDialog from './BulkProgressDialog';
+import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useAnnouncer } from './Announcer';
 import {
   CheckCircle,
@@ -222,6 +224,12 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     }
   };
 
+  // Bulk runner setup for cancellable progress UI
+  const bulkRunner = useBulkRunner();
+  const lastTasksRef = useRef<BulkTask[] | null>(null);
+  const [lastItems, setLastItems] = useState<{ id: string; label?: string }[]>([]);
+  const [showBulkProgress, setShowBulkProgress] = useState(false);
+
   const startBulkApproval = async (approved: boolean) => {
     const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
     if (ids.length === 0) return;
@@ -229,17 +237,23 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     setIsProcessingBulk(true);
     setBulkProgress({ processed: 0, total: ids.length });
 
-    const tasks = ids.map(id => async () => {
+    const tasks: BulkTask[] = ids.map(id => async () => {
       const feedbackText = (feedback[id] ?? '').trim();
       return onSignupApproval(id, approved, approved ? feedbackText || undefined : feedbackText, true);
     });
 
-    const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+    // prepare items for dialog
+    const itemsForDialog = ids.map(id => ({ id, label: `Signup ${id}` }));
+    lastTasksRef.current = tasks;
+    setLastItems(itemsForDialog);
+    setShowBulkProgress(true);
+
+    const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
     const succeeded: string[] = [];
     const failed: { id: string; error?: unknown }[] = [];
 
-    results.forEach((res, idx) => {
+    results.forEach((res: any, idx: number) => {
       const id = ids[idx];
       if (res?.status === 'fulfilled') succeeded.push(id);
       else failed.push({ id, error: res?.reason });
@@ -272,36 +286,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     return bulkFeedback.trim().length > 0 && !bulkFeedbackError;
   })();
 
-  // Throttled worker runner - processes promises with limited concurrency
-  const runWithConcurrency = async <T,>(
-    tasks: Array<() => Promise<T>>,
-    concurrency: number,
-    onProgress?: (processed: number, total: number) => void
-  ) : Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
-    const results: Array<any> = [];
-    let index = 0;
-    let processed = 0;
-    const total = tasks.length;
-
-    const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
-      while (true) {
-        const i = index++;
-        if (i >= tasks.length) return;
-        try {
-          const value = await tasks[i]();
-          results[i] = { status: 'fulfilled', value };
-        } catch (err) {
-          results[i] = { status: 'rejected', reason: err };
-        } finally {
-          processed += 1;
-          if (onProgress) onProgress(processed, total);
-        }
-      }
-    });
-
-    await Promise.all(workers);
-    return results;
-  };
+  // local runner removed in favor of useBulkRunner
 
   const openBulkDialog = (approved: boolean) => {
     setBulkActionApprove(approved);
@@ -333,7 +318,12 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
   // Use a concurrency of 4 to avoid throttling spikes
   setBulkProgress({ processed: 0, total: ids.length });
-  const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+  // prepare items and run with shared bulk runner
+  const itemsForDialog = ids.map(id => ({ id, label: `Signup ${id}` }));
+  lastTasksRef.current = tasks;
+  setLastItems(itemsForDialog);
+  setShowBulkProgress(true);
+  const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
     const succeeded: string[] = [];
     const failed: { id: string; error?: unknown }[] = [];
@@ -386,9 +376,13 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     setIsProcessingBulk(true);
 
     const ids = bulkResults.failed.map(f => f.id);
-    const tasks = ids.map(id => async () => onSignupApproval(id, bulkActionApprove ?? false, bulkFeedback.trim() || undefined, true));
-  setBulkProgress({ processed: 0, total: ids.length });
-  const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+    const tasks: BulkTask[] = ids.map(id => async () => onSignupApproval(id, bulkActionApprove ?? false, bulkFeedback.trim() || undefined, true));
+    setBulkProgress({ processed: 0, total: ids.length });
+    lastTasksRef.current = tasks;
+    setLastItems(ids.map(id => ({ id, label: `Signup ${id}` })));
+    setShowBulkProgress(true);
+    bulkRunner.retry();
+    const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
     const succeeded: string[] = [];
     const failed: { id: string; error?: unknown }[] = [];
@@ -633,7 +627,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       {/* Bulk action dialog for collect admin feedback when rejecting */}
       <Dialog open={isBulkDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setBulkDialogOpen(v); }}>
         {isBulkDialogOpen && (
-          <DialogContent>
+          <DialogContent className="sm:max-w-[700px]">
             <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-3">
               <DialogHeader>
                 <DialogTitle>{bulkActionApprove ? 'Approve Selected Requests' : 'Reject Selected Requests'}</DialogTitle>
@@ -736,7 +730,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>
               {confirmAction.approved ? 'Approve Faculty Account' : 'Reject Faculty Account'}
@@ -810,6 +804,35 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkProgressDialog
+        open={showBulkProgress}
+        onOpenChange={(open) => setShowBulkProgress(open)}
+        items={lastItems}
+        processed={bulkRunner.processed}
+        total={bulkRunner.total}
+        results={bulkRunner.results}
+        running={bulkRunner.running}
+        onCancel={() => bulkRunner.cancel()}
+        onRetry={async () => {
+          const failedIds = bulkResults.failed.map(f => f.id);
+          if (failedIds.length === 0) return;
+          const tasks: BulkTask[] = failedIds.map(id => async () => onSignupApproval(id, bulkActionApprove ?? false, bulkFeedback.trim() || undefined, true));
+          lastTasksRef.current = tasks;
+          setLastItems(failedIds.map(id => ({ id, label: `Signup ${id}` })));
+          bulkRunner.retry();
+          await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+          const results = bulkRunner.results;
+          const succeeded: string[] = [];
+          const failed: { id: string; error?: unknown }[] = [];
+          results.forEach((res: any, idx: number) => {
+            const id = failedIds[idx];
+            if (res?.status === 'fulfilled') succeeded.push(id);
+            else failed.push({ id, error: res?.reason });
+          });
+          setBulkResults({ succeeded, failed });
+          showBulkSummary(succeeded, failed);
+        }}
+      />
     </div>
   );
 }

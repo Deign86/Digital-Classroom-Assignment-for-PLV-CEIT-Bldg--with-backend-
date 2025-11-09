@@ -19,6 +19,9 @@ import type { Classroom, BookingRequest, Schedule } from '../App';
 import { getIconForEquipment } from '../lib/equipmentIcons';
 import { sanitizeText } from '../utils/inputValidation';
 import { getAuth } from 'firebase/auth';
+import BulkProgressDialog from './BulkProgressDialog';
+import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
+import { useRef } from 'react';
 
 interface ClassroomManagementProps {
   classrooms: Classroom[];
@@ -88,6 +91,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<'disable' | 'enable' | 'delete' | null>(null);
   const [bulkReason, setBulkReason] = useState('');
+  // Bulk-warning state when selected classrooms have active reservations
+  const [bulkWarningOpen, setBulkWarningOpen] = useState(false);
+  const [bulkWarningAffectedBookings, setBulkWarningAffectedBookings] = useState<BookingRequest[]>([]);
+  const [bulkWarningAffectedSchedules, setBulkWarningAffectedSchedules] = useState<Schedule[]>([]);
+  const [bulkWarningReason, setBulkWarningReason] = useState('');
+  const [bulkConfirming, setBulkConfirming] = useState(false);
+  const pendingBulkIdsRef = useRef<string[] | null>(null);
+  // Bulk runner and progress dialog state
+  const bulkRunner = useBulkRunner();
+  const lastDeleteTasksRef = useRef<BulkTask[] | null>(null);
+  const [lastDeleteItems, setLastDeleteItems] = useState<{ id: string; label?: string }[]>([]);
+  const [showBulkProgress, setShowBulkProgress] = useState(false);
 
   // Advanced search filters
   const [filters, setFilters] = useState({
@@ -111,7 +126,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       name: '',
       capacity: '',
       equipment: [],
-      building: '',
+      building: DEFAULT_BUILDING,
       floor: '1',
       isAvailable: true
     });
@@ -271,7 +286,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       name: classroom.name,
       capacity: classroom.capacity.toString(),
       equipment: classroom.equipment,
-      building: DEFAULT_BUILDING,
+      building: classroom.building || DEFAULT_BUILDING,
       floor: classroom.floor.toString(),
       isAvailable: classroom.isAvailable
     });
@@ -646,6 +661,40 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setBulkProgress({ processed: 0, total: ids.length });
 
     try {
+      // For disable/delete actions, first check if any selected classrooms have affected bookings/schedules
+      if ((bulkActionType === 'disable' || bulkActionType === 'delete')) {
+        try {
+          const allBookings = await bookingRequestService.getAll();
+          const allSchedules = await scheduleService.getAll();
+
+          const today = new Date();
+          today.setHours(0,0,0,0);
+
+          const affectedBookings: BookingRequest[] = [];
+          const affectedSchedules: Schedule[] = [];
+
+          for (const cid of ids) {
+            const b = allBookings.filter(bk => bk.classroomId === cid && (bk.status === 'approved' || bk.status === 'pending') && new Date(bk.date) >= today);
+            const s = allSchedules.filter(sc => sc.classroomId === cid && sc.status === 'confirmed' && new Date(sc.date) >= today);
+            if (b.length > 0) affectedBookings.push(...b);
+            if (s.length > 0) affectedSchedules.push(...s);
+          }
+
+          if (affectedBookings.length > 0 || affectedSchedules.length > 0) {
+            // show bulk warning dialog and store pending ids
+            pendingBulkIdsRef.current = ids;
+            setBulkWarningAffectedBookings(affectedBookings);
+            setBulkWarningAffectedSchedules(affectedSchedules);
+            setBulkWarningReason('');
+            setIsBulkDialogOpen(false);
+            setBulkWarningOpen(true);
+            return; // wait for explicit confirmation with reason
+          }
+        } catch (err) {
+          // if the check fails, continue with the bulk action to avoid blocking admin
+          console.error('Failed to check affected bookings for bulk action:', err);
+        }
+      }
       if (bulkActionType === 'enable' || bulkActionType === 'disable') {
         const isAvailable = bulkActionType === 'enable';
         // perform batch update
@@ -709,10 +758,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         }
       }
 
-      if (bulkActionType === 'delete') {
+  if (bulkActionType === 'delete') {
+        // Build tasks (prefer callable cascade, fallback to client delete)
         const tasks = ids.map(id => async () => {
           try {
-            // prefer cascade delete via callable
             await classroomService.deleteCascade(id);
             return { id, ok: true };
           } catch (err) {
@@ -722,16 +771,31 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           }
         });
 
-        const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
-        const succeeded = results.filter(r => r?.status === 'fulfilled').map((_, i) => ids[i]);
-        const failed = results.map((r, i) => r?.status === 'rejected' ? { id: ids[i], error: r.reason } : null).filter(Boolean as any);
+        // Use the new bulk runner hook for cancellable, per-item progress
+        const itemsForDialog = ids.map(id => ({ id, label: (classrooms.find(c => c.id === id)?.name ?? id) }));
+        setIsBulkDialogOpen(false); // reuse the bulk reason dialog only for confirmation; open progress dialog
+        setBulkProgress({ processed: 0, total: ids.length });
 
-        // Refresh classrooms
+        // remember tasks/items for retry
+  lastDeleteTasksRef.current = tasks as BulkTask[];
+  setLastDeleteItems(itemsForDialog);
+  // open progress dialog before starting long-running tasks
+  setShowBulkProgress(true);
+
+  // start runner
+  const results = await bulkRunner.start(tasks as BulkTask[], 4, (p: number, t: number) => setBulkProgress({ processed: p, total: t }));
+
+        // Refresh classrooms after run
         const updated = await classroomService.getAll();
         onClassroomUpdate(updated);
 
-        if (succeeded.length > 0) toast.success(`Deleted ${succeeded.length} classroom(s)`);
-        if (failed.length > 0) toast.error(`${failed.length} delete(s) failed`);
+        const succeeded = results.filter((r: any) => r.status === 'fulfilled').length;
+        const failed = results.filter((r: any) => r.status === 'rejected').length;
+        if (succeeded > 0) toast.success(`Deleted ${succeeded} classroom(s)`);
+        if (failed > 0) toast.error(`${failed} delete(s) failed`);
+
+        // show results dialog via BulkProgressDialog (it reads from bulkRunner.results)
+        setShowBulkProgress(true);
       }
     } catch (err) {
       console.error('Bulk action error:', err);
@@ -739,6 +803,135 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     } finally {
       setIsProcessingBulk(false);
       setIsBulkDialogOpen(false);
+      setBulkReason('');
+      clearSelection();
+      setBulkProgress({ processed: 0, total: 0 });
+    }
+  };
+
+  // Initiate bulk action: run pre-checks and either show bulk warning immediately or proceed
+  const initiateBulkAction = async (action: 'disable' | 'enable' | 'delete') => {
+    setBulkActionType(action);
+    const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
+    if (ids.length === 0) return;
+
+    // For disable/delete, run affected bookings/schedules check and show warning if any
+    if (action === 'disable' || action === 'delete') {
+      try {
+        const allBookings = await bookingRequestService.getAll();
+        const allSchedules = await scheduleService.getAll();
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        const affectedBookings: BookingRequest[] = [];
+        const affectedSchedules: Schedule[] = [];
+
+        for (const cid of ids) {
+          const b = allBookings.filter(bk => bk.classroomId === cid && (bk.status === 'approved' || bk.status === 'pending') && new Date(bk.date) >= today);
+          const s = allSchedules.filter(sc => sc.classroomId === cid && sc.status === 'confirmed' && new Date(sc.date) >= today);
+          if (b.length > 0) affectedBookings.push(...b);
+          if (s.length > 0) affectedSchedules.push(...s);
+        }
+
+        if (affectedBookings.length > 0 || affectedSchedules.length > 0) {
+          pendingBulkIdsRef.current = ids;
+          setBulkWarningAffectedBookings(affectedBookings);
+          setBulkWarningAffectedSchedules(affectedSchedules);
+          setBulkWarningReason('');
+          setBulkWarningOpen(true);
+          return; // show warning as first dialog
+        }
+      } catch (err) {
+        console.error('Failed to check affected bookings for bulk action:', err);
+        // proceed if check fails
+      }
+    }
+
+    // No affected bookings (or action is enable) — open the regular bulk confirmation dialog
+    // so admin can optionally supply a reason or confirm the action.
+    setBulkReason('');
+    setIsBulkDialogOpen(true);
+  };
+
+  // Execute the pending bulk action that was confirmed via the warning dialog
+  const executePendingBulkAction = async (reason?: string) => {
+    const ids = pendingBulkIdsRef.current ?? [];
+    if (ids.length === 0 || !bulkActionType) return;
+
+    setBulkConfirming(true);
+    try {
+      // Reuse confirmBulkAction logic by applying the chosen action to pending ids
+      if (bulkActionType === 'disable' || bulkActionType === 'enable') {
+        const isAvailable = bulkActionType === 'enable';
+        const updates = ids.map(id => ({ id, data: { isAvailable } }));
+        await classroomService.bulkUpdate(updates);
+        const updated = await classroomService.getAll();
+        onClassroomUpdate(updated);
+
+        if (!isAvailable) {
+          // notify affected faculty
+          const allBookings = await bookingRequestService.getAll();
+          const allSchedules = await scheduleService.getAll();
+          const auth = getAuth();
+          const currentUserId = auth.currentUser?.uid;
+
+          for (const cid of ids) {
+            const classroom = classrooms.find(c => c.id === cid);
+            const classroomName = classroom?.name || 'Classroom';
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const affectedB = allBookings.filter(b => b.classroomId === cid && (b.status === 'approved' || b.status === 'pending') && new Date(b.date) >= today);
+            const affectedS = allSchedules.filter(s => s.classroomId === cid && s.status === 'confirmed' && new Date(s.date) >= today);
+            const facultyIds = new Set<string>();
+            affectedB.forEach(b => facultyIds.add(b.facultyId));
+            affectedS.forEach(s => facultyIds.add(s.facultyId));
+
+            for (const fid of facultyIds) {
+              try {
+                const message = reason
+                  ? `The classroom "${classroomName}" has been disabled. Reason: ${reason}. Please contact admin regarding your affected reservations.`
+                  : `The classroom "${classroomName}" has been disabled. Please contact admin regarding your affected reservations.`;
+                await notificationService.createNotification(fid, 'classroom_disabled', message, { actorId: currentUserId || undefined });
+              } catch (err) {
+                console.error('Failed to notify faculty during bulk disable:', err);
+              }
+            }
+          }
+        }
+      }
+
+      if (bulkActionType === 'delete') {
+        // perform bulk delete with bulkRunner like confirmBulkAction
+        const tasks = ids.map(id => async () => {
+          try {
+            await classroomService.deleteCascade(id);
+            return { id, ok: true };
+          } catch (err) {
+            await classroomService.delete(id);
+            return { id, ok: true };
+          }
+        });
+
+        const itemsForDialog = ids.map(id => ({ id, label: (classrooms.find(c => c.id === id)?.name ?? id) }));
+        lastDeleteTasksRef.current = tasks as BulkTask[];
+        setLastDeleteItems(itemsForDialog);
+        setShowBulkProgress(true);
+        const results = await bulkRunner.start(tasks as BulkTask[], 4, (p: number, t: number) => setBulkProgress({ processed: p, total: t }));
+        const updated = await classroomService.getAll();
+        onClassroomUpdate(updated);
+        const succeeded = results.filter((r: any) => r.status === 'fulfilled').length;
+        const failed = results.filter((r: any) => r.status === 'rejected').length;
+        if (succeeded > 0) toast.success(`Deleted ${succeeded} classroom(s)`);
+        if (failed > 0) toast.error(`${failed} delete(s) failed`);
+        setShowBulkProgress(true);
+      }
+    } catch (err) {
+      console.error('executePendingBulkAction failed:', err);
+      toast.error('Bulk action failed');
+    } finally {
+      setBulkConfirming(false);
+      pendingBulkIdsRef.current = null;
+      setBulkWarningOpen(false);
       setBulkReason('');
       clearSelection();
       setBulkProgress({ processed: 0, total: 0 });
@@ -940,8 +1133,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             />
             <Select value={filters.floor} onValueChange={(v: string) => setFilters(prev => ({ ...prev, floor: v }))}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by floor" />
-              </SelectTrigger>
+                  <SelectValue>
+                    {filters.floor === '__all__' ? 'Filter by floor' : (
+                      filters.floor === '1' ? '1st Floor' :
+                      filters.floor === '2' ? '2nd Floor' :
+                      filters.floor === '3' ? '3rd Floor' :
+                      filters.floor === '4' ? '4th Floor' :
+                      filters.floor === '5' ? '5th Floor' :
+                      filters.floor === '6' ? '6th Floor' : filters.floor
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All Floors</SelectItem>
                 <SelectItem value="1">1st Floor</SelectItem>
@@ -963,13 +1165,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               <div className="flex items-center justify-between">
                 <div className="text-sm">Selected: {selectedCount}</div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => { setBulkActionType('enable'); setIsBulkDialogOpen(true); }} disabled={isProcessingBulk}>
+                  <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk}>
                     Enable Selected ({selectedCount})
                   </Button>
-                  <Button variant="destructive" onClick={() => { setBulkActionType('disable'); setIsBulkDialogOpen(true); }} disabled={isProcessingBulk}>
+                  <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk}>
                     Disable Selected ({selectedCount})
                   </Button>
-                  <Button variant="destructive" onClick={() => { setBulkActionType('delete'); setIsBulkDialogOpen(true); }} disabled={isProcessingBulk}>
+                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk}>
                     Delete Selected ({selectedCount})
                   </Button>
                   <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk}>Clear</Button>
@@ -1331,6 +1533,89 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           </DialogContent>
         </Dialog>
 
+        {/* Bulk Warning Dialog for selected classrooms */}
+        <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600">
+                <AlertTriangle className="h-5 w-5" />
+                Warning: Affected Reservations Found
+              </DialogTitle>
+              <DialogDescription>
+                The selected classrooms have <b>{bulkWarningAffectedBookings.length + bulkWarningAffectedSchedules.length}</b> active or upcoming reservation(s). You must provide a reason which will be included in notifications to affected faculty.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {bulkWarningAffectedBookings.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {bulkWarningAffectedBookings.map((booking) => (
+                      <div key={booking.id} className="p-3 border rounded-lg bg-gray-50 text-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-medium">{booking.facultyName}</p>
+                            <p className="text-gray-600">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1"><Clock className="h-3 w-3" />{booking.startTime} - {booking.endTime}</p>
+                            <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                          </div>
+                          <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>{booking.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {bulkWarningAffectedSchedules.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-sm flex items-center gap-2"><Calendar className="h-4 w-4" />Confirmed Schedules ({bulkWarningAffectedSchedules.length})</h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {bulkWarningAffectedSchedules.map((schedule) => (
+                      <div key={schedule.id} className="p-3 border rounded-lg bg-gray-50 text-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-medium">{schedule.facultyName}</p>
+                            <p className="text-gray-600">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1"><Clock className="h-3 w-3" />{schedule.startTime} - {schedule.endTime}</p>
+                            <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                          </div>
+                          <Badge variant="default">{schedule.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2 border-t">
+                <Label htmlFor="bulk-warning-reason">Reason *</Label>
+                <Textarea id="bulk-warning-reason" placeholder="Provide a clear reason that will be included in notifications to affected faculty" value={bulkWarningReason} onChange={(e) => setBulkWarningReason(e.target.value)} rows={3} maxLength={300} />
+                {!bulkWarningReason.trim() && <p className="text-sm text-red-500">A reason is required to notify affected faculty</p>}
+                <p className="text-xs text-gray-500">{bulkWarningReason.length}/300</p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                <p className="font-medium mb-1">What happens next?</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>All affected faculty members will receive an in-app notification</li>
+                  <li>If push notifications are enabled, they'll also receive a push notification</li>
+                  <li>They will be informed to contact admin about their reservations</li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setBulkWarningOpen(false); pendingBulkIdsRef.current = null; }} disabled={bulkConfirming}>Cancel</Button>
+              <Button variant="destructive" onClick={() => executePendingBulkAction(bulkWarningReason)} disabled={!bulkWarningReason.trim() || bulkConfirming}>{bulkConfirming ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing...</>) : (bulkActionType === 'delete' ? 'Delete & Notify' : 'Disable & Notify')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
@@ -1492,6 +1777,47 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Bulk progress dialog for long-running delete operations */}
+      <BulkProgressDialog
+        open={showBulkProgress}
+        onOpenChange={(open) => setShowBulkProgress(open)}
+        items={lastDeleteItems}
+        processed={bulkRunner.processed}
+        total={bulkRunner.total}
+        results={bulkRunner.results}
+        running={bulkRunner.running}
+        onCancel={() => {
+          bulkRunner.cancel();
+          toast('Bulk delete cancelled.');
+          setShowBulkProgress(false);
+        }}
+        onRetry={async () => {
+          // Build retry tasks from failed indices
+          const currentResults = bulkRunner.results || [];
+          const failedIndices = currentResults.map((r, i) => (r?.status === 'rejected' ? i : -1)).filter(i => i >= 0);
+          if (failedIndices.length === 0) return;
+          const failedIds = failedIndices.map(i => lastDeleteItems[i].id);
+          const retryTasks: BulkTask[] = failedIds.map(id => async () => {
+            try {
+              await classroomService.deleteCascade(id);
+              return { id, ok: true };
+            } catch (err) {
+              await classroomService.delete(id);
+              return { id, ok: true };
+            }
+          });
+
+          bulkRunner.retry();
+          setShowBulkProgress(true);
+          const results = await bulkRunner.start(retryTasks, 4, (p: number, t: number) => setBulkProgress({ processed: p, total: t }));
+          const updated = await classroomService.getAll();
+          onClassroomUpdate(updated);
+          const succeeded = results.filter((r: any) => r.status === 'fulfilled').length;
+          const failed = results.filter((r: any) => r.status === 'rejected').length;
+          if (succeeded > 0) toast.success(`Deleted ${succeeded} classroom(s)`);
+          if (failed > 0) toast.error(`${failed} delete(s) failed`);
+        }}
+      />
     </div>
   );
 }
