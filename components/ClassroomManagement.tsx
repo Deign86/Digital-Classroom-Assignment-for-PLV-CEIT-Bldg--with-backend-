@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { classroomService, bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import { notificationService } from '../lib/notificationService';
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 import { Plus, Edit, Trash2, Users, MapPin, Loader2, X, AlertCircle, AlertTriangle, Calendar, Clock } from 'lucide-react';
+import ProcessingFieldset from './ui/ProcessingFieldset';
 import { toast } from 'sonner';
 import type { Classroom, BookingRequest, Schedule } from '../App';
 import { getIconForEquipment } from '../lib/equipmentIcons';
@@ -79,6 +80,23 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [deleteReason, setDeleteReason] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [loadingRows, setLoadingRows] = useState<Record<string, boolean>>({});
+  // Selection & bulk-edit state
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'disable' | 'enable' | 'delete' | null>(null);
+  const [bulkReason, setBulkReason] = useState('');
+
+  // Advanced search filters
+  const [filters, setFilters] = useState({
+    query: '',
+    minCapacity: '',
+    equipment: [] as string[],
+    building: '',
+    onlyAvailable: false,
+  });
   
   // Disable warning dialog state
   const [disableWarningOpen, setDisableWarningOpen] = useState(false);
@@ -98,6 +116,57 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       isAvailable: true
     });
     setValidationErrors({});
+  };
+
+  // Compute filtered classrooms using simple advanced filters similar to RoomSearch
+  const filteredClassrooms = useMemo(() => {
+    let filtered = classrooms.slice();
+    const q = filters.query.trim().toLowerCase();
+    if (q) filtered = filtered.filter(c => c.name.toLowerCase().includes(q) || (c.building || '').toLowerCase().includes(q));
+    if (filters.minCapacity) {
+      const min = parseInt(filters.minCapacity);
+      if (!isNaN(min)) filtered = filtered.filter(c => c.capacity >= min);
+    }
+    if (filters.equipment.length > 0) {
+      filtered = filtered.filter(c => filters.equipment.every(eq => c.equipment.includes(eq)));
+    }
+    if (filters.building) filtered = filtered.filter(c => c.building === filters.building);
+    if (filters.onlyAvailable) filtered = filtered.filter(c => c.isAvailable);
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }, [classrooms, filters]);
+
+  // Toggle selection helpers
+  const toggleSelect = (id: string, checked: boolean) => setSelectedIds(prev => ({ ...prev, [id]: checked }));
+  const clearSelection = () => setSelectedIds({});
+
+  const runWithConcurrency = async <T,>(
+    tasks: Array<() => Promise<T>>,
+    concurrency: number,
+    onProgress?: (processed: number, total: number) => void
+  ): Promise<Array<{ status: 'fulfilled' | 'rejected'; value?: T; reason?: any }>> => {
+    const results: Array<any> = [];
+    let index = 0;
+    let processed = 0;
+    const total = tasks.length;
+
+    const workers: Promise<void>[] = new Array(Math.min(concurrency, tasks.length)).fill(Promise.resolve()).map(async () => {
+      while (true) {
+        const i = index++;
+        if (i >= tasks.length) return;
+        try {
+          const value = await tasks[i]();
+          results[i] = { status: 'fulfilled', value };
+        } catch (err) {
+          results[i] = { status: 'rejected', reason: err };
+        } finally {
+          processed += 1;
+          if (onProgress) onProgress(processed, total);
+        }
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
   };
 
   // Validate room name
@@ -562,6 +631,117 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     resetForm();
   };
 
+  const confirmBulkAction = async () => {
+    if (!bulkActionType) return;
+    const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
+    if (ids.length === 0) {
+      setIsBulkDialogOpen(false);
+      return;
+    }
+
+    setIsProcessingBulk(true);
+    setBulkProgress({ processed: 0, total: ids.length });
+
+    try {
+      if (bulkActionType === 'enable' || bulkActionType === 'disable') {
+        const isAvailable = bulkActionType === 'enable';
+        // perform batch update
+        const updates = ids.map(id => ({ id, data: { isAvailable } }));
+        const result = await executeWithNetworkHandling(
+          async () => {
+            await classroomService.bulkUpdate(updates);
+            const updated = await classroomService.getAll();
+            onClassroomUpdate(updated);
+
+            // If we disabled rooms, notify affected faculty for each classroom
+            if (!isAvailable) {
+              try {
+                const allBookings = await bookingRequestService.getAll();
+                const allSchedules = await scheduleService.getAll();
+                const auth = getAuth();
+                const currentUserId = auth.currentUser?.uid;
+
+                for (const cid of ids) {
+                  const classroom = classrooms.find(c => c.id === cid);
+                  const classroomName = classroom?.name || 'Classroom';
+
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+
+                  const affectedB = allBookings.filter(b => b.classroomId === cid && (b.status === 'approved' || b.status === 'pending') && new Date(b.date) >= today);
+                  const affectedS = allSchedules.filter(s => s.classroomId === cid && s.status === 'confirmed' && new Date(s.date) >= today);
+
+                  const facultyIds = new Set<string>();
+                  affectedB.forEach(b => facultyIds.add(b.facultyId));
+                  affectedS.forEach(s => facultyIds.add(s.facultyId));
+
+                  for (const fid of facultyIds) {
+                    try {
+                      const message = bulkReason
+                        ? `The classroom "${classroomName}" has been disabled. Reason: ${bulkReason}. Please contact admin regarding your affected reservations.`
+                        : `The classroom "${classroomName}" has been disabled. Please contact admin regarding your affected reservations.`;
+                      await notificationService.createNotification(fid, 'classroom_disabled', message, { actorId: currentUserId || undefined });
+                    } catch (err) {
+                      console.error('Failed to notify faculty during bulk disable:', err);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('Error while post-processing bulk disable notifications:', err);
+              }
+            }
+            return true;
+          },
+          {
+            operationName: bulkActionType === 'enable' ? 'enable classrooms' : 'disable classrooms',
+            showLoadingToast: true,
+            maxAttempts: 3,
+          }
+        );
+
+        if (result.success) {
+          toast.success(bulkActionType === 'enable' ? `Enabled ${ids.length} classroom(s)` : `Disabled ${ids.length} classroom(s)`);
+        } else if (!result.success && !result.isNetworkError) {
+          toast.error('Bulk update failed');
+        }
+      }
+
+      if (bulkActionType === 'delete') {
+        const tasks = ids.map(id => async () => {
+          try {
+            // prefer cascade delete via callable
+            await classroomService.deleteCascade(id);
+            return { id, ok: true };
+          } catch (err) {
+            // fallback to client delete
+            await classroomService.delete(id);
+            return { id, ok: true };
+          }
+        });
+
+        const results = await runWithConcurrency(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
+        const succeeded = results.filter(r => r?.status === 'fulfilled').map((_, i) => ids[i]);
+        const failed = results.map((r, i) => r?.status === 'rejected' ? { id: ids[i], error: r.reason } : null).filter(Boolean as any);
+
+        // Refresh classrooms
+        const updated = await classroomService.getAll();
+        onClassroomUpdate(updated);
+
+        if (succeeded.length > 0) toast.success(`Deleted ${succeeded.length} classroom(s)`);
+        if (failed.length > 0) toast.error(`${failed.length} delete(s) failed`);
+      }
+    } catch (err) {
+      console.error('Bulk action error:', err);
+      toast.error('Bulk action failed');
+    } finally {
+      setIsProcessingBulk(false);
+      setIsBulkDialogOpen(false);
+      setBulkReason('');
+      clearSelection();
+      setBulkProgress({ processed: 0, total: 0 });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -739,12 +919,77 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </DialogContent>
             </Dialog>
           </div>
-        </CardHeader>
+  </CardHeader>
+
+        {/* Advanced filters + bulk action toolbar */}
+        <div className="px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+            <Input
+              placeholder="Search by room name or building..."
+              value={filters.query}
+              onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
+            />
+            <Input
+              placeholder="Min capacity"
+              type="number"
+              value={filters.minCapacity}
+              onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
+            />
+            <Select value={filters.building} onValueChange={(v: string) => setFilters(prev => ({ ...prev, building: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by building" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Buildings</SelectItem>
+                <SelectItem value={DEFAULT_BUILDING}>{DEFAULT_BUILDING}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center space-x-2">
+              <Switch id="only-available" checked={filters.onlyAvailable} onCheckedChange={(v: boolean) => setFilters(prev => ({ ...prev, onlyAvailable: v }))} />
+              <Label htmlFor="only-available">Only available</Label>
+            </div>
+          </div>
+
+          {selectedCount > 0 && (
+            <ProcessingFieldset isProcessing={isProcessingBulk} className="mb-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm">Selected: {selectedCount}</div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => { setBulkActionType('enable'); setIsBulkDialogOpen(true); }} disabled={isProcessingBulk}>
+                    Enable Selected ({selectedCount})
+                  </Button>
+                  <Button variant="destructive" onClick={() => { setBulkActionType('disable'); setIsBulkDialogOpen(true); }} disabled={isProcessingBulk}>
+                    Disable Selected ({selectedCount})
+                  </Button>
+                  <Button variant="destructive" onClick={() => { setBulkActionType('delete'); setIsBulkDialogOpen(true); }} disabled={isProcessingBulk}>
+                    Delete Selected ({selectedCount})
+                  </Button>
+                  <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk}>Clear</Button>
+                </div>
+              </div>
+            </ProcessingFieldset>
+          )}
+        </div>
+
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all classrooms"
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const newMap: Record<string, boolean> = {};
+                        filteredClassrooms.forEach(c => { newMap[c.id] = checked; });
+                        setSelectedIds(newMap);
+                      }}
+                      checked={filteredClassrooms.length > 0 && filteredClassrooms.every(c => selectedIds[c.id])}
+                      className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                    />
+                  </TableHead>
                   <TableHead>Room Name</TableHead>
                   <TableHead>Building & Floor</TableHead>
                   <TableHead>Capacity</TableHead>
@@ -754,15 +999,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {classrooms.length === 0 ? (
+                {filteredClassrooms.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      No classrooms added yet
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      No classrooms match your filters
                     </TableCell>
                   </TableRow>
                 ) : (
-                  classrooms.map((classroom) => (
+                  filteredClassrooms.map((classroom) => (
                     <TableRow key={classroom.id}>
+                      <TableCell>
+                        <input type="checkbox" aria-label={`Select classroom ${classroom.id}`} checked={!!selectedIds[classroom.id]} onChange={(e) => toggleSelect(classroom.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300" />
+                      </TableCell>
                       <TableCell className="font-medium">{classroom.name}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-1">
@@ -845,6 +1093,40 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           )}
         </CardContent>
       </Card>
+        {/* Bulk Action Dialog */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{bulkActionType === 'delete' ? 'Delete Selected Classrooms' : bulkActionType === 'disable' ? 'Disable Selected Classrooms' : 'Enable Selected Classrooms'}</DialogTitle>
+            <DialogDescription>
+              {`You are about to ${bulkActionType} ${Object.values(selectedIds).filter(Boolean).length} classroom(s).`}
+              {bulkActionType === 'disable' && (
+                <span> Provide an optional reason to include in notifications to affected faculty.</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {(bulkActionType === 'disable' || bulkActionType === 'delete') && (
+              <div>
+                <Label htmlFor="bulk-reason">Reason (optional)</Label>
+                <Textarea id="bulk-reason" value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} rows={3} maxLength={300} />
+                <p className="text-xs text-gray-500">{bulkReason.length}/300</p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setIsBulkDialogOpen(false)} disabled={isProcessingBulk}>Cancel</Button>
+            <Button variant={bulkActionType === 'delete' || bulkActionType === 'disable' ? 'destructive' : undefined} onClick={confirmBulkAction} disabled={isProcessingBulk}>
+              {isProcessingBulk ? (
+                <span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing…</span>
+              ) : (
+                bulkActionType === 'delete' ? 'Delete' : bulkActionType === 'disable' ? 'Disable' : 'Enable'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
         {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
