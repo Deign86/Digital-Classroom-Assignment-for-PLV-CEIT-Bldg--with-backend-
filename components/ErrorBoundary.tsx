@@ -52,7 +52,8 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      const supportEmail = process.env.REACT_APP_SUPPORT_EMAIL || process.env.VITE_SUPPORT_EMAIL || 'support@plv.edu';
+  // Use Vite's import.meta.env where available. Avoid referencing `process` in the browser.
+  const supportEmail = (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_SUPPORT_EMAIL ?? import.meta.env?.REACT_APP_SUPPORT_EMAIL)) || 'support@plv.edu';
 
       const handleReport = async () => {
         try {
