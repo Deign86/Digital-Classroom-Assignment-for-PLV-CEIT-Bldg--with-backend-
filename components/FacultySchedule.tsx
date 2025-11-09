@@ -535,7 +535,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                             />
                           </div>
                           <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
-                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span role="alert" className="text-destructive">{bulkReasonError}</span> : null}</div>
+                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span role="alert" className="text-sm text-destructive flex items-center gap-1.5">{bulkReasonError}</span> : null}</div>
                             <div className="text-sm text-muted-foreground">{bulkCancelReason.length}/500</div>
                           </div>
                         </div>

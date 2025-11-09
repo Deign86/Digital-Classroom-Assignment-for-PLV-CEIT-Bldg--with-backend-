@@ -553,8 +553,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                     The faculty member has already created credentials. Approving this request will activate the account; rejecting it keeps the account inactive.
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`feedback-${request.id}`}>Admin Feedback (optional)</Label>
+                  <div className="space-y-4 mt-6">
+                    <Label htmlFor={`feedback-${request.id}`} className="mb-2 block">Admin Feedback (optional)</Label>
                     <Textarea
                       id={`feedback-${request.id}`}
                       placeholder="Add comments or notes for this request..."
@@ -567,11 +567,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                       rows={3}
                       maxLength={500}
                     />
-                    <div className="flex items-center justify-end mt-1">
+                    <div className="flex items-center justify-end mt-2">
                       <p className="text-xs text-gray-500">{(feedback[request.id] ?? '').length}/500</p>
                     </div>
-                    {feedbackErrors[request.id] && <p className="text-xs text-red-600 mt-1">{feedbackErrors[request.id]}</p>}
-                    <p className="text-xs text-gray-500">Feedback is required when rejecting a request and optional when approving.</p>
+                    {feedbackErrors[request.id] && <p className="text-sm text-destructive mt-1">{feedbackErrors[request.id]}</p>}
+                    <p className="text-xs text-gray-500 mt-1">Feedback is required when rejecting a request and optional when approving.</p>
                   </div>
 
                   <div className="flex space-x-2">
@@ -627,7 +627,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       {/* Bulk action dialog for collect admin feedback when rejecting */}
       <Dialog open={isBulkDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setBulkDialogOpen(v); }}>
         {isBulkDialogOpen && (
-          <DialogContent className="sm:max-w-[700px]">
+          <DialogContent className="sm:max-w-[700px] p-6">
             <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-3">
               <DialogHeader>
                 <DialogTitle>{bulkActionApprove ? 'Approve Selected Requests' : 'Reject Selected Requests'}</DialogTitle>
@@ -638,12 +638,10 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-2">
-                {/* Move label slightly upward and ensure it renders above the textarea focus ring */}
-                <Label htmlFor="bulk-feedback" className="relative z-10 inline-block -translate-y-2 bg-background px-1">
+              <div className="space-y-4 mt-6">
+                <Label htmlFor="bulk-feedback" className="block mb-2">
                   Admin Feedback {bulkActionApprove ? '(optional)' : '(required)'}
                 </Label>
-                {/* Increase rows and add padding so the textarea doesn't clip text and looks spacious like the design */}
                 <Textarea
                   id="bulk-feedback"
                   rows={6}
@@ -654,17 +652,17 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                     setBulkFeedbackError(v.length > 500 ? 'Feedback must be 500 characters or less.' : null);
                   }}
                   placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'}
-                  className="min-h-[120px] p-3 mt-0"
+                  className="min-h-[120px] p-3"
                   maxLength={500}
                 />
                 {/* Keep a compact live character counter (per request) */}
-                <div className="flex items-center justify-end mt-1">
+                <div className="flex items-center justify-end mt-2">
                   <p className="text-xs text-gray-500">{bulkFeedback.length}/500</p>
                 </div>
-                {bulkFeedbackError && <p className="text-xs text-red-600 mt-1">{bulkFeedbackError}</p>}
+                {bulkFeedbackError && <p className="text-sm text-destructive mt-1">{bulkFeedbackError}</p>}
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex justify-end gap-2 mt-6">
                 <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
                 <Button onClick={confirmBulkAction} className="ml-2" disabled={!canConfirmBulk}>
                   {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
@@ -730,7 +728,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent className="sm:max-w-[700px] p-6">
           <DialogHeader>
             <DialogTitle>
               {confirmAction.approved ? 'Approve Faculty Account' : 'Reject Faculty Account'}

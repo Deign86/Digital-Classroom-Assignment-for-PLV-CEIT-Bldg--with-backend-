@@ -23,7 +23,7 @@ export default function BulkProgressDialog<T extends { id: string; label?: strin
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl p-6">
         <DialogHeader>
           <DialogTitle>Bulk Operation Progress</DialogTitle>
           <DialogDescription>
@@ -42,21 +42,21 @@ export default function BulkProgressDialog<T extends { id: string; label?: strin
             const res = results[idx];
             const status = res?.status ?? 'pending';
             return (
-              <div key={it.id} className="flex items-center justify-between py-1 px-2 border-b last:border-b-0">
-                <div className="truncate">{it.label ?? it.id}</div>
+              <div key={it.id} className="flex items-center justify-between py-2 px-3 border-b last:border-b-0">
+                <div className="truncate text-sm">{it.label ?? it.id}</div>
                 <div className="ml-4 flex items-center gap-2">
-                  {status === 'processing' && <Badge>Processing</Badge>}
-                  {status === 'fulfilled' && <Badge variant="secondary">Success</Badge>}
-                  {status === 'rejected' && <Badge variant="destructive">Failed</Badge>}
-                  {status === 'cancelled' && <Badge>Cancelled</Badge>}
-                  {status === 'pending' && <Badge>Pending</Badge>}
+                  {status === 'processing' && <Badge className="text-sm">Processing</Badge>}
+                  {status === 'fulfilled' && <Badge variant="secondary" className="text-sm">Success</Badge>}
+                  {status === 'rejected' && <Badge variant="destructive" className="text-sm">Failed</Badge>}
+                  {status === 'cancelled' && <Badge className="text-sm">Cancelled</Badge>}
+                  {status === 'pending' && <Badge className="text-sm">Pending</Badge>}
                 </div>
               </div>
             );
           })}
         </div>
 
-        <DialogFooter className="mt-4 flex justify-between">
+        <DialogFooter className="mt-4 flex justify-between items-center gap-4">
           <div className="text-sm text-gray-600">{succeeded} succeeded • {failed} failed</div>
           <div className="flex items-center gap-2">
             {onRetry && !running && failed > 0 && (

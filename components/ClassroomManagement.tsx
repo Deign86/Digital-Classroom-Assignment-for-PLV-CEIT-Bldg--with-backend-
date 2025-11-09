@@ -8,6 +8,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Switch } from './ui/switch';
@@ -86,6 +87,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   // Selection & bulk-edit state
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
   const selectedCount = Object.values(selectedIds).filter(Boolean).length;
+  const selectedClassrooms = useMemo(() => Object.keys(selectedIds).filter(id => selectedIds[id]).map(id => classrooms.find(c => c.id === id)).filter(Boolean) as Classroom[], [selectedIds, classrooms]);
+  const isAllSelectedEnabled = selectedClassrooms.length > 0 && selectedClassrooms.every(c => c.isAvailable);
+  const isAllSelectedDisabled = selectedClassrooms.length > 0 && selectedClassrooms.every(c => !c.isAvailable);
+  const canEnableSelected = selectedClassrooms.length > 0 && !isAllSelectedEnabled;
+  const canDisableSelected = selectedClassrooms.length > 0 && !isAllSelectedDisabled;
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{ processed: number; total: number }>({ processed: 0, total: 0 });
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
@@ -815,6 +821,16 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     const ids = Object.keys(selectedIds).filter(id => selectedIds[id]);
     if (ids.length === 0) return;
 
+    // Prevent no-op bulk actions: don't open dialogs if there's nothing to change
+    if (action === 'enable' && !canEnableSelected) {
+      toast('All selected classrooms are already enabled.');
+      return;
+    }
+    if (action === 'disable' && !canDisableSelected) {
+      toast('All selected classrooms are already disabled.');
+      return;
+    }
+
     // For disable/delete, run affected bookings/schedules check and show warning if any
     if (action === 'disable' || action === 'delete') {
       try {
@@ -954,7 +970,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   Add Classroom
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="sm:max-w-[425px] p-6">
                 <DialogHeader>
                   <DialogTitle>
                     {editingClassroom ? 'Edit Classroom' : 'Add New Classroom'}
@@ -1165,12 +1181,32 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               <div className="flex items-center justify-between">
                 <div className="text-sm">Selected: {selectedCount}</div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk}>
-                    Enable Selected ({selectedCount})
-                  </Button>
-                  <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk}>
-                    Disable Selected ({selectedCount})
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected}>
+                        Enable Selected ({selectedCount})
+                      </Button>
+                    </TooltipTrigger>
+                    {!canEnableSelected && (
+                      <TooltipContent>
+                        {selectedCount === 0 ? 'Select one or more classrooms to enable' : 'All selected classrooms are already enabled'}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected}>
+                        Disable Selected ({selectedCount})
+                      </Button>
+                    </TooltipTrigger>
+                    {!canDisableSelected && (
+                      <TooltipContent>
+                        {selectedCount === 0 ? 'Select one or more classrooms to disable' : 'All selected classrooms are already disabled'}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+
                   <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk}>
                     Delete Selected ({selectedCount})
                   </Button>
@@ -1305,7 +1341,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       </Card>
         {/* Bulk Action Dialog */}
       <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] p-6">
           <DialogHeader>
             <DialogTitle>{bulkActionType === 'delete' ? 'Delete Selected Classrooms' : bulkActionType === 'disable' ? 'Disable Selected Classrooms' : 'Enable Selected Classrooms'}</DialogTitle>
             <DialogDescription>
@@ -1315,16 +1351,16 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 mt-6">
             {(bulkActionType === 'disable' || bulkActionType === 'delete') && (
-              <div>
-                <Label htmlFor="bulk-reason">Reason (optional)</Label>
+              <div className="space-y-4">
+                <Label htmlFor="bulk-reason" className="mb-2 block">Reason (optional)</Label>
                 <Textarea id="bulk-reason" value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} rows={3} maxLength={300} />
-                <p className="text-xs text-gray-500">{bulkReason.length}/300</p>
+                <p className="text-xs text-gray-500 mt-2">{bulkReason.length}/300</p>
               </div>
             )}
           </div>
-          <div className="flex justify-end space-x-2 pt-4">
+          <DialogFooter className="pt-6">
             <Button variant="outline" onClick={() => setIsBulkDialogOpen(false)} disabled={isProcessingBulk}>Cancel</Button>
             <Button variant={bulkActionType === 'delete' || bulkActionType === 'disable' ? 'destructive' : undefined} onClick={confirmBulkAction} disabled={isProcessingBulk}>
               {isProcessingBulk ? (
@@ -1333,20 +1369,20 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 bulkActionType === 'delete' ? 'Delete' : bulkActionType === 'disable' ? 'Disable' : 'Enable'
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
         {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[400px] p-6">
           <DialogHeader>
             <DialogTitle>Delete Classroom</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete <b>{classroomToDelete?.name}</b>? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end space-x-2 pt-4">
+          <DialogFooter className="pt-4">
             <Button 
               variant="outline" 
               onClick={() => { setDeleteDialogOpen(false); setClassroomToDelete(null); }}
@@ -1368,13 +1404,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 'Delete'
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
         {/* Delete Warning Dialog (shown when classroom has pending/approved reservations) */}
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -1467,8 +1503,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               )}
 
               {/* Required Reason Field */}
-              <div className="space-y-2 pt-2 border-t">
-                <Label htmlFor="delete-reason">
+              <div className="space-y-4 pt-6 border-t mt-6">
+                <Label htmlFor="delete-reason" className="mb-2 block">
                   Reason for deleting *
                   <span className="text-sm text-gray-500 font-normal ml-2">
                     This will be included in the notification to affected faculty
@@ -1485,17 +1521,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   className={!deleteReason.trim() && deleteReason.length > 0 ? 'border-red-500' : ''}
                 />
                 {!deleteReason.trim() && (
-                  <p className="text-sm text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
+                  <p className="text-sm text-destructive flex items-center gap-1.5 mt-1">
+                    <AlertCircle className="h-4 w-4" />
                     Reason is required to notify affected faculty
                   </p>
                 )}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 mt-2">
                   {deleteReason.length}/200 characters
                 </p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
                 <p className="font-medium mb-1">What happens next?</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>All affected faculty members will receive an in-app notification</li>
@@ -1506,7 +1542,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="mt-6">
               <Button 
                 variant="outline" 
                 onClick={handleDeleteWarningCancel}
@@ -1535,7 +1571,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Bulk Warning Dialog for selected classrooms */}
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -1592,14 +1628,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 </div>
               )}
 
-              <div className="space-y-2 pt-2 border-t">
-                <Label htmlFor="bulk-warning-reason">Reason *</Label>
+              <div className="space-y-4 pt-6 border-t mt-6">
+                <Label htmlFor="bulk-warning-reason" className="mb-2 block">Reason *</Label>
                 <Textarea id="bulk-warning-reason" placeholder="Provide a clear reason that will be included in notifications to affected faculty" value={bulkWarningReason} onChange={(e) => setBulkWarningReason(e.target.value)} rows={3} maxLength={300} />
-                {!bulkWarningReason.trim() && <p className="text-sm text-red-500">A reason is required to notify affected faculty</p>}
-                <p className="text-xs text-gray-500">{bulkWarningReason.length}/300</p>
+                {!bulkWarningReason.trim() && <p className="text-sm text-destructive flex items-center gap-1.5 mt-1">
+                  <AlertCircle className="h-4 w-4" />
+                  A reason is required to notify affected faculty
+                </p>}
+                <p className="text-xs text-gray-500 mt-2">{bulkWarningReason.length}/300</p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
                 <p className="font-medium mb-1">What happens next?</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>All affected faculty members will receive an in-app notification</li>
@@ -1609,7 +1648,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="mt-6">
               <Button variant="outline" onClick={() => { setBulkWarningOpen(false); pendingBulkIdsRef.current = null; }} disabled={bulkConfirming}>Cancel</Button>
               <Button variant="destructive" onClick={() => executePendingBulkAction(bulkWarningReason)} disabled={!bulkWarningReason.trim() || bulkConfirming}>{bulkConfirming ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing...</>) : (bulkActionType === 'delete' ? 'Delete & Notify' : 'Disable & Notify')}</Button>
             </DialogFooter>
@@ -1618,7 +1657,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-600">
               <AlertTriangle className="h-5 w-5" />
@@ -1630,7 +1669,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+            <div className="space-y-4">
             {/* Affected Bookings */}
             {affectedBookings.length > 0 && (
               <div className="space-y-2">
@@ -1712,8 +1751,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             )}
 
             {/* Required Reason Field */}
-            <div className="space-y-2 pt-2 border-t">
-              <Label htmlFor="disable-reason">
+            <div className="space-y-4 pt-6 border-t mt-6">
+              <Label htmlFor="disable-reason" className="mb-2 block">
                 Reason for disabling *
                 <span className="text-sm text-gray-500 font-normal ml-2">
                   This will be included in the notification
@@ -1730,17 +1769,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 className={!disableReason.trim() && disableReason.length > 0 ? 'border-red-500' : ''}
               />
               {!disableReason.trim() && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
+                <p className="text-sm text-destructive flex items-center gap-1.5 mt-1">
+                  <AlertCircle className="h-4 w-4" />
                   Reason is required to notify affected faculty
                 </p>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 mt-2">
                 {disableReason.length}/200 characters
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
               <p className="font-medium mb-1">What happens next?</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
                 <li>All affected faculty members will receive an in-app notification</li>
@@ -1751,7 +1790,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="mt-6">
             <Button 
               variant="outline" 
               onClick={handleDisableCancel}

@@ -301,7 +301,7 @@ export default function RequestCard({
                     <div className="flex items-center justify-end mt-1">
                       <p className="text-xs text-gray-500">{cancelReason.length}/500</p>
                     </div>
-                    {cancelError && <p role="alert" className="text-xs text-red-600 mt-1">{cancelError}</p>}
+                    {cancelError && <p role="alert" className="text-sm text-destructive mt-1">{cancelError}</p>}
                   </div>
                   <AlertDialogFooter>
                     <AlertDialogCancel disabled={isCancelling} onClick={() => { if (isCancelling) return; setIsDialogOpen(false); setCancelReason(''); setCancelError(null); }}>Keep Reservation</AlertDialogCancel>
