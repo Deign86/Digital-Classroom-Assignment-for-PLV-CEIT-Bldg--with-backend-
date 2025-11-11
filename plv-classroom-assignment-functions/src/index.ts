@@ -223,28 +223,21 @@ export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId
     await admin.firestore().collection("users").doc(userId).delete();
     logger.info(`Successfully deleted Firestore doc for ${userId}`);
 
-    // Delete any pending signup requests for this user.
-    // Handle both current ('uid') and legacy ('userId') field names to be robust
-    // against older documents that may have used a different schema.
-    const signupRequestsRef = admin.firestore().collection('signupRequests');
-
-    const [qUid, qUserId] = await Promise.all([
-      signupRequestsRef.where('uid', '==', userId).get(),
-      signupRequestsRef.where('userId', '==', userId).get(),
-    ]);
-
-    // Merge unique documents (dedupe by document path/id)
-    const docsMap = new Map<string, QueryDocumentSnapshot>();
-    qUid.docs.forEach((d: QueryDocumentSnapshot) => docsMap.set(d.ref.path, d));
-    qUserId.docs.forEach((d: QueryDocumentSnapshot) => docsMap.set(d.ref.path, d));
+    // Delete any pending signup requests for this user
+    const signupRequestsQuery = await admin.firestore()
+      .collection("signupRequests")
+      .where("userId", "==", userId)
+      .get();
 
     const batch = admin.firestore().batch();
-    docsMap.forEach((docSnap) => batch.delete(docSnap.ref));
+  signupRequestsQuery.docs.forEach((doc: QueryDocumentSnapshot) => {
+      batch.delete(doc.ref);
+    });
 
-    const deletedCount = docsMap.size;
-    if (deletedCount > 0) {
+    if (!signupRequestsQuery.empty) {
       await batch.commit();
-      logger.info(`Deleted ${deletedCount} signup request(s) for user ${userId}`);
+      const count = signupRequestsQuery.size;
+      logger.info(`Deleted ${count} signup request(s) for user ${userId}`);
     }
 
     return {
@@ -252,7 +245,7 @@ export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId
       message: `User account ${userId} has been completely deleted`,
       deletedAuthAccount: true,
       deletedFirestoreDoc: true,
-      deletedSignupRequests: deletedCount,
+      deletedSignupRequests: signupRequestsQuery.size,
     };
   } catch (error: unknown) {
     const err = error as {message?: string};
