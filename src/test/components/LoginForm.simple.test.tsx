@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LoginForm from '../../../components/LoginForm'
 import { mockFacultyUser, mockAdminUser } from '../mocks/mockData'
@@ -57,6 +57,9 @@ describe('LoginForm', () => {
     mockOnSignup.mockResolvedValue(true)
   })
 
+  // Helper to scope to primary tablist (desktop) to avoid duplicate mobile+desktop elements
+  const getPrimaryWithin = () => within(screen.getAllByRole('tablist')[0]);
+
   describe('Rendering', () => {
     it('should render login form by default', () => {
       render(
@@ -68,8 +71,8 @@ describe('LoginForm', () => {
       )
 
       expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: /faculty sign in/i })).toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: /faculty signup/i })).toBeInTheDocument()
+  expect(getPrimaryWithin().getByRole('tab', { name: /faculty sign in/i })).toBeInTheDocument()
+  expect(getPrimaryWithin().getByRole('tab', { name: /faculty signup/i })).toBeInTheDocument()
     })
 
     it('should show account locked message when isLocked is true', () => {
@@ -206,7 +209,7 @@ describe('LoginForm', () => {
         />
       )
 
-      const signupTab = screen.getByRole('tab', { name: /faculty signup/i })
+  const signupTab = getPrimaryWithin().getByRole('tab', { name: /faculty signup/i })
       await userEvent.click(signupTab)
 
       await waitFor(() => {
@@ -228,7 +231,7 @@ describe('LoginForm', () => {
       )
 
       // Make sure we're on the login tab
-      const loginTab = screen.getByRole('tab', { name: /faculty sign in/i })
+  const loginTab = getPrimaryWithin().getByRole('tab', { name: /faculty sign in/i })
       await userEvent.click(loginTab)
 
       await waitFor(() => {

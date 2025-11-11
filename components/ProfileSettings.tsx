@@ -540,12 +540,13 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           <ProcessingFieldset isProcessing={isSavingProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Name Field */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-600">Full Name</Label>
+              <Label htmlFor="profile-name" className="text-sm font-medium text-gray-600">Full Name</Label>
               {isEditingProfile ? (
                 <div className="space-y-1">
                   <div className="relative">
                     <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
+                      id="profile-name"
                       type="text"
                       placeholder="Enter your full name"
                       value={profileData.name}
@@ -785,6 +786,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                     aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
                     aria-pressed={showCurrentPassword}
                     title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+                    aria-hidden="true"
                   >
                     {showCurrentPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
@@ -822,6 +824,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                     aria-label={showPassword ? 'Hide new password' : 'Show new password'}
                     aria-pressed={showPassword}
                     title={showPassword ? 'Hide new password' : 'Show new password'}
+                    aria-hidden="true"
                   >
                     {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>
@@ -863,6 +866,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                     aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                     aria-pressed={showConfirmPassword}
                     title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-hidden="true"
                   >
                     {showConfirmPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                   </button>

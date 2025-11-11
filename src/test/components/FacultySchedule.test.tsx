@@ -11,10 +11,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FacultySchedule from '../../../components/FacultySchedule';
 import type { Schedule, BookingRequest } from '../../../App';
+
+// Helper to scope queries to the primary (desktop) tablist to avoid duplicate mobile+desktop nodes
+const getPrimaryWithin = () => within(screen.getAllByRole('tablist')[0]);
 
 // Mock dependencies
 vi.mock('../../../lib/logger', () => ({
@@ -164,12 +167,13 @@ describe('FacultySchedule', () => {
         />
       );
 
-      expect(screen.getByRole('tab', { name: /upcoming/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /requests/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /approved/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /rejected/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /cancelled/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /history/i })).toBeInTheDocument();
+  const withinTab = getPrimaryWithin();
+  expect(withinTab.getByRole('tab', { name: /upcoming/i })).toBeInTheDocument();
+  expect(withinTab.getByRole('tab', { name: /requests/i })).toBeInTheDocument();
+  expect(withinTab.getByRole('tab', { name: /approved/i })).toBeInTheDocument();
+  expect(withinTab.getByRole('tab', { name: /rejected/i })).toBeInTheDocument();
+  expect(withinTab.getByRole('tab', { name: /cancelled/i })).toBeInTheDocument();
+  expect(withinTab.getByRole('tab', { name: /history/i })).toBeInTheDocument();
     });
 
     it('should show upcoming tab by default', () => {
@@ -180,7 +184,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const upcomingTab = screen.getByRole('tab', { name: /upcoming/i });
+  const upcomingTab = getPrimaryWithin().getByRole('tab', { name: /upcoming/i });
       expect(upcomingTab).toHaveAttribute('data-state', 'active');
     });
 
@@ -193,7 +197,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const approvedTab = screen.getByRole('tab', { name: /approved/i });
+  const approvedTab = getPrimaryWithin().getByRole('tab', { name: /approved/i });
       expect(approvedTab).toHaveAttribute('data-state', 'active');
     });
   });
@@ -208,7 +212,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const requestsTab = screen.getByRole('tab', { name: /requests/i });
+  const requestsTab = getPrimaryWithin().getByRole('tab', { name: /requests/i });
       await user.click(requestsTab);
 
       expect(requestsTab).toHaveAttribute('data-state', 'active');
@@ -223,7 +227,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const approvedTab = screen.getByRole('tab', { name: /approved/i });
+  const approvedTab = getPrimaryWithin().getByRole('tab', { name: /approved/i });
       await user.click(approvedTab);
 
       expect(approvedTab).toHaveAttribute('data-state', 'active');
@@ -238,7 +242,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const historyTab = screen.getByRole('tab', { name: /history/i });
+  const historyTab = getPrimaryWithin().getByRole('tab', { name: /history/i });
       await user.click(historyTab);
 
       expect(historyTab).toHaveAttribute('data-state', 'active');
@@ -254,8 +258,8 @@ describe('FacultySchedule', () => {
         />
       );
 
-      // Pending count badge
-      expect(screen.getByText('1')).toBeInTheDocument(); // 1 pending request
+  // Pending count badge - scope to primary tablist to avoid duplicate mobile/desktop nodes
+  expect(getPrimaryWithin().getByText('1')).toBeInTheDocument(); // 1 pending request
     });
 
     it('should not show badge when no pending requests', () => {
@@ -267,7 +271,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const requestsTab = screen.getByRole('tab', { name: /requests/i });
+  const requestsTab = getPrimaryWithin().getByRole('tab', { name: /requests/i });
       const badge = requestsTab.querySelector('.bg-red-500');
       expect(badge).not.toBeInTheDocument();
     });
@@ -286,7 +290,8 @@ describe('FacultySchedule', () => {
       expect(screen.getByText(/room 101/i)).toBeInTheDocument();
     });
 
-    it('should display cancelled schedules in upcoming', () => {
+    it('should display cancelled schedules in cancelled tab', async () => {
+      const user = userEvent.setup();
       render(
         <FacultySchedule
           schedules={mockSchedules}
@@ -294,8 +299,12 @@ describe('FacultySchedule', () => {
         />
       );
 
-      expect(screen.getByText(/cancelled lecture/i)).toBeInTheDocument();
-      expect(screen.getByText(/cancelled/i)).toBeInTheDocument();
+      const cancelledTab = getPrimaryWithin().getByRole('tab', { name: /cancelled/i });
+      await user.click(cancelledTab);
+
+  expect(screen.getByText(/cancelled lecture/i)).toBeInTheDocument();
+  // check for the reservation-cancelled message which is unique in the UI
+  expect(screen.getByText(/this reservation has been cancelled/i)).toBeInTheDocument();
     });
 
     it('should not display past schedules in upcoming tab', () => {
@@ -355,7 +364,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const historyTab = screen.getByRole('tab', { name: /history/i });
+  const historyTab = getPrimaryWithin().getByRole('tab', { name: /history/i });
       await user.click(historyTab);
 
       expect(screen.getByText(/database tutorial/i)).toBeInTheDocument();
@@ -370,7 +379,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const historyTab = screen.getByRole('tab', { name: /history/i });
+  const historyTab = getPrimaryWithin().getByRole('tab', { name: /history/i });
       await user.click(historyTab);
 
       expect(screen.getByText(/no past classes/i)).toBeInTheDocument();
@@ -387,7 +396,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const requestsTab = screen.getByRole('tab', { name: /requests/i });
+  const requestsTab = getPrimaryWithin().getByRole('tab', { name: /requests/i });
       await user.click(requestsTab);
 
       expect(screen.getByText(/extra class/i)).toBeInTheDocument();
@@ -403,7 +412,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const requestsTab = screen.getByRole('tab', { name: /requests/i });
+  const requestsTab = getPrimaryWithin().getByRole('tab', { name: /requests/i });
       await user.click(requestsTab);
 
       expect(screen.getByText(/no pending requests/i)).toBeInTheDocument();
@@ -420,7 +429,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const approvedTab = screen.getByRole('tab', { name: /approved/i });
+  const approvedTab = getPrimaryWithin().getByRole('tab', { name: /approved/i });
       await user.click(approvedTab);
 
       expect(screen.getByText(/workshop/i)).toBeInTheDocument();
@@ -435,10 +444,10 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const approvedTab = screen.getByRole('tab', { name: /approved/i });
-      await user.click(approvedTab);
+  const approvedTab = getPrimaryWithin().getByRole('tab', { name: /approved/i });
+  await user.click(approvedTab);
 
-      expect(screen.getByText(/no approved bookings/i)).toBeInTheDocument();
+  expect(screen.getByText(/no approved requests/i)).toBeInTheDocument();
     });
   });
 
@@ -452,7 +461,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const rejectedTab = screen.getByRole('tab', { name: /rejected/i });
+  const rejectedTab = getPrimaryWithin().getByRole('tab', { name: /rejected/i });
       await user.click(rejectedTab);
 
       expect(screen.getByText(/review session/i)).toBeInTheDocument();
@@ -467,7 +476,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const rejectedTab = screen.getByRole('tab', { name: /rejected/i });
+  const rejectedTab = getPrimaryWithin().getByRole('tab', { name: /rejected/i });
       await user.click(rejectedTab);
 
       expect(screen.getByText(/room unavailable/i)).toBeInTheDocument();
@@ -482,7 +491,7 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const rejectedTab = screen.getByRole('tab', { name: /rejected/i });
+  const rejectedTab = getPrimaryWithin().getByRole('tab', { name: /rejected/i });
       await user.click(rejectedTab);
 
       expect(screen.getByText(/no rejected requests/i)).toBeInTheDocument();
@@ -500,10 +509,10 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const cancelledTab = screen.getByRole('tab', { name: /cancelled/i });
-      await user.click(cancelledTab);
+  const cancelledTab = getPrimaryWithin().getByRole('tab', { name: /cancelled/i });
+    await user.click(cancelledTab);
 
-      expect(screen.getByText(/no cancelled classes/i)).toBeInTheDocument();
+    expect(screen.getByText(/no cancelled reservations/i)).toBeInTheDocument();
     });
   });
 
@@ -533,12 +542,13 @@ describe('FacultySchedule', () => {
   });
 
   describe('Duplicate Request Filtering', () => {
-    it('should filter out duplicate booking request IDs', () => {
+    it('should filter out duplicate booking request IDs', async () => {
       const duplicateRequests: BookingRequest[] = [
         mockBookingRequests[0],
         mockBookingRequests[0], // Duplicate
         mockBookingRequests[1],
       ];
+      const user = userEvent.setup();
 
       render(
         <FacultySchedule
@@ -546,6 +556,10 @@ describe('FacultySchedule', () => {
           bookingRequests={duplicateRequests}
         />
       );
+
+      // open requests tab to show booking requests
+      const requestsTab = getPrimaryWithin().getByRole('tab', { name: /requests/i });
+      await user.click(requestsTab);
 
       // Should only show once despite duplicate
       const items = screen.getAllByText(/extra class/i);
@@ -623,8 +637,8 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const tabs = screen.getAllByRole('tab');
-      expect(tabs.length).toBe(6);
+  const tabs = getPrimaryWithin().getAllByRole('tab');
+  expect(tabs.length).toBe(6);
     });
 
     it('should mark active tab with data-state', () => {
@@ -636,8 +650,8 @@ describe('FacultySchedule', () => {
         />
       );
 
-      const upcomingTab = screen.getByRole('tab', { name: /upcoming/i });
-      expect(upcomingTab).toHaveAttribute('data-state', 'active');
+  const upcomingTab = getPrimaryWithin().getByRole('tab', { name: /upcoming/i });
+  expect(upcomingTab).toHaveAttribute('data-state', 'active');
     });
   });
 });
