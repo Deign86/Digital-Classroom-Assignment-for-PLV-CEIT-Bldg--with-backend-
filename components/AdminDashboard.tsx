@@ -748,15 +748,7 @@ export default function AdminDashboard({
                   try {
                     const res = await adminDeleteUser(id, !!hard);
                     const out = res as any;
-                    // Build a single consolidated success message to avoid duplicate toasts
-                    const baseMsg = out?.message ?? 'User deleted';
-                    if (typeof out?.deletedSignupRequests === 'number' && out.deletedSignupRequests > 0) {
-                      const n = out.deletedSignupRequests;
-                      const combined = `${baseMsg} — ${n} pending signup request${n > 1 ? 's' : ''} removed`;
-                      toast.success(combined);
-                    } else if (baseMsg) {
-                      toast.success(baseMsg);
-                    }
+                    if (out?.message) toast.success(out.message);
                     return out;
                   } catch (err: any) {
                     console.error('Delete user error', err);
