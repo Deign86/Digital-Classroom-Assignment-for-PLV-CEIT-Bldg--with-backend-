@@ -487,8 +487,9 @@ describe('AdminReports', () => {
       const exportButton = screen.getByRole('button', { name: /export/i });
       await user.click(exportButton);
 
-      expect(capturedBlob).toBeTruthy();
-      expect(capturedBlob!.type).toBe('application/json');
+  expect(capturedBlob).toBeTruthy();
+  // CSV export is used now; ensure the MIME type is a CSV type (may include charset)
+  expect(capturedBlob!.type.startsWith('text/csv')).toBeTruthy();
     });
 
     it('should include filename with period and date', async () => {
@@ -524,7 +525,7 @@ describe('AdminReports', () => {
       const exportButton = screen.getByRole('button', { name: /export/i });
       await user.click(exportButton);
 
-      expect(capturedDownload).toMatch(/classroom-report-month-\d{4}-\d{2}-\d{2}\.json/);
+  expect(capturedDownload).toMatch(/classroom-report-month-\d{4}-\d{2}-\d{2}\.csv/);
     });
   });
 
