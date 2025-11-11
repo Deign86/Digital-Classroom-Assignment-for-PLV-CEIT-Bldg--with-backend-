@@ -94,15 +94,10 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
       // mark delete in-flight for this user
       setProcessingFor(selectedUserToDelete.id, 'delete');
       if (onDeleteUser) {
-        const res = await onDeleteUser(selectedUserToDelete.id, isHardDelete);
-        // If server returned a message, show it. Otherwise, show a clearer success message.
-        if (res && res.message) {
-          toast.success(res.message);
-        } else if (res && res.success === true) {
-          toast.success('User deleted');
-        } else {
-          toast.success('Deletion request completed');
-        }
+        // Delegate user-facing success notifications to the parent handler (AdminDashboard)
+        // to avoid duplicate toasts. Parent can inspect the returned payload and
+        // surface a single, informative toast (e.g., deleted signup counts).
+        await onDeleteUser(selectedUserToDelete.id, isHardDelete);
       } else {
         toast.error('Delete handler not available');
       }
