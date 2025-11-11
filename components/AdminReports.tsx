@@ -175,12 +175,74 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
       generatedAt: new Date().toISOString()
     };
 
-    const dataStr = JSON.stringify(reportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    // Convert report data into CSV with multiple sections. Prepend UTF-8 BOM so Excel opens it correctly.
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') val = JSON.stringify(val);
+      const s = String(val);
+      if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+
+    const sectionToCsv = (headers: string[], rows: any[]) => {
+      const lines = [headers.join(',')];
+      rows.forEach(r => {
+        lines.push(headers.map(h => escapeCsv(r[h])).join(','));
+      });
+      return lines.join('\r\n');
+    };
+
+    // Statistics (key, value)
+    const statsRows = Object.keys(reportData.statistics).map(k => ({ key: k, value: (reportData.statistics as any)[k] }));
+    const statsSection = sectionToCsv(['key', 'value'], statsRows);
+
+    // Classroom utilization
+    const classHeaders = ['name', 'classes', 'hours', 'building', 'capacity'];
+    const classSection = sectionToCsv(classHeaders, reportData.classroomUtilization || []);
+
+    // Request status
+    const reqHeaders = ['name', 'value'];
+    const reqSection = sectionToCsv(reqHeaders, reportData.requestStatusData || []);
+
+    // Weekly trend
+    const weekHeaders = ['week', 'classes', 'requests'];
+    const weekSection = sectionToCsv(weekHeaders, reportData.weeklyTrend || []);
+
+    // Building usage
+    const buildingHeaders = ['name', 'value'];
+    const buildingSection = sectionToCsv(buildingHeaders, reportData.buildingUsage || []);
+
+    const csvContent = [
+      `Report Period:,${reportData.period}`,
+      `Date Range:,"${reportData.dateRange}"`,
+      '',
+      'Statistics',
+      statsSection,
+      '',
+      'Classroom Utilization',
+      classSection,
+      '',
+      'Request Status',
+      reqSection,
+      '',
+      'Weekly Trend',
+      weekSection,
+      '',
+      'Building Usage',
+      buildingSection,
+      '',
+      `Generated At:,${reportData.generatedAt}`
+    ].join('\r\n');
+
+    // UTF-8 BOM to improve Excel compatibility
+    const BOM = '\uFEFF';
+    const dataBlob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `classroom-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `classroom-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
