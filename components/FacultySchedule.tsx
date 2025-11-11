@@ -282,32 +282,32 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
         {/* Desktop Tab Layout */}
         <TabsList className="hidden sm:flex w-full max-w-3xl mx-auto h-12">
-          <TabsTrigger value="upcoming" className="flex-1 px-4 py-2">
+          <TabsTrigger value="upcoming" aria-label="Upcoming" className="flex-1 px-4 py-2">
             <Calendar className="h-4 w-4 mr-2" />
             Upcoming
           </TabsTrigger>
-          <TabsTrigger value="requests" className="flex-1 px-4 py-2 relative">
+          <TabsTrigger value="requests" aria-label="Requests" className="flex-1 px-4 py-2 relative">
             <AlertTriangle className="h-4 w-4 mr-2" />
             Requests
             {pendingRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 py-0 h-4 min-w-[16px] rounded-full flex items-center justify-center">
+              <span data-testid="pending-badge" className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 py-0 h-4 min-w-[16px] rounded-full flex items-center justify-center">
                 {pendingRequests.length}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="approved" className="flex-1 px-4 py-2">
+          <TabsTrigger value="approved" aria-label="Approved" className="flex-1 px-4 py-2">
             <CheckCircle className="h-4 w-4 mr-2" />
             Approved
           </TabsTrigger>
-          <TabsTrigger value="rejected" className="flex-1 px-4 py-2">
+          <TabsTrigger value="rejected" aria-label="Rejected" className="flex-1 px-4 py-2">
             <X className="h-4 w-4 mr-2" />
             Rejected
           </TabsTrigger>
-          <TabsTrigger value="cancelled" className="flex-1 px-4 py-2">
+          <TabsTrigger value="cancelled" aria-label="Cancelled" className="flex-1 px-4 py-2">
             <XCircle className="h-4 w-4 mr-2" />
             Cancelled
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex-1 px-4 py-2">
+          <TabsTrigger value="history" aria-label="History" className="flex-1 px-4 py-2">
             <Clock className="h-4 w-4 mr-2" />
             History
           </TabsTrigger>
@@ -316,32 +316,28 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
         {/* Mobile Horizontal Scrollable Tabs */}
         <div className="sm:hidden mobile-tab-container">
           <TabsList className="mobile-tab-scroll bg-background/80 backdrop-blur-lg border rounded-lg h-12 p-1">
-            <TabsTrigger value="upcoming" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+            <TabsTrigger value="upcoming" aria-label="Upcoming" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <Calendar className="h-4 w-4 flex-shrink-0" />
               <span>Upcoming</span>
             </TabsTrigger>
-            <TabsTrigger value="requests" className="mobile-tab-item flex items-center space-x-2 px-4 py-2 relative">
+            <TabsTrigger value="requests" aria-label="Requests" className="mobile-tab-item flex items-center space-x-2 px-4 py-2 relative">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               <span>Requests</span>
-              {pendingRequests.length > 0 && (
-                <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 h-5 min-w-[18px] rounded-full ml-1 flex items-center justify-center">
-                  {pendingRequests.length}
-                </span>
-              )}
+              {/* Mobile intentionally does not render the numeric badge to avoid duplicate accessible nodes; the desktop tab contains the single badge element used by assistive tech and tests */}
             </TabsTrigger>
-            <TabsTrigger value="rejected" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+            <TabsTrigger value="rejected" aria-label="Rejected" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <X className="h-4 w-4 flex-shrink-0" />
               <span>Rejected</span>
             </TabsTrigger>
-            <TabsTrigger value="approved" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+            <TabsTrigger value="approved" aria-label="Approved" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <CheckCircle className="h-4 w-4 flex-shrink-0" />
               <span>Approved</span>
             </TabsTrigger>
-            <TabsTrigger value="cancelled" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+            <TabsTrigger value="cancelled" aria-label="Cancelled" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <XCircle className="h-4 w-4 flex-shrink-0" />
               <span>Cancelled</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
+            <TabsTrigger value="history" aria-label="History" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <Clock className="h-4 w-4 flex-shrink-0" />
               <span>History</span>
             </TabsTrigger>

@@ -53,7 +53,7 @@ describe('PasswordResetPage', () => {
     
     // Mock window.location
     delete (window as any).location;
-    window.location = {
+    (window as any).location = {
       ...originalLocation,
       search: '?oobCode=valid-action-code-12345',
     };
@@ -61,7 +61,7 @@ describe('PasswordResetPage', () => {
 
   afterEach(() => {
     // Restore original window.location
-    window.location = originalLocation;
+    (window as any).location = originalLocation;
   });
 
   describe('Component Rendering', () => {
@@ -105,7 +105,7 @@ describe('PasswordResetPage', () => {
   describe('Link Validation', () => {
     it('should show error screen when oobCode missing', () => {
       // Mock URL without oobCode
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         search: '',
       };
@@ -122,7 +122,7 @@ describe('PasswordResetPage', () => {
     });
 
     it('should display expiration message on invalid link', () => {
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         search: '',
       };
@@ -133,7 +133,7 @@ describe('PasswordResetPage', () => {
     });
 
     it('should show back to login button on expired link', () => {
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         search: '',
       };
@@ -145,7 +145,7 @@ describe('PasswordResetPage', () => {
 
     it('should call onCancel when back to login clicked', async () => {
       const user = userEvent.setup();
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         search: '',
       };
@@ -159,7 +159,7 @@ describe('PasswordResetPage', () => {
     });
 
     it('should extract oobCode from URL parameters', () => {
-      window.location = {
+      (window as any).location = {
         ...originalLocation,
         search: '?oobCode=abc123&mode=resetPassword',
       };
@@ -364,7 +364,7 @@ describe('PasswordResetPage', () => {
 
     it('should accept valid password', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -511,7 +511,7 @@ describe('PasswordResetPage', () => {
   describe('Password Reset Submission', () => {
     it('should call confirmPasswordReset with action code and password', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -534,7 +534,7 @@ describe('PasswordResetPage', () => {
 
     it('should sanitize password before submission', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -560,7 +560,7 @@ describe('PasswordResetPage', () => {
     it('should show loading state during submission', async () => {
       const user = userEvent.setup();
       vi.mocked(authService.confirmPasswordReset).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+        () => new Promise(resolve => setTimeout(() => resolve({ success: true, message: '' }), 100))
       );
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
@@ -580,7 +580,7 @@ describe('PasswordResetPage', () => {
     it('should disable inputs during loading', async () => {
       const user = userEvent.setup();
       vi.mocked(authService.confirmPasswordReset).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+        () => new Promise(resolve => setTimeout(() => resolve({ success: true, message: '' }), 100))
       );
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
@@ -600,7 +600,7 @@ describe('PasswordResetPage', () => {
 
     it('should show success toast and call onSuccess', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -755,7 +755,7 @@ describe('PasswordResetPage', () => {
 
     it('should handle very long passwords', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -779,7 +779,7 @@ describe('PasswordResetPage', () => {
 
     it('should handle special characters in password', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -803,7 +803,7 @@ describe('PasswordResetPage', () => {
 
     it('should handle rapid form submissions', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
@@ -828,7 +828,7 @@ describe('PasswordResetPage', () => {
 
     it('should sanitize zero-width characters from password', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true });
+  vi.mocked(authService.confirmPasswordReset).mockResolvedValue({ success: true, message: '' });
 
       render(<PasswordResetPage onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 

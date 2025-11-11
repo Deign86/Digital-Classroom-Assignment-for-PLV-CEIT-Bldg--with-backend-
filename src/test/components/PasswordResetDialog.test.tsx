@@ -11,7 +11,7 @@
  * - Accessibility
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PasswordResetDialog from '../../../components/PasswordResetDialog';
@@ -163,7 +163,7 @@ describe('PasswordResetDialog', () => {
 
     it('should accept valid email format', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -184,7 +184,7 @@ describe('PasswordResetDialog', () => {
 
     it('should trim whitespace from email', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -254,7 +254,7 @@ describe('PasswordResetDialog', () => {
 
     it('should enforce 1-minute cooldown between reset attempts', async () => {
       const user = userEvent.setup({ delay: null });
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -291,7 +291,7 @@ describe('PasswordResetDialog', () => {
 
     it('should allow reset after cooldown period', async () => {
       const user = userEvent.setup({ delay: null });
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -328,7 +328,7 @@ describe('PasswordResetDialog', () => {
 
     it('should display remaining cooldown seconds', async () => {
       const user = userEvent.setup({ delay: null });
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -364,7 +364,7 @@ describe('PasswordResetDialog', () => {
   describe('Reset Email Sending', () => {
     it('should call authService.resetPassword with email', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -388,7 +388,7 @@ describe('PasswordResetDialog', () => {
     it('should show loading state during submission', async () => {
       const user = userEvent.setup();
       vi.mocked(authService.resetPassword).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+  () => new Promise(resolve => setTimeout(() => resolve({ success: true, message: '' }), 100))
       );
 
       render(
@@ -412,7 +412,7 @@ describe('PasswordResetDialog', () => {
     it('should disable inputs during loading', async () => {
       const user = userEvent.setup();
       vi.mocked(authService.resetPassword).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+        () => new Promise(resolve => setTimeout(() => resolve({ success: true, message: '' }), 100))
       );
 
       render(
@@ -436,7 +436,7 @@ describe('PasswordResetDialog', () => {
 
     it('should show success toast on successful reset', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -526,7 +526,7 @@ describe('PasswordResetDialog', () => {
   describe('Success Confirmation Display', () => {
     it('should show success screen after email sent', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -549,7 +549,7 @@ describe('PasswordResetDialog', () => {
 
     it('should display check icon on success', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -573,7 +573,7 @@ describe('PasswordResetDialog', () => {
 
     it('should display submitted email address', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -596,7 +596,7 @@ describe('PasswordResetDialog', () => {
 
     it('should display spam folder reminder', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -619,7 +619,7 @@ describe('PasswordResetDialog', () => {
 
     it('should display link expiration warning', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -642,7 +642,7 @@ describe('PasswordResetDialog', () => {
 
     it('should display close button on success screen', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -685,7 +685,7 @@ describe('PasswordResetDialog', () => {
 
     it('should close dialog when close button clicked after success', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -715,7 +715,7 @@ describe('PasswordResetDialog', () => {
 
     it('should reset state when dialog reopened', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -726,7 +726,7 @@ describe('PasswordResetDialog', () => {
       // First open
       await user.click(screen.getByRole('button', { name: /forgot password/i }));
       
-      let emailInput = screen.getByLabelText(/email address/i);
+  let emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
       await user.type(emailInput, 'test@plv.edu.ph');
       
       let submitButton = screen.getByRole('button', { name: /send reset link/i });
@@ -840,7 +840,7 @@ describe('PasswordResetDialog', () => {
   describe('Edge Cases', () => {
     it('should handle very long email addresses', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -864,7 +864,7 @@ describe('PasswordResetDialog', () => {
 
     it('should handle special characters in email', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+  vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>
@@ -888,7 +888,7 @@ describe('PasswordResetDialog', () => {
 
     it('should handle rapid form submissions', async () => {
       const user = userEvent.setup();
-      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true });
+      vi.mocked(authService.resetPassword).mockResolvedValue({ success: true, message: '' });
 
       render(
         <PasswordResetDialog>

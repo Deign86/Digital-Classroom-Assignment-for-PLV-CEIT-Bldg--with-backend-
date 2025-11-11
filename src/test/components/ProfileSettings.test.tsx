@@ -638,7 +638,7 @@ describe('ProfileSettings', () => {
     it('should handle rapid toggle clicks', async () => {
       const user = userEvent.setup();
       const userWithPush = { ...mockUser, pushEnabled: false } as any;
-      mockOnTogglePush.mockResolvedValue({ success: true });
+  mockOnTogglePush.mockResolvedValue({ success: true, message: '' });
 
       render(<ProfileSettings user={userWithPush} onTogglePush={mockOnTogglePush} />);
 
