@@ -277,7 +277,14 @@ export default function FacultyDashboard({
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
                 <div className="transition-transform hover:scale-105 active:scale-95">
-                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200 text-xs sm:text-sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onLogout}
+                    // ARIA: provide accessible name for icon-only and responsive logout control
+                    aria-label="Logout"
+                    className="transition-all duration-200 text-xs sm:text-sm"
+                  >
                     <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1.5 md:mr-2" />
                     <span className="hidden sm:inline">Logout</span>
                   </Button>

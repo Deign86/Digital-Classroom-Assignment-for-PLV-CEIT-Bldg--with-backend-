@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { logger } from '../lib/logger';
-import { notificationService, type Notification } from '../lib/notificationService';
+import React from 'react';
+import { useNotificationContext } from '../contexts/NotificationContext';
 import { Bell } from '@phosphor-icons/react';
 
 type Props = {
@@ -10,43 +9,16 @@ type Props = {
 };
 
 export const NotificationBell: React.FC<Props> = ({ userId, onOpen, forceUnread = null }) => {
-  const [count, setCount] = useState<number>(0);
-
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-
-    const setup = async () => {
-      try {
-        if (!userId) {
-          setCount(0);
-          return;
-        }
-
-        const initial = await notificationService.getUnreadCount(userId);
-        setCount(initial);
-
-        unsub = notificationService.setupNotificationsListener((items: Notification[]) => {
-          const unread = items.filter((i) => !i.acknowledgedAt).length;
-          setCount(unread);
-        }, undefined, userId);
-      } catch (err) {
-        logger.error('NotificationBell error:', err);
-      }
-    };
-
-    setup();
-
-    return () => {
-      unsub?.();
-    };
-  }, [userId]);
-
-  const displayCount = forceUnread !== null && forceUnread !== undefined ? forceUnread : count;
+  // Pure consumer: reads unreadCount and toggle handler from NotificationContext.
+  // Real-time subscription is centralized in App.tsx.
+  const ctx = useNotificationContext();
+  const displayCount = forceUnread ?? ctx.unreadCount ?? 0;
+  const handleOpen = onOpen ?? ctx.onToggleCenter;
 
   return (
     <button 
       aria-label={`Notifications (${displayCount} unread)`} 
-      onClick={onOpen} 
+      onClick={handleOpen} 
       className="relative inline-flex items-center justify-center p-2 shrink-0"
     >
       <Bell size={20} weight="regular" aria-hidden className="text-current" />

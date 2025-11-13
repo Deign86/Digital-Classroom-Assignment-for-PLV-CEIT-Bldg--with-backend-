@@ -33,6 +33,7 @@ const AdminReports = React.lazy(() => import('./AdminReports'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import { useAnnouncer } from './Announcer';
 const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
 /* spinner removed by request; fallbacks reverted to text */
 import { userService, adminDeleteUser } from '../lib/firebaseService';
@@ -74,6 +75,7 @@ export default function AdminDashboard({
   onUnlockAccount,
   checkConflicts
 }: AdminDashboardProps) {
+  const { announce } = useAnnouncer();
   const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management'] as const;
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [showNotifications, setShowNotifications] = useState(false);
@@ -150,6 +152,36 @@ export default function AdminDashboard({
     .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
     .slice(0, 5);
 
+  // Announce newly arrived pending booking requests for admins
+  React.useEffect(() => {
+    // Track previous ids in a ref to compare across updates
+    const prevRef = (AdminDashboard as any)._prevBookingIds || { current: new Set<string>() };
+    (AdminDashboard as any)._prevBookingIds = prevRef;
+
+    const prevIds = prevRef.current;
+    const currentIds = new Set<string>(bookingRequests.map(r => r.id));
+
+    // Find newly added requests
+    const newIds: string[] = [];
+    for (const r of bookingRequests) {
+      if (!prevIds.has(r.id) && r.status === 'pending') newIds.push(r.id);
+    }
+
+    if (newIds.length > 0) {
+      // Announce up to 3 new requests to avoid flooding
+      const toAnnounce = newIds.slice(0, 3).map(id => bookingRequests.find(r => r.id === id)).filter(Boolean) as typeof bookingRequests;
+      try {
+        toAnnounce.forEach((req) => {
+          const msg = `New reservation request from ${req.facultyName} for ${req.classroomName} on ${new Date(req.date).toLocaleDateString()} at ${req.startTime}`;
+          try { announce(msg, 'polite'); } catch (e) {}
+        });
+      } catch (e) {}
+    }
+
+    // Update prevIds for next comparison
+    prevRef.current = currentIds;
+  }, [bookingRequests, announce]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -180,7 +212,14 @@ export default function AdminDashboard({
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <NotificationBell userId={user.id} onOpen={() => setShowNotifications(true)} forceUnread={forceBellUnread} />
                 <div className="transition-transform hover:scale-105 active:scale-95">
-                  <Button variant="outline" size="sm" onClick={onLogout} className="transition-all duration-200 text-xs sm:text-sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onLogout}
+                    // ARIA: provide accessible name for icon-only and responsive logout control
+                    aria-label="Logout"
+                    className="transition-all duration-200 text-xs sm:text-sm"
+                  >
                     <LogOut className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1.5 md:mr-2" />
                     <span className="hidden sm:inline">Logout</span>
                   </Button>

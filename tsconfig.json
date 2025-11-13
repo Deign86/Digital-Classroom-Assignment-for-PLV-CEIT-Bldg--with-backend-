@@ -23,6 +23,8 @@
     "plv-classroom-assignment-functions/**/*",
     "src/test/**/*",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "**/__tests__/**",
+    "vitest.config.ts"
   ]
 }

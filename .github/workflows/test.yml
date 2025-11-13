@@ -2,9 +2,9 @@ name: Test Suite
 
 on:
   push:
-    branches: [ main, master, develop, feature/** ]
+    branches: [ main, master, develop, 'feature/**' ]
   pull_request:
-    branches: [ main, master, develop, feature/** ]
+    types: [opened, synchronize, reopened]
 
 jobs:
   test:
@@ -23,7 +23,7 @@ jobs:
         run: npm ci
       
       - name: Run tests
-        run: npm test -- --run --reporter=verbose
+        run: npm run test:run
         env:
           CI: true
           # Mock Firebase environment variables for testing

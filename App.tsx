@@ -9,7 +9,8 @@ const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'
 
 // Use a single inline loader (the PLV loader below) as the Suspense fallback.
 import Footer from './components/Footer';
-import AnnouncerProvider, { useAnnouncer } from './components/Announcer';
+import { useAnnouncer } from './components/Announcer';
+import { NotificationProvider } from './contexts/NotificationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
 import NetworkStatusIndicator from './components/NetworkStatusIndicator';
@@ -30,6 +31,7 @@ import {
   scheduleService,
   realtimeService
 } from './lib/firebaseService';
+import { notificationService } from './lib/notificationService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
 
@@ -158,6 +160,49 @@ export default function App() {
     setOverlayVisible(true);
   }, []);
 
+  // Notification handlers exposed to UI via context
+  const onAcknowledge = React.useCallback(async (id: string) => {
+    // optimistic UI update
+    setNotifications((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, acknowledgedAt: new Date().toISOString() } : n));
+      try { notificationsRef.current = next; } catch (e) {}
+      return next;
+    });
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      if (!currentUser?.id) return;
+      await notificationService.acknowledgeNotification(id, currentUser.id);
+    } catch (err) {
+      console.error('ack error', err);
+    }
+  }, [currentUser?.id]);
+
+  const onAcknowledgeAll = React.useCallback(async () => {
+    const unreadIds = (notificationsRef.current || []).filter((n) => !n.acknowledgedAt).map((n) => n.id);
+    if (unreadIds.length === 0) return null;
+    // optimistic
+    setNotifications((prev) => {
+      const next = prev.map((n) => (unreadIds.includes(n.id) ? { ...n, acknowledgedAt: new Date().toISOString() } : n));
+      try { notificationsRef.current = next; } catch (e) {}
+      return next;
+    });
+    setUnreadCount(0);
+    try {
+      if (!currentUser?.id) return null;
+      await notificationService.acknowledgeNotifications(unreadIds, currentUser.id);
+      return unreadIds.length;
+    } catch (err) {
+      console.error('ack all error', err);
+      return null;
+    }
+  }, [currentUser?.id]);
+
+  const onToggleCenter = React.useCallback(() => setIsNotificationCenterOpen((v) => !v), []);
+
+  const onMarkAllAsRead = React.useCallback(async () => {
+    await onAcknowledgeAll();
+  }, [onAcknowledgeAll]);
+
   const hideOverlay = React.useCallback(() => {
     overlayCountRef.current = Math.max(0, overlayCountRef.current - 1);
     if (overlayCountRef.current === 0) {
@@ -198,6 +243,25 @@ export default function App() {
     endTime?: string;
     purpose?: string;
   } | null>(null);
+
+  // Announcer - centralized announce function (provider wrapped in main.tsx)
+  const { announce } = useAnnouncer();
+
+  // Refs to track previous realtime state so we can detect server-originated changes
+  const bookingPrevIdsRef = React.useRef<Set<string>>(new Set());
+  const bookingPrevStatusRef = React.useRef<Record<string, BookingRequest['status']>>({});
+  const schedulePrevIdsRef = React.useRef<Set<string>>(new Set());
+  const schedulePrevStatusRef = React.useRef<Record<string, Schedule['status']>>({});
+  const notifPrevIdsRef = React.useRef<Set<string>>(new Set());
+  const notifUnsubRef = React.useRef<(() => void) | null>(null);
+  const recentlyAnnouncedBookingReqIdsRef = React.useRef<Set<string>>(new Set());
+  // Notification UI state (lifted here so NotificationCenter/Bell are pure consumers)
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const notificationsRef = React.useRef<any[]>([]);
+  const [isNotifLoading, setIsNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // All hooks must be at the top level - move memoized data here
   const facultySchedules = useMemo(() => {
@@ -246,12 +310,92 @@ export default function App() {
         
         onBookingRequestsUpdate: (requests) => {
           logger.log('📋 Real-time update: Booking Requests', requests.length);
+
+          try {
+            // Detect newly arrived pending requests (server-originated)
+            const prevIds = bookingPrevIdsRef.current ?? new Set<string>();
+            const prevStatus = bookingPrevStatusRef.current ?? {};
+            const newOnes = requests.filter(r => !prevIds.has(r.id) && r.status === 'pending');
+
+            if (newOnes.length > 0 && user?.role === 'admin') {
+              // Announce up to 3 to avoid flooding
+              newOnes.slice(0, 3).forEach((req) => {
+                try {
+                  const msg = `New reservation request from ${req.facultyName} for ${req.classroomName} on ${new Date(req.date).toLocaleDateString()} at ${req.startTime}`;
+                  announce?.(msg, 'polite');
+                  // Track briefly so notification-created messages for the same booking don't duplicate
+                  try { recentlyAnnouncedBookingReqIdsRef.current.add(req.id); } catch (e) {}
+                  setTimeout(() => { try { recentlyAnnouncedBookingReqIdsRef.current.delete(req.id); } catch (e) {} }, 3000);
+                } catch (e) { /* swallow */ }
+              });
+            }
+
+            // Detect status changes (approved/rejected/cancelled)
+            requests.forEach((r) => {
+              const old = prevStatus[r.id];
+              if (old && old !== r.status) {
+                // Notify the affected faculty member when their request status changes
+                try {
+                  if (currentUser && currentUser.id === r.facultyId) {
+                    const mode = (r.status === 'approved' || r.status === 'rejected') ? 'assertive' : 'polite';
+                    const verb = r.status === 'approved' ? 'approved' : r.status === 'rejected' ? 'rejected' : r.status;
+                    const msg = `Your reservation request for ${r.classroomName} on ${new Date(r.date).toLocaleDateString()} at ${r.startTime} was ${verb}.`;
+                    announce?.(msg, mode as 'polite' | 'assertive');
+                  }
+                } catch (e) {}
+              }
+            });
+
+            // Update tracking refs for next comparison
+            bookingPrevIdsRef.current = new Set(requests.map(r => r.id));
+            const statusMap: Record<string, BookingRequest['status']> = {};
+            requests.forEach(r => { statusMap[r.id] = r.status; });
+            bookingPrevStatusRef.current = statusMap;
+          } catch (e) {
+            logger.warn('Announcement diffing failed for booking requests', e);
+          }
+
           setBookingRequests(requests);
           setLoadingMessage('Loading...');
         },
         
         onSchedulesUpdate: (schedules) => {
           logger.log('📅 Real-time update: Schedules', schedules.length);
+
+          try {
+            const prevIds = schedulePrevIdsRef.current ?? new Set<string>();
+            const prevStatus = schedulePrevStatusRef.current ?? {};
+
+            // Detect cancellations or status changes
+            schedules.forEach((s) => {
+              const old = prevStatus[s.id];
+              if (old && old !== s.status) {
+                try {
+                  if (s.status === 'cancelled') {
+                    // If current user is the faculty affected, announce assertively
+                    if (currentUser && currentUser.id === s.facultyId) {
+                      const msg = `Reservation cancelled for ${s.facultyName} in ${s.classroomName} on ${new Date(s.date).toLocaleDateString()} at ${s.startTime}`;
+                      announce?.(msg, 'assertive');
+                    }
+                  } else if (s.status === 'confirmed') {
+                    // New confirmed schedule - announce politely to affected faculty
+                    if (currentUser && currentUser.id === s.facultyId) {
+                      const msg = `Reservation confirmed for ${s.facultyName} in ${s.classroomName} on ${new Date(s.date).toLocaleDateString()} at ${s.startTime}`;
+                      announce?.(msg, 'polite');
+                    }
+                  }
+                } catch (e) {}
+              }
+            });
+
+            schedulePrevIdsRef.current = new Set(schedules.map(s => s.id));
+            const sMap: Record<string, Schedule['status']> = {};
+            schedules.forEach(s => { sMap[s.id] = s.status; });
+            schedulePrevStatusRef.current = sMap;
+          } catch (e) {
+            logger.warn('Announcement diffing failed for schedules', e);
+          }
+
           setSchedules(schedules);
           setLoadingMessage('Loading...');
         },
@@ -309,6 +453,62 @@ export default function App() {
       if (shouldLogSetup) {
         logger.log('✅ Real-time listeners setup complete');
         try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) {}
+      }
+      // Set up central notifications listener (UI components handle rendering)
+      try {
+        // Clean up previous listener if any
+        if (notifUnsubRef.current) {
+          try { notifUnsubRef.current(); } catch (e) {}
+          notifUnsubRef.current = null;
+        }
+
+        // Subscribe to notifications for this user and announce centrally
+        setIsNotifLoading(true);
+        setNotifError(null);
+        notifUnsubRef.current = notificationService.setupNotificationsListener(
+          (items) => {
+            try {
+              if (!user) return;
+              // Update UI state
+              setNotifications(items);
+              try { notificationsRef.current = items; } catch (e) {}
+              setUnreadCount(items.filter((i) => !i.acknowledgedAt).length);
+
+              // Items are ordered by createdAt desc already
+              const prev = notifPrevIdsRef.current ?? new Set<string>();
+              const newOnes = items.filter(i => !prev.has(i.id));
+              if (newOnes.length > 0) {
+                // Announce only the most recent one to avoid flooding
+                const newest = newOnes[0];
+                try {
+                  const assertiveTypes = new Set(['cancelled','classroom_disabled','faculty_cancelled'] as const);
+                  const mode = assertiveTypes.has(newest.type as any) ? 'assertive' : 'polite';
+                  // Skip announcing notification if we recently announced the same booking request
+                  if (newest.bookingRequestId && recentlyAnnouncedBookingReqIdsRef.current.has(newest.bookingRequestId)) {
+                    // skip to avoid duplicate announcement
+                  } else {
+                    announce?.(`New notification: ${newest.message}`, mode as 'polite' | 'assertive');
+                  }
+                } catch (e) {}
+              }
+              // update prev ids
+              notifPrevIdsRef.current = new Set(items.map(i => i.id));
+            } catch (e) {
+              logger.warn('Central notification listener error', e);
+              setNotifError(String(e));
+            } finally {
+              setIsNotifLoading(false);
+            }
+          },
+          (err) => {
+            logger.error('Central notifications listener error', err);
+            setNotifError(String(err));
+            setIsNotifLoading(false);
+          },
+          user.id
+        );
+      } catch (e) {
+        logger.warn('Could not setup central notifications listener', e);
       }
       } catch (err) {
       logger.error('❌ Failed to setup real-time listeners:', err);
@@ -1926,7 +2126,20 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <AnnouncerProvider>
+      <NotificationProvider value={{
+        notifications,
+        unreadCount,
+        isNotificationCenterOpen,
+        // preferred public name
+        isLoading: isNotifLoading,
+        // keep old name for backward compatibility
+        isNotifLoading,
+        error: notifError,
+        onAcknowledge,
+        onAcknowledgeAll,
+        onToggleCenter,
+        onMarkAllAsRead
+      }}>
           {/* Network status indicator */}
           <NetworkStatusIndicator />
           
@@ -2001,7 +2214,7 @@ export default function App() {
 
           <Analytics />
           </div>
-      </AnnouncerProvider>
+      </NotificationProvider>
     </ErrorBoundary>
   );
 }
