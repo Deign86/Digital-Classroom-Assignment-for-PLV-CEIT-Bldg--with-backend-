@@ -1,10 +1,11 @@
 import { renderHook } from '@testing-library/react';
-import { useNotificationContext, NotificationProvider } from '../../contexts/NotificationContext';
+import { useNotificationContext, NotificationProvider } from '../../../contexts/NotificationContext';
 
 describe('useNotificationContext', () => {
   it('throws when used outside provider', () => {
-    const { result } = renderHook(() => useNotificationContext());
-    expect(result.error).toBeDefined();
+    expect(() => renderHook(() => useNotificationContext())).toThrow(
+      'useNotificationContext must be used within NotificationContext.Provider'
+    );
   });
 
   it('returns value when inside provider', () => {

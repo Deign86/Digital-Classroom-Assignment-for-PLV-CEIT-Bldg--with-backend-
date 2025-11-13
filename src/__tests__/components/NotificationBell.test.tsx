@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import NotificationBell from '../../components/NotificationBell';
-import { NotificationProvider } from '../../contexts/NotificationContext';
+import NotificationBell from '../../../components/NotificationBell';
+import { NotificationProvider } from '../../../contexts/NotificationContext';
 
 describe('NotificationBell', () => {
   it('renders with zero unread when context has none', async () => {
