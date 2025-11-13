@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '../lib/logger';
-import { notificationService, type Notification } from '../lib/notificationService';
+import type { Notification } from '../lib/notificationService';
+import { useNotificationContext } from '../contexts/NotificationContext';
 import { Bell, CheckCircle, XCircle, UserPlus, Warning } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
 
@@ -76,23 +77,13 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
 };
 
 export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll }) => {
-  const [items, setItems] = useState<Notification[]>([]);
+  // This component is now a pure consumer of NotificationContext.
+  // All real-time listeners and announcement logic are centralized in App.tsx.
+  const ctx = useNotificationContext();
+  const items = ctx.notifications ?? [];
   const [ackPending, setAckPending] = useState<Record<string, boolean>>({});
   const [globalAcking, setGlobalAcking] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    const unsub = notificationService.setupNotificationsListener((list) => {
-      // The service normalizes timestamps; ensure we filter and sort reliably
-      const filtered = list
-        .filter((i) => i.userId === userId)
-        .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
-      setItems(filtered);
-    }, (err) => logger.error('NotificationCenter listener error', err), userId);
-
-    return () => unsub?.();
-  }, [userId]);
 
   // close on Escape or when the user scrolls (avoid pointerdown outside checks to keep
   // inner buttons reliably clickable — we intentionally do not close on pointerdown)
@@ -117,15 +108,14 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
     setAckPending((s) => ({ ...s, [id]: true }));
     setGlobalAcking(true);
     try {
-      // Make server call; server will emit updated doc via listener
-      await notificationService.acknowledgeNotification(id, userId);
+      await ctx.onAcknowledge(id);
     } catch (err) {
       logger.error('Acknowledge error', err);
     } finally {
       setAckPending((s) => ({ ...s, [id]: false }));
       setGlobalAcking(false);
     }
-  }, [userId]);
+  }, [ctx]);
 
   const isAnyAcking = globalAcking || Object.values(ackPending).some(Boolean);
 
@@ -144,35 +134,23 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
           <h3 className="text-lg font-semibold">Notifications</h3>
           <span className="text-sm text-gray-500">{items.length} total</span>
         </div>
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={async (e) => {
               e.stopPropagation();
-              // acknowledge all unread notifications optimistically
               const unread = items.filter(i => !i.acknowledgedAt).map(i => i.id);
               if (!unread.length) {
                 onClose?.();
                 return;
               }
-              // optimistically mark as acknowledging
-              const prev = items;
-              setItems(prev.map(it => unread.includes(it.id) ? { ...it, acknowledgedAt: new Date().toISOString() } : it));
               setGlobalAcking(true);
               try {
-                // prefer batch acknowledge if supported by service
-                if (typeof notificationService.acknowledgeNotifications === 'function') {
-                  const newUnread = await notificationService.acknowledgeNotifications(unread, userId);
-                  // notify parent about new unread count so the bell can update immediately
-                  onAcknowledgeAll?.(typeof newUnread === 'number' ? newUnread : null);
-                } else {
-                  await Promise.all(unread.map(id => notificationService.acknowledgeNotification(id, userId)));
-                  // parent can refresh via listener; we don't know the final unread count here
-                  onAcknowledgeAll?.(0);
-                }
+                const newUnread = await ctx.onAcknowledgeAll();
+                // notify parent about new unread count so the bell can update immediately
+                onAcknowledgeAll?.(typeof newUnread === 'number' ? newUnread : null);
               } catch (err) {
                 logger.error('Failed to acknowledge all notifications', err);
-                // revert the optimistic update by re-triggering listener (listener will correct state)
               } finally {
                 setGlobalAcking(false);
               }
