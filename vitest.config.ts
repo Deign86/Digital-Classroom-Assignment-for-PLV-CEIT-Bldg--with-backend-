@@ -27,7 +27,8 @@ export default defineConfig({
         'pages/**/*.{ts,tsx}',
         'src/**/*.{ts,tsx}'
       ],
-      exclude: ['node_modules/', '**/*.test.{ts,tsx}', '**/__tests__/**'],
+      // Exclude coverage directory from coverage reports
+      exclude: ['node_modules/', '**/*.test.{ts,tsx}', '**/__tests__/**', 'coverage/**'],
       // Thresholds
       statements: 60,
       branches: 50,

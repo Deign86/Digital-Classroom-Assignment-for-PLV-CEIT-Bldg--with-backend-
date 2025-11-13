@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { beforeAll, afterEach, afterAll } from 'vitest';
 
 // Polyfill matchMedia for components that use it
 if (typeof (globalThis as any).matchMedia === 'undefined') {
