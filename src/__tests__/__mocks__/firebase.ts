@@ -69,7 +69,9 @@ export const createMockQuerySnapshot = <T = DocumentData>(
     docs: mockDocs,
     empty: docs.length === 0,
     size: docs.length,
-    forEach: vi.fn((callback) => mockDocs.forEach(callback)),
+    forEach: vi.fn((callback: (doc: DocumentSnapshot<T>) => void) => {
+      mockDocs.forEach(callback);
+    }),
     docChanges: vi.fn(() => []),
     metadata: {} as any,
     query: {} as any,

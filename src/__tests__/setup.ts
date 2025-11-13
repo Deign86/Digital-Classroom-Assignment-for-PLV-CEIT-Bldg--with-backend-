@@ -15,6 +15,13 @@ if (typeof (globalThis as any).matchMedia === 'undefined') {
   });
 }
 
+// Polyfill for Radix UI pointer capture (jsdom doesn't support it)
+if (typeof Element !== 'undefined' && !Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = function() { return false; };
+  Element.prototype.setPointerCapture = function() {};
+  Element.prototype.releasePointerCapture = function() {};
+}
+
 // Optional MSW setup: if MSW is installed, wire up the test server.
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -24,9 +31,15 @@ try {
 
   const server = setupServer(...(handlers || []));
 
-  beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
-  afterEach(() => server.resetHandlers());
-  afterAll(() => server.close());
+  beforeAll(() => {
+    server.listen({ onUnhandledRequest: 'warn' });
+  });
+  afterEach(() => {
+    server.resetHandlers();
+  });
+  afterAll(() => {
+    server.close();
+  });
 } catch (e) {
   // msw not installed — tests will run without network mocking.
 }
