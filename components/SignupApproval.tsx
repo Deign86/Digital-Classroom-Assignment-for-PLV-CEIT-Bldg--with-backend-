@@ -485,8 +485,8 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       {pendingRequests.length > 0 ? (
         <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-4">
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
               <input
                 type="checkbox"
                 aria-label="Select all signups"
@@ -497,18 +497,18 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                   setSelectedIds(map);
                 }}
                 checked={pendingRequests.length > 0 && pendingRequests.every(r => selectedIds[r.id])}
-                className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                className="h-4 w-4 text-indigo-600 rounded border-gray-300 flex-shrink-0"
               />
-              <h3 className="text-lg font-semibold">Pending Faculty Signup Requests</h3>
+              <h3 className="text-sm sm:text-lg font-semibold break-words min-w-0">Pending Faculty Signup Requests</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-orange-600 border-orange-200">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <Badge variant="outline" className="text-orange-600 border-orange-200 text-[10px] sm:text-xs self-start sm:self-center">
                 {pendingRequests.length} pending
               </Badge>
-              <Button onClick={() => openBulkDialog(true)} disabled={selectedCount === 0 || isProcessingBulk}>
+              <Button onClick={() => openBulkDialog(true)} disabled={selectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
                 {isProcessingBulk ? 'Processing…' : `Approve Selected (${selectedCount})`}
               </Button>
-              <Button variant="destructive" onClick={() => openBulkDialog(false)} disabled={selectedCount === 0 || isProcessingBulk}>
+              <Button variant="destructive" onClick={() => openBulkDialog(false)} disabled={selectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
                 {isProcessingBulk ? 'Processing…' : `Reject Selected (${selectedCount})`}
               </Button>
             </div>
@@ -526,36 +526,38 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
             {pendingRequests.map((request) => (
               <Card key={request.id} className="border-l-4 border-l-orange-500">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" aria-label={`Select signup ${request.id}`} checked={!!selectedIds[request.id]} onChange={(e) => toggleSelect(request.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300" />
-                      <User className="h-5 w-5 text-gray-600" />
-                      <CardTitle className="text-lg">{request.name}</CardTitle>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center space-x-2 min-w-0 flex-1">
+                      <input type="checkbox" aria-label={`Select signup ${request.id}`} checked={!!selectedIds[request.id]} onChange={(e) => toggleSelect(request.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300 flex-shrink-0" />
+                      <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 flex-shrink-0" />
+                      <CardTitle className="text-sm sm:text-lg break-words min-w-0">{request.name}</CardTitle>
                     </div>
-                    {getStatusBadge(request.status)}
+                    <div className="self-start sm:self-center">
+                      {getStatusBadge(request.status)}
+                    </div>
                   </div>
                   <CardDescription className="space-y-1 mt-2">
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <Mail className="h-4 w-4" />
-                      <span>{request.email}</span>
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                      <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="break-words min-w-0">{request.email}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <Building className="h-4 w-4" />
-                      <span>{request.department}</span>
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                      <Building className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="break-words min-w-0">{request.department}</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      <Calendar className="h-4 w-4" />
-                      <span>Requested: {formatDate(request.requestDate)}</span>
+                    <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="break-words min-w-0">Requested: {formatDate(request.requestDate)}</span>
                     </div>
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-                    The faculty member has already created credentials. Approving this request will activate the account; rejecting it keeps the account inactive.
+                <CardContent className="space-y-3 sm:space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-4 text-[10px] sm:text-sm text-blue-800">
+                    <span className="break-words">The faculty member has already created credentials. Approving this request will activate the account; rejecting it keeps the account inactive.</span>
                   </div>
 
-                  <div className="space-y-4 mt-6">
-                    <Label htmlFor={`feedback-${request.id}`} className="mb-2 block">Admin Feedback (optional)</Label>
+                  <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                    <Label htmlFor={`feedback-${request.id}`} className="mb-2 block text-xs sm:text-sm">Admin Feedback (optional)</Label>
                     <Textarea
                       id={`feedback-${request.id}`}
                       placeholder="Add comments or notes for this request..."
@@ -567,45 +569,46 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                       }}
                       rows={3}
                       maxLength={500}
+                      className="text-xs sm:text-sm"
                     />
                     <div className="flex items-center justify-end mt-2">
-                      <p className="text-xs text-gray-500">{(feedback[request.id] ?? '').length}/500</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500">{(feedback[request.id] ?? '').length}/500</p>
                     </div>
-                    {feedbackErrors[request.id] && <p className="text-sm text-destructive mt-1">{feedbackErrors[request.id]}</p>}
-                    <p className="text-xs text-gray-500 mt-1">Feedback is required when rejecting a request and optional when approving.</p>
+                    {feedbackErrors[request.id] && <p className="text-xs sm:text-sm text-destructive mt-1">{feedbackErrors[request.id]}</p>}
+                    <p className="text-[10px] sm:text-xs text-gray-500 mt-1 break-words">Feedback is required when rejecting a request and optional when approving.</p>
                   </div>
 
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       onClick={() => openConfirmDialog(request.id, true)}
-                      className="flex-1"
+                      className="flex-1 w-full text-xs sm:text-sm"
                       disabled={processingIds.has(request.id)}
                       aria-busy={processingIds.has(request.id)}
                     >
                       {processingIds.has(request.id) ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Approving…
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin flex-shrink-0" /> <span className="break-words">Approving…</span>
                         </>
                       ) : (
                         <>
-                          <CheckCircle className="h-4 w-4 mr-2" /> Approve
+                          <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" /> <span className="break-words">Approve</span>
                         </>
                       )}
                     </Button>
                     <Button
                       onClick={() => openConfirmDialog(request.id, false)}
                       variant="destructive"
-                      className="flex-1"
+                      className="flex-1 w-full text-xs sm:text-sm"
                       disabled={processingIds.has(request.id)}
                       aria-busy={processingIds.has(request.id)}
                     >
                       {processingIds.has(request.id) ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Rejecting…
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin flex-shrink-0" /> <span className="break-words">Rejecting…</span>
                         </>
                       ) : (
                         <>
-                          <XCircle className="h-4 w-4 mr-2" /> Reject
+                          <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" /> <span className="break-words">Reject</span>
                         </>
                       )}
                     </Button>
@@ -646,19 +649,19 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                   maxScrollHeight="100%"
                   ariaLabel={`Selected signup requests to ${bulkActionApprove ? 'approve' : 'reject'}`}
                   renderItem={(signup: SignupRequest) => (
-                    <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
+                    <div className="p-2 sm:p-3 border rounded-lg bg-white text-xs hover:bg-gray-50 transition-colors">
                       <div className="space-y-1">
-                        <p className="font-medium text-gray-900">{signup.name}</p>
-                        <p className="text-gray-600 text-xs flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {signup.email}
+                        <p className="font-medium text-gray-900 text-xs sm:text-sm break-words">{signup.name}</p>
+                        <p className="text-gray-600 text-[10px] sm:text-xs flex items-center gap-1">
+                          <Mail className="h-3 w-3 flex-shrink-0" />
+                          <span className="break-words min-w-0">{signup.email}</span>
                         </p>
-                        <p className="text-gray-600 text-xs flex items-center gap-1">
-                          <Building className="h-3 w-3" />
-                          {signup.department}
+                        <p className="text-gray-600 text-[10px] sm:text-xs flex items-center gap-1">
+                          <Building className="h-3 w-3 flex-shrink-0" />
+                          <span className="break-words min-w-0">{signup.department}</span>
                         </p>
-                        <p className="text-gray-500 text-xs flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
+                        <p className="text-gray-500 text-[10px] sm:text-xs flex items-center gap-1">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
                           {new Date(signup.requestDate).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -761,12 +764,12 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] p-6">
+        <DialogContent className="sm:max-w-[700px] p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-sm sm:text-base break-words">
               {confirmAction.approved ? 'Approve Faculty Account' : 'Reject Faculty Account'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm break-words">
               {confirmAction.approved 
                 ? `Are you sure you want to approve the faculty account for ${confirmAction.request?.name || 'this user'}? This will activate their account and grant them access to the system.`
                 : `Are you sure you want to reject the faculty account request for ${confirmAction.request?.name || 'this user'}? This will keep their account inactive.`
@@ -775,32 +778,32 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
           </DialogHeader>
           
           {confirmAction.request && (
-            <div className="space-y-3 py-4">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-                <div className="flex items-center space-x-2 text-sm">
-                  <User className="h-4 w-4 text-gray-600" />
-                  <span className="font-medium">{confirmAction.request.name}</span>
+            <div className="space-y-2 sm:space-y-3 py-3 sm:py-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 sm:p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-xs sm:text-sm">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />
+                  <span className="font-medium break-words min-w-0">{confirmAction.request.name}</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Mail className="h-4 w-4" />
-                  <span>{confirmAction.request.email}</span>
+                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                  <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="break-words min-w-0">{confirmAction.request.email}</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Building className="h-4 w-4" />
-                  <span>{confirmAction.request.department}</span>
+                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
+                  <Building className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="break-words min-w-0">{confirmAction.request.department}</span>
                 </div>
               </div>
               
               {confirmFeedback && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm font-medium text-blue-900 mb-1">Admin Feedback:</p>
-                  <p className="text-sm text-blue-800">{confirmFeedback}</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+                  <p className="text-xs sm:text-sm font-medium text-blue-900 mb-1">Admin Feedback:</p>
+                  <p className="text-xs sm:text-sm text-blue-800 break-words">{confirmFeedback}</p>
                 </div>
               )}
             </div>
           )}
           
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -809,6 +812,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 setConfirmFeedback('');
               }}
               disabled={confirmProcessing}
+              className="w-full sm:w-auto text-xs sm:text-sm"
             >
               Cancel
             </Button>
@@ -816,19 +820,20 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
               variant={confirmAction.approved ? 'default' : 'destructive'}
               onClick={handleConfirmDialogConfirm}
               disabled={confirmProcessing}
+              className="w-full sm:w-auto text-xs sm:text-sm"
             >
               {confirmProcessing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2 animate-spin flex-shrink-0" />
+                  <span className="break-words">Processing...</span>
                 </>
               ) : confirmAction.approved ? (
                 <>
-                  <CheckCircle className="h-4 w-4 mr-2" /> Confirm Approval
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" /> <span className="break-words">Confirm Approval</span>
                 </>
               ) : (
                 <>
-                  <XCircle className="h-4 w-4 mr-2" /> Confirm Rejection
+                  <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2 flex-shrink-0" /> <span className="break-words">Confirm Rejection</span>
                 </>
               )}
             </Button>
