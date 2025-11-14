@@ -885,6 +885,9 @@ export default function App() {
   const handleIdleTimeout = useCallback(async () => {
     logger.log('🕒 Session expired due to inactivity');
     
+    // Dismiss any active warning toasts
+    toast.dismiss();
+    
     try {
       await authService.signOutDueToIdleTimeout();
       
