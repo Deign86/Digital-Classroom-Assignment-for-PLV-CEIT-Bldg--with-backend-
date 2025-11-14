@@ -3,8 +3,9 @@ import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
-import BulkProgressDialog from './BulkProgressDialog';
+import BulkOperationLoader from './BulkOperationLoader';
 import { useAnnouncer } from './Announcer';
+import ScrollableBulkList from './ui/ScrollableBulkList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from './ui/dialog';
@@ -486,60 +487,66 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                     {/* Bulk Cancel Dialog */}
                     <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { if (isCancelling) return; setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Cancel selected reservations</DialogTitle>
-                        </DialogHeader>
-                          <DialogDescription className="text-sm text-muted-foreground">
-                            Please provide a reason for cancelling your approved reservation(s). This will be sent to the administrators.
+                      <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
+                        <DialogHeader className="flex-shrink-0 space-y-0.5 sm:space-y-1.5">
+                          <DialogTitle className="text-xs sm:text-lg leading-tight">Cancel selected</DialogTitle>
+                          <DialogDescription className="text-[10px] sm:text-sm text-muted-foreground leading-tight">
+                            Provide reason (sent to admins)
                           </DialogDescription>
+                        </DialogHeader>
 
-                        <div className="mt-4">
-                          {/* Summary of selected reservations for admin confirmation */}
+                        <div className="flex-shrink-0 max-h-[30vh] sm:max-h-[40vh] overflow-y-auto">
+                          {/* Scrollable list of selected reservations */}
                           {Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]).length > 0 && (
-                            <div className="mb-3 border rounded-md p-3 bg-muted/30">
-                              <div className="text-sm font-medium mb-2">Selected reservations</div>
-                              <ul className="text-sm list-none space-y-1">
-                                {bookingRequests.filter(r => Object.keys(approvedSelectedIds).includes(r.id) && approvedSelectedIds[r.id]).map(r => (
-                                  <li key={r.id} className="text-sm">
-                                    <div className="font-medium">{new Date(r.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                                    <div className="text-muted-foreground">{formatTimeRange(convertTo12Hour(r.startTime), convertTo12Hour(r.endTime))} · {r.classroomName}</div>
-                                  </li>
-                                ))}
-                              </ul>
+                            <div className="space-y-1.5 pr-1">
+                              {bookingRequests.filter(r => approvedSelectedIds[r.id]).map((reservation, index) => (
+                                <div key={reservation.id} className="p-1.5 sm:p-2.5 border rounded bg-gray-50 text-[10px] sm:text-sm">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0 space-y-0.5">
+                                      <p className="font-medium text-gray-900 truncate">
+                                        {new Date(reservation.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {reservation.classroomName}
+                                      </p>
+                                      <p className="text-gray-600 text-[9px] sm:text-xs">
+                                        {formatTimeRange(convertTo12Hour(reservation.startTime), convertTo12Hour(reservation.endTime))}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           )}
+                        </div>
 
-                          <Label className="block">Reason (required)</Label>
-                          <div className="mt-2">
-                            <Textarea
-                              value={bulkCancelReason}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v.length <= 500) {
-                                  setBulkCancelReason(v);
-                                  setBulkReasonError(null);
-                                }
-                              }}
-                              maxLength={500}
-                              rows={4}
-                              autoFocus
-                              placeholder="Explain why you need to cancel your reservation(s)"
-                              aria-label="Cancellation reason"
-                              aria-invalid={!!bulkReasonError}
-                              className="mt-0"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
-                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span role="alert" className="text-sm text-destructive flex items-center gap-1.5">{bulkReasonError}</span> : null}</div>
-                            <div className="text-sm text-muted-foreground">{bulkCancelReason.length}/500</div>
+                        <div className="flex-1 flex flex-col min-h-0 space-y-1.5">
+                          <Label className="flex-shrink-0 text-[10px] sm:text-sm font-medium">Reason *</Label>
+                          <Textarea
+                            value={bulkCancelReason}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v.length <= 500) {
+                                setBulkCancelReason(v);
+                                setBulkReasonError(null);
+                              }
+                            }}
+                            maxLength={500}
+                            rows={2}
+                            autoFocus
+                            placeholder="Why cancel?"
+                            aria-label="Cancellation reason"
+                            aria-invalid={!!bulkReasonError}
+                            className="text-[10px] sm:text-sm flex-1 resize-none"
+                          />
+                          <div className="flex-shrink-0 flex items-center justify-between text-[9px] sm:text-xs text-muted-foreground">
+                            <div className="flex-1 min-w-0 pr-2">{bulkReasonError ? <span role="alert" className="text-destructive block text-[9px] sm:text-xs">{bulkReasonError}</span> : <span></span>}</div>
+                            <div className="whitespace-nowrap">{bulkCancelReason.length}/500</div>
                           </div>
                         </div>
 
-                        <DialogFooter className="mt-4">
-                          <div className="flex gap-2">
-                            <Button variant="secondary" onClick={() => { setShowBulkCancelDialog(false); setBulkCancelReason(''); setBulkReasonError(null); }}>Cancel</Button>
+                        <DialogFooter className="flex-shrink-0">
+                          <div className="flex flex-col-reverse sm:flex-row gap-1.5 sm:gap-2 w-full">
+                            <Button className="w-full sm:w-auto" variant="secondary" onClick={() => { setShowBulkCancelDialog(false); setBulkCancelReason(''); setBulkReasonError(null); }}>Cancel</Button>
                             <Button
+                              className="w-full sm:w-auto"
                               variant="destructive"
                               onClick={async () => {
                                 const ids = Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]);
@@ -642,14 +649,20 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                       </DialogContent>
                     </Dialog>
                     {/* Bulk Progress Dialog for cancellable, long-running operations */}
-                    <BulkProgressDialog
+                    <BulkOperationLoader
                       open={showBulkProgress}
-                      onOpenChange={(open) => setShowBulkProgress(open)}
+                      onOpenChange={setShowBulkProgress}
                       items={lastCancelIdsRef.current ? lastCancelIdsRef.current.map(id => ({ id, label: bookingRequests.find(r => r.id === id)?.classroomName ?? id })) : []}
                       processed={bulkRunner.processed}
                       total={bulkRunner.total}
                       results={bulkRunner.results}
                       running={bulkRunner.running}
+                      title="Bulk Booking Cancellation"
+                      operationType="Cancelling"
+                      successMessage="{count} booking(s) cancelled successfully"
+                      failureMessage="{count} booking(s) failed to cancel"
+                      showErrorDetails={true}
+                      preventCloseWhileRunning={true}
                       onCancel={() => {
                         bulkRunner.cancel();
                         toast('Bulk cancel cancelled.');

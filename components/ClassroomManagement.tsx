@@ -20,9 +20,10 @@ import type { Classroom, BookingRequest, Schedule } from '../App';
 import { getIconForEquipment } from '../lib/equipmentIcons';
 import { sanitizeText } from '../utils/inputValidation';
 import { getAuth } from 'firebase/auth';
-import BulkProgressDialog from './BulkProgressDialog';
+import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useRef } from 'react';
+import ScrollableBulkList from './ui/ScrollableBulkList';
 
 interface ClassroomManagementProps {
   classrooms: Classroom[];
@@ -195,11 +196,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
   // Validate room name
   const validateRoomName = (name: string): string | undefined => {
-    const sanitized = sanitizeText(name, LIMITS.ROOM_NAME);
-    if (!sanitized.trim()) {
+    const trimmed = name.trim();
+    if (!trimmed) {
       return 'Room name is required';
     }
-    if (sanitized.length > LIMITS.ROOM_NAME) {
+    if (name.length > LIMITS.ROOM_NAME) {
       return `Room name must be ${LIMITS.ROOM_NAME} characters or less`;
     }
     return undefined;
@@ -243,11 +244,14 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       return;
     }
     
+    // Sanitize name for submission (trim and collapse multiple spaces)
+    const sanitizedName = sanitizeText(formData.name, LIMITS.ROOM_NAME);
+    
     const result = await executeWithNetworkHandling(
       async () => {
         if (editingClassroom) {
           await classroomService.update(editingClassroom.id, {
-            name: formData.name,
+            name: sanitizedName,
             capacity: parseInt(formData.capacity),
             equipment: formData.equipment,
             building: formData.building,
@@ -256,7 +260,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           });
         } else {
           await classroomService.create({
-            name: formData.name,
+            name: sanitizedName,
             capacity: parseInt(formData.capacity),
             equipment: formData.equipment,
             building: formData.building,
@@ -990,9 +994,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       placeholder="e.g., CEIT-101"
                       value={formData.name}
                       onChange={(e) => {
-                        const sanitized = sanitizeText(e.target.value, LIMITS.ROOM_NAME);
-                        setFormData(prev => ({ ...prev, name: sanitized }));
-                        setValidationErrors(prev => ({ ...prev, name: validateRoomName(sanitized) }));
+                        // Allow spaces during typing - only enforce length limit
+                        const value = e.target.value.slice(0, LIMITS.ROOM_NAME);
+                        setFormData(prev => ({ ...prev, name: value }));
+                        setValidationErrors(prev => ({ ...prev, name: validateRoomName(value) }));
                       }}
                       onBlur={() => setValidationErrors(prev => ({ ...prev, name: validateRoomName(formData.name) }))}
                       maxLength={LIMITS.ROOM_NAME}
@@ -1178,12 +1183,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
           {selectedCount > 0 && (
             <ProcessingFieldset isProcessing={isProcessingBulk} className="mb-4">
-              <div className="flex items-center justify-between">
-                <div className="text-sm">Selected: {selectedCount}</div>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="text-sm font-medium">Selected: {selectedCount}</div>
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected}>
+                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected} className="w-full md:w-auto text-xs md:text-sm">
                         Enable Selected ({selectedCount})
                       </Button>
                     </TooltipTrigger>
@@ -1196,7 +1201,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected}>
+                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected} className="w-full md:w-auto text-xs md:text-sm">
                         Disable Selected ({selectedCount})
                       </Button>
                     </TooltipTrigger>
@@ -1207,10 +1212,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     )}
                   </Tooltip>
 
-                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk}>
+                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
                     Delete Selected ({selectedCount})
                   </Button>
-                  <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk}>Clear</Button>
+                  <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">Clear</Button>
                 </div>
               </div>
             </ProcessingFieldset>
@@ -1341,7 +1346,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       </Card>
         {/* Bulk Action Dialog */}
       <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] p-6">
+        <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
           <DialogHeader>
             <DialogTitle>{bulkActionType === 'delete' ? 'Delete Selected Classrooms' : bulkActionType === 'disable' ? 'Disable Selected Classrooms' : 'Enable Selected Classrooms'}</DialogTitle>
             <DialogDescription>
@@ -1410,7 +1415,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Delete Warning Dialog (shown when classroom has pending/approved reservations) */}
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
-    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-6">
+    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -1429,12 +1434,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     <Calendar className="h-4 w-4" />
                     Pending/Approved Booking Requests ({affectedBookingsForDelete.length})
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {affectedBookingsForDelete.map((booking) => (
-                      <div 
-                        key={booking.id} 
-                        className="p-3 border rounded-lg bg-gray-50 text-sm"
-                      >
+                  <ScrollableBulkList
+                    items={affectedBookingsForDelete}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    renderItem={(booking) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-xs">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{booking.facultyName}</p>
@@ -1450,15 +1455,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               <Clock className="h-3 w-3" />
                               {booking.startTime} - {booking.endTime}
                             </p>
-                            <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                            <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
                           </div>
                           <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
                             {booking.status}
                           </Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1469,12 +1474,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     <Calendar className="h-4 w-4" />
                     Confirmed Schedules ({affectedSchedulesForDelete.length})
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {affectedSchedulesForDelete.map((schedule) => (
-                      <div 
-                        key={schedule.id} 
-                        className="p-3 border rounded-lg bg-gray-50 text-sm"
-                      >
+                  <ScrollableBulkList
+                    items={affectedSchedulesForDelete}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    renderItem={(schedule) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-xs">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{schedule.facultyName}</p>
@@ -1490,15 +1495,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               <Clock className="h-3 w-3" />
                               {schedule.startTime} - {schedule.endTime}
                             </p>
-                            <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                            <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
                           </div>
                           <Badge variant="default">
                             {schedule.status}
                           </Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1571,7 +1576,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Bulk Warning Dialog for selected classrooms */}
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-6">
+          <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[700px] gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -1585,46 +1590,54 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             <div className="space-y-4 py-4">
               {bulkWarningAffectedBookings.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
                     <Calendar className="h-4 w-4" />
                     Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {bulkWarningAffectedBookings.map((booking) => (
-                      <div key={booking.id} className="p-3 border rounded-lg bg-gray-50 text-sm">
+                  <ScrollableBulkList
+                    items={bulkWarningAffectedBookings}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    ariaLabel="Affected booking requests"
+                    renderItem={(booking: BookingRequest) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{booking.facultyName}</p>
-                            <p className="text-gray-600">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                            <p className="text-gray-600 flex items-center gap-1"><Clock className="h-3 w-3" />{booking.startTime} - {booking.endTime}</p>
-                            <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                            <p className="text-gray-600 text-xs">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{booking.startTime} - {booking.endTime}</p>
+                            <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
                           </div>
                           <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>{booking.status}</Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
               {bulkWarningAffectedSchedules.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-sm flex items-center gap-2"><Calendar className="h-4 w-4" />Confirmed Schedules ({bulkWarningAffectedSchedules.length})</h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {bulkWarningAffectedSchedules.map((schedule) => (
-                      <div key={schedule.id} className="p-3 border rounded-lg bg-gray-50 text-sm">
+                  <h4 className="font-semibold text-sm flex items-center gap-2 mb-2"><Calendar className="h-4 w-4" />Confirmed Schedules ({bulkWarningAffectedSchedules.length})</h4>
+                  <ScrollableBulkList
+                    items={bulkWarningAffectedSchedules}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    ariaLabel="Affected schedules"
+                    renderItem={(schedule: Schedule) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{schedule.facultyName}</p>
-                            <p className="text-gray-600">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                            <p className="text-gray-600 flex items-center gap-1"><Clock className="h-3 w-3" />{schedule.startTime} - {schedule.endTime}</p>
-                            <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                            <p className="text-gray-600 text-xs">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{schedule.startTime} - {schedule.endTime}</p>
+                            <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
                           </div>
                           <Badge variant="default">{schedule.status}</Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1657,11 +1670,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
-  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
-              <AlertTriangle className="h-5 w-5" />
-              Warning: Active Reservations Found
+  <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-amber-600 text-xs sm:text-base">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
+              Warning: Active Reservations
             </DialogTitle>
             <DialogDescription>
               This classroom has <b>{affectedBookings.length + affectedSchedules.length}</b> active or upcoming reservation(s). 
@@ -1677,16 +1690,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   <Calendar className="h-4 w-4" />
                   Pending/Approved Booking Requests ({affectedBookings.length})
                 </h4>
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {affectedBookings.map((booking) => (
-                    <div 
-                      key={booking.id} 
-                      className="p-3 border rounded-lg bg-gray-50 text-sm"
-                    >
+                <ScrollableBulkList
+                  items={affectedBookings}
+                  visibleCount={5}
+                  maxScrollHeight="16rem"
+                  ariaLabel="Affected booking requests for single classroom"
+                  renderItem={(booking: BookingRequest) => (
+                    <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
                           <p className="font-medium">{booking.facultyName}</p>
-                          <p className="text-gray-600">
+                          <p className="text-gray-600 text-xs">
                             {new Date(booking.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               year: 'numeric', 
@@ -1694,19 +1708,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               day: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 flex items-center gap-1">
+                          <p className="text-gray-600 flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3" />
                             {booking.startTime} - {booking.endTime}
                           </p>
-                          <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                          <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
                         </div>
                         <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
                           {booking.status}
                         </Badge>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               </div>
             )}
 
@@ -1717,16 +1731,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   <Calendar className="h-4 w-4" />
                   Confirmed Schedules ({affectedSchedules.length})
                 </h4>
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {affectedSchedules.map((schedule) => (
-                    <div 
-                      key={schedule.id} 
-                      className="p-3 border rounded-lg bg-gray-50 text-sm"
-                    >
+                <ScrollableBulkList
+                  items={affectedSchedules}
+                  visibleCount={5}
+                  maxScrollHeight="16rem"
+                  ariaLabel="Affected schedules for single classroom"
+                  renderItem={(schedule: Schedule) => (
+                    <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
                           <p className="font-medium">{schedule.facultyName}</p>
-                          <p className="text-gray-600">
+                          <p className="text-gray-600 text-xs">
                             {new Date(schedule.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               year: 'numeric', 
@@ -1734,19 +1749,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               day: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 flex items-center gap-1">
+                          <p className="text-gray-600 flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3" />
                             {schedule.startTime} - {schedule.endTime}
                           </p>
-                          <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                          <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
                         </div>
                         <Badge variant="default">
                           {schedule.status}
                         </Badge>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               </div>
             )}
 
@@ -1817,14 +1832,20 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         </DialogContent>
       </Dialog>
       {/* Bulk progress dialog for long-running delete operations */}
-      <BulkProgressDialog
+      <BulkOperationLoader
         open={showBulkProgress}
-        onOpenChange={(open) => setShowBulkProgress(open)}
+        onOpenChange={setShowBulkProgress}
         items={lastDeleteItems}
         processed={bulkRunner.processed}
         total={bulkRunner.total}
         results={bulkRunner.results}
         running={bulkRunner.running}
+        title="Bulk Classroom Deletion"
+        operationType="Deleting"
+        successMessage="{count} classroom(s) deleted successfully"
+        failureMessage="{count} classroom(s) failed to delete"
+        showErrorDetails={true}
+        preventCloseWhileRunning={true}
         onCancel={() => {
           bulkRunner.cancel();
           toast('Bulk delete cancelled.');
