@@ -238,7 +238,7 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                         <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone. The faculty member will need to submit a new request if they need this classroom again.</AlertDialogDescription>
                       </AlertDialogHeader>
 
-                      <div className="space-y-4 mt-6">
+                      <div className="space-y-4">
                         <Label className="mb-2 block">Reason (required)</Label>
                         <Textarea
                           id={`schedule-cancel-reason-${schedule.id}`}
@@ -362,7 +362,7 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                     <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
                                     <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
                                   </AlertDialogHeader>
-                                  <div className="space-y-4 px-6 mt-6">
+                                  <div className="space-y-4 px-6">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
                                     <textarea
                                       id={`schedule-week-cancel-reason-${schedule.id}`}
