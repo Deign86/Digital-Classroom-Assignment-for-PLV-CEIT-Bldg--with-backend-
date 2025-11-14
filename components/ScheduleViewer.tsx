@@ -362,7 +362,7 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                     <AlertDialogTitle>Cancel Classroom Reservation</AlertDialogTitle>
                                     <AlertDialogDescription>Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
                                   </AlertDialogHeader>
-                                  <div className="space-y-4 px-6">
+                                  <div className="space-y-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Reason (required)</label>
                                     <textarea
                                       id={`schedule-week-cancel-reason-${schedule.id}`}
