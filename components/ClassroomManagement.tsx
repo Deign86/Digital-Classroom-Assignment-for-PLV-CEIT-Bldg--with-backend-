@@ -1418,11 +1418,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
     <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
             <DialogHeader>
-              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm sm:text-base sm:flex-row sm:items-center">
-                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
+                <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
                 <span className="break-words">Warning: Active Reservations Found</span>
               </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm break-words">
+              <DialogDescription className="text-xs md:text-sm break-words">
                 The classroom <b>{classroomToDeleteWarning?.name}</b> has <b>{affectedBookingsForDelete.length + affectedSchedulesForDelete.length}</b> active or upcoming reservation(s). Deleting it will affect the following reservations. You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
@@ -1431,8 +1431,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               {/* Affected Bookings */}
               {affectedBookingsForDelete.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-2">
+                    <Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="break-words">Pending/Approved Booking Requests ({affectedBookingsForDelete.length})</span>
                   </h4>
                   <ScrollableBulkList
@@ -1471,8 +1471,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               {/* Affected Schedules */}
               {affectedSchedulesForDelete.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-2">
+                    <Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="break-words">Confirmed Schedules ({affectedSchedulesForDelete.length})</span>
                   </h4>
                   <ScrollableBulkList
@@ -1580,11 +1580,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
           <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
             <DialogHeader>
-              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm sm:text-base sm:flex-row sm:items-center">
-                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
+                <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
                 <span className="break-words">Warning: Affected Reservations Found</span>
               </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm break-words">
+              <DialogDescription className="text-xs md:text-sm break-words">
                 The selected classrooms have <b>{bulkWarningAffectedBookings.length + bulkWarningAffectedSchedules.length}</b> active or upcoming reservation(s). You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
@@ -1592,8 +1592,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             <div className="space-y-4 py-4">
               {bulkWarningAffectedBookings.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 mb-2 sm:flex-row sm:items-center sm:gap-2">
-                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 mb-2 md:flex-row md:items-center md:gap-2">
+                    <Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                     <span className="break-words">Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})</span>
                   </h4>
                   <ScrollableBulkList
@@ -1620,7 +1620,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
               {bulkWarningAffectedSchedules.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 mb-2 sm:flex-row sm:items-center sm:gap-2"><Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" /><span className="break-words">Confirmed Schedules ({bulkWarningAffectedSchedules.length})</span></h4>
+                  <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 mb-2 md:flex-row md:items-center md:gap-2"><Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" /><span className="break-words">Confirmed Schedules ({bulkWarningAffectedSchedules.length})</span></h4>
                   <ScrollableBulkList
                     items={bulkWarningAffectedSchedules}
                     visibleCount={5}
@@ -1674,11 +1674,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
   <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm sm:text-base sm:flex-row sm:items-center">
-              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+            <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
+              <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
               <span className="break-words">Warning: Active Reservations</span>
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm break-words">
+            <DialogDescription className="text-xs md:text-sm break-words">
               This classroom has <b>{affectedBookings.length + affectedSchedules.length}</b> active or upcoming reservation(s). 
               Disabling it will affect the following:
             </DialogDescription>
@@ -1688,8 +1688,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             {/* Affected Bookings */}
             {affectedBookings.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-2">
+                  <Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                   <span className="break-words">Pending/Approved Booking Requests ({affectedBookings.length})</span>
                 </h4>
                 <ScrollableBulkList
@@ -1729,8 +1729,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             {/* Affected Schedules */}
             {affectedSchedules.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-2">
+                  <Calendar className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                   <span className="break-words">Confirmed Schedules ({affectedSchedules.length})</span>
                 </h4>
                 <ScrollableBulkList
