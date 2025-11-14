@@ -974,21 +974,21 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   Add Classroom
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] p-6">
+              <DialogContent className="max-h-[95vh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[425px] gap-2 sm:gap-4">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-sm sm:text-lg">
                     {editingClassroom ? 'Edit Classroom' : 'Add New Classroom'}
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-xs sm:text-sm">
                     {editingClassroom 
                       ? 'Update the classroom information below.' 
                       : 'Enter the details for the new classroom.'
                     }
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Room Name *</Label>
+                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="name" className="text-xs sm:text-sm">Room Name *</Label>
                     <Input
                       id="name"
                       placeholder="e.g., CEIT-101"
@@ -1001,23 +1001,23 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       }}
                       onBlur={() => setValidationErrors(prev => ({ ...prev, name: validateRoomName(formData.name) }))}
                       maxLength={LIMITS.ROOM_NAME}
-                      className={validationErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                      className={`text-xs sm:text-sm ${validationErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                     {validationErrors.name && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
+                      <p className="text-[10px] sm:text-sm text-red-500 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
                         {validationErrors.name}
                       </p>
                     )}
-                    <p className="text-xs text-gray-500">
+                    <p className="text-[10px] sm:text-xs text-gray-500">
                       {formData.name.length}/{LIMITS.ROOM_NAME} characters
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="capacity">Capacity *</Label>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label htmlFor="capacity" className="text-xs sm:text-sm">Capacity *</Label>
                       <Input
                         id="capacity"
                         type="number"
@@ -1030,23 +1030,23 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           setValidationErrors(prev => ({ ...prev, capacity: validateCapacity(e.target.value) }));
                         }}
                         onBlur={() => setValidationErrors(prev => ({ ...prev, capacity: validateCapacity(formData.capacity) }))}
-                        className={validationErrors.capacity ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                        className={`text-xs sm:text-sm ${validationErrors.capacity ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                         required
                       />
                       {validationErrors.capacity && (
-                        <p className="text-sm text-red-500 flex items-center gap-1">
+                        <p className="text-[10px] sm:text-sm text-red-500 flex items-center gap-1">
                           <AlertCircle className="h-3 w-3" />
                           {validationErrors.capacity}
                         </p>
                       )}
-                      <p className="text-xs text-gray-500">
+                      <p className="text-[10px] sm:text-xs text-gray-500">
                         Range: {LIMITS.CAPACITY_MIN}-{LIMITS.CAPACITY_MAX}
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="floor">Floor *</Label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label htmlFor="floor" className="text-xs sm:text-sm">Floor *</Label>
                       <Select value={formData.floor} onValueChange={(value: string) => setFormData(prev => ({ ...prev, floor: value }))}>
-                        <SelectTrigger>
+                        <SelectTrigger className="text-xs sm:text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1061,10 +1061,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="equipment">Equipment</Label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="equipment" className="text-xs sm:text-sm">Equipment</Label>
                     <Select value="" onValueChange={toggleEquipment}>
-                      <SelectTrigger id="equipment">
+                      <SelectTrigger id="equipment" className="text-xs sm:text-sm">
                         <SelectValue placeholder="Select equipment to add..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -1085,12 +1085,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     
                     {/* Selected Equipment Tags */}
                     {formData.equipment.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md bg-gray-50">
+                      <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 sm:mt-2 p-1.5 sm:p-2 border rounded-md bg-gray-50">
                         {formData.equipment.map((eq) => (
                           <Badge 
                             key={eq} 
                             variant="secondary" 
-                            className="text-xs flex items-center space-x-1 pr-1"
+                            className="text-[10px] sm:text-xs flex items-center space-x-1 pr-1"
                           >
                             {getIconForEquipment(eq)}
                             <span>{eq}</span>
@@ -1113,11 +1113,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       checked={formData.isAvailable}
                       onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, isAvailable: checked }))}
                     />
-                    <Label htmlFor="available">Available for booking</Label>
+                    <Label htmlFor="available" className="text-xs sm:text-sm">Available for booking</Label>
                   </div>
 
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button type="button" variant="outline" onClick={closeDialog}>
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 sm:pt-4">
+                    <Button type="button" variant="outline" onClick={closeDialog} className="w-full sm:w-auto text-xs sm:text-sm">
                       Cancel
                     </Button>
                     <Button 
@@ -1128,6 +1128,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         !!validationErrors.name || 
                         !!validationErrors.capacity
                       }
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       {editingClassroom ? 'Update Classroom' : 'Add Classroom'}
                     </Button>
