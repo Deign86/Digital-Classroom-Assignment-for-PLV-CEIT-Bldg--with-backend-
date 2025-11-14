@@ -487,9 +487,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
   <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-    <DialogContent className="sm:max-w-[700px] p-6">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
+    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[700px] gap-2 sm:gap-4">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="text-xs sm:text-xl flex items-center gap-2">
               {actionType === 'approve' ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-600" />
@@ -502,7 +502,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 </>
               )}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-[10px] sm:text-sm">
               {actionType === 'approve' 
                 ? 'You are about to approve this classroom reservation request. The faculty member will be notified.'
                 : 'You are about to reject this classroom reservation request. Please provide a clear reason for the faculty member.'}
@@ -543,10 +543,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               const selectedReservations = requests.filter(r => currentIds[r.id]);
               
               return (
+                <div className="flex-shrink-0 max-h-[30vh] sm:max-h-[40vh] overflow-y-auto">
                 <ScrollableBulkList
                   items={selectedReservations}
                   visibleCount={5}
-                  maxScrollHeight="20rem"
+                  maxScrollHeight="100%"
                   ariaLabel={`Selected reservations to ${actionType === 'approve' ? 'approve' : activeTab === 'approved' ? 'cancel' : 'reject'}`}
                   renderItem={(reservation: BookingRequest) => (
                     <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
@@ -574,18 +575,19 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     </div>
                   )}
                 />
+                </div>
               );
             })()}
             
-            <div className="space-y-4 mt-6">
-              <Label htmlFor="feedback" className="mb-2 block">
+            <div className="flex-1 flex flex-col min-h-0 space-y-2">
+              <Label htmlFor="feedback" className="flex-shrink-0 text-[10px] sm:text-sm">
                 {actionType === 'approve' ? 'Feedback (Optional)' : activeTab === 'approved' ? 'Cancellation Reason (Required)' : 'Rejection Reason (Required)'}
               </Label>
               <Textarea
                 id="feedback"
                 placeholder={actionType === 'approve' 
-                  ? 'Enter any additional feedback for the faculty member...'
-                  : 'Enter a clear reason for this decision...'}
+                  ? 'Feedback (optional)'
+                  : 'Reason for decision'}
                 value={feedback}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -596,8 +598,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     setFeedbackError('Reason must be 500 characters or less.');
                   }
                 }}
-                className="min-h-[100px]"
+                className="text-[10px] sm:text-sm flex-1 resize-none min-h-[60px]"
                 maxLength={500}
+                rows={2}
               />
               <div className="flex items-center justify-end mt-2">
                 <p className="text-xs text-gray-500">{feedback.length}/500</p>
@@ -606,8 +609,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </div>
             </ProcessingFieldset>
           </div>
-            <div className="flex gap-3 justify-end mt-6">
+            <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2 justify-end">
             <Button
+              className="w-full sm:w-auto"
               variant="outline"
               onClick={() => {
                 if (isProcessingBulk) return;
@@ -620,6 +624,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               Cancel
             </Button>
             <Button
+              className="w-full sm:w-auto"
               onClick={handleConfirm}
               disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
               variant={actionType === 'reject' ? 'destructive' : 'default'}

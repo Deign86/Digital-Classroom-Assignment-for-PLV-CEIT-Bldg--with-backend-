@@ -1346,7 +1346,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       </Card>
         {/* Bulk Action Dialog */}
       <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] p-6">
+        <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
           <DialogHeader>
             <DialogTitle>{bulkActionType === 'delete' ? 'Delete Selected Classrooms' : bulkActionType === 'disable' ? 'Disable Selected Classrooms' : 'Enable Selected Classrooms'}</DialogTitle>
             <DialogDescription>
@@ -1415,7 +1415,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Delete Warning Dialog (shown when classroom has pending/approved reservations) */}
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
-    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-6">
+    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -1576,7 +1576,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Bulk Warning Dialog for selected classrooms */}
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-6">
+          <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[700px] gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
@@ -1670,11 +1670,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
-  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
-              <AlertTriangle className="h-5 w-5" />
-              Warning: Active Reservations Found
+  <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-amber-600 text-xs sm:text-base">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
+              Warning: Active Reservations
             </DialogTitle>
             <DialogDescription>
               This classroom has <b>{affectedBookings.length + affectedSchedules.length}</b> active or upcoming reservation(s). 

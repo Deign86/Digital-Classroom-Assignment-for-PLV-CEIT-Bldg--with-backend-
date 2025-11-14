@@ -628,22 +628,22 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       {/* Bulk action dialog for collect admin feedback when rejecting */}
       <Dialog open={isBulkDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setBulkDialogOpen(v); }}>
         {isBulkDialogOpen && (
-          <DialogContent className="sm:max-w-[700px] p-6">
-            <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-3">
-              <DialogHeader>
-                <DialogTitle>{bulkActionApprove ? 'Approve Selected Requests' : 'Reject Selected Requests'}</DialogTitle>
-                <DialogDescription>
+          <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[700px] gap-2 sm:gap-4">
+            <ProcessingFieldset isProcessing={isProcessingBulk} className="flex flex-col flex-1 min-h-0">
+              <DialogHeader className="flex-shrink-0">
+                <DialogTitle className="text-xs sm:text-lg">{bulkActionApprove ? 'Approve Selected' : 'Reject Selected'}</DialogTitle>
+                <DialogDescription className="text-[10px] sm:text-sm">
                   {bulkActionApprove
                     ? 'Optionally add admin feedback to apply to all selected approvals.'
                     : 'Provide a reason for rejecting the selected requests. This feedback will be sent to the users.'}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 mb-6">
+              <div className="flex-shrink-0 max-h-[30vh] sm:max-h-[40vh] overflow-y-auto">
                 <ScrollableBulkList
                   items={(signupRequests || []).filter(req => selectedIds[req.id])}
                   visibleCount={5}
-                  maxScrollHeight="16rem"
+                  maxScrollHeight="100%"
                   ariaLabel={`Selected signup requests to ${bulkActionApprove ? 'approve' : 'reject'}`}
                   renderItem={(signup: SignupRequest) => (
                     <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
@@ -671,21 +671,21 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 />
               </div>
 
-              <div className="space-y-4 mt-6">
-                <Label htmlFor="bulk-feedback" className="block mb-2">
-                  Admin Feedback {bulkActionApprove ? '(optional)' : '(required)'}
+              <div className="flex-1 flex flex-col min-h-0 space-y-2">
+                <Label htmlFor="bulk-feedback" className="flex-shrink-0 text-[10px] sm:text-sm">
+                  Feedback {bulkActionApprove ? '(optional)' : '*'}
                 </Label>
                 <Textarea
                   id="bulk-feedback"
-                  rows={6}
+                  rows={2}
                   value={bulkFeedback}
                   onChange={(e) => {
                     const v = e.target.value;
                     setBulkFeedback(v);
                     setBulkFeedbackError(v.length > 500 ? 'Feedback must be 500 characters or less.' : null);
                   }}
-                  placeholder={bulkActionApprove ? 'Optional comments for approved requests...' : 'Reason(s) for rejection...'}
-                  className="min-h-[120px] p-3"
+                  placeholder={bulkActionApprove ? 'Optional comments' : 'Reason for rejection'}
+                  className="text-[10px] sm:text-sm flex-1 resize-none min-h-[60px]"
                   maxLength={500}
                 />
                 {/* Keep a compact live character counter (per request) */}
@@ -695,9 +695,9 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 {bulkFeedbackError && <p className="text-sm text-destructive mt-1">{bulkFeedbackError}</p>}
               </div>
 
-              <DialogFooter className="flex justify-end gap-2 mt-6">
-                <Button variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
-                <Button onClick={confirmBulkAction} className="ml-2" disabled={!canConfirmBulk}>
+              <DialogFooter className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2">
+                <Button className="w-full sm:w-auto" variant="secondary" onClick={() => { if (isProcessingBulk) return; setBulkDialogOpen(false); }} disabled={isProcessingBulk}>Cancel</Button>
+                <Button className="w-full sm:w-auto" onClick={confirmBulkAction} disabled={!canConfirmBulk}>
                   {isProcessingBulk ? 'Processing…' : (bulkActionApprove ? 'Approve Selected' : 'Reject Selected')}
                 </Button>
               </DialogFooter>
