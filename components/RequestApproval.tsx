@@ -314,7 +314,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </Card>
             ) : (
               <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-4">
-                <div className="space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -331,8 +331,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     <span className="text-sm">Select all ({pendingRequests.length})</span>
                   </div>
 
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
+                  <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2">
+                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full xs:w-auto text-xs xs:text-sm">
                       {isProcessingBulk ? (
                         <span className="inline-flex items-center">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -342,7 +342,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                         `Approve Selected (${selectedCount})`
                       )}
                     </Button>
-                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
+                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full xs:w-auto text-xs xs:text-sm">
                       {isProcessingBulk ? (
                         <span className="inline-flex items-center">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -388,7 +388,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </Card>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -405,8 +405,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     <span className="text-sm">Select all ({approvedRequests.length})</span>
                   </div>
 
-                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
+                  <div className="flex items-center gap-2">
+                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk}>
                       {isProcessingBulk ? 'Processing…' : `Cancel Selected (${approvedSelectedCount})`}
                     </Button>
                   </div>
@@ -487,7 +487,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
   <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] sm:max-w-[700px] gap-2 sm:gap-4">
+    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-2 xs:p-3 sm:p-6 w-[calc(100vw-16px)] xs:w-[calc(100vw-32px)] sm:w-auto sm:max-w-[700px] gap-2 sm:gap-4">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="text-xs sm:text-xl flex items-center gap-2">
               {actionType === 'approve' ? (
@@ -512,9 +512,9 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             <ProcessingFieldset isProcessing={isProcessingBulk}>
             {/* Show request details if single request */}
             {selectedRequest && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-900">Request Details</span>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 xs:p-3 sm:p-4 space-y-1.5 xs:space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs xs:text-sm font-medium text-gray-900">Request Details</span>
                   <span className="text-xs text-gray-500">
                     {new Date(selectedRequest.date).toLocaleDateString('en-US', { 
                       weekday: 'short', 
@@ -524,14 +524,14 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     })}
                   </span>
                 </div>
-                <div className="text-sm text-gray-700 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
+                <div className="text-xs xs:text-sm text-gray-700 space-y-0.5 xs:space-y-1">
+                  <div className="flex items-center gap-1.5 xs:gap-2">
+                    <Clock className="h-3 w-3 xs:h-4 xs:w-4 text-gray-500 flex-shrink-0" />
                     <span>{convertTo12Hour(selectedRequest.startTime)} - {convertTo12Hour(selectedRequest.endTime)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Purpose:</span>
-                    <span>{selectedRequest.purpose}</span>
+                  <div className="flex flex-col xs:flex-row xs:items-center gap-0.5 xs:gap-2">
+                    <span className="font-medium text-xs xs:text-sm">Purpose:</span>
+                    <span className="text-xs xs:text-sm break-words">{selectedRequest.purpose}</span>
                   </div>
                 </div>
               </div>
@@ -550,12 +550,12 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                   maxScrollHeight="100%"
                   ariaLabel={`Selected reservations to ${actionType === 'approve' ? 'approve' : activeTab === 'approved' ? 'cancel' : 'reject'}`}
                   renderItem={(reservation: BookingRequest) => (
-                    <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <p className="font-medium text-gray-900">{reservation.facultyName}</p>
-                          <p className="text-gray-700">{reservation.classroomName}</p>
-                          <p className="text-gray-600 text-xs">
+                    <div className="p-2 xs:p-3 border rounded-lg bg-white text-xs xs:text-sm hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-1.5 xs:gap-2">
+                        <div className="space-y-0.5 xs:space-y-1 flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-xs xs:text-sm">{reservation.facultyName}</p>
+                          <p className="text-gray-700 text-xs xs:text-sm">{reservation.classroomName}</p>
+                          <p className="text-gray-600 text-[10px] xs:text-xs leading-tight">
                             {new Date(reservation.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               month: 'short', 
@@ -563,11 +563,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                               year: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 text-xs flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
+                          <p className="text-gray-600 text-[10px] xs:text-xs flex items-center gap-1">
+                            <Clock className="h-3 w-3 flex-shrink-0" />
                             {convertTo12Hour(reservation.startTime)} - {convertTo12Hour(reservation.endTime)}
                           </p>
-                          <p className="text-gray-500 text-xs truncate" title={reservation.purpose}>
+                          <p className="text-gray-500 text-[10px] xs:text-xs line-clamp-2 xs:truncate break-words" title={reservation.purpose}>
                             {reservation.purpose}
                           </p>
                         </div>
@@ -609,7 +609,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </div>
             </ProcessingFieldset>
           </div>
-            <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+            <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2 justify-end">
             <Button
               className="w-full sm:w-auto"
               variant="outline"

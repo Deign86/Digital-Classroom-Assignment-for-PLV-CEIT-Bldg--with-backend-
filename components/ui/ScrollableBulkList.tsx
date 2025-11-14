@@ -64,9 +64,9 @@ export default function ScrollableBulkList<T = any>({
   }
 
   return (
-    <div className={cn('space-y-2', className)} role="list" aria-label={ariaLabel}>
+    <div className={cn('space-y-1.5 xs:space-y-2', className)} role="list" aria-label={ariaLabel}>
       {/* Always visible items (first 5 or less) */}
-      <div className={cn('space-y-2', visibleClassName)}>
+      <div className={cn('space-y-1.5 xs:space-y-2', visibleClassName)}>
         {visibleItems.map((item, index) => (
           <div key={index} role="listitem">
             {renderItem(item, index)}
@@ -76,9 +76,9 @@ export default function ScrollableBulkList<T = any>({
 
       {/* Scrollable items (6+) */}
       {hasScrollableItems && (
-        <div className="space-y-2">
+        <div className="space-y-1.5 xs:space-y-2">
           {/* Divider with item count */}
-          <div className="flex items-center gap-3 py-2">
+          <div className="flex items-center gap-2 xs:gap-3 py-1.5 xs:py-2">
             <div className="flex-1 border-t border-gray-300" />
             <span className="text-xs font-medium text-gray-500 px-2">
               {scrollableItems.length} more item{scrollableItems.length !== 1 ? 's' : ''}
@@ -89,7 +89,7 @@ export default function ScrollableBulkList<T = any>({
           {/* Scrollable container */}
           <div
             className={cn(
-              'space-y-2 overflow-y-auto rounded-md border border-gray-200 bg-gray-50/50 p-2',
+              'space-y-1.5 xs:space-y-2 overflow-y-auto rounded-md border border-gray-200 bg-gray-50/50 p-1.5 xs:p-2',
               'scroll-smooth scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100',
               scrollableClassName
             )}
@@ -106,14 +106,14 @@ export default function ScrollableBulkList<T = any>({
           </div>
 
           {/* Scroll hint for users */}
-          <p className="text-xs text-center text-muted-foreground italic">
+          <p className="text-[10px] xs:text-xs text-center text-muted-foreground italic">
             ↕ Scroll to see all items
           </p>
         </div>
       )}
 
       {/* Total count */}
-      <div className="flex items-center gap-3 py-2">
+      <div className="flex items-center gap-2 xs:gap-3 py-1.5 xs:py-2">
         <div className="flex-1 border-t border-gray-300" />
         <p className="text-sm font-medium text-gray-700 px-2">
           Total: {items.length} item{items.length !== 1 ? 's' : ''}

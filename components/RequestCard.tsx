@@ -90,11 +90,11 @@ export default function RequestCard({
 
   return (
     <Card className={`border-l-4 ${borderColor} transition-shadow hover:shadow-md`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
+      <CardHeader className="pb-2 xs:pb-3 px-3 xs:px-6 pt-3 xs:pt-6">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2 xs:gap-3 flex-1 min-w-0">
             {showSelect && (
-              <div className="mt-1">
+              <div className="mt-0.5 xs:mt-1 flex-shrink-0">
                 <input
                   type="checkbox"
                   aria-label={`Select request ${request.id}`}
@@ -105,21 +105,21 @@ export default function RequestCard({
                 />
               </div>
             )}
-            <div className="space-y-1">
-              <CardTitle className="text-lg">{request.facultyName}</CardTitle>
-              <CardDescription className="text-sm">Request ID: {request.id.slice(0, 8)}</CardDescription>
+            <div className="space-y-0.5 xs:space-y-1 flex-1 min-w-0">
+              <CardTitle className="text-sm xs:text-base sm:text-lg leading-tight break-words">{request.facultyName}</CardTitle>
+              <CardDescription className="text-xs xs:text-sm truncate">Request ID: {request.id.slice(0, 8)}</CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {isExpired ? (
-              <Badge variant="destructive">Expired</Badge>
+              <Badge variant="destructive" className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-0.5">Expired</Badge>
             ) : (
               <Badge variant={
                 status === 'pending' ? 'secondary' :
                 status === 'approved' ? 'default' :
                 status === 'rejected' ? 'destructive' :
                 'secondary'
-              }>
+              } className="text-[10px] xs:text-xs px-1.5 xs:px-2 py-0.5">
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Badge>
             )}
@@ -127,23 +127,23 @@ export default function RequestCard({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2.5 xs:space-y-3 sm:space-y-4 px-3 xs:px-6 pb-3 xs:pb-6">
         {hasConflict && status === 'pending' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-red-900">Scheduling Conflict</p>
-              <p className="text-xs text-red-700 mt-1">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-2 xs:p-3 flex items-start gap-1.5 xs:gap-2">
+            <AlertTriangle className="h-4 w-4 xs:h-5 xs:w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs xs:text-sm font-semibold text-red-900 leading-tight">Scheduling Conflict</p>
+              <p className="text-[10px] xs:text-xs text-red-700 mt-0.5 xs:mt-1 leading-tight">
                 This time slot conflicts with an existing reservation.
               </p>
             </div>
           </div>
         )}
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 text-sm">
-            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="font-medium text-gray-900">
+        <div className="space-y-2 xs:space-y-2.5 sm:space-y-3">
+          <div className="flex items-center gap-2 xs:gap-3 text-xs xs:text-sm">
+            <Calendar className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-500 flex-shrink-0" />
+            <span className="font-medium text-gray-900 leading-tight break-words">
               {new Date(request.date).toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
@@ -153,36 +153,36 @@ export default function RequestCard({
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-sm">
-            <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700">
+          <div className="flex items-center gap-2 xs:gap-3 text-xs xs:text-sm">
+            <Clock className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-500 flex-shrink-0" />
+            <span className="text-gray-700 leading-tight">
               {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-sm">
-            <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />
-            <span className="text-gray-700">{request.classroomName}</span>
+          <div className="flex items-center gap-2 xs:gap-3 text-xs xs:text-sm">
+            <MapPin className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-500 flex-shrink-0" />
+            <span className="text-gray-700 leading-tight break-words">{request.classroomName}</span>
           </div>
 
-          <div className="flex items-start gap-3 text-sm">
-            <User className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-medium text-gray-900">Purpose:</p>
-              <p className="text-gray-700 mt-1">{request.purpose}</p>
+          <div className="flex items-start gap-2 xs:gap-3 text-xs xs:text-sm">
+            <User className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 leading-tight">Purpose:</p>
+              <p className="text-gray-700 mt-0.5 xs:mt-1 leading-tight break-words">{request.purpose}</p>
             </div>
           </div>
         </div>
 
         {request.adminFeedback && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-xs font-semibold text-gray-900 mb-1">Admin Feedback:</p>
-            <p className="text-sm text-gray-700">{request.adminFeedback}</p>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 xs:p-3">
+            <p className="text-[10px] xs:text-xs font-semibold text-gray-900 mb-0.5 xs:mb-1 leading-tight">Admin Feedback:</p>
+            <p className="text-xs xs:text-sm text-gray-700 leading-tight break-words">{request.adminFeedback}</p>
           </div>
         )}
 
         {status === 'pending' && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 border-t">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 xs:pt-3 border-t">
             {!isExpired ? (
               // If there's a conflict, show a tooltip explaining why Approve is disabled
               hasConflict ? (
@@ -198,9 +198,9 @@ export default function RequestCard({
                           disabled={true || !!disabled}
                           aria-disabled={true}
                           aria-label="Approve (disabled due to scheduling conflict)"
-                          className="w-full text-xs sm:text-sm"
+                          className="w-full text-[11px] xs:text-xs sm:text-sm h-8 xs:h-9 sm:h-10"
                         >
-                          <CheckCircle className="h-4 w-4 mr-2" />
+                          <CheckCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
                           Approve
                         </Button>
                       </div>
@@ -215,17 +215,17 @@ export default function RequestCard({
                     onApprove?.();
                   }}
                   disabled={!!disabled}
-                  className="flex-1 w-full text-xs sm:text-sm"
+                  className="flex-1 w-full text-[11px] xs:text-xs sm:text-sm h-8 xs:h-9 sm:h-10"
                   aria-label="Approve request"
                 >
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <CheckCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
                   Approve
                 </Button>
               )
             ) : (
               // When expired: remove actionable buttons entirely and provide accessible status info
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Expired ΓÇö cannot be approved or rejected.</p>
+                <p className="text-xs xs:text-sm text-muted-foreground leading-tight">Expired — cannot be approved or rejected.</p>
                 <span className="sr-only" role="status" aria-live="polite">This request has expired and cannot be approved or rejected.</span>
               </div>
             )}
@@ -237,11 +237,11 @@ export default function RequestCard({
                   onReject?.();
                 }}
                 variant="destructive"
-                className="flex-1 w-full text-xs sm:text-sm"
+                className="flex-1 w-full text-[11px] xs:text-xs sm:text-sm h-8 xs:h-9 sm:h-10"
                 aria-label="Reject request"
                 disabled={!!disabled}
               >
-                <XCircle className="h-4 w-4 mr-2" />
+                <XCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
                 Reject
               </Button>
             ) : (
@@ -252,17 +252,17 @@ export default function RequestCard({
         )}
 
         {status === 'approved' && onCancelApproved && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 border-t">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 xs:pt-3 border-t">
             {/* If booking has already started or is expired, disable cancel in UI to match backend behavior */}
             {!isLapsedBooking ? (
               <AlertDialog open={isDialogOpen} onOpenChange={(v) => { if (isCancelling) return; setIsDialogOpen(v); }}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full text-[11px] xs:text-xs sm:text-sm h-8 xs:h-9 sm:h-10"
                     disabled={!!disabled}
                   >
-                    <XCircle className="h-4 w-4 mr-2" />
+                    <XCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
                     Cancel Reservation
                   </Button>
                 </AlertDialogTrigger>
