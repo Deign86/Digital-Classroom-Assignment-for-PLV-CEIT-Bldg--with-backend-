@@ -51,7 +51,7 @@ export default function SessionTimeoutWarning({
 
   return (
     <AlertDialog open={isOpen}>
-      <AlertDialogContent className="sm:max-w-md">
+      <AlertDialogContent className="sm:max-w-md w-[calc(100vw-32px)] sm:w-auto">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-amber-500" />

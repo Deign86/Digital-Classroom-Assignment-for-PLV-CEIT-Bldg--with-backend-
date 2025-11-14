@@ -23,7 +23,7 @@ export default function BulkProgressDialog<T extends { id: string; label?: strin
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-6">
+      <DialogContent className="sm:max-w-2xl p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-auto">
         <DialogHeader>
           <DialogTitle>Bulk Operation Progress</DialogTitle>
           <DialogDescription>

@@ -314,7 +314,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </Card>
             ) : (
               <ProcessingFieldset isProcessing={isProcessingBulk} className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -331,8 +331,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     <span className="text-sm">Select all ({pendingRequests.length})</span>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
                       {isProcessingBulk ? (
                         <span className="inline-flex items-center">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -342,7 +342,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                         `Approve Selected (${selectedCount})`
                       )}
                     </Button>
-                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
+                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
                       {isProcessingBulk ? (
                         <span className="inline-flex items-center">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -388,7 +388,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </Card>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="space-y-3 md:space-y-0 md:flex md:items-center md:justify-between">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -405,8 +405,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     <span className="text-sm">Select all ({approvedRequests.length})</span>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
                       {isProcessingBulk ? 'Processing…' : `Cancel Selected (${approvedSelectedCount})`}
                     </Button>
                   </div>
@@ -487,7 +487,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
   <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[700px] gap-2 sm:gap-4">
+    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] sm:max-w-[700px] gap-2 sm:gap-4">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="text-xs sm:text-xl flex items-center gap-2">
               {actionType === 'approve' ? (
@@ -609,7 +609,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             </div>
             </ProcessingFieldset>
           </div>
-            <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2 justify-end">
+            <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
             <Button
               className="w-full sm:w-auto"
               variant="outline"

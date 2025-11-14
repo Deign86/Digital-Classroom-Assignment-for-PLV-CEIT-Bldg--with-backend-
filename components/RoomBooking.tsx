@@ -1004,7 +1004,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
       
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-32px)] sm:w-auto">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-blue-600" />

@@ -974,7 +974,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   Add Classroom
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[95vh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[425px] gap-2 sm:gap-4">
+              <DialogContent className="max-h-[95vh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] sm:max-w-[425px] gap-2 sm:gap-4">
                 <DialogHeader>
                   <DialogTitle className="text-sm sm:text-lg">
                     {editingClassroom ? 'Edit Classroom' : 'Add New Classroom'}
@@ -1141,44 +1141,46 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Advanced filters + bulk action toolbar */}
         <div className="px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="flex flex-col gap-3 mb-4">
             <Input
               placeholder="Search by room name or building..."
               value={filters.query}
               onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
             />
-            <Input
-              placeholder="Min capacity"
-              type="number"
-              value={filters.minCapacity}
-              onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
-            />
-            <Select value={filters.floor} onValueChange={(v: string) => setFilters(prev => ({ ...prev, floor: v }))}>
-              <SelectTrigger>
-                  <SelectValue>
-                    {filters.floor === '__all__' ? 'Filter by floor' : (
-                      filters.floor === '1' ? '1st Floor' :
-                      filters.floor === '2' ? '2nd Floor' :
-                      filters.floor === '3' ? '3rd Floor' :
-                      filters.floor === '4' ? '4th Floor' :
-                      filters.floor === '5' ? '5th Floor' :
-                      filters.floor === '6' ? '6th Floor' : filters.floor
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Floors</SelectItem>
-                <SelectItem value="1">1st Floor</SelectItem>
-                <SelectItem value="2">2nd Floor</SelectItem>
-                <SelectItem value="3">3rd Floor</SelectItem>
-                <SelectItem value="4">4th Floor</SelectItem>
-                <SelectItem value="5">5th Floor</SelectItem>
-                <SelectItem value="6">6th Floor</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center space-x-2">
-              <Switch id="only-available" checked={filters.onlyAvailable} onCheckedChange={(v: boolean) => setFilters(prev => ({ ...prev, onlyAvailable: v }))} />
-              <Label htmlFor="only-available">Only available</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Input
+                placeholder="Min capacity"
+                type="number"
+                value={filters.minCapacity}
+                onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
+              />
+              <Select value={filters.floor} onValueChange={(v: string) => setFilters(prev => ({ ...prev, floor: v }))}>
+                <SelectTrigger>
+                    <SelectValue>
+                      {filters.floor === '__all__' ? 'Filter by floor' : (
+                        filters.floor === '1' ? '1st Floor' :
+                        filters.floor === '2' ? '2nd Floor' :
+                        filters.floor === '3' ? '3rd Floor' :
+                        filters.floor === '4' ? '4th Floor' :
+                        filters.floor === '5' ? '5th Floor' :
+                        filters.floor === '6' ? '6th Floor' : filters.floor
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Floors</SelectItem>
+                  <SelectItem value="1">1st Floor</SelectItem>
+                  <SelectItem value="2">2nd Floor</SelectItem>
+                  <SelectItem value="3">3rd Floor</SelectItem>
+                  <SelectItem value="4">4th Floor</SelectItem>
+                  <SelectItem value="5">5th Floor</SelectItem>
+                  <SelectItem value="6">6th Floor</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center space-x-2 col-span-2 sm:col-span-1">
+                <Switch id="only-available" checked={filters.onlyAvailable} onCheckedChange={(v: boolean) => setFilters(prev => ({ ...prev, onlyAvailable: v }))} />
+                <Label htmlFor="only-available">Only available</Label>
+              </div>
             </div>
           </div>
 
@@ -1347,7 +1349,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       </Card>
         {/* Bulk Action Dialog */}
       <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] gap-2 sm:gap-4">
           <DialogHeader>
             <DialogTitle className="text-sm sm:text-lg">{bulkActionType === 'delete' ? 'Delete Selected Classrooms' : bulkActionType === 'disable' ? 'Disable Selected Classrooms' : 'Enable Selected Classrooms'}</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
@@ -1381,7 +1383,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] p-6">
+        <DialogContent className="sm:max-w-[400px] p-3 sm:p-6 w-[calc(100vw-32px)]">
           <DialogHeader>
             <DialogTitle>Delete Classroom</DialogTitle>
             <DialogDescription>
@@ -1416,7 +1418,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Delete Warning Dialog (shown when classroom has pending/approved reservations) */}
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
-    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
+    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
                 <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
@@ -1578,7 +1580,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Bulk Warning Dialog for selected classrooms */}
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-[calc(100vw-40px)] md:w-auto gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
                 <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
@@ -1663,7 +1665,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </div>
             </div>
 
-            <DialogFooter className="mt-4 sm:mt-6 flex-col-reverse sm:flex-row gap-2">
+            <DialogFooter className="mt-4 sm:mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
               <Button variant="outline" onClick={() => { setBulkWarningOpen(false); pendingBulkIdsRef.current = null; }} disabled={bulkConfirming} className="w-full sm:w-auto text-xs sm:text-sm">Cancel</Button>
               <Button variant="destructive" onClick={() => executePendingBulkAction(bulkWarningReason)} disabled={!bulkWarningReason.trim() || bulkConfirming} className="w-full sm:w-auto text-xs sm:text-sm">{bulkConfirming ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing...</>) : (bulkActionType === 'delete' ? 'Delete & Notify' : 'Disable & Notify')}</Button>
             </DialogFooter>
@@ -1672,7 +1674,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
-  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
+  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-[calc(100vw-40px)] md:w-auto gap-2 sm:gap-4">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
               <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
@@ -1807,7 +1809,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             </div>
           </div>
 
-          <DialogFooter className="mt-4 sm:mt-6 flex-col-reverse sm:flex-row gap-2">
+          <DialogFooter className="mt-4 sm:mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
             <Button 
               variant="outline" 
               onClick={handleDisableCancel}

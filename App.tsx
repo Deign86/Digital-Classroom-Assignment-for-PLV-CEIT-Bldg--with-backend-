@@ -1929,7 +1929,7 @@ export default function App() {
           // prematurely (which caused the dialog to flash and close on some devices).
           setShowAccountLockedDialog(open);
         }}>
-          <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogContent className="sm:max-w-lg w-[calc(100vw-32px)] sm:w-auto">
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {accountLockReason === 'failed_attempts' && '🔒 Account Locked: Too Many Failed Login Attempts'}

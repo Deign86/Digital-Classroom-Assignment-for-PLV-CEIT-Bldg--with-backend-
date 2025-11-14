@@ -107,7 +107,7 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-[calc(100vw-32px)] sm:w-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Reset Password</DialogTitle>
           <DialogDescription>

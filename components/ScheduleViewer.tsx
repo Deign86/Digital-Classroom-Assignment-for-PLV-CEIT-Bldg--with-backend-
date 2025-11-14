@@ -357,7 +357,7 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
                                   <X className="h-3 w-3" />
                                 </Button>
                               </AlertDialogTrigger>
-                                <AlertDialogContent className="max-h-[95vh] sm:max-h-[85vh] p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[500px] gap-2 sm:gap-4">
+                                <AlertDialogContent className="max-h-[95vh] sm:max-h-[85vh] p-3 sm:p-6 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] sm:max-w-[500px] gap-2 sm:gap-4">
                                   <AlertDialogHeader>
                                     <AlertDialogTitle className="text-sm sm:text-lg">Cancel Classroom Reservation</AlertDialogTitle>
                                     <AlertDialogDescription className="text-xs sm:text-sm">Are you sure you want to cancel this reservation? This action cannot be undone.</AlertDialogDescription>
