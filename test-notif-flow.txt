@@ -1,0 +1,228 @@
+﻿
+> digital-classroom-assignment-for-plv-ceit-bldg@3.0.0 test
+> vitest src/__tests__/integration/notification-flow.integration.test.tsx --run
+
+
+[1m[46m RUN [49m[22m [36mv4.0.8 [39m[90mC:/Users/Deign/Downloads/Digital Classroom Assignment for PLV CEIT Bldg (with backend)[39m
+
+ [31mΓ¥»[39m src/__tests__/integration/notification-flow.integration.test.tsx [2m([22m[2m3 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 317[2mms[22m[39m
+[31m       [31m├ù[31m should complete full notification flow[39m[32m 227[2mms[22m[39m
+       [32mΓ£ô[39m should handle multiple notifications correctly[32m 58[2mms[22m[39m
+       [32mΓ£ô[39m should update badge count when notifications change[32m 30[2mms[22m[39m
+node.exe : 
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m[1m[41m Failed Tests 1 [49m[22m[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[41m[1m FAIL [22m[49m src/__tests__/integration/notification-flow.integration.test.tsx[2m > [22mNotification Flow Integration[2m > 
+[22mcreate ΓåÆ badge ΓåÆ open ΓåÆ acknowledge ΓåÆ decrease[2m > [22mshould complete full notification flow
+[31m[1mTestingLibraryElementError[22m[39m: Found multiple elements with the text: Acknowledge
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"[39m
+  [33mtype[39m=[32m"button"[39m
+[36m>[39m
+  [0mAcknowledge[0m
+[36m</button>[39m
+
+Ignored nodes: comments, script, style
+[36m<button[39m
+  [33mclass[39m=[32m"text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"[39m
+  [33mtype[39m=[32m"button"[39m
+[36m>[39m
+  [0mAcknowledge[0m
+[36m</button>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"p-4 bg-white shadow-2xl rounded-lg w-full max-w-md sm:w-96 relative"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-center justify-between mb-3"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center gap-2"[39m
+        [36m>[39m
+          [36m<h3[39m
+            [33mclass[39m=[32m"text-lg font-semibold"[39m
+          [36m>[39m
+            [0mNotifications[0m
+          [36m</h3>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"text-sm text-gray-500"[39m
+          [36m>[39m
+            [0m2[0m
+            [0m total[0m
+          [36m</span>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center gap-2"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33maria-label[39m=[32m"Acknowledge all notifications"[39m
+            [33mclass[39m=[32m"text-sm text-gray-600 hover:underline"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [0mAcknowledge all[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33maria-label[39m=[32m"Close notifications"[39m
+            [33mclass[39m=[32m"text-sm text-gray-600 hover:underline"[39m
+          [36m>[39m
+            [0mClose[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<ul[39m
+        [33mclass[39m=[32m"space-y-3 max-h-72 overflow-auto"[39m
+      [36m>[39m
+        [36m<li[39m
+          [33mclass[39m=[32m"p-3 border rounded-lg shadow-sm bg-white ring-2 ring-primary/10"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex justify-between items-start gap-3"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-start gap-3"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"mt-1"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"text-gray-600"[39m
+                  [33mfill[39m=[32m"currentColor"[39m
+                  [33mheight[39m=[32m"20"[39m
+                  [33mviewBox[39m=[32m"0 0 256 256"[39m
+                  [33mwidth[39m=[32m"20"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,
+0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92
+,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-sm font-semibold text-slate-900"[39m
+                [36m>[39m
+                  [0mInfo[0m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs text-gray-600 mt-1"[39m
+                [36m>[39m
+                  [0mTest notification[0m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs text-gray-400 mt-2"[39m
+                [36m>[39m
+                  [0m11/14/2025, 1:27:56 PM[0m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"ml-auto flex flex-col items-end"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mAcknowledge[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</li>[39m
+        [36m<li[39m
+          [33mclass[39m=[32m"p-3 border rounded-lg shadow-sm bg-white ring-2 ring-primary/10"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex justify-between items-start gap-3"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-start gap-3"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"mt-1"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"text-gray-600"[39m
+                  [33mfill[39m=[32m"currentColor"[39m
+                  [33mheight[39m=[32m"20"[39m
+                  [33mviewBox[39m=[32m"0 0 256 256"[39m
+                  [33mwidth[39m=[32m"20"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,
+0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216ZM48,184c7.7-13.24,16-43.92
+,16-80a64,64,0,1,1,128,0c0,36.05,8.28,66.73,16,80Z"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</div>[39m
+              [36m<div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-sm font-semibold text-slate-900"[39m
+                [36m>[39m
+                  [0mInfo[0m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs text-gray-600 mt-1"[39m
+                [36m>[39m
+                  [0mNew notification[0m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs text-gray-400 mt-2"[39m
+                [36m>[39m
+                  [0m11/14/2025, 1:27:56 PM[0m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+
+            [36m<div[39m
+              [33mclass[39m=[32m"ml-auto flex flex-col items-end"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"text-sm text-white bg-primary px-3 py-1 rounded hover:opacity-95 disabled:opacity-60"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mAcknowledge[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</li>[39m
+      [36m</ul>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2mΓ¥»[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2mΓ¥»[22m getElementError node_modules/@testing-library/dom/dist/query-helpers.js:[2m20:35[22m[39m
+[90m [2mΓ¥»[22m getMultipleElementsFoundError node_modules/@testing-library/dom/dist/query-helpers.js:[2m23:10[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m55:13[22m[39m
+[90m [2mΓ¥»[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2mΓ¥»[22m src/__tests__/integration/notification-flow.integration.test.tsx:[2m118:40[22m[39m
+    [90m116| [39m      )[33m;[39m
+    [90m117| [39m
+    [90m118| [39m      [35mconst[39m acknowledgeButton [33m=[39m screen[33m.[39m[34mgetByText[39m([32m'Acknowledge'[39m)[33m;[39m
+    [90m   | [39m                                       [31m^[39m
+    [90m119| [39m      [35mawait[39m user[33m.[39m[34mclick[39m(acknowledgeButton)[33m;[39m
+    [90m120| [39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (3)[39m
+[2m   Start at [22m 13:27:51
+[2m   Duration [22m 5.24s[2m (transform 143ms, setup 295ms, collect 3.77s, tests 317ms, environment 657ms, prepare 12ms)[22m
+
