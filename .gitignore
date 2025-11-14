@@ -32,6 +32,9 @@ dist-ssr
 # Build output
 dist/
 
+# Test coverage
+coverage/
+
 # Local snapshots of Cloud Functions deploys and lists (keep out of repo)
 plv-classroom-assignment-functions/deploy-backups/
 plv-classroom-assignment-functions/.firebase_functions_list*.json
