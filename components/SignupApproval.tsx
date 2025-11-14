@@ -628,7 +628,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       {/* Bulk action dialog for collect admin feedback when rejecting */}
       <Dialog open={isBulkDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setBulkDialogOpen(v); }}>
         {isBulkDialogOpen && (
-          <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[700px] gap-2 sm:gap-4">
+          <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-auto sm:max-w-[700px] gap-2 sm:gap-4">
             <ProcessingFieldset isProcessing={isProcessingBulk} className="flex flex-col flex-1 min-h-0">
               <DialogHeader className="flex-shrink-0">
                 <DialogTitle className="text-xs sm:text-lg">{bulkActionApprove ? 'Approve Selected' : 'Reject Selected'}</DialogTitle>

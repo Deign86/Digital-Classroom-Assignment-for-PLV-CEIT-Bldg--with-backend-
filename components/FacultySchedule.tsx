@@ -487,7 +487,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                     {/* Bulk Cancel Dialog */}
                     <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { if (isCancelling) return; setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
-                      <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-20px)] max-w-[calc(100vw-20px)] sm:max-w-[600px] gap-2 sm:gap-4">
+                      <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-auto sm:max-w-[600px] gap-2 sm:gap-4">
                         <DialogHeader className="flex-shrink-0 space-y-0.5 sm:space-y-1.5">
                           <DialogTitle className="text-xs sm:text-lg leading-tight">Cancel selected</DialogTitle>
                           <DialogDescription className="text-[10px] sm:text-sm text-muted-foreground leading-tight">
