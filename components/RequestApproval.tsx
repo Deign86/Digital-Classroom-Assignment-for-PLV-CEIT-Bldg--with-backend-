@@ -487,9 +487,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </div>
 
   <Dialog open={isDialogOpen} onOpenChange={(v) => { if (isProcessingBulk) return; setIsDialogOpen(v); }}>
-    <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-auto sm:max-w-[700px] gap-2 sm:gap-4">
+    {isDialogOpen && (
+      <DialogContent className="max-h-[95vh] sm:max-h-[85vh] flex flex-col p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-auto sm:max-w-[700px] gap-2 sm:gap-4">
+        <ProcessingFieldset isProcessing={isProcessingBulk} className="flex flex-col flex-1 min-h-0">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="text-xs sm:text-xl flex items-center gap-2">
+            <DialogTitle className="text-xs sm:text-lg flex items-center gap-2">
               {actionType === 'approve' ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-600" />
@@ -508,8 +510,6 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                 : 'You are about to reject this classroom reservation request. Please provide a clear reason for the faculty member.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <ProcessingFieldset isProcessing={isProcessingBulk}>
             {/* Show request details if single request */}
             {selectedRequest && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
@@ -607,48 +607,49 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </div>
               {feedbackError && <p className="text-sm text-destructive">{feedbackError}</p>}
             </div>
-            </ProcessingFieldset>
-          </div>
-            <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2 justify-end">
-            <Button
-              className="w-full sm:w-auto"
-              variant="outline"
-              onClick={() => {
-                if (isProcessingBulk) return;
-                setIsDialogOpen(false);
-                setSelectedRequest(null);
-                setFeedback('');
-              }}
-              disabled={isProcessingBulk}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="w-full sm:w-auto"
-              onClick={handleConfirm}
-              disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
-              variant={actionType === 'reject' ? 'destructive' : 'default'}
-            >
-              {isProcessingBulk ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : actionType === 'approve' ? (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve Reservation
-                </>
-              ) : (
-                <>
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Reject Reservation
-                </>
-              )}
-            </Button>
-          </div>
+
+            <DialogFooter className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-2">
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                onClick={() => {
+                  if (isProcessingBulk) return;
+                  setIsDialogOpen(false);
+                  setSelectedRequest(null);
+                  setFeedback('');
+                }}
+                disabled={isProcessingBulk}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={handleConfirm}
+                disabled={isProcessingBulk || (actionType === 'reject' && (!feedback.trim() || !!feedbackError))}
+                variant={actionType === 'reject' ? 'destructive' : 'default'}
+              >
+                {isProcessingBulk ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : actionType === 'approve' ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve Reservation
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject Reservation
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </ProcessingFieldset>
         </DialogContent>
-      </Dialog>
+      )}
+    </Dialog>
         {/* Bulk results are now shown as a single Sonner toast summary via showBulkSummary() */}
 
         <BulkOperationLoader
