@@ -220,6 +220,7 @@ export default function App() {
   const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL ?? import.meta.env.REACT_APP_SUPPORT_EMAIL ?? 'it-support@plv.edu.ph') as string;
   const [showSessionWarning, setShowSessionWarning] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState(0);
+  const sessionWarningToastIdRef = React.useRef<string | number | null>(null);
   // Pending destructive reject action (replaces window.confirm)
   // Include the signup request's userId so we can reliably remove the correct user record
   const [pendingRejectAction, setPendingRejectAction] = useState<{
@@ -885,8 +886,11 @@ export default function App() {
   const handleIdleTimeout = useCallback(async () => {
     logger.log('🕒 Session expired due to inactivity');
     
-    // Dismiss any active warning toasts
-    toast.dismiss();
+    // Dismiss only the session warning toast, not all toasts
+    if (sessionWarningToastIdRef.current !== null) {
+      toast.dismiss(sessionWarningToastIdRef.current);
+      sessionWarningToastIdRef.current = null;
+    }
     
     try {
       await authService.signOutDueToIdleTimeout();
@@ -915,10 +919,11 @@ export default function App() {
     setSessionTimeRemaining(timeRemaining);
     setShowSessionWarning(true);
     
-    toast.warning('Session Expiring Soon', {
+    const toastId = toast.warning('Session Expiring Soon', {
       description: `Your session will expire in ${Math.ceil(timeRemaining / 60000)} minutes due to inactivity`,
       duration: 8000
     });
+    sessionWarningToastIdRef.current = toastId;
   }, []);
 
   const handleExtendSession = useCallback(() => {
