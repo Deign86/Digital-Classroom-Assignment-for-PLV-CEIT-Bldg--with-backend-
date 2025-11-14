@@ -116,7 +116,13 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-4">
-            <Button variant="outline" size="sm" onClick={() => navigateDate('prev')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateDate('prev')}
+                // ARIA: explicit accessible name for icon-only controls on small viewports
+                aria-label={`Previous ${viewMode === 'day' ? 'day' : 'week'}`}
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-center">
@@ -124,7 +130,13 @@ export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule
                 {viewMode === 'day' ? formatDate(selectedDate) : `Week of ${formatDateShort(getWeekDates(selectedDate)[0])}`}
               </h3>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigateDate('next')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateDate('next')}
+              // ARIA: explicit accessible name for icon-only controls on small viewports
+              aria-label={`Next ${viewMode === 'day' ? 'day' : 'week'}`}
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -210,7 +222,12 @@ function DayView({ schedules, classrooms, timeSlots, selectedDate, onCancelSched
                 {onCancelSchedule && !isLapsed && (
                     <AlertDialog open={!!openDialogMap[schedule.id]} onOpenChange={(v) => { if (isCanceling[schedule.id]) return; setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: v })); }}>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="ml-4 min-w-[80px] transition-all duration-200" onClick={() => setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: true }))}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-4 min-w-[80px] transition-all duration-200"
+                        onClick={() => setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: true }))}
+                        aria-label={`Cancel reservation for ${schedule.facultyName} at ${formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}`}>
                         <X className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">Cancel</span>
                       </Button>
@@ -330,8 +347,13 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
 
                           {onCancelSchedule && !isLapsed && (
                             <AlertDialog open={!!openDialogMap[schedule.id]} onOpenChange={(v) => { if (isCanceling[schedule.id]) return; setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: v })); }}>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-600 transition-all duration-200" onClick={() => setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: true }))}>
+                                <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 right-1 h-6 w-6 p-0 text-gray-600 transition-all duration-200"
+                                  onClick={() => setOpenDialogMap((prev: Record<string, boolean>) => ({ ...prev, [schedule.id]: true }))}
+                                  aria-label={`Cancel reservation for ${schedule.facultyName} at ${formatTimeRange(convertTo12Hour(schedule.startTime), convertTo12Hour(schedule.endTime))}`}>
                                   <X className="h-3 w-3" />
                                 </Button>
                               </AlertDialogTrigger>
