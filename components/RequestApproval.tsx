@@ -331,8 +331,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     <span className="text-sm">Select all ({pendingRequests.length})</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk}>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <Button onClick={() => startBulkAction('approve')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
                       {isProcessingBulk ? (
                         <span className="inline-flex items-center">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -342,7 +342,7 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                         `Approve Selected (${selectedCount})`
                       )}
                     </Button>
-                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk}>
+                    <Button variant="destructive" onClick={() => startBulkAction('reject')} disabled={selectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
                       {isProcessingBulk ? (
                         <span className="inline-flex items-center">
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -405,8 +405,8 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
                     <span className="text-sm">Select all ({approvedRequests.length})</span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk}>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <Button variant="destructive" onClick={startBulkCancelApproved} disabled={approvedSelectedCount === 0 || isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
                       {isProcessingBulk ? 'Processing…' : `Cancel Selected (${approvedSelectedCount})`}
                     </Button>
                   </div>

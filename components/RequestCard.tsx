@@ -182,7 +182,7 @@ export default function RequestCard({
         )}
 
         {status === 'pending' && (
-          <div className="flex gap-3 pt-3 border-t items-center">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 border-t">
             {!isExpired ? (
               // If there's a conflict, show a tooltip explaining why Approve is disabled
               hasConflict ? (
@@ -198,7 +198,7 @@ export default function RequestCard({
                           disabled={true || !!disabled}
                           aria-disabled={true}
                           aria-label="Approve (disabled due to scheduling conflict)"
-                          className="flex-1"
+                          className="w-full text-xs sm:text-sm"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Approve
@@ -215,7 +215,7 @@ export default function RequestCard({
                     onApprove?.();
                   }}
                   disabled={!!disabled}
-                  className="flex-1"
+                  className="flex-1 w-full text-xs sm:text-sm"
                   aria-label="Approve request"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
@@ -237,7 +237,7 @@ export default function RequestCard({
                   onReject?.();
                 }}
                 variant="destructive"
-                className={'flex-1'}
+                className="flex-1 w-full text-xs sm:text-sm"
                 aria-label="Reject request"
                 disabled={!!disabled}
               >
@@ -252,14 +252,14 @@ export default function RequestCard({
         )}
 
         {status === 'approved' && onCancelApproved && (
-          <div className="flex gap-3 pt-3 border-t">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 border-t">
             {/* If booking has already started or is expired, disable cancel in UI to match backend behavior */}
             {!isLapsedBooking ? (
               <AlertDialog open={isDialogOpen} onOpenChange={(v) => { if (isCancelling) return; setIsDialogOpen(v); }}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="w-full text-xs sm:text-sm"
                     disabled={!!disabled}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
