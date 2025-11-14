@@ -495,11 +495,11 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           </DialogDescription>
                         </DialogHeader>
 
-                        <div className="flex-shrink-0 min-h-0 overflow-y-auto">
+                        <div className="flex-shrink-0 max-h-[30vh] sm:max-h-[40vh] overflow-y-auto">
                           {/* Scrollable list of selected reservations */}
                           {Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]).length > 0 && (
-                            <div className="space-y-1.5">
-                              {bookingRequests.filter(r => approvedSelectedIds[r.id]).slice(0, 2).map((reservation, index) => (
+                            <div className="space-y-1.5 pr-1">
+                              {bookingRequests.filter(r => approvedSelectedIds[r.id]).map((reservation, index) => (
                                 <div key={reservation.id} className="p-1.5 sm:p-2.5 border rounded bg-gray-50 text-[10px] sm:text-sm">
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0 space-y-0.5">
@@ -513,11 +513,6 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                   </div>
                                 </div>
                               ))}
-                              {bookingRequests.filter(r => approvedSelectedIds[r.id]).length > 2 && (
-                                <p className="text-[10px] sm:text-xs text-gray-500 text-center py-1">
-                                  +{bookingRequests.filter(r => approvedSelectedIds[r.id]).length - 2} more
-                                </p>
-                              )}
                             </div>
                           )}
                         </div>
