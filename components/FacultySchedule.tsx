@@ -487,33 +487,33 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                     {/* Bulk Cancel Dialog */}
                     <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { if (isCancelling) return; setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
-                      <DialogContent className="max-h-[85vh] overflow-y-auto">
+                      <DialogContent className="max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6 w-[95vw] sm:w-full">
                         <DialogHeader>
-                          <DialogTitle>Cancel selected reservations</DialogTitle>
+                          <DialogTitle className="text-base sm:text-lg">Cancel selected reservations</DialogTitle>
                         </DialogHeader>
-                          <DialogDescription className="text-sm text-muted-foreground">
+                          <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
                             Please provide a reason for cancelling your approved reservation(s). This will be sent to the administrators.
                           </DialogDescription>
 
-                        <div className="mt-4 mb-4">
+                        <div className="mt-3 mb-3 sm:mt-4 sm:mb-4">
                           {/* Scrollable list of selected reservations */}
                           {Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]).length > 0 && (
                             <ScrollableBulkList
                               items={bookingRequests.filter(r => approvedSelectedIds[r.id])}
                               visibleCount={5}
-                              maxScrollHeight="16rem"
+                              maxScrollHeight="12rem"
                               ariaLabel="Selected reservations to cancel"
                               renderItem={(reservation) => (
-                                <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
-                                  <div className="space-y-1">
-                                    <p className="font-medium text-gray-900">
+                                <div className="p-2 sm:p-3 border rounded-lg bg-white text-xs sm:text-sm hover:bg-gray-50 transition-colors">
+                                  <div className="space-y-0.5 sm:space-y-1">
+                                    <p className="font-medium text-gray-900 text-xs sm:text-sm">
                                       {new Date(reservation.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                     </p>
-                                    <p className="text-gray-700">{reservation.classroomName}</p>
-                                    <p className="text-gray-600 text-xs">
+                                    <p className="text-gray-700 text-xs sm:text-sm truncate">{reservation.classroomName}</p>
+                                    <p className="text-gray-600 text-[10px] sm:text-xs">
                                       {formatTimeRange(convertTo12Hour(reservation.startTime), convertTo12Hour(reservation.endTime))}
                                     </p>
-                                    <p className="text-gray-500 text-xs truncate" title={reservation.purpose}>
+                                    <p className="text-gray-500 text-[10px] sm:text-xs truncate" title={reservation.purpose}>
                                       {reservation.purpose}
                                     </p>
                                   </div>
@@ -525,7 +525,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                         <div>
 
-                          <Label className="block">Reason (required)</Label>
+                          <Label className="block text-xs sm:text-sm">Reason (required)</Label>
                           <div className="mt-2">
                             <Textarea
                               value={bulkCancelReason}
@@ -537,24 +537,25 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                 }
                               }}
                               maxLength={500}
-                              rows={4}
+                              rows={3}
                               autoFocus
                               placeholder="Explain why you need to cancel your reservation(s)"
                               aria-label="Cancellation reason"
                               aria-invalid={!!bulkReasonError}
-                              className="mt-0"
+                              className="mt-0 text-xs sm:text-sm"
                             />
                           </div>
-                          <div className="flex items-center justify-between text-sm text-muted-foreground mt-1">
-                            <div className="min-h-[1.25rem]">{bulkReasonError ? <span role="alert" className="text-sm text-destructive flex items-center gap-1.5">{bulkReasonError}</span> : null}</div>
-                            <div className="text-sm text-muted-foreground">{bulkCancelReason.length}/500</div>
+                          <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground mt-1">
+                            <div className="min-h-[1.25rem] flex-1 pr-2">{bulkReasonError ? <span role="alert" className="text-xs sm:text-sm text-destructive flex items-center gap-1.5">{bulkReasonError}</span> : null}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{bulkCancelReason.length}/500</div>
                           </div>
                         </div>
 
-                        <DialogFooter className="mt-4">
-                          <div className="flex gap-2">
-                            <Button variant="secondary" onClick={() => { setShowBulkCancelDialog(false); setBulkCancelReason(''); setBulkReasonError(null); }}>Cancel</Button>
+                        <DialogFooter className="mt-3 sm:mt-4">
+                          <div className="flex flex-col sm:flex-row gap-2 w-full">
+                            <Button className="w-full sm:w-auto" variant="secondary" onClick={() => { setShowBulkCancelDialog(false); setBulkCancelReason(''); setBulkReasonError(null); }}>Cancel</Button>
                             <Button
+                              className="w-full sm:w-auto"
                               variant="destructive"
                               onClick={async () => {
                                 const ids = Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]);
