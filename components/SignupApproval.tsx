@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useAnnouncer } from './Announcer';
+import ScrollableBulkList from './ui/ScrollableBulkList';
 import {
   CheckCircle,
   XCircle,
@@ -637,6 +638,38 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                     : 'Provide a reason for rejecting the selected requests. This feedback will be sent to the users.'}
                 </DialogDescription>
               </DialogHeader>
+
+              <div className="mt-4 mb-6">
+                <ScrollableBulkList
+                  items={(signupRequests || []).filter(req => selectedIds[req.id])}
+                  visibleCount={5}
+                  maxScrollHeight="16rem"
+                  ariaLabel={`Selected signup requests to ${bulkActionApprove ? 'approve' : 'reject'}`}
+                  renderItem={(signup: SignupRequest) => (
+                    <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
+                      <div className="space-y-1">
+                        <p className="font-medium text-gray-900">{signup.name}</p>
+                        <p className="text-gray-600 text-xs flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {signup.email}
+                        </p>
+                        <p className="text-gray-600 text-xs flex items-center gap-1">
+                          <Building className="h-3 w-3" />
+                          {signup.department}
+                        </p>
+                        <p className="text-gray-500 text-xs flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(signup.requestDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                />
+              </div>
 
               <div className="space-y-4 mt-6">
                 <Label htmlFor="bulk-feedback" className="block mb-2">

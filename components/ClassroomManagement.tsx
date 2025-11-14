@@ -23,6 +23,7 @@ import { getAuth } from 'firebase/auth';
 import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useRef } from 'react';
+import ScrollableBulkList from './ui/ScrollableBulkList';
 
 interface ClassroomManagementProps {
   classrooms: Classroom[];
@@ -1429,12 +1430,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     <Calendar className="h-4 w-4" />
                     Pending/Approved Booking Requests ({affectedBookingsForDelete.length})
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {affectedBookingsForDelete.map((booking) => (
-                      <div 
-                        key={booking.id} 
-                        className="p-3 border rounded-lg bg-gray-50 text-sm"
-                      >
+                  <ScrollableBulkList
+                    items={affectedBookingsForDelete}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    renderItem={(booking) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-xs">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{booking.facultyName}</p>
@@ -1450,15 +1451,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               <Clock className="h-3 w-3" />
                               {booking.startTime} - {booking.endTime}
                             </p>
-                            <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                            <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
                           </div>
                           <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
                             {booking.status}
                           </Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1469,12 +1470,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     <Calendar className="h-4 w-4" />
                     Confirmed Schedules ({affectedSchedulesForDelete.length})
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {affectedSchedulesForDelete.map((schedule) => (
-                      <div 
-                        key={schedule.id} 
-                        className="p-3 border rounded-lg bg-gray-50 text-sm"
-                      >
+                  <ScrollableBulkList
+                    items={affectedSchedulesForDelete}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    renderItem={(schedule) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-xs">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{schedule.facultyName}</p>
@@ -1490,15 +1491,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               <Clock className="h-3 w-3" />
                               {schedule.startTime} - {schedule.endTime}
                             </p>
-                            <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                            <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
                           </div>
                           <Badge variant="default">
                             {schedule.status}
                           </Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1585,46 +1586,54 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             <div className="space-y-4 py-4">
               {bulkWarningAffectedBookings.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                  <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
                     <Calendar className="h-4 w-4" />
                     Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {bulkWarningAffectedBookings.map((booking) => (
-                      <div key={booking.id} className="p-3 border rounded-lg bg-gray-50 text-sm">
+                  <ScrollableBulkList
+                    items={bulkWarningAffectedBookings}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    ariaLabel="Affected booking requests"
+                    renderItem={(booking: BookingRequest) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{booking.facultyName}</p>
-                            <p className="text-gray-600">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                            <p className="text-gray-600 flex items-center gap-1"><Clock className="h-3 w-3" />{booking.startTime} - {booking.endTime}</p>
-                            <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                            <p className="text-gray-600 text-xs">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{booking.startTime} - {booking.endTime}</p>
+                            <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
                           </div>
                           <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>{booking.status}</Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
               {bulkWarningAffectedSchedules.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-sm flex items-center gap-2"><Calendar className="h-4 w-4" />Confirmed Schedules ({bulkWarningAffectedSchedules.length})</h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {bulkWarningAffectedSchedules.map((schedule) => (
-                      <div key={schedule.id} className="p-3 border rounded-lg bg-gray-50 text-sm">
+                  <h4 className="font-semibold text-sm flex items-center gap-2 mb-2"><Calendar className="h-4 w-4" />Confirmed Schedules ({bulkWarningAffectedSchedules.length})</h4>
+                  <ScrollableBulkList
+                    items={bulkWarningAffectedSchedules}
+                    visibleCount={5}
+                    maxScrollHeight="16rem"
+                    ariaLabel="Affected schedules"
+                    renderItem={(schedule: Schedule) => (
+                      <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-medium">{schedule.facultyName}</p>
-                            <p className="text-gray-600">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                            <p className="text-gray-600 flex items-center gap-1"><Clock className="h-3 w-3" />{schedule.startTime} - {schedule.endTime}</p>
-                            <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                            <p className="text-gray-600 text-xs">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{schedule.startTime} - {schedule.endTime}</p>
+                            <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
                           </div>
                           <Badge variant="default">{schedule.status}</Badge>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  />
                 </div>
               )}
 
@@ -1677,16 +1686,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   <Calendar className="h-4 w-4" />
                   Pending/Approved Booking Requests ({affectedBookings.length})
                 </h4>
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {affectedBookings.map((booking) => (
-                    <div 
-                      key={booking.id} 
-                      className="p-3 border rounded-lg bg-gray-50 text-sm"
-                    >
+                <ScrollableBulkList
+                  items={affectedBookings}
+                  visibleCount={5}
+                  maxScrollHeight="16rem"
+                  ariaLabel="Affected booking requests for single classroom"
+                  renderItem={(booking: BookingRequest) => (
+                    <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
                           <p className="font-medium">{booking.facultyName}</p>
-                          <p className="text-gray-600">
+                          <p className="text-gray-600 text-xs">
                             {new Date(booking.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               year: 'numeric', 
@@ -1694,19 +1704,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               day: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 flex items-center gap-1">
+                          <p className="text-gray-600 flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3" />
                             {booking.startTime} - {booking.endTime}
                           </p>
-                          <p className="text-gray-500 text-xs">{booking.purpose}</p>
+                          <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
                         </div>
                         <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
                           {booking.status}
                         </Badge>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               </div>
             )}
 
@@ -1717,16 +1727,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   <Calendar className="h-4 w-4" />
                   Confirmed Schedules ({affectedSchedules.length})
                 </h4>
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {affectedSchedules.map((schedule) => (
-                    <div 
-                      key={schedule.id} 
-                      className="p-3 border rounded-lg bg-gray-50 text-sm"
-                    >
+                <ScrollableBulkList
+                  items={affectedSchedules}
+                  visibleCount={5}
+                  maxScrollHeight="16rem"
+                  ariaLabel="Affected schedules for single classroom"
+                  renderItem={(schedule: Schedule) => (
+                    <div className="p-3 border rounded-lg bg-gray-50 text-sm">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
                           <p className="font-medium">{schedule.facultyName}</p>
-                          <p className="text-gray-600">
+                          <p className="text-gray-600 text-xs">
                             {new Date(schedule.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               year: 'numeric', 
@@ -1734,19 +1745,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               day: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 flex items-center gap-1">
+                          <p className="text-gray-600 flex items-center gap-1 text-xs">
                             <Clock className="h-3 w-3" />
                             {schedule.startTime} - {schedule.endTime}
                           </p>
-                          <p className="text-gray-500 text-xs">{schedule.purpose}</p>
+                          <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
                         </div>
                         <Badge variant="default">
                           {schedule.status}
                         </Badge>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                />
               </div>
             )}
 

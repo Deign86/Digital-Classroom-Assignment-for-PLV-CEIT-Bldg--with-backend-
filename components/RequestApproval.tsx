@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useAnnouncer } from './Announcer';
+import ScrollableBulkList, { ScrollableBulkSummary } from './ui/ScrollableBulkList';
 
 interface RequestApprovalProps {
   requests: BookingRequest[];
@@ -536,17 +537,45 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               </div>
             )}
             
-            {/* Show count if bulk operation */}
-            {!selectedRequest && (Object.values(selectedIds).filter(Boolean).length > 0 || Object.values(approvedSelectedIds).filter(Boolean).length > 0) && (
-              <div className={`border rounded-lg p-4 ${actionType === 'approve' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <p className={`text-sm font-medium ${actionType === 'approve' ? 'text-green-900' : 'text-red-900'}`}>
-                  {actionType === 'approve' 
-                    ? `You are about to approve ${Object.values(selectedIds).filter(Boolean).length} reservation(s)`
-                    : `You are about to ${activeTab === 'approved' ? 'cancel' : 'reject'} ${Object.values(selectedIds).filter(Boolean).length || Object.values(approvedSelectedIds).filter(Boolean).length} reservation(s)`
-                  }
-                </p>
-              </div>
-            )}
+            {/* Show selected reservations list if bulk operation */}
+            {!selectedRequest && (Object.values(selectedIds).filter(Boolean).length > 0 || Object.values(approvedSelectedIds).filter(Boolean).length > 0) && (() => {
+              const currentIds = activeTab === 'approved' ? approvedSelectedIds : selectedIds;
+              const selectedReservations = requests.filter(r => currentIds[r.id]);
+              
+              return (
+                <ScrollableBulkList
+                  items={selectedReservations}
+                  visibleCount={5}
+                  maxScrollHeight="20rem"
+                  ariaLabel={`Selected reservations to ${actionType === 'approve' ? 'approve' : activeTab === 'approved' ? 'cancel' : 'reject'}`}
+                  renderItem={(reservation: BookingRequest) => (
+                    <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <p className="font-medium text-gray-900">{reservation.facultyName}</p>
+                          <p className="text-gray-700">{reservation.classroomName}</p>
+                          <p className="text-gray-600 text-xs">
+                            {new Date(reservation.date).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric', 
+                              year: 'numeric' 
+                            })}
+                          </p>
+                          <p className="text-gray-600 text-xs flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {convertTo12Hour(reservation.startTime)} - {convertTo12Hour(reservation.endTime)}
+                          </p>
+                          <p className="text-gray-500 text-xs truncate" title={reservation.purpose}>
+                            {reservation.purpose}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                />
+              );
+            })()}
             
             <div className="space-y-4 mt-6">
               <Label htmlFor="feedback" className="mb-2 block">

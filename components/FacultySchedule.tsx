@@ -5,6 +5,7 @@ import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import BulkOperationLoader from './BulkOperationLoader';
 import { useAnnouncer } from './Announcer';
+import ScrollableBulkList from './ui/ScrollableBulkList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from './ui/dialog';
@@ -494,21 +495,35 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                             Please provide a reason for cancelling your approved reservation(s). This will be sent to the administrators.
                           </DialogDescription>
 
-                        <div className="mt-4">
-                          {/* Summary of selected reservations for admin confirmation */}
+                        <div className="mt-4 mb-4">
+                          {/* Scrollable list of selected reservations */}
                           {Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]).length > 0 && (
-                            <div className="mb-3 border rounded-md p-3 bg-muted/30">
-                              <div className="text-sm font-medium mb-2">Selected reservations</div>
-                              <ul className="text-sm list-none space-y-1">
-                                {bookingRequests.filter(r => Object.keys(approvedSelectedIds).includes(r.id) && approvedSelectedIds[r.id]).map(r => (
-                                  <li key={r.id} className="text-sm">
-                                    <div className="font-medium">{new Date(r.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                                    <div className="text-muted-foreground">{formatTimeRange(convertTo12Hour(r.startTime), convertTo12Hour(r.endTime))} · {r.classroomName}</div>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                            <ScrollableBulkList
+                              items={bookingRequests.filter(r => approvedSelectedIds[r.id])}
+                              visibleCount={5}
+                              maxScrollHeight="16rem"
+                              ariaLabel="Selected reservations to cancel"
+                              renderItem={(reservation) => (
+                                <div className="p-3 border rounded-lg bg-white text-sm hover:bg-gray-50 transition-colors">
+                                  <div className="space-y-1">
+                                    <p className="font-medium text-gray-900">
+                                      {new Date(reservation.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    </p>
+                                    <p className="text-gray-700">{reservation.classroomName}</p>
+                                    <p className="text-gray-600 text-xs">
+                                      {formatTimeRange(convertTo12Hour(reservation.startTime), convertTo12Hour(reservation.endTime))}
+                                    </p>
+                                    <p className="text-gray-500 text-xs truncate" title={reservation.purpose}>
+                                      {reservation.purpose}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            />
                           )}
+                        </div>
+
+                        <div>
 
                           <Label className="block">Reason (required)</Label>
                           <div className="mt-2">
