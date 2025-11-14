@@ -3,7 +3,7 @@ import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 import { bookingRequestService, scheduleService } from '../lib/firebaseService';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
-import BulkProgressDialog from './BulkProgressDialog';
+import BulkOperationLoader from './BulkOperationLoader';
 import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -642,14 +642,20 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                       </DialogContent>
                     </Dialog>
                     {/* Bulk Progress Dialog for cancellable, long-running operations */}
-                    <BulkProgressDialog
+                    <BulkOperationLoader
                       open={showBulkProgress}
-                      onOpenChange={(open) => setShowBulkProgress(open)}
+                      onOpenChange={setShowBulkProgress}
                       items={lastCancelIdsRef.current ? lastCancelIdsRef.current.map(id => ({ id, label: bookingRequests.find(r => r.id === id)?.classroomName ?? id })) : []}
                       processed={bulkRunner.processed}
                       total={bulkRunner.total}
                       results={bulkRunner.results}
                       running={bulkRunner.running}
+                      title="Bulk Booking Cancellation"
+                      operationType="Cancelling"
+                      successMessage="{count} booking(s) cancelled successfully"
+                      failureMessage="{count} booking(s) failed to cancel"
+                      showErrorDetails={true}
+                      preventCloseWhileRunning={true}
                       onCancel={() => {
                         bulkRunner.cancel();
                         toast('Bulk cancel cancelled.');

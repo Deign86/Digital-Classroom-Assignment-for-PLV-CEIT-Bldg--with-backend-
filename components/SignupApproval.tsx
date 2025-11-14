@@ -8,7 +8,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from './ui/dialog';
 import { toast } from 'sonner';
-import BulkProgressDialog from './BulkProgressDialog';
+import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useAnnouncer } from './Announcer';
 import {
@@ -802,15 +802,21 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <BulkProgressDialog
+      <BulkOperationLoader
         open={showBulkProgress}
-        onOpenChange={(open) => setShowBulkProgress(open)}
+        onOpenChange={setShowBulkProgress}
         items={lastItems}
         processed={bulkRunner.processed}
         total={bulkRunner.total}
         results={bulkRunner.results}
         running={bulkRunner.running}
         onCancel={() => bulkRunner.cancel()}
+        title="Bulk Signup Processing"
+        operationType="Processing"
+        successMessage="{count} signup(s) processed successfully"
+        failureMessage="{count} signup(s) failed to process"
+        showErrorDetails={true}
+        preventCloseWhileRunning={true}
         onRetry={async () => {
           const failedIds = bulkResults.failed.map(f => f.id);
           if (failedIds.length === 0) return;

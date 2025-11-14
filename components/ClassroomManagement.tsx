@@ -20,7 +20,7 @@ import type { Classroom, BookingRequest, Schedule } from '../App';
 import { getIconForEquipment } from '../lib/equipmentIcons';
 import { sanitizeText } from '../utils/inputValidation';
 import { getAuth } from 'firebase/auth';
-import BulkProgressDialog from './BulkProgressDialog';
+import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useRef } from 'react';
 
@@ -1817,14 +1817,20 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         </DialogContent>
       </Dialog>
       {/* Bulk progress dialog for long-running delete operations */}
-      <BulkProgressDialog
+      <BulkOperationLoader
         open={showBulkProgress}
-        onOpenChange={(open) => setShowBulkProgress(open)}
+        onOpenChange={setShowBulkProgress}
         items={lastDeleteItems}
         processed={bulkRunner.processed}
         total={bulkRunner.total}
         results={bulkRunner.results}
         running={bulkRunner.running}
+        title="Bulk Classroom Deletion"
+        operationType="Deleting"
+        successMessage="{count} classroom(s) deleted successfully"
+        failureMessage="{count} classroom(s) failed to delete"
+        showErrorDetails={true}
+        preventCloseWhileRunning={true}
         onCancel={() => {
           bulkRunner.cancel();
           toast('Bulk delete cancelled.');

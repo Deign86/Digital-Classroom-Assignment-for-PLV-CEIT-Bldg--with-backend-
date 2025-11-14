@@ -12,7 +12,7 @@ import { convertTo12Hour, isPastBookingTime } from '../utils/timeUtils';
 import type { BookingRequest } from '../App';
 import RequestCard from './RequestCard';
 import { toast } from 'sonner';
-import BulkProgressDialog from './BulkProgressDialog';
+import BulkOperationLoader from './BulkOperationLoader';
 import useBulkRunner, { BulkTask } from '../hooks/useBulkRunner';
 import { useAnnouncer } from './Announcer';
 
@@ -617,15 +617,21 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       </Dialog>
         {/* Bulk results are now shown as a single Sonner toast summary via showBulkSummary() */}
 
-        <BulkProgressDialog
+        <BulkOperationLoader
           open={showBulkProgress}
-          onOpenChange={(open) => setShowBulkProgress(open)}
+          onOpenChange={setShowBulkProgress}
           items={lastItems}
           processed={bulkRunner.processed}
           total={bulkRunner.total}
           results={bulkRunner.results}
           running={bulkRunner.running}
           onCancel={() => bulkRunner.cancel()}
+          title="Bulk Reservation Processing"
+          operationType="Processing"
+          successMessage="{count} reservation(s) processed successfully"
+          failureMessage="{count} reservation(s) failed to process"
+          showErrorDetails={true}
+          preventCloseWhileRunning={true}
           onRetry={async () => {
             // Re-run failed items using bulkRunner
             const failedIds = bulkResults.failed.map(f => f.id);
