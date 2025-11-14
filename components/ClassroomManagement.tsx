@@ -1418,11 +1418,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
     <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-amber-600">
-                <AlertTriangle className="h-5 w-5" />
-                Warning: Active Reservations Found
+              <DialogTitle className="flex items-center gap-2 text-amber-600 text-sm sm:text-base">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="break-words">Warning: Active Reservations Found</span>
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs sm:text-sm">
                 The classroom <b>{classroomToDeleteWarning?.name}</b> has <b>{affectedBookingsForDelete.length + affectedSchedulesForDelete.length}</b> active or upcoming reservation(s). Deleting it will affect the following reservations. You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
@@ -1431,20 +1431,20 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               {/* Affected Bookings */}
               {affectedBookingsForDelete.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Pending/Approved Booking Requests ({affectedBookingsForDelete.length})
+                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="break-words">Pending/Approved Booking Requests ({affectedBookingsForDelete.length})</span>
                   </h4>
                   <ScrollableBulkList
                     items={affectedBookingsForDelete}
                     visibleCount={5}
                     maxScrollHeight="16rem"
                     renderItem={(booking) => (
-                      <div className="p-3 border rounded-lg bg-gray-50 text-xs">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-medium">{booking.facultyName}</p>
-                            <p className="text-gray-600">
+                      <div className="p-2 sm:p-3 border rounded-lg bg-gray-50 text-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <p className="font-medium text-xs sm:text-sm break-words">{booking.facultyName}</p>
+                            <p className="text-gray-600 text-[10px] sm:text-xs">
                               {new Date(booking.date).toLocaleDateString('en-US', { 
                                 weekday: 'short', 
                                 year: 'numeric', 
@@ -1452,13 +1452,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                                 day: 'numeric' 
                               })}
                             </p>
-                            <p className="text-gray-600 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
+                            <p className="text-gray-600 flex items-center gap-1 text-[10px] sm:text-xs">
+                              <Clock className="h-3 w-3 flex-shrink-0" />
                               {booking.startTime} - {booking.endTime}
                             </p>
-                            <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
+                            <p className="text-gray-500 text-[10px] sm:text-xs break-words line-clamp-2" title={booking.purpose}>{booking.purpose}</p>
                           </div>
-                          <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
+                          <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs self-start">
                             {booking.status}
                           </Badge>
                         </div>
@@ -1471,20 +1471,20 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               {/* Affected Schedules */}
               {affectedSchedulesForDelete.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Confirmed Schedules ({affectedSchedulesForDelete.length})
+                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="break-words">Confirmed Schedules ({affectedSchedulesForDelete.length})</span>
                   </h4>
                   <ScrollableBulkList
                     items={affectedSchedulesForDelete}
                     visibleCount={5}
                     maxScrollHeight="16rem"
                     renderItem={(schedule) => (
-                      <div className="p-3 border rounded-lg bg-gray-50 text-xs">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-medium">{schedule.facultyName}</p>
-                            <p className="text-gray-600">
+                      <div className="p-2 sm:p-3 border rounded-lg bg-gray-50 text-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <p className="font-medium text-xs sm:text-sm break-words">{schedule.facultyName}</p>
+                            <p className="text-gray-600 text-[10px] sm:text-xs">
                               {new Date(schedule.date).toLocaleDateString('en-US', { 
                                 weekday: 'short', 
                                 year: 'numeric', 
@@ -1492,13 +1492,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                                 day: 'numeric' 
                               })}
                             </p>
-                            <p className="text-gray-600 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
+                            <p className="text-gray-600 flex items-center gap-1 text-[10px] sm:text-xs">
+                              <Clock className="h-3 w-3 flex-shrink-0" />
                               {schedule.startTime} - {schedule.endTime}
                             </p>
-                            <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
+                            <p className="text-gray-500 text-[10px] sm:text-xs break-words line-clamp-2" title={schedule.purpose}>{schedule.purpose}</p>
                           </div>
-                          <Badge variant="default">
+                          <Badge variant="default" className="text-[10px] sm:text-xs self-start">
                             {schedule.status}
                           </Badge>
                         </div>
@@ -1509,10 +1509,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               )}
 
               {/* Required Reason Field */}
-              <div className="space-y-4 pt-6 border-t mt-6">
-                <Label htmlFor="delete-reason" className="mb-2 block">
-                  Reason for deleting *
-                  <span className="text-sm text-gray-500 font-normal ml-2">
+              <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6">
+                <Label htmlFor="delete-reason" className="mb-2 block text-xs sm:text-sm">
+                  <span className="break-words">Reason for deleting *</span>
+                  <span className="text-[10px] sm:text-sm text-gray-500 font-normal ml-2 block sm:inline mt-1 sm:mt-0">
                     This will be included in the notification to affected faculty
                   </span>
                 </Label>
@@ -1524,26 +1524,26 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   maxLength={200}
                   rows={3}
                   required
-                  className={!deleteReason.trim() && deleteReason.length > 0 ? 'border-red-500' : ''}
+                  className={`text-xs sm:text-sm ${!deleteReason.trim() && deleteReason.length > 0 ? 'border-red-500' : ''}`}
                 />
                 {!deleteReason.trim() && (
-                  <p className="text-sm text-destructive flex items-center gap-1.5 mt-1">
-                    <AlertCircle className="h-4 w-4" />
-                    Reason is required to notify affected faculty
+                  <p className="text-xs sm:text-sm text-destructive flex items-center gap-1.5 mt-1">
+                    <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>Reason is required to notify affected faculty</span>
                   </p>
                 )}
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-2">
                   {deleteReason.length}/200 characters
                 </p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 mt-3 sm:mt-4">
                 <p className="font-medium mb-1">What happens next?</p>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>All affected faculty members will receive an in-app notification</li>
-                  <li>If push notifications are enabled, they'll also receive a push notification</li>
-                  <li>They will be informed to contact admin about their reservations</li>
-                  <li>The classroom will be removed from the inventory</li>
+                <ul className="list-disc list-inside space-y-1 text-[10px] sm:text-xs pl-1">
+                  <li className="break-words">All affected faculty members will receive an in-app notification</li>
+                  <li className="break-words">If push notifications are enabled, they'll also receive a push notification</li>
+                  <li className="break-words">They will be informed to contact admin about their reservations</li>
+                  <li className="break-words">The classroom will be removed from the inventory</li>
                 </ul>
               </div>
             </div>
@@ -1580,11 +1580,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
           <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-amber-600">
-                <AlertTriangle className="h-5 w-5" />
-                Warning: Affected Reservations Found
+              <DialogTitle className="flex items-center gap-2 text-amber-600 text-sm sm:text-base">
+                <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="break-words">Warning: Affected Reservations Found</span>
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs sm:text-sm">
                 The selected classrooms have <b>{bulkWarningAffectedBookings.length + bulkWarningAffectedSchedules.length}</b> active or upcoming reservation(s). You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
@@ -1592,9 +1592,9 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             <div className="space-y-4 py-4">
               {bulkWarningAffectedBookings.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-sm flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4" />
-                    Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})
+                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2 mb-2">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="break-words">Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})</span>
                   </h4>
                   <ScrollableBulkList
                     items={bulkWarningAffectedBookings}
@@ -1602,15 +1602,15 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     maxScrollHeight="16rem"
                     ariaLabel="Affected booking requests"
                     renderItem={(booking: BookingRequest) => (
-                      <div className="p-3 border rounded-lg bg-gray-50 text-sm">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-medium">{booking.facultyName}</p>
-                            <p className="text-gray-600 text-xs">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                            <p className="text-gray-600 flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{booking.startTime} - {booking.endTime}</p>
-                            <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
+                      <div className="p-2 sm:p-3 border rounded-lg bg-gray-50 text-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <p className="font-medium text-xs sm:text-sm break-words">{booking.facultyName}</p>
+                            <p className="text-gray-600 text-[10px] sm:text-xs">{new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1 text-[10px] sm:text-xs"><Clock className="h-3 w-3 flex-shrink-0" />{booking.startTime} - {booking.endTime}</p>
+                            <p className="text-gray-500 text-[10px] sm:text-xs break-words line-clamp-2" title={booking.purpose}>{booking.purpose}</p>
                           </div>
-                          <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>{booking.status}</Badge>
+                          <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs self-start">{booking.status}</Badge>
                         </div>
                       </div>
                     )}
@@ -1620,22 +1620,22 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
               {bulkWarningAffectedSchedules.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-sm flex items-center gap-2 mb-2"><Calendar className="h-4 w-4" />Confirmed Schedules ({bulkWarningAffectedSchedules.length})</h4>
+                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2 mb-2"><Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" /><span className="break-words">Confirmed Schedules ({bulkWarningAffectedSchedules.length})</span></h4>
                   <ScrollableBulkList
                     items={bulkWarningAffectedSchedules}
                     visibleCount={5}
                     maxScrollHeight="16rem"
                     ariaLabel="Affected schedules"
                     renderItem={(schedule: Schedule) => (
-                      <div className="p-3 border rounded-lg bg-gray-50 text-sm">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-medium">{schedule.facultyName}</p>
-                            <p className="text-gray-600 text-xs">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                            <p className="text-gray-600 flex items-center gap-1 text-xs"><Clock className="h-3 w-3" />{schedule.startTime} - {schedule.endTime}</p>
-                            <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
+                      <div className="p-2 sm:p-3 border rounded-lg bg-gray-50 text-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <p className="font-medium text-xs sm:text-sm break-words">{schedule.facultyName}</p>
+                            <p className="text-gray-600 text-[10px] sm:text-xs">{new Date(schedule.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                            <p className="text-gray-600 flex items-center gap-1 text-[10px] sm:text-xs"><Clock className="h-3 w-3 flex-shrink-0" />{schedule.startTime} - {schedule.endTime}</p>
+                            <p className="text-gray-500 text-[10px] sm:text-xs break-words line-clamp-2" title={schedule.purpose}>{schedule.purpose}</p>
                           </div>
-                          <Badge variant="default">{schedule.status}</Badge>
+                          <Badge variant="default" className="text-[10px] sm:text-xs self-start">{schedule.status}</Badge>
                         </div>
                       </div>
                     )}
@@ -1643,22 +1643,22 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 </div>
               )}
 
-              <div className="space-y-4 pt-6 border-t mt-6">
-                <Label htmlFor="bulk-warning-reason" className="mb-2 block">Reason *</Label>
-                <Textarea id="bulk-warning-reason" placeholder="Provide a clear reason that will be included in notifications to affected faculty" value={bulkWarningReason} onChange={(e) => setBulkWarningReason(e.target.value)} rows={3} maxLength={300} />
-                {!bulkWarningReason.trim() && <p className="text-sm text-destructive flex items-center gap-1.5 mt-1">
-                  <AlertCircle className="h-4 w-4" />
-                  A reason is required to notify affected faculty
+              <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6">
+                <Label htmlFor="bulk-warning-reason" className="mb-2 block text-xs sm:text-sm">Reason *</Label>
+                <Textarea id="bulk-warning-reason" placeholder="Provide a clear reason that will be included in notifications to affected faculty" value={bulkWarningReason} onChange={(e) => setBulkWarningReason(e.target.value)} rows={3} maxLength={300} className="text-xs sm:text-sm" />
+                {!bulkWarningReason.trim() && <p className="text-xs sm:text-sm text-destructive flex items-center gap-1.5 mt-1">
+                  <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span>A reason is required to notify affected faculty</span>
                 </p>}
-                <p className="text-xs text-gray-500 mt-2">{bulkWarningReason.length}/300</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-2">{bulkWarningReason.length}/300</p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 mt-3 sm:mt-4">
                 <p className="font-medium mb-1">What happens next?</p>
-                <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>All affected faculty members will receive an in-app notification</li>
-                  <li>If push notifications are enabled, they'll also receive a push notification</li>
-                  <li>They will be informed to contact admin about their reservations</li>
+                <ul className="list-disc list-inside space-y-1 text-[10px] sm:text-xs pl-1">
+                  <li className="break-words">All affected faculty members will receive an in-app notification</li>
+                  <li className="break-words">If push notifications are enabled, they'll also receive a push notification</li>
+                  <li className="break-words">They will be informed to contact admin about their reservations</li>
                 </ul>
               </div>
             </div>
@@ -1674,11 +1674,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
   <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-amber-600 text-xs sm:text-base">
-              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
-              Warning: Active Reservations
+            <DialogTitle className="flex items-center gap-2 text-amber-600 text-sm sm:text-base">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span className="break-words">Warning: Active Reservations</span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               This classroom has <b>{affectedBookings.length + affectedSchedules.length}</b> active or upcoming reservation(s). 
               Disabling it will affect the following:
             </DialogDescription>
@@ -1688,9 +1688,9 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             {/* Affected Bookings */}
             {affectedBookings.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Pending/Approved Booking Requests ({affectedBookings.length})
+                <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="break-words">Pending/Approved Booking Requests ({affectedBookings.length})</span>
                 </h4>
                 <ScrollableBulkList
                   items={affectedBookings}
@@ -1698,11 +1698,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   maxScrollHeight="16rem"
                   ariaLabel="Affected booking requests for single classroom"
                   renderItem={(booking: BookingRequest) => (
-                    <div className="p-3 border rounded-lg bg-gray-50 text-sm">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <p className="font-medium">{booking.facultyName}</p>
-                          <p className="text-gray-600 text-xs">
+                    <div className="p-2 sm:p-3 border rounded-lg bg-gray-50 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <p className="font-medium text-xs sm:text-sm break-words">{booking.facultyName}</p>
+                          <p className="text-gray-600 text-[10px] sm:text-xs">
                             {new Date(booking.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               year: 'numeric', 
@@ -1710,13 +1710,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               day: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 flex items-center gap-1 text-xs">
-                            <Clock className="h-3 w-3" />
+                          <p className="text-gray-600 flex items-center gap-1 text-[10px] sm:text-xs">
+                            <Clock className="h-3 w-3 flex-shrink-0" />
                             {booking.startTime} - {booking.endTime}
                           </p>
-                          <p className="text-gray-500 text-xs truncate" title={booking.purpose}>{booking.purpose}</p>
+                          <p className="text-gray-500 text-[10px] sm:text-xs break-words line-clamp-2" title={booking.purpose}>{booking.purpose}</p>
                         </div>
-                        <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'}>
+                        <Badge variant={booking.status === 'approved' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs self-start">
                           {booking.status}
                         </Badge>
                       </div>
@@ -1729,9 +1729,9 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             {/* Affected Schedules */}
             {affectedSchedules.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Confirmed Schedules ({affectedSchedules.length})
+                <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="break-words">Confirmed Schedules ({affectedSchedules.length})</span>
                 </h4>
                 <ScrollableBulkList
                   items={affectedSchedules}
@@ -1739,11 +1739,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   maxScrollHeight="16rem"
                   ariaLabel="Affected schedules for single classroom"
                   renderItem={(schedule: Schedule) => (
-                    <div className="p-3 border rounded-lg bg-gray-50 text-sm">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <p className="font-medium">{schedule.facultyName}</p>
-                          <p className="text-gray-600 text-xs">
+                    <div className="p-2 sm:p-3 border rounded-lg bg-gray-50 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <p className="font-medium text-xs sm:text-sm break-words">{schedule.facultyName}</p>
+                          <p className="text-gray-600 text-[10px] sm:text-xs">
                             {new Date(schedule.date).toLocaleDateString('en-US', { 
                               weekday: 'short', 
                               year: 'numeric', 
@@ -1751,13 +1751,13 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                               day: 'numeric' 
                             })}
                           </p>
-                          <p className="text-gray-600 flex items-center gap-1 text-xs">
-                            <Clock className="h-3 w-3" />
+                          <p className="text-gray-600 flex items-center gap-1 text-[10px] sm:text-xs">
+                            <Clock className="h-3 w-3 flex-shrink-0" />
                             {schedule.startTime} - {schedule.endTime}
                           </p>
-                          <p className="text-gray-500 text-xs truncate" title={schedule.purpose}>{schedule.purpose}</p>
+                          <p className="text-gray-500 text-[10px] sm:text-xs break-words line-clamp-2" title={schedule.purpose}>{schedule.purpose}</p>
                         </div>
-                        <Badge variant="default">
+                        <Badge variant="default" className="text-[10px] sm:text-xs self-start">
                           {schedule.status}
                         </Badge>
                       </div>
@@ -1768,10 +1768,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             )}
 
             {/* Required Reason Field */}
-            <div className="space-y-4 pt-6 border-t mt-6">
-              <Label htmlFor="disable-reason" className="mb-2 block">
-                Reason for disabling *
-                <span className="text-sm text-gray-500 font-normal ml-2">
+            <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6">
+              <Label htmlFor="disable-reason" className="mb-2 block text-xs sm:text-sm">
+                <span className="break-words">Reason for disabling *</span>
+                <span className="text-[10px] sm:text-sm text-gray-500 font-normal ml-2 block sm:inline mt-1 sm:mt-0">
                   This will be included in the notification
                 </span>
               </Label>
@@ -1783,26 +1783,26 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 maxLength={200}
                 rows={3}
                 required
-                className={!disableReason.trim() && disableReason.length > 0 ? 'border-red-500' : ''}
+                className={`text-xs sm:text-sm ${!disableReason.trim() && disableReason.length > 0 ? 'border-red-500' : ''}`}
               />
               {!disableReason.trim() && (
-                <p className="text-sm text-destructive flex items-center gap-1.5 mt-1">
-                  <AlertCircle className="h-4 w-4" />
-                  Reason is required to notify affected faculty
+                <p className="text-xs sm:text-sm text-destructive flex items-center gap-1.5 mt-1">
+                  <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span>Reason is required to notify affected faculty</span>
                 </p>
               )}
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-2">
                 {disableReason.length}/200 characters
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mt-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 mt-3 sm:mt-4">
               <p className="font-medium mb-1">What happens next?</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>All affected faculty members will receive an in-app notification</li>
-                <li>If push notifications are enabled, they'll also receive a push notification</li>
-                <li>They will be informed to contact admin about their reservations</li>
-                <li>The classroom will be marked as unavailable for new bookings</li>
+              <ul className="list-disc list-inside space-y-1 text-[10px] sm:text-xs pl-1">
+                <li className="break-words">All affected faculty members will receive an in-app notification</li>
+                <li className="break-words">If push notifications are enabled, they'll also receive a push notification</li>
+                <li className="break-words">They will be informed to contact admin about their reservations</li>
+                <li className="break-words">The classroom will be marked as unavailable for new bookings</li>
               </ul>
             </div>
           </div>
