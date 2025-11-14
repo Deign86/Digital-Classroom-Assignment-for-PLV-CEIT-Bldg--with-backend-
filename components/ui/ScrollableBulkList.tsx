@@ -113,10 +113,12 @@ export default function ScrollableBulkList<T = any>({
       )}
 
       {/* Total count */}
-      <div className="pt-2 border-t">
-        <p className="text-sm font-medium text-gray-700">
+      <div className="flex items-center gap-3 py-2">
+        <div className="flex-1 border-t border-gray-300" />
+        <p className="text-sm font-medium text-gray-700 px-2">
           Total: {items.length} item{items.length !== 1 ? 's' : ''}
         </p>
+        <div className="flex-1 border-t border-gray-300" />
       </div>
     </div>
   );
