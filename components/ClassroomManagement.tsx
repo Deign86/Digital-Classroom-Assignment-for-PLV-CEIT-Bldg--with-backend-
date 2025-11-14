@@ -1431,7 +1431,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               {/* Affected Bookings */}
               {affectedBookingsForDelete.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                     <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                     <span className="break-words">Pending/Approved Booking Requests ({affectedBookingsForDelete.length})</span>
                   </h4>
@@ -1471,7 +1471,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               {/* Affected Schedules */}
               {affectedSchedulesForDelete.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                     <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                     <span className="break-words">Confirmed Schedules ({affectedSchedulesForDelete.length})</span>
                   </h4>
@@ -1592,7 +1592,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             <div className="space-y-4 py-4">
               {bulkWarningAffectedBookings.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2 mb-2">
+                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 mb-2 sm:flex-row sm:items-center sm:gap-2">
                     <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                     <span className="break-words">Pending/Approved Booking Requests ({bulkWarningAffectedBookings.length})</span>
                   </h4>
@@ -1620,7 +1620,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
               {bulkWarningAffectedSchedules.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2 mb-2"><Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" /><span className="break-words">Confirmed Schedules ({bulkWarningAffectedSchedules.length})</span></h4>
+                  <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 mb-2 sm:flex-row sm:items-center sm:gap-2"><Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" /><span className="break-words">Confirmed Schedules ({bulkWarningAffectedSchedules.length})</span></h4>
                   <ScrollableBulkList
                     items={bulkWarningAffectedSchedules}
                     visibleCount={5}
@@ -1688,7 +1688,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             {/* Affected Bookings */}
             {affectedBookings.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                   <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span className="break-words">Pending/Approved Booking Requests ({affectedBookings.length})</span>
                 </h4>
@@ -1729,7 +1729,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             {/* Affected Schedules */}
             {affectedSchedules.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-xs sm:text-sm flex items-center gap-2">
+                <h4 className="font-semibold text-xs sm:text-sm flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                   <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span className="break-words">Confirmed Schedules ({affectedSchedules.length})</span>
                 </h4>
