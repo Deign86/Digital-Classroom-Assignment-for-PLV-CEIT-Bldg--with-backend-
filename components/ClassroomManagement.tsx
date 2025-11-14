@@ -196,11 +196,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
   // Validate room name
   const validateRoomName = (name: string): string | undefined => {
-    const sanitized = sanitizeText(name, LIMITS.ROOM_NAME);
-    if (!sanitized.trim()) {
+    const trimmed = name.trim();
+    if (!trimmed) {
       return 'Room name is required';
     }
-    if (sanitized.length > LIMITS.ROOM_NAME) {
+    if (name.length > LIMITS.ROOM_NAME) {
       return `Room name must be ${LIMITS.ROOM_NAME} characters or less`;
     }
     return undefined;
@@ -244,11 +244,14 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       return;
     }
     
+    // Sanitize name for submission (trim and collapse multiple spaces)
+    const sanitizedName = sanitizeText(formData.name, LIMITS.ROOM_NAME);
+    
     const result = await executeWithNetworkHandling(
       async () => {
         if (editingClassroom) {
           await classroomService.update(editingClassroom.id, {
-            name: formData.name,
+            name: sanitizedName,
             capacity: parseInt(formData.capacity),
             equipment: formData.equipment,
             building: formData.building,
@@ -257,7 +260,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           });
         } else {
           await classroomService.create({
-            name: formData.name,
+            name: sanitizedName,
             capacity: parseInt(formData.capacity),
             equipment: formData.equipment,
             building: formData.building,
@@ -991,9 +994,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       placeholder="e.g., CEIT-101"
                       value={formData.name}
                       onChange={(e) => {
-                        const sanitized = sanitizeText(e.target.value, LIMITS.ROOM_NAME);
-                        setFormData(prev => ({ ...prev, name: sanitized }));
-                        setValidationErrors(prev => ({ ...prev, name: validateRoomName(sanitized) }));
+                        // Allow spaces during typing - only enforce length limit
+                        const value = e.target.value.slice(0, LIMITS.ROOM_NAME);
+                        setFormData(prev => ({ ...prev, name: value }));
+                        setValidationErrors(prev => ({ ...prev, name: validateRoomName(value) }));
                       }}
                       onBlur={() => setValidationErrors(prev => ({ ...prev, name: validateRoomName(formData.name) }))}
                       maxLength={LIMITS.ROOM_NAME}
