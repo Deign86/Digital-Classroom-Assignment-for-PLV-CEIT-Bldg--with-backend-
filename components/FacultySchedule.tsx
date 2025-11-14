@@ -487,33 +487,33 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                     {/* Bulk Cancel Dialog */}
                     <Dialog open={showBulkCancelDialog} onOpenChange={(open) => { if (isCancelling) return; setShowBulkCancelDialog(open); setBulkReasonError(null); }}>
-                      <DialogContent className="max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6 w-[95vw] sm:w-full">
-                        <DialogHeader>
-                          <DialogTitle className="text-base sm:text-lg">Cancel selected reservations</DialogTitle>
-                        </DialogHeader>
-                          <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
-                            Please provide a reason for cancelling your approved reservation(s). This will be sent to the administrators.
+                      <DialogContent className="max-h-[92vh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-16px)] sm:w-full gap-3 sm:gap-4">
+                        <DialogHeader className="space-y-1 sm:space-y-1.5">
+                          <DialogTitle className="text-sm sm:text-lg leading-tight">Cancel reservations</DialogTitle>
+                          <DialogDescription className="text-[11px] sm:text-sm text-muted-foreground leading-snug">
+                            Provide a reason for cancelling. This will be sent to administrators.
                           </DialogDescription>
+                        </DialogHeader>
 
-                        <div className="mt-3 mb-3 sm:mt-4 sm:mb-4">
+                        <div className="space-y-3">
                           {/* Scrollable list of selected reservations */}
                           {Object.keys(approvedSelectedIds).filter(k => approvedSelectedIds[k]).length > 0 && (
                             <ScrollableBulkList
                               items={bookingRequests.filter(r => approvedSelectedIds[r.id])}
-                              visibleCount={5}
-                              maxScrollHeight="12rem"
+                              visibleCount={3}
+                              maxScrollHeight="10rem"
                               ariaLabel="Selected reservations to cancel"
                               renderItem={(reservation) => (
-                                <div className="p-2 sm:p-3 border rounded-lg bg-white text-xs sm:text-sm hover:bg-gray-50 transition-colors">
-                                  <div className="space-y-0.5 sm:space-y-1">
-                                    <p className="font-medium text-gray-900 text-xs sm:text-sm">
-                                      {new Date(reservation.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                <div className="p-1.5 sm:p-3 border rounded bg-white hover:bg-gray-50 transition-colors">
+                                  <div className="space-y-0.5">
+                                    <p className="font-medium text-gray-900 text-[11px] sm:text-sm leading-tight">
+                                      {new Date(reservation.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                     </p>
-                                    <p className="text-gray-700 text-xs sm:text-sm truncate">{reservation.classroomName}</p>
-                                    <p className="text-gray-600 text-[10px] sm:text-xs">
+                                    <p className="text-gray-700 text-[10px] sm:text-sm truncate leading-tight">{reservation.classroomName}</p>
+                                    <p className="text-gray-600 text-[9px] sm:text-xs leading-tight">
                                       {formatTimeRange(convertTo12Hour(reservation.startTime), convertTo12Hour(reservation.endTime))}
                                     </p>
-                                    <p className="text-gray-500 text-[10px] sm:text-xs truncate" title={reservation.purpose}>
+                                    <p className="text-gray-500 text-[9px] sm:text-xs truncate leading-tight" title={reservation.purpose}>
                                       {reservation.purpose}
                                     </p>
                                   </div>
@@ -523,35 +523,32 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           )}
                         </div>
 
-                        <div>
-
-                          <Label className="block text-xs sm:text-sm">Reason (required)</Label>
-                          <div className="mt-2">
-                            <Textarea
-                              value={bulkCancelReason}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v.length <= 500) {
-                                  setBulkCancelReason(v);
-                                  setBulkReasonError(null);
-                                }
-                              }}
-                              maxLength={500}
-                              rows={3}
-                              autoFocus
-                              placeholder="Explain why you need to cancel your reservation(s)"
-                              aria-label="Cancellation reason"
-                              aria-invalid={!!bulkReasonError}
-                              className="mt-0 text-xs sm:text-sm"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground mt-1">
-                            <div className="min-h-[1.25rem] flex-1 pr-2">{bulkReasonError ? <span role="alert" className="text-xs sm:text-sm text-destructive flex items-center gap-1.5">{bulkReasonError}</span> : null}</div>
-                            <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{bulkCancelReason.length}/500</div>
+                        <div className="space-y-2">
+                          <Label className="block text-[11px] sm:text-sm">Reason (required)</Label>
+                          <Textarea
+                            value={bulkCancelReason}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v.length <= 500) {
+                                setBulkCancelReason(v);
+                                setBulkReasonError(null);
+                              }
+                            }}
+                            maxLength={500}
+                            rows={3}
+                            autoFocus
+                            placeholder="Why cancel?"
+                            aria-label="Cancellation reason"
+                            aria-invalid={!!bulkReasonError}
+                            className="text-[11px] sm:text-sm min-h-[60px]"
+                          />
+                          <div className="flex items-start justify-between text-[10px] sm:text-sm text-muted-foreground gap-2">
+                            <div className="flex-1 min-w-0">{bulkReasonError ? <span role="alert" className="text-destructive block">{bulkReasonError}</span> : null}</div>
+                            <div className="text-muted-foreground whitespace-nowrap flex-shrink-0">{bulkCancelReason.length}/500</div>
                           </div>
                         </div>
 
-                        <DialogFooter className="mt-3 sm:mt-4">
+                        <DialogFooter className="gap-2 sm:gap-2">
                           <div className="flex flex-col sm:flex-row gap-2 w-full">
                             <Button className="w-full sm:w-auto" variant="secondary" onClick={() => { setShowBulkCancelDialog(false); setBulkCancelReason(''); setBulkReasonError(null); }}>Cancel</Button>
                             <Button
