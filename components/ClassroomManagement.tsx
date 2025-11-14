@@ -1418,11 +1418,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
     <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-amber-600 text-sm sm:text-base">
+              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm sm:text-base sm:flex-row sm:items-center">
                 <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 <span className="break-words">Warning: Active Reservations Found</span>
               </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm">
+              <DialogDescription className="text-xs sm:text-sm break-words">
                 The classroom <b>{classroomToDeleteWarning?.name}</b> has <b>{affectedBookingsForDelete.length + affectedSchedulesForDelete.length}</b> active or upcoming reservation(s). Deleting it will affect the following reservations. You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
@@ -1580,11 +1580,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
           <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-amber-600 text-sm sm:text-base">
+              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm sm:text-base sm:flex-row sm:items-center">
                 <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 <span className="break-words">Warning: Affected Reservations Found</span>
               </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm">
+              <DialogDescription className="text-xs sm:text-sm break-words">
                 The selected classrooms have <b>{bulkWarningAffectedBookings.length + bulkWarningAffectedSchedules.length}</b> active or upcoming reservation(s). You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
@@ -1674,11 +1674,11 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
   <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-20px)] gap-2 sm:gap-4">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-amber-600 text-sm sm:text-base">
+            <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm sm:text-base sm:flex-row sm:items-center">
               <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="break-words">Warning: Active Reservations</span>
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
+            <DialogDescription className="text-xs sm:text-sm break-words">
               This classroom has <b>{affectedBookings.length + affectedSchedules.length}</b> active or upcoming reservation(s). 
               Disabling it will affect the following:
             </DialogDescription>
