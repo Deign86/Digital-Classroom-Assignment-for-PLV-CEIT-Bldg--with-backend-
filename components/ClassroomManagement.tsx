@@ -1183,12 +1183,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
           {selectedCount > 0 && (
             <ProcessingFieldset isProcessing={isProcessingBulk} className="mb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div className="text-sm font-medium">Selected: {selectedCount}</div>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected} className="w-full sm:w-auto text-xs sm:text-sm">
+                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected} className="w-full md:w-auto text-xs md:text-sm">
                         Enable Selected ({selectedCount})
                       </Button>
                     </TooltipTrigger>
@@ -1201,7 +1201,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected} className="w-full sm:w-auto text-xs sm:text-sm">
+                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected} className="w-full md:w-auto text-xs md:text-sm">
                         Disable Selected ({selectedCount})
                       </Button>
                     </TooltipTrigger>
@@ -1212,10 +1212,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     )}
                   </Tooltip>
 
-                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
                     Delete Selected ({selectedCount})
                   </Button>
-                  <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">Clear</Button>
+                  <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">Clear</Button>
                 </div>
               </div>
             </ProcessingFieldset>
