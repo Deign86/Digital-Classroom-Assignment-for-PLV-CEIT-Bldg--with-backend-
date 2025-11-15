@@ -969,25 +969,25 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="add-classroom-btn">
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button className="add-classroom-btn text-xs sm:text-sm h-8 sm:h-10">
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Add Classroom
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[95vh] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] sm:max-w-[425px] gap-2 sm:gap-4">
-                <DialogHeader>
-                  <DialogTitle className="text-sm sm:text-lg">
+              <DialogContent className="classroom-dialog max-h-[95vh] sm:max-h-[85vh] overflow-y-auto p-1 sm:p-6 w-[calc(100vw-8px)] max-w-[calc(100vw-8px)] sm:w-[425px] sm:max-w-[425px] gap-1 sm:gap-4 m-1 sm:mx-auto box-border" style={{ width: 'calc(100vw - 8px)', maxWidth: 'calc(100vw - 8px)' }}>
+                <DialogHeader className="space-y-1 sm:space-y-2">
+                  <DialogTitle className="text-sm sm:text-lg leading-tight">
                     {editingClassroom ? 'Edit Classroom' : 'Add New Classroom'}
                   </DialogTitle>
-                  <DialogDescription className="text-xs sm:text-sm">
+                  <DialogDescription className="text-xs sm:text-sm leading-tight">
                     {editingClassroom 
                       ? 'Update the classroom information below.' 
                       : 'Enter the details for the new classroom.'
                     }
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                  <div className="space-y-1 sm:space-y-2">
+                <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-4 w-full min-w-0 overflow-hidden">
+                  <div className="space-y-1 sm:space-y-2 w-full">
                     <Label htmlFor="name" className="text-xs sm:text-sm">Room Name *</Label>
                     <Input
                       id="name"
@@ -1001,7 +1001,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                       }}
                       onBlur={() => setValidationErrors(prev => ({ ...prev, name: validateRoomName(formData.name) }))}
                       maxLength={LIMITS.ROOM_NAME}
-                      className={`text-xs sm:text-sm ${validationErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                      className={`text-xs sm:text-sm h-8 sm:h-10 w-full ${validationErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       required
                     />
                     {validationErrors.name && (
@@ -1015,8 +1015,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
-                    <div className="space-y-1 sm:space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 w-full">
+                    <div className="space-y-1 sm:space-y-2 w-full min-w-0">
                       <Label htmlFor="capacity" className="text-xs sm:text-sm">Capacity *</Label>
                       <Input
                         id="capacity"
@@ -1030,7 +1030,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                           setValidationErrors(prev => ({ ...prev, capacity: validateCapacity(e.target.value) }));
                         }}
                         onBlur={() => setValidationErrors(prev => ({ ...prev, capacity: validateCapacity(formData.capacity) }))}
-                        className={`text-xs sm:text-sm ${validationErrors.capacity ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                        className={`text-xs sm:text-sm h-8 sm:h-10 w-full ${validationErrors.capacity ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                         required
                       />
                       {validationErrors.capacity && (
@@ -1043,10 +1043,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         Range: {LIMITS.CAPACITY_MIN}-{LIMITS.CAPACITY_MAX}
                       </p>
                     </div>
-                    <div className="space-y-1 sm:space-y-2">
+                    <div className="space-y-1 sm:space-y-2 w-full min-w-0">
                       <Label htmlFor="floor" className="text-xs sm:text-sm">Floor *</Label>
                       <Select value={formData.floor} onValueChange={(value: string) => setFormData(prev => ({ ...prev, floor: value }))}>
-                        <SelectTrigger className="text-xs sm:text-sm">
+                        <SelectTrigger className="text-xs sm:text-sm h-8 sm:h-10 w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1061,10 +1061,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     </div>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2">
+                  <div className="space-y-1 sm:space-y-2 w-full">
                     <Label htmlFor="equipment" className="text-xs sm:text-sm">Equipment</Label>
                     <Select value="" onValueChange={toggleEquipment}>
-                      <SelectTrigger id="equipment" className="text-xs sm:text-sm">
+                      <SelectTrigger id="equipment" className="text-xs sm:text-sm h-8 sm:h-10 w-full">
                         <SelectValue placeholder="Select equipment to add..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -1116,8 +1116,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     <Label htmlFor="available" className="text-xs sm:text-sm">Available for booking</Label>
                   </div>
 
-                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 sm:pt-4">
-                    <Button type="button" variant="outline" onClick={closeDialog} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 sm:pt-4">
+                    <Button type="button" variant="outline" onClick={closeDialog} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10">
                       Cancel
                     </Button>
                     <Button 
@@ -1128,7 +1128,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         !!validationErrors.name || 
                         !!validationErrors.capacity
                       }
-                      className="w-full sm:w-auto text-xs sm:text-sm"
+                      className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10"
                     >
                       {editingClassroom ? 'Update Classroom' : 'Add Classroom'}
                     </Button>
@@ -1146,6 +1146,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               placeholder="Search by room name or building..."
               value={filters.query}
               onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
+              className="text-xs sm:text-sm h-8 sm:h-10"
             />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Input
@@ -1153,9 +1154,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 type="number"
                 value={filters.minCapacity}
                 onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
+                className="text-xs sm:text-sm h-8 sm:h-10"
               />
               <Select value={filters.floor} onValueChange={(v: string) => setFilters(prev => ({ ...prev, floor: v }))}>
-                <SelectTrigger>
+                <SelectTrigger className="text-xs sm:text-sm h-8 sm:h-10">
                     <SelectValue>
                       {filters.floor === '__all__' ? 'Filter by floor' : (
                         filters.floor === '1' ? '1st Floor' :
@@ -1191,7 +1193,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected} className="w-full md:w-auto text-xs md:text-sm">
+                      <Button onClick={() => initiateBulkAction('enable')} disabled={isProcessingBulk || !canEnableSelected} className="w-full md:w-auto text-xs md:text-sm h-8 md:h-10">
                         Enable Selected ({selectedCount})
                       </Button>
                     </TooltipTrigger>
@@ -1204,7 +1206,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected} className="w-full md:w-auto text-xs md:text-sm">
+                      <Button variant="destructive" onClick={() => initiateBulkAction('disable')} disabled={isProcessingBulk || !canDisableSelected} className="w-full md:w-auto text-xs md:text-sm h-8 md:h-10">
                         Disable Selected ({selectedCount})
                       </Button>
                     </TooltipTrigger>
@@ -1215,7 +1217,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                     )}
                   </Tooltip>
 
-                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">
+                  <Button variant="destructive" onClick={() => initiateBulkAction('delete')} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm h-8 md:h-10">
                     Delete Selected ({selectedCount})
                   </Button>
                   <Button variant="outline" onClick={clearSelection} disabled={isProcessingBulk} className="w-full md:w-auto text-xs md:text-sm">Clear</Button>
@@ -1321,15 +1323,17 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                             variant="outline"
                             size="sm"
                             onClick={() => handleEdit(classroom)}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteClick(classroom)}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -1349,7 +1353,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       </Card>
         {/* Bulk Action Dialog */}
       <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] gap-2 sm:gap-4">
+        <DialogContent className="max-h-[80vh] overflow-y-auto p-2 sm:p-6 w-[calc(100vw-16px)] max-w-[calc(100vw-16px)] sm:w-[600px] sm:max-w-[600px] gap-2 sm:gap-4">
           <DialogHeader>
             <DialogTitle className="text-sm sm:text-lg">{bulkActionType === 'delete' ? 'Delete Selected Classrooms' : bulkActionType === 'disable' ? 'Disable Selected Classrooms' : 'Enable Selected Classrooms'}</DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
@@ -1359,18 +1363,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+          <div className="space-y-2 sm:space-y-4 mt-3 sm:mt-6">
             {(bulkActionType === 'disable' || bulkActionType === 'delete') && (
-              <div className="space-y-3 sm:space-y-4">
-                <Label htmlFor="bulk-reason" className="mb-2 block text-xs sm:text-sm">Reason (optional)</Label>
-                <Textarea id="bulk-reason" value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} rows={3} maxLength={300} className="text-xs sm:text-sm" />
-                <p className="text-xs text-gray-500 mt-2">{bulkReason.length}/300</p>
+              <div className="space-y-2 sm:space-y-4">
+                <Label htmlFor="bulk-reason" className="mb-1 sm:mb-2 block text-xs sm:text-sm">Reason (optional)</Label>
+                <Textarea id="bulk-reason" value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} rows={3} maxLength={300} className="text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]" />
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 sm:mt-2">{bulkReason.length}/300</p>
               </div>
             )}
           </div>
-          <DialogFooter className="pt-4 sm:pt-6 flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setIsBulkDialogOpen(false)} disabled={isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">Cancel</Button>
-            <Button variant={bulkActionType === 'delete' || bulkActionType === 'disable' ? 'destructive' : undefined} onClick={confirmBulkAction} disabled={isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm">
+          <DialogFooter className="pt-2 sm:pt-6 flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsBulkDialogOpen(false)} disabled={isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10">Cancel</Button>
+            <Button variant={bulkActionType === 'delete' || bulkActionType === 'disable' ? 'destructive' : undefined} onClick={confirmBulkAction} disabled={isProcessingBulk} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10">
               {isProcessingBulk ? (
                 <span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing…</span>
               ) : (
@@ -1383,18 +1387,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] p-3 sm:p-6 w-[calc(100vw-32px)]">
-          <DialogHeader>
-            <DialogTitle>Delete Classroom</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="p-2 sm:p-6 w-[calc(100vw-16px)] max-w-[calc(100vw-16px)] sm:w-[400px] sm:max-w-[400px]">
+          <DialogHeader className="space-y-1 sm:space-y-2">
+            <DialogTitle className="text-sm sm:text-lg">Delete Classroom</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Are you sure you want to delete <b>{classroomToDelete?.name}</b>? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-2 sm:pt-4 flex-col-reverse sm:flex-row gap-2">
             <Button 
               variant="outline" 
               onClick={() => { setDeleteDialogOpen(false); setClassroomToDelete(null); }}
               disabled={deletingSimple}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10"
             >
               Cancel
             </Button>
@@ -1402,6 +1407,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               variant="destructive" 
               onClick={handleDeleteConfirm}
               disabled={deletingSimple}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10"
             >
               {deletingSimple ? (
                 <>
@@ -1418,7 +1424,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Delete Warning Dialog (shown when classroom has pending/approved reservations) */}
         <Dialog open={deleteWarningOpen} onOpenChange={setDeleteWarningOpen}>
-    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] gap-2 sm:gap-4">
+    <DialogContent className="max-h-[80vh] overflow-y-auto p-2 sm:p-6 w-[calc(100vw-16px)] max-w-[calc(100vw-16px)] sm:w-[600px] sm:max-w-[600px] gap-2 sm:gap-4">
             <DialogHeader>
               <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
                 <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
@@ -1550,12 +1556,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </div>
             </div>
 
-            <DialogFooter className="mt-4 sm:mt-6 flex-col-reverse sm:flex-row gap-2">
+            <DialogFooter className="mt-2 sm:mt-6 flex-col-reverse sm:flex-row gap-2">
               <Button 
                 variant="outline" 
                 onClick={handleDeleteWarningCancel}
                 disabled={deleting}
-                className="w-full sm:w-auto text-xs sm:text-sm"
+                className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10"
               >
                 Cancel
               </Button>
@@ -1563,7 +1569,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 variant="destructive" 
                 onClick={handleDeleteConfirmWithWarning}
                 disabled={!deleteReason.trim() || deleting}
-                className="bg-amber-600 hover:bg-amber-700 w-full sm:w-auto text-xs sm:text-sm"
+                className="bg-amber-600 hover:bg-amber-700 w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10"
               >
                 {deleting ? (
                   <>
@@ -1580,18 +1586,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
         {/* Bulk Warning Dialog for selected classrooms */}
         <Dialog open={bulkWarningOpen} onOpenChange={setBulkWarningOpen}>
-          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-[calc(100vw-40px)] md:w-auto gap-2 sm:gap-4">
-            <DialogHeader>
-              <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
+        <DialogContent className="bulk-warning-dialog max-h-[80vh] overflow-y-auto p-2 sm:p-6 w-[calc(100vw-8px)] max-w-[calc(100vw-8px)] sm:w-[calc(100vw-40px)] md:w-auto md:max-w-[700px] gap-2 sm:gap-4" style={{ width: 'calc(100vw - 8px)', maxWidth: 'calc(100vw - 8px)' }}>
+            <DialogHeader className="space-y-1 sm:space-y-2">
+              <DialogTitle className="flex flex-col items-start gap-1 sm:gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
                 <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
-                <span className="break-words">Warning: Affected Reservations Found</span>
+                <span className="break-words text-sm sm:text-base">Warning: Affected Reservations Found</span>
               </DialogTitle>
-              <DialogDescription className="text-xs md:text-sm break-words">
+              <DialogDescription className="text-xs md:text-sm break-words leading-tight">
                 The selected classrooms have <b>{bulkWarningAffectedBookings.length + bulkWarningAffectedSchedules.length}</b> active or upcoming reservation(s). You must provide a reason which will be included in notifications to affected faculty.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="space-y-2 sm:space-y-4 py-2 sm:py-4">
               {bulkWarningAffectedBookings.length > 0 && (
                 <div>
                   <h4 className="font-semibold text-xs md:text-sm flex flex-col items-start gap-1 mb-2 md:flex-row md:items-center md:gap-2">
@@ -1645,19 +1651,19 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 </div>
               )}
 
-              <div className="space-y-3 sm:space-y-4 pt-4 sm:pt-6 border-t mt-4 sm:mt-6">
-                <Label htmlFor="bulk-warning-reason" className="mb-2 block text-xs sm:text-sm">Reason *</Label>
-                <Textarea id="bulk-warning-reason" placeholder="Provide a clear reason that will be included in notifications to affected faculty" value={bulkWarningReason} onChange={(e) => setBulkWarningReason(e.target.value)} rows={3} maxLength={300} className="text-xs sm:text-sm" />
-                {!bulkWarningReason.trim() && <p className="text-xs sm:text-sm text-destructive flex items-center gap-1.5 mt-1">
+              <div className="space-y-2 sm:space-y-4 pt-2 sm:pt-6 border-t mt-2 sm:mt-6">
+                <Label htmlFor="bulk-warning-reason" className="mb-1 sm:mb-2 block text-xs sm:text-sm">Reason *</Label>
+                <Textarea id="bulk-warning-reason" placeholder="Provide a clear reason that will be included in notifications to affected faculty" value={bulkWarningReason} onChange={(e) => setBulkWarningReason(e.target.value)} rows={3} maxLength={300} className="text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]" />
+                {!bulkWarningReason.trim() && <p className="text-xs sm:text-sm text-destructive flex items-center gap-1 sm:gap-1.5 mt-1">
                   <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                  <span>A reason is required to notify affected faculty</span>
+                  <span className="text-[10px] sm:text-xs">A reason is required to notify affected faculty</span>
                 </p>}
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-2">{bulkWarningReason.length}/300</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1 sm:mt-2">{bulkWarningReason.length}/300</p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 mt-3 sm:mt-4">
-                <p className="font-medium mb-1">What happens next?</p>
-                <ul className="list-disc list-inside space-y-1 text-[10px] sm:text-xs pl-1">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 mt-2 sm:mt-4">
+                <p className="font-medium mb-1 text-[10px] sm:text-xs">What happens next?</p>
+                <ul className="list-disc list-inside space-y-1 text-[8px] sm:text-xs pl-1">
                   <li className="break-words">All affected faculty members will receive an in-app notification</li>
                   <li className="break-words">If push notifications are enabled, they'll also receive a push notification</li>
                   <li className="break-words">They will be informed to contact admin about their reservations</li>
@@ -1665,18 +1671,18 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               </div>
             </div>
 
-            <DialogFooter className="mt-4 sm:mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-              <Button variant="outline" onClick={() => { setBulkWarningOpen(false); pendingBulkIdsRef.current = null; }} disabled={bulkConfirming} className="w-full sm:w-auto text-xs sm:text-sm">Cancel</Button>
-              <Button variant="destructive" onClick={() => executePendingBulkAction(bulkWarningReason)} disabled={!bulkWarningReason.trim() || bulkConfirming} className="w-full sm:w-auto text-xs sm:text-sm">{bulkConfirming ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing...</>) : (bulkActionType === 'delete' ? 'Delete & Notify' : 'Disable & Notify')}</Button>
+            <DialogFooter className="mt-2 sm:mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <Button variant="outline" onClick={() => { setBulkWarningOpen(false); pendingBulkIdsRef.current = null; }} disabled={bulkConfirming} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10">Cancel</Button>
+              <Button variant="destructive" onClick={() => executePendingBulkAction(bulkWarningReason)} disabled={!bulkWarningReason.trim() || bulkConfirming} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-10">{bulkConfirming ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Processing...</>) : (bulkActionType === 'delete' ? 'Delete & Notify' : 'Disable & Notify')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
       {/* Disable Classroom Warning Dialog */}
       <Dialog open={disableWarningOpen} onOpenChange={setDisableWarningOpen}>
-  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 sm:p-6 w-[calc(100vw-32px)] sm:w-[calc(100vw-40px)] md:w-auto gap-2 sm:gap-4">
+  <DialogContent className="disable-warning-dialog max-h-[80vh] overflow-y-auto p-2 sm:p-6 w-[calc(100vw-8px)] max-w-[calc(100vw-8px)] sm:w-[calc(100vw-40px)] md:w-auto md:max-w-[600px] gap-2 sm:gap-4" style={{ width: 'calc(100vw - 8px)', maxWidth: 'calc(100vw - 8px)' }}>
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex flex-col items-start gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
+            <DialogTitle className="flex flex-col items-start gap-1 sm:gap-2 text-amber-600 text-sm md:text-base md:flex-row md:items-center">
               <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
               <span className="break-words">Warning: Active Reservations</span>
             </DialogTitle>

@@ -266,7 +266,7 @@ export default function RequestCard({
                     Cancel Reservation
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="cancel-reservation-dialog max-h-[80vh] overflow-y-auto p-2 sm:p-6 w-[calc(100vw-8px)] max-w-[calc(100vw-8px)] sm:w-[425px] sm:max-w-[425px] gap-2 sm:gap-4 m-1 sm:mx-auto box-border" style={{ width: 'calc(100vw - 8px)', maxWidth: 'calc(100vw - 8px)' }}>
                   <ProcessingFieldset isProcessing={isCancelling}>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
