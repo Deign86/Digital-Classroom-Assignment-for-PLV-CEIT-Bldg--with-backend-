@@ -29,6 +29,7 @@ export const equipmentIcons: { [key: string]: React.ReactNode } = {
   'Camera': getPhosphorIcon(['Camera', 'VideoCamera', 'Webcam'], { className: 'h-4 w-4' }) || null,
   'Printer': getPhosphorIcon(['Printer', 'PrinterDuotone'], { className: 'h-4 w-4' }) || null,
   'Scanner': getPhosphorIcon(['Scan', 'Scanner'], { className: 'h-4 w-4' }) || null,
+  'HDMI Cable': getPhosphorIcon(['PlugsConnected', 'Plugs', 'Plug', 'LinkSimple'], { className: 'h-4 w-4' }) || null,
 };
 
 const normalize = (s: string) => s.replace(/[^a-z0-9]/gi, '').toLowerCase();

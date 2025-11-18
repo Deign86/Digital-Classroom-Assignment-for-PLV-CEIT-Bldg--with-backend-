@@ -59,7 +59,8 @@ const EQUIPMENT_OPTIONS = [
   'Microphone',
   'Camera',
   'Printer',
-  'Scanner'
+  'Scanner',
+  'HDMI Cable'
 ];
 
 export default function ClassroomManagement({ classrooms, onClassroomUpdate }: ClassroomManagementProps) {
@@ -126,6 +127,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   const [affectedBookings, setAffectedBookings] = useState<BookingRequest[]>([]);
   const [affectedSchedules, setAffectedSchedules] = useState<Schedule[]>([]);
   const [disableReason, setDisableReason] = useState('');
+  const [disableDuration, setDisableDuration] = useState('');
+  const [disableDurationUnit, setDisableDurationUnit] = useState<'hours' | 'days'>('days');
   const [disabling, setDisabling] = useState(false);
 
   const resetForm = () => {
@@ -553,13 +556,23 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     await performAvailabilityToggle(classroomId, isAvailable);
   };
 
-  const performAvailabilityToggle = async (classroomId: string, isAvailable: boolean, reason?: string) => {
+  const performAvailabilityToggle = async (classroomId: string, isAvailable: boolean, reason?: string, disabledUntil?: string) => {
     // show per-row loader while updating
     setLoadingRows(prev => ({ ...prev, [classroomId]: true }));
     
     const result = await executeWithNetworkHandling(
       async () => {
-        await classroomService.update(classroomId, { isAvailable });
+        // When disabling, save the reason and disabledUntil timestamp
+        // When enabling, clear these fields
+        const updates: Partial<Classroom> = {
+          isAvailable,
+          ...(isAvailable ? { disabledUntil: undefined, disableReason: undefined } : {
+            disableReason: reason,
+            ...(disabledUntil && { disabledUntil })
+          })
+        };
+        
+        await classroomService.update(classroomId, updates);
         const updatedClassrooms = await classroomService.getAll();
         onClassroomUpdate(updatedClassrooms);
         
@@ -634,7 +647,26 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     }
     
     setDisabling(true);
-    await performAvailabilityToggle(classroomToDisable.id, false, disableReason);
+    
+    // Build reason message with duration if provided
+    let fullReason = disableReason;
+    let disabledUntil: string | undefined = undefined;
+    
+    if (disableDuration && parseInt(disableDuration) > 0) {
+      const duration = parseInt(disableDuration);
+      fullReason += ` (Expected duration: ${duration} ${disableDurationUnit})`;
+      
+      // Calculate when the classroom should be re-enabled
+      const now = new Date();
+      if (disableDurationUnit === 'hours') {
+        now.setHours(now.getHours() + duration);
+      } else {
+        now.setDate(now.getDate() + duration);
+      }
+      disabledUntil = now.toISOString();
+    }
+    
+    await performAvailabilityToggle(classroomToDisable.id, false, fullReason, disabledUntil);
     setDisabling(false);
     
     // Reset state
@@ -643,6 +675,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setAffectedBookings([]);
     setAffectedSchedules([]);
     setDisableReason('');
+    setDisableDuration('');
+    setDisableDurationUnit('days');
   };
 
   const handleDisableCancel = () => {
@@ -651,6 +685,8 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
     setAffectedBookings([]);
     setAffectedSchedules([]);
     setDisableReason('');
+    setDisableDuration('');
+    setDisableDurationUnit('days');
   };
 
   const closeDialog = () => {
@@ -1017,7 +1053,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <div className="space-y-1 sm:space-y-2">
-                      <Label htmlFor="capacity" className="text-xs sm:text-sm">Capacity *</Label>
+                      <Label htmlFor="capacity" className="text-xs sm:text-sm">Room Capacity *</Label>
                       <Input
                         id="capacity"
                         type="number"
@@ -1149,7 +1185,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
             />
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Input
-                placeholder="Min capacity"
+                placeholder="Min room capacity"
                 type="number"
                 value={filters.minCapacity}
                 onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
@@ -1246,7 +1282,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   </TableHead>
                   <TableHead>Room Name</TableHead>
                   <TableHead>Building & Floor</TableHead>
-                  <TableHead>Capacity</TableHead>
+                  <TableHead>Room Capacity</TableHead>
                   <TableHead>Equipment</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -1796,6 +1832,44 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               <p className="text-[10px] sm:text-xs text-gray-500 mt-2">
                 {disableReason.length}/200 characters
               </p>
+            </div>
+
+            {/* Duration Field */}
+            <div className="space-y-2">
+              <Label htmlFor="disable-duration" className="text-xs sm:text-sm">
+                <span className="break-words">Duration (optional)</span>
+                <span className="text-[10px] sm:text-sm text-gray-500 font-normal ml-2 block sm:inline mt-1 sm:mt-0">
+                  How long will the room be disabled?
+                </span>
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="disable-duration"
+                  type="number"
+                  placeholder="e.g., 3"
+                  value={disableDuration}
+                  onChange={(e) => setDisableDuration(e.target.value)}
+                  min="1"
+                  className="text-xs sm:text-sm flex-1"
+                />
+                <Select value={disableDurationUnit} onValueChange={(value: 'hours' | 'days') => setDisableDurationUnit(value)}>
+                  <SelectTrigger className="text-xs sm:text-sm w-[100px] sm:w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hours">Hours</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {disableDuration && parseInt(disableDuration) > 0 && (
+                <p className="text-[10px] sm:text-xs text-blue-600 flex items-center gap-1.5 mt-1">
+                  <Clock className="h-3 w-3 flex-shrink-0" />
+                  <span>
+                    Classroom will be automatically re-enabled after {disableDuration} {disableDurationUnit}
+                  </span>
+                </p>
+              )}
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-blue-800 mt-3 sm:mt-4">

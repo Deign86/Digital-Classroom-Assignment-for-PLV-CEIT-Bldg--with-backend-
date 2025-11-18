@@ -33,6 +33,7 @@ const EQUIPMENT_OPTIONS = [
   'Microphone',
   'Camera',
   'Printer',
+  'HDMI Cable',
   'Scanner'
 ];
 
@@ -529,7 +530,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
           {/* Filters Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="search-capacity">Minimum Capacity</Label>
+              <Label htmlFor="search-capacity">Minimum Room Capacity</Label>
               <Input
                 id="search-capacity"
                 type="number"

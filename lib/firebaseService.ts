@@ -140,6 +140,8 @@ type FirestoreClassroomRecord = {
   building: string;
   floor: number;
   isAvailable: boolean;
+  disabledUntil?: string; // ISO timestamp when classroom should be auto-enabled
+  disableReason?: string; // Reason for disabling
   createdAt?: string;
   updatedAt?: string;
 };
@@ -596,6 +598,8 @@ const toClassroom = (
   building: data.building,
   floor: data.floor,
   isAvailable: data.isAvailable,
+  disabledUntil: data.disabledUntil,
+  disableReason: data.disableReason,
 });
 
 const toBookingRequest = (

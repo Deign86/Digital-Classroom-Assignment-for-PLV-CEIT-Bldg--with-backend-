@@ -442,10 +442,10 @@ function AdminReports({ classrooms, schedules, bookingRequests, signupRequests }
         </Card>
       </div>
 
-      {/* Top Performing Classrooms */}
+      {/* Most Used Classrooms */}
       <Card>
         <CardHeader>
-          <CardTitle>Top Performing Classrooms</CardTitle>
+          <CardTitle>Most Used Classrooms</CardTitle>
           <CardDescription>Most utilized classrooms by class count and hours</CardDescription>
         </CardHeader>
         <CardContent>

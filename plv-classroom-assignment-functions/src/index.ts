@@ -126,6 +126,99 @@ export const expirePastPendingBookings = scheduler.onSchedule(
     return;
   }
 );
+
+/**
+ * Scheduled Cloud Function: run every hour to automatically re-enable classrooms
+ * whose disable duration has expired
+ */
+export const autoReEnableDisabledClassrooms = scheduler.onSchedule(
+  { schedule: '0 * * * *', timeZone: 'Etc/UTC' },
+  async (event: ScheduledEventLike) => {
+    const now = new Date().toISOString();
+    
+    logger.info('Auto re-enable job starting...');
+
+    try {
+      // Query all disabled classrooms that have a disabledUntil timestamp
+      const snapshot = await db.collection('classrooms')
+        .where('isAvailable', '==', false)
+        .where('disabledUntil', '!=', null)
+        .get();
+
+      if (snapshot.empty) {
+        logger.info('No classrooms with scheduled re-enable found');
+        return;
+      }
+
+      const batch = db.batch();
+      let reEnabled = 0;
+      const reEnabledClassrooms: Array<{ id: string; name: string; reason?: string }> = [];
+
+      snapshot.forEach((doc: QueryDocumentSnapshot) => {
+        const data = doc.data();
+        const disabledUntil = data.disabledUntil as string;
+
+        // Check if the disable duration has expired
+        if (disabledUntil && disabledUntil <= now) {
+          batch.update(doc.ref, {
+            isAvailable: true,
+            disabledUntil: admin.firestore.FieldValue.delete(),
+            disableReason: admin.firestore.FieldValue.delete(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          
+          reEnabledClassrooms.push({
+            id: doc.id,
+            name: data.name || 'Unknown',
+            reason: data.disableReason as string | undefined
+          });
+          reEnabled++;
+        }
+      });
+
+      if (reEnabled > 0) {
+        await batch.commit();
+        logger.info(`Re-enabled ${reEnabled} classroom(s)`);
+
+        // Send notifications to admins about the re-enabled classrooms
+        const adminsSnap = await db.collection('users').where('role', '==', 'admin').get();
+        
+        if (!adminsSnap.empty) {
+          for (const classroom of reEnabledClassrooms) {
+            const message = `Classroom "${classroom.name}" has been automatically re-enabled after its scheduled disable duration expired.`;
+            
+            // Notify all admins
+            const notificationPromises = adminsSnap.docs.map(async (adminDoc) => {
+              try {
+                await persistAndSendNotification(
+                  adminDoc.id,
+                  'info',
+                  message,
+                  {
+                    bookingRequestId: null,
+                    adminFeedback: null,
+                    actorId: 'system'
+                  }
+                );
+              } catch (error) {
+                logger.error(`Failed to notify admin ${adminDoc.id}:`, error);
+              }
+            });
+
+            await Promise.allSettled(notificationPromises);
+          }
+        }
+
+        logger.info(`Successfully re-enabled ${reEnabled} classroom(s): ${reEnabledClassrooms.map(c => c.name).join(', ')}`);
+      } else {
+        logger.info('No expired classroom disables found');
+      }
+    } catch (error) {
+      logger.error('Error in autoReEnableDisabledClassrooms:', error);
+    }
+  }
+);
+
 /**
  * Firebase Cloud Functions for PLV Classroom Assignment System
  * Provides admin-level user management capabilities using Firebase Admin SDK

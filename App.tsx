@@ -9,7 +9,7 @@ const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'
 
 // Use a single inline loader (the PLV loader below) as the Suspense fallback.
 import Footer from './components/Footer';
-import { useAnnouncer } from './components/Announcer';
+import { useAnnouncer, AnnouncerProvider } from './components/Announcer';
 import { NotificationProvider } from './contexts/NotificationContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import SessionTimeoutWarning from './components/SessionTimeoutWarning';
@@ -108,6 +108,8 @@ export interface Classroom {
   building: string;
   floor: number;
   isAvailable: boolean;
+  disabledUntil?: string; // ISO timestamp when classroom should be auto-enabled
+  disableReason?: string; // Reason for disabling
 }
 
 export interface BookingRequest {
@@ -2134,22 +2136,23 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <NotificationProvider value={{
-        notifications,
-        unreadCount,
-        isNotificationCenterOpen,
-        // preferred public name
-        isLoading: isNotifLoading,
-        // keep old name for backward compatibility
-        isNotifLoading,
-        error: notifError,
-        onAcknowledge,
-        onAcknowledgeAll,
-        onToggleCenter,
-        onMarkAllAsRead
-      }}>
-          {/* Network status indicator */}
-          <NetworkStatusIndicator />
+      <AnnouncerProvider>
+        <NotificationProvider value={{
+          notifications,
+          unreadCount,
+          isNotificationCenterOpen,
+          // preferred public name
+          isLoading: isNotifLoading,
+          // keep old name for backward compatibility
+          isNotifLoading,
+          error: notifError,
+          onAcknowledge,
+          onAcknowledgeAll,
+          onToggleCenter,
+          onMarkAllAsRead
+        }}>
+            {/* Network status indicator */}
+            <NetworkStatusIndicator />
           
           {/* Skip link for keyboard users */}
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
@@ -2222,7 +2225,8 @@ export default function App() {
 
           <Analytics />
           </div>
-      </NotificationProvider>
+        </NotificationProvider>
+      </AnnouncerProvider>
     </ErrorBoundary>
   );
 }
