@@ -112,8 +112,8 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
           <DialogTitle className="text-xl font-semibold">Reset Password</DialogTitle>
           <DialogDescription>
             {emailSent 
-              ? 'Check your email for reset instructions'
-              : 'Enter your email address and we\'ll send you a link to reset your password.'
+              ? 'If an account exists, a reset email has been sent'
+              : 'Enter your email address. If an account exists, you\'ll receive a password reset link.'
             }
           </DialogDescription>
         </DialogHeader>
@@ -166,15 +166,15 @@ export default function PasswordResetDialog({ children }: PasswordResetDialogPro
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
               <div className="text-center space-y-2">
-                <p className="text-sm font-medium">Email sent successfully!</p>
+                <p className="text-sm font-medium">Request processed successfully!</p>
                 <p className="text-xs text-gray-600">
-                  Check your inbox at <span className="font-medium">{email}</span>
+                  If an account exists for <span className="font-medium">{email}</span>, a password reset link has been sent.
                 </p>
                 <p className="text-xs text-gray-500">
                   Don't see it? Check your spam folder.
                 </p>
                 <p className="text-xs text-amber-600 font-medium">
-                  ⚠️ Link expires in 1 hour
+                  ⚠️ Reset links expire in 1 hour
                 </p>
               </div>
             </div>
