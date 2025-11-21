@@ -220,6 +220,69 @@ export const autoReEnableDisabledClassrooms = scheduler.onSchedule(
 );
 
 /**
+ * Scheduled Cloud Function: run daily to automatically clean up acknowledged notifications
+ * that are older than 72 hours (3 days). This reduces database clutter while maintaining
+ * a reasonable window for users to review acknowledged notifications.
+ * 
+ * BACKWARDS COMPATIBLE: Works with all notifications, including those acknowledged before
+ * this function was deployed. Any notification with acknowledgedAt timestamp older than
+ * 72 hours will be cleaned up.
+ */
+export const cleanupAcknowledgedNotifications = scheduler.onSchedule(
+  // Run daily at 2 AM UTC to minimize impact during peak usage
+  { schedule: '0 2 * * *', timeZone: 'Etc/UTC' },
+  async (event: ScheduledEventLike) => {
+    logger.info('Cleanup acknowledged notifications job starting...');
+
+    try {
+      const now = admin.firestore.Timestamp.now();
+      const cutoffTime = admin.firestore.Timestamp.fromMillis(
+        now.toMillis() - (72 * 60 * 60 * 1000) // 72 hours in milliseconds
+      );
+
+      // Query acknowledged notifications older than 72 hours
+      // This query works for both newly acknowledged and pre-existing acknowledged notifications
+      const snapshot = await db.collection('notifications')
+        .where('acknowledgedAt', '!=', null)
+        .where('acknowledgedAt', '<', cutoffTime)
+        .get();
+
+      if (snapshot.empty) {
+        logger.info('No old acknowledged notifications found for cleanup');
+        return;
+      }
+
+      // Use batched deletes to handle large volumes efficiently
+      // Firestore batches support up to 500 operations
+      const BATCH_SIZE = 500;
+      let totalDeleted = 0;
+      
+      const deleteBatch = async (docs: QueryDocumentSnapshot[]) => {
+        const batch = db.batch();
+        docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        return docs.length;
+      };
+
+      // Process deletions in batches
+      const docs = snapshot.docs;
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batchDocs = docs.slice(i, i + BATCH_SIZE);
+        const deleted = await deleteBatch(batchDocs);
+        totalDeleted += deleted;
+        logger.info(`Deleted batch of ${deleted} notifications (${totalDeleted}/${docs.length} total)`);
+      }
+
+      logger.info(`Successfully cleaned up ${totalDeleted} acknowledged notification(s) older than 72 hours`);
+      return;
+    } catch (error) {
+      logger.error('Error in cleanupAcknowledgedNotifications:', error);
+      throw error;
+    }
+  }
+);
+
+/**
  * Firebase Cloud Functions for PLV Classroom Assignment System
  * Provides admin-level user management capabilities using Firebase Admin SDK
  */

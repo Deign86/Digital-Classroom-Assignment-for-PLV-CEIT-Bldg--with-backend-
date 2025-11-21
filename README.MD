@@ -85,6 +85,7 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
   - Notification center with read/unread status
   - Individual and bulk acknowledgment
   - Notification filtering and search
+  - Auto-cleanup of acknowledged notifications after 72 hours
 - **Push Notifications**: 
   - Browser and device push alerts (FCM)
   - Configurable notification preferences
@@ -134,6 +135,11 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
   - Automatically expires past pending bookings
   - Prevents stale data accumulation
   - Server-side status management
+- **Notification Cleanup**: 
+  - Daily scheduled cleanup (2 AM UTC)
+  - Auto-deletes acknowledged notifications older than 72 hours
+  - Reduces database clutter and improves performance
+  - Backwards compatible with existing notifications
 - **Activity Tracking**: 
   - User session monitoring
   - Login attempt tracking
