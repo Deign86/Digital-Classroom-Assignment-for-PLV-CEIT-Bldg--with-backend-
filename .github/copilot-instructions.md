@@ -33,7 +33,10 @@
 - **Account functions:** `deleteUserAccount`, `bulkCleanupRejectedAccounts` - cleanup operations
 - **Notification functions:** `createNotification`, `acknowledgeNotification`, `acknowledgeNotifications` - server-side notification management
 - **Push functions:** `registerPushToken`, `unregisterPushToken`, `setPushEnabled`, `sendTestPush` - FCM token management
-- **Scheduled functions:** `expirePastPendingBookings` - runs hourly to expire old pending bookings
+- **Scheduled functions:** 
+  - `expirePastPendingBookings` - runs hourly to expire old pending bookings
+  - `cleanupAcknowledgedNotifications` - runs daily at 2 AM UTC to delete acknowledged notifications older than 72 hours
+  - `autoReEnableDisabledClassrooms` - runs hourly to re-enable classrooms after scheduled disable duration
 
 **IMPORTANT - Push Notification Behavior:** The `persistAndSendNotification` helper in Cloud Functions checks the user's `pushEnabled` flag before sending FCM messages. Always ensure users have `pushEnabled: true` in their Firestore document for push notifications to work. In-app notifications are ALWAYS created regardless of this flag.
 

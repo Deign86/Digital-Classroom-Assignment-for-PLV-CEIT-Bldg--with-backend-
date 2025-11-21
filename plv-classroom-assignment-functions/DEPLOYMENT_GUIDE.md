@@ -49,7 +49,9 @@ firebase deploy --only functions
 
 ## Available Cloud Functions
 
-### 1. `trackFailedLogin`
+### Callable Functions (Triggered by Client)
+
+#### 1. `trackFailedLogin`
 **Purpose**: Tracks failed login attempts and locks accounts after 5 failed attempts
 
 **Triggered**: Called by client after failed login
@@ -71,7 +73,7 @@ firebase deploy --only functions
 - Max Failed Attempts: 5
 - Lockout Duration: 30 minutes
 
-### 2. `resetFailedLogins`
+#### 2. `resetFailedLogins`
 **Purpose**: Resets failed login attempts after successful authentication
 
 **Triggered**: Called by client after successful login
@@ -85,13 +87,49 @@ firebase deploy --only functions
 }
 ```
 
-### 3. `deleteUserAccount`
+#### 3. `deleteUserAccount`
 **Purpose**: Admin function to completely delete user accounts
 
 **Triggered**: Called by admin users
 **Authentication**: Required (admin role only)
 **Parameters**:
 - `userId` (string): Firebase Auth UID of user to delete
+
+#### 4. `acknowledgeNotification` / `acknowledgeNotifications`
+**Purpose**: Mark notifications as read with server-side timestamps
+
+**Authentication**: Required
+**Parameters**:
+- `notificationId` (string) or `notificationIds` (string[])
+
+#### 5. `createNotification`
+**Purpose**: Create notifications server-side (admin only)
+
+**Authentication**: Required (admin role only)
+
+### Scheduled Functions (Automated)
+
+#### 1. `expirePastPendingBookings`
+**Purpose**: Automatically expire pending booking requests past their start time
+
+**Schedule**: Runs hourly (`0 * * * *`)
+**Timezone**: UTC
+**Action**: Updates `status` to `expired` for pending bookings whose date/time has passed
+
+#### 2. `autoReEnableDisabledClassrooms`
+**Purpose**: Automatically re-enable classrooms after scheduled disable duration
+
+**Schedule**: Runs hourly (`0 * * * *`)
+**Timezone**: UTC
+**Action**: Re-enables classrooms where `disabledUntil` timestamp has passed
+
+#### 3. `cleanupAcknowledgedNotifications`
+**Purpose**: Auto-delete acknowledged notifications older than 72 hours to reduce database clutter
+
+**Schedule**: Runs daily at 2 AM UTC (`0 2 * * *`)
+**Timezone**: UTC
+**Action**: Deletes notifications where `acknowledgedAt` is older than 72 hours
+**Backwards Compatible**: Works with all existing acknowledged notifications
 
 ## Testing
 
