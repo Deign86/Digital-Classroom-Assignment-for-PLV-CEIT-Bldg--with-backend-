@@ -17,6 +17,7 @@ import { readPreferredTab } from '../utils/tabPersistence';
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, AlertTriangle, MessageSquare, X, Loader2 } from 'lucide-react';
 import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/timeUtils';
 import type { Schedule, BookingRequest } from '../App';
+import type { Notification } from '../lib/notificationService';
 
 interface FacultyScheduleProps {
   schedules: Schedule[];
@@ -26,9 +27,11 @@ interface FacultyScheduleProps {
   // Callback when user chooses to "Quick Rebook" — attempt one-click submission
   onQuickRebook?: (initialData: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => void;
   userId?: string;
+  acknowledgedNotifications?: Notification[];
+  allNotifications?: Notification[];
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, onQuickRebook, userId }: FacultyScheduleProps) {
+export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, onQuickRebook, userId, acknowledgedNotifications = [], allNotifications = [] }: FacultyScheduleProps) {
   const STORAGE_KEY_BASE = 'plv:facultySchedule:activeTab';
   const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
   const allowed = ['upcoming', 'requests', 'approved', 'cancelled', 'history', 'rejected'] as const;
@@ -46,6 +49,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const [showBulkCancelDialog, setShowBulkCancelDialog] = useState(false);
   // Per-request cancellation processing map to show per-item loaders during bulk ops
   const [processingCancelIds, setProcessingCancelIds] = useState<Record<string, boolean>>({});
+  // State for attempted individual cancellation (48-hour policy check)
+  const [attemptedCancelSchedule, setAttemptedCancelSchedule] = useState<Schedule | null>(null);
   // Quick rebook confirmation dialog state
   const [quickDialogOpen, setQuickDialogOpen] = useState(false);
   const [quickDialogData, setQuickDialogData] = useState<{ classroomId: string; date: string; startTime: string; endTime: string; purpose?: string } | null>(null);
@@ -101,10 +106,38 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
     });
   }, [bookingRequests]);
 
+  // Helper to check if a booking request has been acknowledged
+  const isBookingAcknowledged = (bookingRequestId: string) => {
+    return acknowledgedNotifications.some(n => n.bookingRequestId === bookingRequestId);
+  };
+
+  // Helper to check if booking has an unacknowledged notification
+  const hasUnacknowledgedNotification = (bookingRequestId: string) => {
+    return allNotifications.some(n => n.bookingRequestId === bookingRequestId && !n.acknowledgedAt);
+  };
+
+  // Helper to check if cancellation is allowed (48-hour notice required)
+  const isCancellationAllowed = (date: string, startTime: string) => {
+    const bookingDateTime = new Date(date);
+    const [hours, minutes] = startTime.split(':').map(Number);
+    bookingDateTime.setHours(hours, minutes, 0, 0);
+    
+    const now = new Date();
+    const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    return hoursUntilBooking >= 48;
+  };
+
   // Filter requests
   const pendingRequests = uniqueBookingRequests.filter(r => r.status === 'pending' && !isPastBookingTime(r.date, convertTo12Hour(r.startTime)));
   const approvedRequests = uniqueBookingRequests.filter(r => r.status === 'approved');
   const rejectedRequests = uniqueBookingRequests.filter(r => r.status === 'rejected');
+  const cancelledRequests = uniqueBookingRequests.filter(r => r.status === 'cancelled');
+
+  // Count only items with unacknowledged notifications for badges
+  const unacknowledgedApprovedCount = approvedRequests.filter(r => hasUnacknowledgedNotification(r.id)).length;
+  const unacknowledgedRejectedCount = rejectedRequests.filter(r => hasUnacknowledgedNotification(r.id)).length;
+  const unacknowledgedCancelledCount = cancelledRequests.filter(r => hasUnacknowledgedNotification(r.id)).length;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -171,7 +204,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               {schedule.status === 'cancelled' && (
                 <p className="text-sm text-red-600 mt-1 italic">This reservation has been cancelled</p>
               )}
-              <div className="mt-3">
+              {schedule.status === 'confirmed' && !isCancellationAllowed(schedule.date, schedule.startTime) && (
+                <p className="text-sm text-amber-600 mt-1 italic">Cancellation not allowed (less than 48 hours notice)</p>
+              )}
+              <div className="mt-3 flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -188,6 +224,23 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                 >
                   Quick Rebook
                 </Button>
+                {schedule.status === 'confirmed' && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={!isCancellationAllowed(schedule.date, schedule.startTime)}
+                    onClick={() => {
+                      if (!isCancellationAllowed(schedule.date, schedule.startTime)) {
+                        toast.error('Cancellation requires 48 hours notice');
+                        return;
+                      }
+                      setAttemptedCancelSchedule(schedule);
+                    }}
+                    title={!isCancellationAllowed(schedule.date, schedule.startTime) ? 'Cancellation requires 48 hours notice' : 'Cancel this reservation'}
+                  >
+                    Cancel
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -196,12 +249,17 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
     );
   };
 
-  const RequestCard = ({ request }: { request: BookingRequest }) => (
+  const RequestCard = ({ request }: { request: BookingRequest }) => {
+    // Check if this request has been acknowledged (gray out for rejected/cancelled, but NOT for approved/upcoming)
+    const isAcknowledged = isBookingAcknowledged(request.id);
+    const shouldGrayOut = isAcknowledged && (request.status === 'rejected' || request.status === 'cancelled');
+    
+    return (
     <Card className={`${
       request.status === 'rejected' ? 'border-l-4 border-l-red-500' :
       request.status === 'approved' ? 'border-l-4 border-l-green-500' :
       'border-l-4 border-l-orange-500'
-    }`}>
+    } ${shouldGrayOut ? 'opacity-50' : ''}`}>
       <CardContent className="p-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -267,7 +325,8 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -283,7 +342,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="space-y-6">
         {/* Desktop Tab Layout */}
         <TabsList className="hidden sm:flex w-full max-w-3xl mx-auto h-12">
-          <TabsTrigger value="upcoming" aria-label="Upcoming" className="flex-1 px-4 py-2">
+          <TabsTrigger value="upcoming" aria-label="Upcoming" className="flex-1 px-4 py-2 relative">
             <Calendar className="h-4 w-4 mr-2" />
             Upcoming
           </TabsTrigger>
@@ -296,17 +355,32 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="approved" aria-label="Approved" className="flex-1 px-4 py-2">
+          <TabsTrigger value="approved" aria-label="Approved" className="flex-1 px-4 py-2 relative">
             <CheckCircle className="h-4 w-4 mr-2" />
             Approved
+            {unacknowledgedApprovedCount > 0 && (
+              <span className="absolute -top-1 -right-1 text-[10px] bg-green-500 text-white px-1 py-0 h-4 min-w-[16px] rounded-full flex items-center justify-center">
+                {unacknowledgedApprovedCount}
+              </span>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="rejected" aria-label="Rejected" className="flex-1 px-4 py-2">
+          <TabsTrigger value="rejected" aria-label="Rejected" className="flex-1 px-4 py-2 relative">
             <X className="h-4 w-4 mr-2" />
             Rejected
+            {unacknowledgedRejectedCount > 0 && (
+              <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white px-1 py-0 h-4 min-w-[16px] rounded-full flex items-center justify-center">
+                {unacknowledgedRejectedCount}
+              </span>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="cancelled" aria-label="Cancelled" className="flex-1 px-4 py-2">
+          <TabsTrigger value="cancelled" aria-label="Cancelled" className="flex-1 px-4 py-2 relative">
             <XCircle className="h-4 w-4 mr-2" />
             Cancelled
+            {unacknowledgedCancelledCount > 0 && (
+              <span className="absolute -top-1 -right-1 text-[10px] bg-orange-500 text-white px-1 py-0 h-4 min-w-[16px] rounded-full flex items-center justify-center">
+                {unacknowledgedCancelledCount}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="history" aria-label="History" className="flex-1 px-4 py-2">
             <Clock className="h-4 w-4 mr-2" />
@@ -329,14 +403,29 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             <TabsTrigger value="rejected" aria-label="Rejected" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <X className="h-4 w-4 flex-shrink-0" />
               <span>Rejected</span>
+              {unacknowledgedRejectedCount > 0 && (
+                <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full">
+                  {unacknowledgedRejectedCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="approved" aria-label="Approved" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <CheckCircle className="h-4 w-4 flex-shrink-0" />
               <span>Approved</span>
+              {unacknowledgedApprovedCount > 0 && (
+                <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">
+                  {unacknowledgedApprovedCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="cancelled" aria-label="Cancelled" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <XCircle className="h-4 w-4 flex-shrink-0" />
               <span>Cancelled</span>
+              {unacknowledgedCancelledCount > 0 && (
+                <span className="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded-full">
+                  {unacknowledgedCancelledCount}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="history" aria-label="History" className="mobile-tab-item flex items-center space-x-2 px-4 py-2">
               <Clock className="h-4 w-4 flex-shrink-0" />
@@ -396,6 +485,53 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                 }}
               >
                 Confirm Quick Rebook
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Individual Cancellation Confirmation Dialog */}
+        <Dialog open={!!attemptedCancelSchedule} onOpenChange={(open) => !open && setAttemptedCancelSchedule(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cancel Reservation</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel this reservation? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {attemptedCancelSchedule && (
+              <div className="mt-4 space-y-2 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm"><strong>Classroom:</strong> {attemptedCancelSchedule.classroomName}</p>
+                <p className="text-sm"><strong>Date:</strong> {formatDateShort(attemptedCancelSchedule.date)}</p>
+                <p className="text-sm"><strong>Time:</strong> {formatTimeRange(convertTo12Hour(attemptedCancelSchedule.startTime), convertTo12Hour(attemptedCancelSchedule.endTime))}</p>
+                <p className="text-sm"><strong>Purpose:</strong> {attemptedCancelSchedule.purpose}</p>
+              </div>
+            )}
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAttemptedCancelSchedule(null)}>
+                Keep Reservation
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!attemptedCancelSchedule) return;
+                  try {
+                    setIsCancelling(true);
+                    if (onCancelSelected) {
+                      await onCancelSelected(attemptedCancelSchedule.id);
+                    }
+                    toast.success('Reservation cancelled successfully');
+                  } catch (error) {
+                    logger.error('Failed to cancel reservation', error);
+                    toast.error('Failed to cancel reservation');
+                  } finally {
+                    setIsCancelling(false);
+                    setAttemptedCancelSchedule(null);
+                  }
+                }}
+                disabled={isCancelling}
+              >
+                {isCancelling ? 'Cancelling...' : 'Yes, Cancel Reservation'}
               </Button>
             </div>
           </DialogContent>
@@ -601,7 +737,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                                 lastCancelIdsRef.current = ids;
 
                                 // open progress dialog before starting so Cancel works
-                                setShowBulkProgress(true);
+                                // Only show bulk progress dialog for multiple items
+                                if (ids.length > 1) {
+                                  setShowBulkProgress(true);
+                                }
 
                                 try {
                                   const results = await bulkRunner.start(tasks, 4, undefined);
@@ -693,7 +832,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
 
                         lastCancelTasksRef.current = retryTasks;
                         bulkRunner.retry();
-                        setShowBulkProgress(true);
+                        // Only show bulk progress dialog for multiple items
+                        if (failedIds.length > 1) {
+                          setShowBulkProgress(true);
+                        }
                         try {
                           await bulkRunner.start(retryTasks, 4, undefined);
                         } catch (err) {
@@ -754,7 +896,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
         </TabsContent>
 
         <TabsContent value="cancelled" className="space-y-4">
-          {schedules.filter(s => s.status === 'cancelled').length === 0 ? (
+          {schedules.filter(s => s.status === 'cancelled').length === 0 && cancelledRequests.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <XCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -763,12 +905,22 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               </CardContent>
             </Card>
           ) : (
-            schedules
-              .filter(s => s.status === 'cancelled')
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .map((schedule) => (
-                <ScheduleCard key={schedule.id} schedule={schedule} />
-              ))
+            <>
+              {/* Cancelled Schedules */}
+              {schedules
+                .filter(s => s.status === 'cancelled')
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .map((schedule) => (
+                  <ScheduleCard key={schedule.id} schedule={schedule} />
+                ))}
+              
+              {/* Cancelled Booking Requests */}
+              {cancelledRequests
+                .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
+                .map((request) => (
+                  <RequestCard key={request.id} request={request} />
+                ))}
+            </>
           )}
         </TabsContent>
 

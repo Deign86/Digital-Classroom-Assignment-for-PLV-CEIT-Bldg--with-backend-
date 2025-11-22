@@ -97,6 +97,19 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     }
   }, []);
 
+  // Auto-check password matching in real-time
+  useEffect(() => {
+    if (passwordData.newPassword && passwordData.confirmPassword) {
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      } else {
+        setErrors(prev => ({ ...prev, confirmPassword: '' }));
+      }
+    } else if (passwordData.confirmPassword && !passwordData.newPassword) {
+      setErrors(prev => ({ ...prev, confirmPassword: 'Please enter new password first' }));
+    }
+  }, [passwordData.newPassword, passwordData.confirmPassword]);
+
   const validateProfileData = (): boolean => {
     const newErrors = {
       name: '',

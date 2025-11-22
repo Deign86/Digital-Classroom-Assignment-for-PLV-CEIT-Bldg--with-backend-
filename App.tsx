@@ -1011,7 +1011,11 @@ export default function App() {
       // Submit the booking request
       const newRequest = await bookingRequestService.create(request);
       
-      setBookingRequests(prev => [...prev, newRequest]);
+      // Optimistically add to state only if not already present (real-time listener will also add it)
+      setBookingRequests(prev => {
+        const exists = prev.some(r => r.id === newRequest.id);
+        return exists ? prev : [...prev, newRequest];
+      });
       // Track recent submission so the user can undo for a short window
       try {
         setRecentlySubmittedBooking({ id: newRequest.id, draft: request });

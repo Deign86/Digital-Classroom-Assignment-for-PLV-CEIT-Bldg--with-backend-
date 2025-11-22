@@ -33,6 +33,7 @@ const AdminReports = React.lazy(() => import('./AdminReports'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import type { Notification } from '../lib/notificationService';
 import { useAnnouncer } from './Announcer';
 const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
 /* spinner removed by request; fallbacks reverted to text */
@@ -115,6 +116,24 @@ export default function AdminDashboard({
   }, []);
 
   // (Hash-based deep-linking removed — navigation now uses react-router)
+
+  // Handle notification navigation for admin
+  const handleNotificationNavigate = (notification: Notification) => {
+    setShowNotifications(false); // Close notification panel
+    
+    // Map notification type to appropriate admin tab
+    if (notification.type === 'signup') {
+      setActiveTab('signups');
+    } else if (notification.type === 'faculty_cancelled') {
+      // Faculty cancelled bookings - show in schedule or requests
+      setActiveTab('schedule');
+    } else if (notification.type === 'approved' || notification.type === 'rejected' || notification.type === 'cancelled') {
+      // Admin viewing faculty booking status changes - show in requests or schedule
+      setActiveTab('schedule');
+    } else if (notification.type === 'classroom_disabled') {
+      setActiveTab('classrooms');
+    }
+  };
 
   // Unlock handler for locked accounts card — disables the single row while processing
   const handleUnlockLockedUser = async (userId: string) => {
@@ -236,6 +255,7 @@ export default function AdminDashboard({
                           setTimeout(() => setForceBellUnread(null), 1500);
                           setShowNotifications(false);
                         }}
+                        onNavigate={handleNotificationNavigate}
                       />
                     </div>
                   </>

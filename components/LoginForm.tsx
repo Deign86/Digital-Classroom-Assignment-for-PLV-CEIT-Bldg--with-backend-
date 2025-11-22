@@ -128,6 +128,19 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
   const departments = ['Information Technology', 'Civil Engineering', 'Electrical Engineering'];
 
+  // Auto-check password matching in real-time
+  useEffect(() => {
+    if (signupData.password && signupData.confirmPassword) {
+      if (signupData.password !== signupData.confirmPassword) {
+        setSignupErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      } else {
+        setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
+      }
+    } else if (signupData.confirmPassword && !signupData.password) {
+      setSignupErrors(prev => ({ ...prev, confirmPassword: 'Please enter password first' }));
+    }
+  }, [signupData.password, signupData.confirmPassword]);
+
   // Shared sanitizer for password fields
   const sanitizePassword = (pwd: string) => {
     if (!pwd) return pwd;
@@ -137,6 +150,19 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     // Trim leading/trailing whitespace
     cleaned = cleaned.trim();
     return cleaned;
+  };
+
+  // Helper to convert names to proper case (capitalize first letter of each word)
+  const toProperCase = (name: string): string => {
+    if (!name) return name;
+    return name
+      .trim()
+      .split(/\s+/) // Split on whitespace
+      .map(word => {
+        if (word.length === 0) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
   };
 
   const validateSignupData = (data: typeof signupData) => {
@@ -267,18 +293,35 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       confirmPassword: ''
     });
 
-    const { errors, hasErrors } = validateSignupData(signupData);
+    // Transform data to proper format before validation
+    // Email: lowercase for Firebase compatibility
+    // Names: proper case (capitalize first letter of each word)
+    const transformedData = {
+      ...signupData,
+      email: signupData.email.trim().toLowerCase(),
+      firstName: toProperCase(signupData.firstName),
+      lastName: toProperCase(signupData.lastName),
+    };
+
+    const { errors, hasErrors } = validateSignupData(transformedData);
     if (hasErrors) {
       setSignupErrors(errors);
       return;
     }
 
-    // Sanitize signup password fields and persist sanitized versions if changed
-    const cleaned = sanitizePassword(signupData.password);
-    const cleanedConfirm = sanitizePassword(signupData.confirmPassword);
-    if (cleaned !== signupData.password || cleanedConfirm !== signupData.confirmPassword) {
-      setSignupData(prev => ({ ...prev, password: cleaned, confirmPassword: cleanedConfirm }));
-    }
+    // Sanitize signup password fields
+    const cleaned = sanitizePassword(transformedData.password);
+    const cleanedConfirm = sanitizePassword(transformedData.confirmPassword);
+    
+    // Create final data with all transformations applied
+    const finalData = {
+      ...transformedData,
+      password: cleaned,
+      confirmPassword: cleanedConfirm
+    };
+
+    // Update state with transformed values so the form shows the properly formatted data
+    setSignupData(finalData);
 
     setSignupIsLoading(true);
     try {
@@ -305,12 +348,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
             logger.warn('reCAPTCHA not configured or unavailable');
           }
 
-          const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
+          const fullName = `${finalData.firstName} ${finalData.lastName}`;
           const success = await onSignup(
-            signupData.email,
+            finalData.email,
             fullName,
-            signupData.departments,
-            signupData.password,
+            finalData.departments,
+            finalData.password,
             recaptchaToken
           );
           

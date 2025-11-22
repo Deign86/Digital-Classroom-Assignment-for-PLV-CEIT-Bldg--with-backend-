@@ -16,6 +16,7 @@ interface RoomSearchProps {
   classrooms: Classroom[];
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
+  onReserve?: (classroomId: string, date: string, startTime: string, endTime: string) => void;
 }
 
 const timeSlots = generateTimeSlots();
@@ -37,7 +38,7 @@ const EQUIPMENT_OPTIONS = [
   'Scanner'
 ];
 
-export default function RoomSearch({ classrooms, schedules, bookingRequests }: RoomSearchProps) {
+export default function RoomSearch({ classrooms, schedules, bookingRequests, onReserve }: RoomSearchProps) {
   const [searchFilters, setSearchFilters] = useState({
     date: '',
     startTime: '',
@@ -133,6 +134,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
   }, []);
 
   const [dateError, setDateError] = React.useState<string | null>(null);
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const isValidISODate = (iso?: string) => {
     if (!iso) return false;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
@@ -385,7 +387,7 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                     {dateError && <p className="text-xs text-red-600 mt-1">{dateError}</p>}
                   </div>
                 ) : (
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -403,8 +405,13 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                           value={searchFilters.date || undefined}
                           onSelect={(iso) => {
                             if (!iso) { setSearchFilters(prev => ({ ...prev, date: '' })); setDateError(null); return; }
-                            if (!isValidISODate(iso) || iso < today) setDateError('Invalid or past date');
-                            else { setDateError(null); setSearchFilters(prev => ({ ...prev, date: iso })); }
+                            if (!isValidISODate(iso) || iso < today) {
+                              setDateError('Invalid or past date');
+                            } else {
+                              setDateError(null);
+                              setSearchFilters(prev => ({ ...prev, date: iso }));
+                              setIsCalendarOpen(false); // Close calendar after valid selection
+                            }
                           }}
                           min={today}
                           className="md:w-[280px]"
@@ -681,6 +688,18 @@ export default function RoomSearch({ classrooms, schedules, bookingRequests }: R
                               {searchFilters.date} • {searchFilters.startTime}-{searchFilters.endTime}
                             </span>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Reserve Button */}
+                      {isAvailableForSearch && searchFilters.date && searchFilters.startTime && searchFilters.endTime && onReserve && (
+                        <div className="pt-3">
+                          <Button
+                            className="w-full"
+                            onClick={() => onReserve(classroom.id, searchFilters.date, searchFilters.startTime, searchFilters.endTime)}
+                          >
+                            Reserve This Classroom
+                          </Button>
                         </div>
                       )}
                     </div>

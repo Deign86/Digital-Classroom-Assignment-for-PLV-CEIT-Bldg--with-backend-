@@ -163,7 +163,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
       const itemsForDialog = targetIds.map(id => ({ id, label: `Request ${id}` }));
       lastTasksRef.current = tasks;
       setLastItems(itemsForDialog);
-      setShowBulkProgress(true);
+      // Only show bulk progress dialog for multiple items
+      if (targetIds.length > 1) {
+        setShowBulkProgress(true);
+      }
 
       const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
@@ -227,7 +230,10 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
 
     lastTasksRef.current = tasks;
     setLastItems(ids.map(id => ({ id, label: `Request ${id}` })));
-    setShowBulkProgress(true);
+    // Only show bulk progress dialog for multiple items
+    if (ids.length > 1) {
+      setShowBulkProgress(true);
+    }
 
     const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 

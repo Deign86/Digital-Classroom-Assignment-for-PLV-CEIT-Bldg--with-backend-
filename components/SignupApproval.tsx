@@ -247,7 +247,10 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     const itemsForDialog = ids.map(id => ({ id, label: `Signup ${id}` }));
     lastTasksRef.current = tasks;
     setLastItems(itemsForDialog);
-    setShowBulkProgress(true);
+    // Only show bulk progress dialog for multiple items
+    if (ids.length > 1) {
+      setShowBulkProgress(true);
+    }
 
     const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
@@ -323,7 +326,10 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
   const itemsForDialog = ids.map(id => ({ id, label: `Signup ${id}` }));
   lastTasksRef.current = tasks;
   setLastItems(itemsForDialog);
-  setShowBulkProgress(true);
+  // Only show bulk progress dialog for multiple items
+  if (ids.length > 1) {
+    setShowBulkProgress(true);
+  }
   const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 
     const succeeded: string[] = [];
@@ -381,7 +387,10 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     setBulkProgress({ processed: 0, total: ids.length });
     lastTasksRef.current = tasks;
     setLastItems(ids.map(id => ({ id, label: `Signup ${id}` })));
-    setShowBulkProgress(true);
+    // Only show bulk progress dialog for multiple items
+    if (ids.length > 1) {
+      setShowBulkProgress(true);
+    }
     bulkRunner.retry();
     const results = await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
 

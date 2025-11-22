@@ -9,12 +9,18 @@ type Props = {
   userId: string;
   onClose?: () => void;
   onAcknowledgeAll?: (newUnreadCount: number | null) => void; // optional callback to allow parent components to update bell immediately
+  onNavigate?: (notification: Notification) => void; // optional callback to handle navigation when clicking on a notification
 };
 
-const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) => void; acknowledging?: boolean }> = ({ n, onAcknowledge, acknowledging }) => {
+const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) => void; acknowledging?: boolean; onNavigate?: (notification: Notification) => void }> = ({ n, onAcknowledge, acknowledging, onNavigate }) => {
   const isUnread = !n.acknowledgedAt;
+  const isClickable = onNavigate && (n.type === 'approved' || n.type === 'rejected' || n.type === 'cancelled' || n.type === 'faculty_cancelled' || n.type === 'signup');
   return (
-    <li key={n.id} className={`p-3 border rounded-lg shadow-sm bg-white ${isUnread ? 'ring-2 ring-primary/10' : 'opacity-70'}`}>
+    <li 
+      key={n.id} 
+      className={`p-3 border rounded-lg shadow-sm bg-white ${isUnread ? 'ring-2 ring-primary/10' : 'opacity-70'} ${isClickable ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+      onClick={() => isClickable && onNavigate?.(n)}
+    >
       <div className="flex justify-between items-start gap-3">
         <div className="flex items-start gap-3">
           <div className="mt-1">
@@ -76,7 +82,7 @@ const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) 
   );
 };
 
-export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll }) => {
+export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowledgeAll, onNavigate }) => {
   // This component is now a pure consumer of NotificationContext.
   // All real-time listeners and announcement logic are centralized in App.tsx.
   const ctx = useNotificationContext();
@@ -85,21 +91,28 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
   const [globalAcking, setGlobalAcking] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
-  // close on Escape or when the user scrolls (avoid pointerdown outside checks to keep
-  // inner buttons reliably clickable — we intentionally do not close on pointerdown)
+  // close on Escape, scroll, or click outside
   useEffect(() => {
     if (!onClose) return;
     const handleKeyDown = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') onClose();
     };
     const handleScroll = () => onClose();
+    const handleClickOutside = (ev: MouseEvent) => {
+      // Close if click is outside the notification panel
+      if (wrapperRef.current && !wrapperRef.current.contains(ev.target as Node)) {
+        onClose();
+      }
+    };
 
     document.addEventListener('keydown', handleKeyDown);
     window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [onClose]);
 
@@ -167,7 +180,7 @@ export const NotificationCenter: React.FC<Props> = ({ userId, onClose, onAcknowl
       {items.length === 0 && <p className="text-sm text-muted-foreground">No notifications</p>}
       <ul className="space-y-3 max-h-72 overflow-auto">
         {items.map((n) => (
-          <NotificationItem key={n.id} n={n} acknowledging={!!ackPending[n.id]} onAcknowledge={handleAcknowledge} />
+          <NotificationItem key={n.id} n={n} acknowledging={!!ackPending[n.id]} onAcknowledge={handleAcknowledge} onNavigate={onNavigate} />
         ))}
       </ul>
     </div>

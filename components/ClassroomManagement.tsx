@@ -826,7 +826,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
   lastDeleteTasksRef.current = tasks as BulkTask[];
   setLastDeleteItems(itemsForDialog);
   // open progress dialog before starting long-running tasks
-  setShowBulkProgress(true);
+  // Only show bulk progress dialog for multiple items
+  if (ids.length > 1) {
+    setShowBulkProgress(true);
+  }
 
   // start runner
   const results = await bulkRunner.start(tasks as BulkTask[], 4, (p: number, t: number) => setBulkProgress({ processed: p, total: t }));
@@ -839,9 +842,6 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         const failed = results.filter((r: any) => r.status === 'rejected').length;
         if (succeeded > 0) toast.success(`Deleted ${succeeded} classroom(s)`);
         if (failed > 0) toast.error(`${failed} delete(s) failed`);
-
-        // show results dialog via BulkProgressDialog (it reads from bulkRunner.results)
-        setShowBulkProgress(true);
       }
     } catch (err) {
       console.error('Bulk action error:', err);
@@ -971,7 +971,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         const itemsForDialog = ids.map(id => ({ id, label: (classrooms.find(c => c.id === id)?.name ?? id) }));
         lastDeleteTasksRef.current = tasks as BulkTask[];
         setLastDeleteItems(itemsForDialog);
-        setShowBulkProgress(true);
+        // Only show bulk progress dialog for multiple items
+        if (ids.length > 1) {
+          setShowBulkProgress(true);
+        }
         const results = await bulkRunner.start(tasks as BulkTask[], 4, (p: number, t: number) => setBulkProgress({ processed: p, total: t }));
         const updated = await classroomService.getAll();
         onClassroomUpdate(updated);
@@ -979,7 +982,6 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         const failed = results.filter((r: any) => r.status === 'rejected').length;
         if (succeeded > 0) toast.success(`Deleted ${succeeded} classroom(s)`);
         if (failed > 0) toast.error(`${failed} delete(s) failed`);
-        setShowBulkProgress(true);
       }
     } catch (err) {
       console.error('executePendingBulkAction failed:', err);
@@ -1947,7 +1949,10 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           });
 
           bulkRunner.retry();
-          setShowBulkProgress(true);
+          // Only show bulk progress dialog for multiple items
+          if (failedIds.length > 1) {
+            setShowBulkProgress(true);
+          }
           const results = await bulkRunner.start(retryTasks, 4, (p: number, t: number) => setBulkProgress({ processed: p, total: t }));
           const updated = await classroomService.getAll();
           onClassroomUpdate(updated);
