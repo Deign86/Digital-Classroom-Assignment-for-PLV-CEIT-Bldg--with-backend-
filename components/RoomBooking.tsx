@@ -1040,14 +1040,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
             </div>
           </div>
           
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowPolicyWarning(false)}
-              className="w-full sm:w-auto"
-            >
-              Cancel
-            </Button>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button 
               onClick={() => {
                 setShowPolicyWarning(false);
@@ -1056,6 +1049,13 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
               className="w-full sm:w-auto"
             >
               I Understand, Continue
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPolicyWarning(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>
