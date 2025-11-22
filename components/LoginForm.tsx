@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
-import { Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff, X } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
 import { logger } from '../lib/logger';
@@ -843,12 +843,17 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                       {showSignupConfirmPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </button>
                   </div>
-                  {signupErrors.confirmPassword && (
+                  {signupErrors.confirmPassword ? (
                     <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
                       {signupErrors.confirmPassword}
                     </p>
-                  )}
+                  ) : signupData.confirmPassword && signupData.password && signupData.password === signupData.confirmPassword ? (
+                    <p className="text-xs sm:text-sm text-green-600 flex items-center gap-1 font-medium">
+                      <CheckCircle className="h-3 w-3" />
+                      Passwords match
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
