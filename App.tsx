@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'reac
 import { Analytics } from '@vercel/analytics/react';
 import { logger } from './lib/logger';
 import LoginForm from './components/LoginForm';
+import LogoHeader from './components/LogoHeader';
 // Lazy-load heavy dashboard components to reduce initial bundle size
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
@@ -34,6 +35,7 @@ import {
 import { notificationService } from './lib/notificationService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
+import { preloadLogos } from './lib/logoService';
 
 // Expose services to window for debugging in development
 if (import.meta.env.DEV) {
@@ -1011,7 +1013,11 @@ export default function App() {
       // Submit the booking request
       const newRequest = await bookingRequestService.create(request);
       
-      setBookingRequests(prev => [...prev, newRequest]);
+      // Optimistically add to state only if not already present (real-time listener will also add it)
+      setBookingRequests(prev => {
+        const exists = prev.some(r => r.id === newRequest.id);
+        return exists ? prev : [...prev, newRequest];
+      });
       // Track recent submission so the user can undo for a short window
       try {
         setRecentlySubmittedBooking({ id: newRequest.id, draft: request });
@@ -1508,6 +1514,13 @@ export default function App() {
     onExternalInitialDataConsumed: () => setExternalBookingPrefill(null),
   }), [currentUser, classrooms, facultySchedules, schedules, facultyBookingRequests, bookingRequests, handleLogout, handleBookingRequest, checkConflicts, externalBookingPrefill]);
 
+  // Preload logos on mount for instant availability
+  useEffect(() => {
+    preloadLogos().catch((error) => {
+      logger.warn('Failed to preload logos on mount:', error);
+    });
+  }, []);
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -1886,8 +1899,12 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4 animate-pulse">
-            <div className="text-white text-lg font-bold">PLV</div>
+          <div className="mx-auto mb-4">
+            <img
+              src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
+              alt="PLV Logo"
+              className="h-16 w-16 object-contain animate-pulse"
+            />
           </div>
           <p className="text-gray-600">{loadingMessage ?? 'Loading...'}</p>
           <Analytics />
@@ -1903,13 +1920,11 @@ export default function App() {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center space-y-8 w-full max-w-md">
             <div>
+              {/* Institutional Logos */}
               <div className="flex justify-center mb-6">
-                <div className="h-24 w-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                  <div className="text-white text-2xl font-bold">PLV</div>
-                </div>
+                <LogoHeader size="xl" showSkeleton={true} />
               </div>
-              <p className="text-blue-600 mb-2">PLV CEIT</p>
-              <h1 className="mb-6">Digital Classroom</h1>
+              <h1 className="mb-6">Classroom Reservation</h1>
               <p className="text-gray-600 mb-8">
                 Efficient classroom reservation management for PLV CEIT.
               </p>
@@ -2163,8 +2178,12 @@ export default function App() {
             {overlayVisible ? (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
                 <div className="text-center">
-                  <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg mx-auto mb-4">
-                    <div className="text-white text-lg font-bold">PLV</div>
+                  <div className="mx-auto mb-4">
+                    <img
+                      src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
+                      alt="PLV Logo"
+                      className="h-16 w-16 object-contain animate-pulse"
+                    />
                   </div>
                   <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
                 </div>

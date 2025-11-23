@@ -73,6 +73,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   const [pendingConflicts, setPendingConflicts] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showPolicyWarning, setShowPolicyWarning] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const availableClassrooms = classrooms.filter(c => c.isAvailable);
 
@@ -273,8 +275,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
       return;
     }
 
-    // Show confirmation dialog before submitting
-    setShowConfirmDialog(true);
+    // Show cancellation policy warning first
+    setShowPolicyWarning(true);
   };
 
   const handleConfirmSubmit = async () => {
@@ -540,7 +542,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                     )}
                   </div>
                 ) : (
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -572,6 +574,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                             } else {
                               setErrors(prev => ({ ...prev, date: '' }));
                               setFormData(prev => ({ ...prev, date: iso }));
+                              setIsCalendarOpen(false); // Close calendar after valid selection
                             }
                           }}
                           min={today}
@@ -1001,6 +1004,62 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
           </form>
           </CardContent>
         </Card>
+      
+      {/* Cancellation Policy Warning Dialog */}
+      <Dialog open={showPolicyWarning} onOpenChange={setShowPolicyWarning}>
+        <DialogContent className="max-w-lg w-[calc(100vw-32px)] sm:w-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Cancellation Policy
+            </DialogTitle>
+            <DialogDescription>
+              Please read and acknowledge our cancellation policy before proceeding.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold text-amber-900">
+                48-Hour Cancellation Notice Required
+              </p>
+              <p className="text-sm text-amber-800">
+                All classroom reservations must be cancelled at least <strong>48 hours</strong> before the scheduled start time. 
+                Cancellations made with less than 48 hours notice will not be permitted through the system.
+              </p>
+              <p className="text-sm text-amber-800">
+                Please ensure your schedule is confirmed before making a reservation. If you have any questions or need to cancel 
+                within 48 hours due to an emergency, please contact the administration office directly.
+              </p>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-800">
+                <strong>Note:</strong> This policy helps us efficiently manage classroom resources and ensures fair access for all faculty members.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button 
+              onClick={() => {
+                setShowPolicyWarning(false);
+                setShowConfirmDialog(true);
+              }}
+              className="w-full sm:w-auto"
+            >
+              I Understand, Continue
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPolicyWarning(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

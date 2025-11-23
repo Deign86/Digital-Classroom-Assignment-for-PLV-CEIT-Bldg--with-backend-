@@ -28,7 +28,10 @@ const FacultySchedule = React.lazy(() => import('./FacultySchedule'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import type { Notification } from '../lib/notificationService';
+import { useNotificationContext } from '../contexts/NotificationContext';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
+import LogoHeader from './LogoHeader';
 
 interface FacultyDashboardProps {
   user: User;
@@ -80,6 +83,51 @@ export default function FacultyDashboard({
     endTime?: string;
     purpose?: string;
   } | null>(null);
+
+  // Get notifications for graying out acknowledged items and counting unacknowledged
+  const notificationCtx = useNotificationContext();
+  const acknowledgedNotifications = notificationCtx.notifications.filter(n => n.acknowledgedAt);
+  const allNotifications = notificationCtx.notifications;
+
+  // Wrap onBookingRequest to redirect to overview tab after successful submission
+  const handleBookingRequestWithRedirect = async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => {
+    await onBookingRequest(request, suppressToast);
+    // Redirect to overview tab after successful booking
+    setActiveTab('overview');
+  };
+
+  // Handle notification navigation
+  const handleNotificationNavigate = (notification: Notification) => {
+    setShowNotifications(false); // Close notification panel
+    
+    // Map notification type to appropriate tab and sub-tab
+    if (notification.type === 'approved') {
+      setActiveTab('schedule');
+      setScheduleInitialTab('approved');
+    } else if (notification.type === 'rejected') {
+      setActiveTab('schedule');
+      setScheduleInitialTab('rejected');
+    } else if (notification.type === 'cancelled' || notification.type === 'faculty_cancelled') {
+      setActiveTab('schedule');
+      setScheduleInitialTab('cancelled');
+    } else if (notification.type === 'classroom_disabled') {
+      // For classroom disabled, show in requests/pending tab as it affects pending bookings
+      setActiveTab('schedule');
+      setScheduleInitialTab('requests');
+    }
+  };
+
+  // Handle reserve from search - redirect to booking tab with prefilled data
+  const handleReserveFromSearch = (classroomId: string, date: string, startTime: string, endTime: string) => {
+    setBookingInitialData({
+      classroomId,
+      date,
+      startTime,
+      endTime,
+      purpose: ''
+    });
+    setActiveTab('booking');
+  };
 
   // If App provides external prefill data (e.g., undo action), consume it and open booking tab
   useEffect(() => {
@@ -256,9 +304,9 @@ export default function FacultyDashboard({
         <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-shrink">
-              <div className="transition-transform hover:rotate-12 hover:scale-110 flex-shrink-0">
-                <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 lg:h-8 lg:w-8 text-blue-600" />
-              </div>
+              {/* Institutional Logos */}
+              <LogoHeader size="sm" className="flex-shrink-0" showSkeleton={false} />
+              
               <div className="min-w-0">
                 <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">Faculty Dashboard</h1>
                 <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">PLV CEIT Classroom Management</p>
@@ -302,6 +350,7 @@ export default function FacultyDashboard({
                       setTimeout(() => setForceBellUnread(null), 1500);
                       setShowNotifications(false);
                     }}
+                    onNavigate={handleNotificationNavigate}
                   />
                 </div>
               )}
@@ -520,23 +569,7 @@ export default function FacultyDashboard({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Reservation Requests */}
               <div className="animate-in" style={{ animationDelay: '0.2s' }}>
-                <Card
-                  className="h-full transition-shadow duration-200 hover:shadow-lg stat-card-clickable cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  title="Click to view your requests"
-                  onClick={() => {
-                    setScheduleInitialTab('requests');
-                    setActiveTab('schedule');
-                  }}
-                  onKeyDown={(e: React.KeyboardEvent) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setScheduleInitialTab('requests');
-                      setActiveTab('schedule');
-                    }
-                  }}
-                >
+                <Card className="h-full transition-shadow duration-200 hover:shadow-lg">
                     <CardHeader>
                     <CardTitle>Recent Requests</CardTitle>
                     <CardDescription>Your latest classroom reservation requests</CardDescription>
@@ -558,30 +591,64 @@ export default function FacultyDashboard({
                         {bookingRequests
                           .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
                           .slice(0, 5)
-                          .map((request, index) => (
-                            <div 
-                              key={request.id} 
-                              className="p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-gray-50 animate-in"
-                              style={{ animationDelay: `${0.1 * index}s` }}
-                            >
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-gray-900 truncate">{request.classroomName}</p>
-                                  <p className="text-sm text-gray-600">{formatDate(request.date)} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
+                          .map((request, index) => {
+                            // Map request status to appropriate schedule tab
+                            const getTabForStatus = (status: BookingRequest['status']): 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected' => {
+                              switch (status) {
+                                case 'pending':
+                                  return 'requests';
+                                case 'approved':
+                                  return 'approved';
+                                case 'rejected':
+                                  return 'rejected';
+                                case 'cancelled':
+                                  return 'cancelled';
+                                case 'expired':
+                                  return 'history';
+                                default:
+                                  return 'requests';
+                              }
+                            };
+
+                            return (
+                              <div 
+                                key={request.id} 
+                                className="p-4 border rounded-lg transition-all duration-200 hover:shadow-md hover:bg-gray-50 animate-in cursor-pointer"
+                                style={{ animationDelay: `${0.1 * index}s` }}
+                                role="button"
+                                tabIndex={0}
+                                title={`Click to view in ${getTabForStatus(request.status)} tab`}
+                                onClick={() => {
+                                  setScheduleInitialTab(getTabForStatus(request.status));
+                                  setActiveTab('schedule');
+                                }}
+                                onKeyDown={(e: React.KeyboardEvent) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    setScheduleInitialTab(getTabForStatus(request.status));
+                                    setActiveTab('schedule');
+                                  }
+                                }}
+                              >
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 truncate">{request.classroomName}</p>
+                                    <p className="text-sm text-gray-600">{formatDate(request.date)} • {formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</p>
+                                  </div>
+                                  <Badge variant={getStatusBadgeVariant(request.status)} className="flex-shrink-0 ml-2">
+                                    {request.status}
+                                  </Badge>
                                 </div>
-                                <Badge variant={getStatusBadgeVariant(request.status)} className="flex-shrink-0 ml-2">
-                                  {request.status}
-                                </Badge>
+                                <p className="text-sm text-gray-500 break-words">{request.purpose}</p>
+                                {request.adminFeedback && (
+                                  <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                                    <p className="font-medium text-gray-700">Admin Feedback:</p>
+                                    <p className="text-gray-600">{request.adminFeedback}</p>
+                                  </div>
+                                )}
                               </div>
-                              <p className="text-sm text-gray-500 break-words">{request.purpose}</p>
-                              {request.adminFeedback && (
-                                <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                                  <p className="font-medium text-gray-700">Admin Feedback:</p>
-                                  <p className="text-gray-600">{request.adminFeedback}</p>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                       </div>
                     )}
                   </CardContent>
@@ -672,7 +739,7 @@ export default function FacultyDashboard({
                   classrooms={classrooms}
                   schedules={allSchedules}
                   bookingRequests={allBookingRequests}
-                  onBookingRequest={onBookingRequest}
+                  onBookingRequest={handleBookingRequestWithRedirect}
                   initialData={bookingInitialData ?? undefined}
                   user={user}
                   checkConflicts={checkConflicts}
@@ -688,6 +755,7 @@ export default function FacultyDashboard({
                   classrooms={classrooms}
                   schedules={allSchedules}
                   bookingRequests={allBookingRequests}
+                  onReserve={handleReserveFromSearch}
                 />
               </Suspense>
             </div>
@@ -701,6 +769,8 @@ export default function FacultyDashboard({
                   bookingRequests={bookingRequests}
                   initialTab={scheduleInitialTab}
                   userId={user?.id}
+                  acknowledgedNotifications={acknowledgedNotifications}
+                  allNotifications={allNotifications}
                   onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
                     void handleQuickRebook(initial);
                   }}

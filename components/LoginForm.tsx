@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { readPreferredTab, writeStoredTab, writeTabToHash } from '../utils/tabPersistence';
-import { Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff, X } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, AlertCircle, Eye, EyeOff, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
 import { logger } from '../lib/logger';
@@ -14,6 +14,7 @@ import ProcessingFieldset from './ui/ProcessingFieldset';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
+import LogoHeader from './LogoHeader';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
@@ -128,6 +129,19 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
   const departments = ['Information Technology', 'Civil Engineering', 'Electrical Engineering'];
 
+  // Auto-check password matching in real-time
+  useEffect(() => {
+    if (signupData.password && signupData.confirmPassword) {
+      if (signupData.password !== signupData.confirmPassword) {
+        setSignupErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      } else {
+        setSignupErrors(prev => ({ ...prev, confirmPassword: '' }));
+      }
+    } else if (signupData.confirmPassword && !signupData.password) {
+      setSignupErrors(prev => ({ ...prev, confirmPassword: 'Please enter password first' }));
+    }
+  }, [signupData.password, signupData.confirmPassword]);
+
   // Shared sanitizer for password fields
   const sanitizePassword = (pwd: string) => {
     if (!pwd) return pwd;
@@ -137,6 +151,19 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     // Trim leading/trailing whitespace
     cleaned = cleaned.trim();
     return cleaned;
+  };
+
+  // Helper to convert names to proper case (capitalize first letter of each word)
+  const toProperCase = (name: string): string => {
+    if (!name) return name;
+    return name
+      .trim()
+      .split(/\s+/) // Split on whitespace
+      .map(word => {
+        if (word.length === 0) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
   };
 
   const validateSignupData = (data: typeof signupData) => {
@@ -267,18 +294,35 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       confirmPassword: ''
     });
 
-    const { errors, hasErrors } = validateSignupData(signupData);
+    // Transform data to proper format before validation
+    // Email: lowercase for Firebase compatibility
+    // Names: proper case (capitalize first letter of each word)
+    const transformedData = {
+      ...signupData,
+      email: signupData.email.trim().toLowerCase(),
+      firstName: toProperCase(signupData.firstName),
+      lastName: toProperCase(signupData.lastName),
+    };
+
+    const { errors, hasErrors } = validateSignupData(transformedData);
     if (hasErrors) {
       setSignupErrors(errors);
       return;
     }
 
-    // Sanitize signup password fields and persist sanitized versions if changed
-    const cleaned = sanitizePassword(signupData.password);
-    const cleanedConfirm = sanitizePassword(signupData.confirmPassword);
-    if (cleaned !== signupData.password || cleanedConfirm !== signupData.confirmPassword) {
-      setSignupData(prev => ({ ...prev, password: cleaned, confirmPassword: cleanedConfirm }));
-    }
+    // Sanitize signup password fields
+    const cleaned = sanitizePassword(transformedData.password);
+    const cleanedConfirm = sanitizePassword(transformedData.confirmPassword);
+    
+    // Create final data with all transformations applied
+    const finalData = {
+      ...transformedData,
+      password: cleaned,
+      confirmPassword: cleanedConfirm
+    };
+
+    // Update state with transformed values so the form shows the properly formatted data
+    setSignupData(finalData);
 
     setSignupIsLoading(true);
     try {
@@ -305,12 +349,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
             logger.warn('reCAPTCHA not configured or unavailable');
           }
 
-          const fullName = `${signupData.firstName.trim()} ${signupData.lastName.trim()}`;
+          const fullName = `${finalData.firstName} ${finalData.lastName}`;
           const success = await onSignup(
-            signupData.email,
+            finalData.email,
             fullName,
-            signupData.departments,
-            signupData.password,
+            finalData.departments,
+            finalData.password,
             recaptchaToken
           );
           
@@ -800,12 +844,17 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                       {showSignupConfirmPassword ? <Eye className="h-4 w-4 sm:h-5 sm:w-5" /> : <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </button>
                   </div>
-                  {signupErrors.confirmPassword && (
+                  {signupErrors.confirmPassword ? (
                     <p className="text-xs sm:text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
                       {signupErrors.confirmPassword}
                     </p>
-                  )}
+                  ) : signupData.confirmPassword && signupData.password && signupData.password === signupData.confirmPassword ? (
+                    <p className="text-xs sm:text-sm text-green-600 flex items-center gap-1 font-medium">
+                      <CheckCircle className="h-3 w-3" />
+                      Passwords match
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -821,7 +870,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 </div>
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-5">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
                   <div className="space-y-1">

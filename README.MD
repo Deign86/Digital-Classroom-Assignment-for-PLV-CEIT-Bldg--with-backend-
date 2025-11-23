@@ -1210,6 +1210,10 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 ## 🆕 Latest Updates (v3.0.0 - Stable Release)
 
 ### 🎨 UI/UX Polish & Enhancements
+- ✅ **Institutional Branding**: Firebase Storage-powered logo integration
+  - PLV and CEIT logos displayed throughout the application  
+  - Responsive sizing with loading states
+  - Optimized caching for performance
 - ✅ **Refined Apple-inspired Design**: Enhanced visual consistency across all components
 - ✅ **Improved Responsive Design**: Better mobile and tablet experiences with optimized touch interactions
 - ✅ **Animation Refinements**: Smoother transitions and micro-interactions with Framer Motion
