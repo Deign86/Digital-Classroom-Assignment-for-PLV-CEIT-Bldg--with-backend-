@@ -1905,6 +1905,9 @@ export default function App() {
               alt="PLV Logo"
               className="h-16 w-16 object-contain animate-pulse no-invert"
               data-theme-exclude
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
             />
           </div>
           <p className="text-foreground">{loadingMessage ?? 'Loading...'}</p>
@@ -2185,6 +2188,9 @@ export default function App() {
                         alt="PLV Logo"
                         className="h-16 w-16 object-contain animate-pulse no-invert"
                         data-theme-exclude
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
                       />
                     </div>
                     <p className="text-foreground">{overlayMessage ?? 'Loading...'}</p>

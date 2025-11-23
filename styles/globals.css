@@ -833,14 +833,23 @@
     filter: invert(1) hue-rotate(180deg) !important;
   }
 
-  /* Loader overlay should NOT be inverted - it uses CSS vars that adapt to theme */
+  /* Loader overlay should NOT be visually inverted by ancestor filter.
+     Because the `html.smart-dark-mode` filter is applied on the root element,
+     setting `filter:none` on the child does not cancel the ancestor filter.
+     To preserve the intended (non-inverted) appearance of images inside
+     the overlay, we explicitly re-invert those images so the net effect
+     is the original colors. Keep the container itself unfiltered so CSS
+     variables continue to adapt to theme. */
   html.smart-dark-mode [data-theme-exclude] {
     filter: none !important;
   }
 
+  /* Re-invert media inside excluded overlays to cancel the root inversion. */
   html.smart-dark-mode [data-theme-exclude] img,
-  html.smart-dark-mode [data-theme-exclude] svg {
-    filter: none !important;
+  html.smart-dark-mode [data-theme-exclude] svg,
+  html.smart-dark-mode [data-theme-exclude] picture,
+  html.smart-dark-mode [data-theme-exclude] video {
+    filter: invert(1) hue-rotate(180deg) !important;
   }
 
   /* Shadow Correction: Invert shadows so they look dark in inverted mode */

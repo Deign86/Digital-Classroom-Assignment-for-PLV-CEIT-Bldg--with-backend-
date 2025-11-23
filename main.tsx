@@ -12,6 +12,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
+// Remove the initial inline loader that was added to `index.html` once React mounts
+try {
+  const initialLoader = document.getElementById('initial-loader');
+  if (initialLoader && initialLoader.parentNode) {
+    initialLoader.parentNode.removeChild(initialLoader);
+  }
+} catch (e) {
+  // ignore
+}
+
 // Register Firebase Messaging service worker for push notifications
 if ('serviceWorker' in navigator) {
   // Register in production, or when served locally (localhost) so devs can test background notifications
