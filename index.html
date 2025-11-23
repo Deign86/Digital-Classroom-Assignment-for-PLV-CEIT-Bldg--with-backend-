@@ -41,6 +41,32 @@
       }
     </style>
     
+    <!-- Apply persisted theme early to avoid flash-of-incorrect-theme -->
+    <script>
+      (function(){
+        try {
+          var stored = null;
+          try { stored = localStorage.getItem('smartDarkMode'); } catch(e) { stored = null; }
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+          if (stored === 'dark') {
+            document.documentElement.classList.add('smart-dark-mode');
+          } else if (stored === 'light') {
+            document.documentElement.classList.remove('smart-dark-mode');
+          } else if (stored === 'system') {
+            if (prefersDark) document.documentElement.classList.add('smart-dark-mode');
+            else document.documentElement.classList.remove('smart-dark-mode');
+          } else {
+            // No stored preference -> follow system preference
+            if (prefersDark) document.documentElement.classList.add('smart-dark-mode');
+            else document.documentElement.classList.remove('smart-dark-mode');
+          }
+        } catch (e) {
+          // best-effort only; do not block rendering
+        }
+      })();
+    </script>
+
     <!-- Mark as hydrated to prevent FOUC -->
     <script>
       document.documentElement.classList.add('hydrated');
