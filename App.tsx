@@ -1903,7 +1903,8 @@ export default function App() {
             <img
               src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
               alt="PLV Logo"
-              className="h-16 w-16 object-contain animate-pulse"
+              className="h-16 w-16 object-contain animate-pulse no-invert"
+              data-theme-exclude
             />
           </div>
           <p className="text-foreground">{loadingMessage ?? 'Loading...'}</p>
@@ -2182,7 +2183,8 @@ export default function App() {
                       <img
                         src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
                         alt="PLV Logo"
-                        className="h-16 w-16 object-contain animate-pulse"
+                        className="h-16 w-16 object-contain animate-pulse no-invert"
+                        data-theme-exclude
                       />
                     </div>
                     <p className="text-foreground">{overlayMessage ?? 'Loading...'}</p>
