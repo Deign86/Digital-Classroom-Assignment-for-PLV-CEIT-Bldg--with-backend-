@@ -2,23 +2,26 @@ import { useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
-export function useDarkMode() {
-    const [theme, setTheme] = useState<Theme>('system');
-
-    useEffect(() => {
-        // Check local storage on mount
+// Initialize theme from localStorage synchronously to prevent flash
+const getInitialTheme = (): Theme => {
+    try {
         const stored = localStorage.getItem('smartDarkMode');
         // Migration from boolean to string if necessary, or just load string
         if (stored === 'true') {
-            setTheme('dark');
+            return 'dark';
         } else if (stored === 'false') {
-            setTheme('light');
+            return 'light';
         } else if (stored === 'system' || stored === 'light' || stored === 'dark') {
-            setTheme(stored as Theme);
-        } else {
-            setTheme('system');
+            return stored as Theme;
         }
-    }, []);
+    } catch (e) {
+        // If localStorage is not available, default to system
+    }
+    return 'system';
+};
+
+export function useDarkMode() {
+    const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
     useEffect(() => {
         const root = document.documentElement;
