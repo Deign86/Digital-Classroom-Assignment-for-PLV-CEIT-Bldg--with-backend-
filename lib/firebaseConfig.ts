@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAuth, setPersistence, browserLocalPersistence, type Auth } from 'firebase/auth';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { logger } from './logger';
 
 const REQUIRED_ENV_VARS = [
@@ -66,6 +67,7 @@ const createFirebaseApp = (): FirebaseApp => {
 let appInstance: FirebaseApp | null = null;
 let firestoreInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
 export const getFirebaseApp = (): FirebaseApp => {
   if (!appInstance) {
@@ -101,4 +103,18 @@ export const getFirebaseAuth = async (): Promise<Auth> => {
     }
   }
   return authInstance;
+};
+
+export const getFirebaseStorage = (): FirebaseStorage => {
+  if (!storageInstance) {
+    try {
+      const app = getFirebaseApp();
+      storageInstance = getStorage(app);
+      logger.log('Firebase Storage instance initialized for project:', app.options.projectId);
+    } catch (error) {
+      logger.error('Failed to initialize Firebase Storage:', error);
+      throw new Error(`Firebase Storage initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  return storageInstance;
 };

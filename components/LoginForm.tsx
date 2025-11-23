@@ -14,6 +14,7 @@ import ProcessingFieldset from './ui/ProcessingFieldset';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
+import LogoHeader from './LogoHeader';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 
@@ -869,7 +870,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
                 </div>
               )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-5">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
                   <div className="space-y-1">
