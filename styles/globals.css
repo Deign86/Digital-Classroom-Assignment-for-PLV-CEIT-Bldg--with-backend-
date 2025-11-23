@@ -829,11 +829,18 @@
   html.smart-dark-mode .grecaptcha-badge,
   html.smart-dark-mode .grecaptcha-badge *,
   html.smart-dark-mode iframe[src*="recaptcha"],
-  html.smart-dark-mode iframe[src*="google.com/recaptcha"],
-  html.smart-dark-mode [data-theme-exclude],
-  html.smart-dark-mode .loader-overlay,
-  html.smart-dark-mode .loader-overlay * {
+  html.smart-dark-mode iframe[src*="google.com/recaptcha"] {
     filter: invert(1) hue-rotate(180deg) !important;
+  }
+
+  /* Loader overlay should NOT be inverted - it uses CSS vars that adapt to theme */
+  html.smart-dark-mode [data-theme-exclude] {
+    filter: none !important;
+  }
+
+  html.smart-dark-mode [data-theme-exclude] img,
+  html.smart-dark-mode [data-theme-exclude] svg {
+    filter: none !important;
   }
 
   /* Shadow Correction: Invert shadows so they look dark in inverted mode */

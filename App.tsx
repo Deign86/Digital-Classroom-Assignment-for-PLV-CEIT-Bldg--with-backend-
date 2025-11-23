@@ -1897,7 +1897,7 @@ export default function App() {
   // This prevents the flash of login page while checking auth state
   if (!isAuthChecked || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="loader-overlay min-h-screen bg-background flex items-center justify-center" data-theme-exclude>
         <div className="text-center">
           <div className="mx-auto mb-4">
             <img
@@ -1906,7 +1906,7 @@ export default function App() {
               className="h-16 w-16 object-contain animate-pulse"
             />
           </div>
-          <p className="text-gray-600">{loadingMessage ?? 'Loading...'}</p>
+          <p className="text-foreground">{loadingMessage ?? 'Loading...'}</p>
           <Analytics />
         </div>
       </div>

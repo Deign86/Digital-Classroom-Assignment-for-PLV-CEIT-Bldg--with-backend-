@@ -4,8 +4,12 @@ type Theme = 'light' | 'dark' | 'system';
 
 // Initialize theme from localStorage synchronously to prevent flash
 const getInitialTheme = (): Theme => {
+    if (typeof window === 'undefined') return 'system';
+    
     try {
         const stored = localStorage.getItem('smartDarkMode');
+        console.log('[useDarkMode] Reading from localStorage:', stored);
+        
         // Migration from boolean to string if necessary, or just load string
         if (stored === 'true') {
             return 'dark';
@@ -15,8 +19,10 @@ const getInitialTheme = (): Theme => {
             return stored as Theme;
         }
     } catch (e) {
-        // If localStorage is not available, default to system
+        console.error('[useDarkMode] Failed to read from localStorage:', e);
     }
+    
+    console.log('[useDarkMode] No stored theme found, defaulting to system');
     return 'system';
 };
 
@@ -41,8 +47,10 @@ export function useDarkMode() {
             }
         };
 
+        console.log('[useDarkMode] Applying theme:', theme);
         applyTheme();
         localStorage.setItem('smartDarkMode', theme);
+        console.log('[useDarkMode] Saved to localStorage:', theme);
 
         // Listener for system changes
         const handleChange = () => {
