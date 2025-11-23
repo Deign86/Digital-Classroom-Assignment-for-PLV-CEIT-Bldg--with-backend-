@@ -11,7 +11,7 @@
         "generate:favicon": "node scripts/generate-favicon.js",
         "prebuild": "npm run generate:favicon",
         "build": "tsc && vite build",
-        "vercel-build": "npm ci && npm run generate:favicon && tsc -p ./tsconfig.json && ./node_modules/.bin/vite build",
+        "vercel-build": "npm run generate:favicon && tsc -p ./tsconfig.json && ./node_modules/.bin/vite build",
         "preview": "vite preview",
         "verify:textareas": "node ./scripts/verify-textareas.js",
         "predeploy": "npm run build"
