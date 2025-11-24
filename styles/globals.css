@@ -826,11 +826,13 @@
   }
 
   /* Exclude reCAPTCHA badge and loader overlay from inversion */
+  /* Badge should NOT be inverted when html has smart-dark-mode because */
+  /* the html filter already inverts everything, adding another invert cancels it out */
   html.smart-dark-mode .grecaptcha-badge,
   html.smart-dark-mode .grecaptcha-badge *,
   html.smart-dark-mode iframe[src*="recaptcha"],
   html.smart-dark-mode iframe[src*="google.com/recaptcha"] {
-    filter: invert(1) hue-rotate(180deg) !important;
+    filter: none !important;
   }
 
   /* Loader overlay should NOT be visually inverted by ancestor filter.
@@ -1089,8 +1091,10 @@ html {
 }
 
 /* Smart dark mode support */
+/* When html.smart-dark-mode is active, the html element already has invert filter */
+/* So we don't apply another filter to avoid double inversion */
 html.smart-dark-mode .grecaptcha-badge {
-  filter: invert(1) hue-rotate(180deg);
+  filter: none;
   opacity: 0.9;
 }
 
