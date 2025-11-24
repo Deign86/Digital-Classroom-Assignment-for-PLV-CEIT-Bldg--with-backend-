@@ -122,8 +122,19 @@ async function verifyRecaptchaTokenInternal(token: string): Promise<RecaptchaVer
 /**
  * Public callable for diagnostics/testing. Verifies token and returns score/action.
  * Can be called from client to test reCAPTCHA integration.
+ * CORS enabled for localhost and production domains.
  */
-export const verifyRecaptcha = onCall(async (request: CallableRequest<{ token?: string }>) => {
+export const verifyRecaptcha = onCall(
+  {
+    cors: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://plv-classroom-assigment.web.app',
+      'https://plv-classroom-assigment.firebaseapp.com',
+      /\.vercel\.app$/
+    ]
+  },
+  async (request: CallableRequest<{ token?: string }>) => {
   const token = request.data?.token;
   
   if (!token || typeof token !== 'string') {
@@ -147,7 +158,8 @@ export const verifyRecaptcha = onCall(async (request: CallableRequest<{ token?: 
     if (err instanceof HttpsError) throw err;
     throw new HttpsError('internal', 'Failed to verify reCAPTCHA token');
   }
-});
+  }
+);
 
 /**
  * Helper function to verify reCAPTCHA token with score threshold
@@ -213,8 +225,18 @@ export async function verifyRecaptchaToken(
  * the same uid. Only the authenticated owner or an admin may call this.
  * 
  * This function validates the reCAPTCHA token before creating the signup request.
+ * CORS enabled for localhost and production domains.
  */
 export const createSignupRequest = onCall(
+  {
+    cors: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://plv-classroom-assigment.web.app',
+      'https://plv-classroom-assigment.firebaseapp.com',
+      /\.vercel\.app$/
+    ]
+  },
   async (request: CallableRequest<{
     uid?: string;
     email?: string;

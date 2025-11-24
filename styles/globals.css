@@ -1076,6 +1076,31 @@ html {
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
 }
 
+/* Theme-aware reCAPTCHA badge styling */
+/* Light mode - match the light theme */
+.grecaptcha-badge {
+  filter: none;
+}
+
+/* Dark mode - invert colors to match dark theme */
+.dark .grecaptcha-badge {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.9;
+}
+
+/* Smart dark mode support */
+html.smart-dark-mode .grecaptcha-badge {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.9;
+}
+
+/* Adjust reCAPTCHA iframe for better integration */
+.dark iframe[src*="google.com/recaptcha"],
+html.smart-dark-mode iframe[src*="google.com/recaptcha"] {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.9;
+}
+
 /* Hide badge when user is authenticated (body will have this class after login) */
 body.authenticated .grecaptcha-badge {
   display: none !important;

@@ -839,48 +839,60 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
 /**
  * Verify reCAPTCHA token before login attempt
  * This function MUST be called before trackFailedLogin to prevent brute force attacks
+ * CORS enabled for localhost:3000 and production domains
  */
-export const verifyLoginRecaptcha = onCall(async (request: CallableRequest<{ email?: string; recaptchaToken?: string }>) => {
-  const { email, recaptchaToken } = request.data || {};
+export const verifyLoginRecaptcha = onCall(
+  {
+    cors: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://plv-classroom-assigment.web.app',
+      'https://plv-classroom-assigment.firebaseapp.com',
+      /\.vercel\.app$/
+    ]
+  },
+  async (request: CallableRequest<{ email?: string; recaptchaToken?: string }>) => {
+    const { email, recaptchaToken } = request.data || {};
 
-  if (!email || typeof email !== "string") {
-    throw new HttpsError("invalid-argument", "email is required and must be a string");
-  }
-
-  if (!recaptchaToken || typeof recaptchaToken !== "string") {
-    throw new HttpsError("invalid-argument", "reCAPTCHA token is required");
-  }
-
-  try {
-    // Import the verifyRecaptchaToken helper from recaptcha.ts
-    const { verifyRecaptchaToken } = await import('./recaptcha');
-    
-    // Verify the reCAPTCHA token with action 'LOGIN' and threshold 0.5
-    const isValid = await verifyRecaptchaToken(recaptchaToken, 'LOGIN', 0.5);
-    
-    if (!isValid) {
-      logger.warn(`reCAPTCHA verification failed for login attempt: ${email}`);
-      throw new HttpsError("permission-denied", "reCAPTCHA verification failed. Please try again.");
+    if (!email || typeof email !== "string") {
+      throw new HttpsError("invalid-argument", "email is required and must be a string");
     }
 
-    logger.info(`reCAPTCHA verification successful for login: ${email}`);
-    
-    return {
-      success: true,
-      verified: true,
-    };
-  } catch (error: unknown) {
-    const err = error as { message?: string };
-    
-    // If it's already an HttpsError, re-throw it
-    if (error instanceof HttpsError) {
-      throw error;
+    if (!recaptchaToken || typeof recaptchaToken !== "string") {
+      throw new HttpsError("invalid-argument", "reCAPTCHA token is required");
     }
-    
-    logger.error(`Error verifying reCAPTCHA for login ${email}:`, error);
-    throw new HttpsError("internal", `reCAPTCHA verification error: ${err.message}`);
+
+    try {
+      // Import the verifyRecaptchaToken helper from recaptcha.ts
+      const { verifyRecaptchaToken } = await import('./recaptcha');
+      
+      // Verify the reCAPTCHA token with action 'LOGIN' and threshold 0.5
+      const isValid = await verifyRecaptchaToken(recaptchaToken, 'LOGIN', 0.5);
+      
+      if (!isValid) {
+        logger.warn(`reCAPTCHA verification failed for login attempt: ${email}`);
+        throw new HttpsError("permission-denied", "reCAPTCHA verification failed. Please try again.");
+      }
+
+      logger.info(`reCAPTCHA verification successful for login: ${email}`);
+      
+      return {
+        success: true,
+        verified: true,
+      };
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      
+      // If it's already an HttpsError, re-throw it
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      
+      logger.error(`Error verifying reCAPTCHA for login ${email}:`, error);
+      throw new HttpsError("internal", `reCAPTCHA verification error: ${err.message}`);
+    }
   }
-});
+);
 
 export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?: string }>) => {
   const {email} = request.data || {};
