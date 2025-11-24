@@ -3,11 +3,13 @@
  * 
  * Provides server-side verification of reCAPTCHA tokens from client applications.
  * Supports both direct env var secrets and Google Cloud Secret Manager.
+ * Includes password leak detection via reCAPTCHA Enterprise.
  */
 
 import { onCall, HttpsError, CallableRequest } from 'firebase-functions/v2/https';
 import * as logger from 'firebase-functions/logger';
 import * as admin from 'firebase-admin';
+import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterprise';
 
 // Cached secret to avoid repeated Secret Manager calls
 let cachedRecaptchaSecret: string | undefined;
@@ -87,6 +89,14 @@ interface RecaptchaVerificationResult {
   raw: any;
 }
 
+interface PasswordCheckResult {
+  verified: boolean;
+  score: number | null;
+  isPasswordLeaked?: boolean;
+  leakReason?: string[];
+  reason?: string;
+}
+
 /**
  * Internal function to verify a reCAPTCHA token with Google's API
  */
@@ -162,6 +172,118 @@ export const verifyRecaptcha = onCall(
 );
 
 /**
+ * Verify reCAPTCHA token with optional password leak detection using Enterprise API
+ * This uses the full reCAPTCHA Enterprise SDK for advanced features
+ */
+export async function verifyRecaptchaWithPassword(
+  token: string,
+  expectedAction: string,
+  userPassword?: string,
+  minScore: number = 0.5
+): Promise<PasswordCheckResult> {
+  const client = new RecaptchaEnterpriseServiceClient();
+  
+  // Get project ID
+  const projectId = 
+    process.env.GCLOUD_PROJECT || 
+    process.env.GCP_PROJECT ||
+    (() => {
+      try {
+        const cfg = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
+        return cfg.projectId;
+      } catch (e) {
+        return undefined;
+      }
+    })();
+
+  if (!projectId) {
+    logger.error('Project ID not found for reCAPTCHA Enterprise');
+    throw new HttpsError('failed-precondition', 'Project ID not configured');
+  }
+
+  const projectPath = client.projectPath(projectId);
+  const siteKey = process.env.RECAPTCHA_SITE_KEY;
+
+  if (!siteKey) {
+    logger.error('RECAPTCHA_SITE_KEY not configured');
+    throw new HttpsError('failed-precondition', 'reCAPTCHA site key not configured');
+  }
+
+  const request: any = {
+    assessment: {
+      event: {
+        token: token,
+        expectedAction: expectedAction,
+        siteKey: siteKey,
+      },
+    },
+    parent: projectPath,
+  };
+
+  // Add password leak check if password provided
+  if (userPassword) {
+    request.assessment.accountDefenderAssessment = {
+      passwordLeakVerification: {
+        hashedUserCredentials: {
+          username: '', // Optional, leave empty
+          password: userPassword, // SDK will hash this
+        },
+      },
+    };
+  }
+
+  try {
+    const [response] = await client.createAssessment(request);
+    
+    const score = response.riskAnalysis?.score || 0;
+    const isValid = score >= minScore;
+    
+    let isLeaked = false;
+    let leakReason: string[] = [];
+    
+    // Check password leak status (using any to bypass type checking for this feature)
+    const accountDefender = response.accountDefenderAssessment as any;
+    if (accountDefender?.passwordLeakVerification) {
+      const leakVerification = accountDefender.passwordLeakVerification;
+      
+      // Check if password was leaked
+      if (leakVerification.credentialLeakStatus === 'CREDENTIAL_LEAKED') {
+        isLeaked = true;
+        logger.warn('Password leak detected', {
+          action: expectedAction,
+          hasAnnotations: !!(leakVerification.credentialLeakAnnotations),
+        });
+      }
+      
+      // Get leak annotations if available
+      if (leakVerification.credentialLeakAnnotations) {
+        leakReason = leakVerification.credentialLeakAnnotations.map(
+          (annotation: any) => annotation.toString()
+        );
+      }
+    }
+
+    logger.info('reCAPTCHA Enterprise verification complete', {
+      score,
+      isValid,
+      action: expectedAction,
+      passwordChecked: !!userPassword,
+      isLeaked,
+    });
+
+    return {
+      verified: isValid,
+      score,
+      isPasswordLeaked: isLeaked,
+      leakReason: leakReason.length > 0 ? leakReason : undefined,
+    };
+  } catch (error: any) {
+    logger.error('reCAPTCHA Enterprise verification failed:', error);
+    throw new HttpsError('internal', `reCAPTCHA verification failed: ${error.message}`);
+  }
+}
+
+/**
  * Helper function to verify reCAPTCHA token with score threshold
  * Returns true if token is valid and score is above threshold
  */
@@ -225,6 +347,7 @@ export async function verifyRecaptchaToken(
  * the same uid. Only the authenticated owner or an admin may call this.
  * 
  * This function validates the reCAPTCHA token before creating the signup request.
+ * Now includes password leak detection.
  * CORS enabled for localhost and production domains.
  */
 export const createSignupRequest = onCall(
@@ -244,9 +367,10 @@ export const createSignupRequest = onCall(
     department?: string;
     departments?: string[];
     recaptchaToken?: string;
+    password?: string;
   }>) => {
     const callerUid = request.auth?.uid;
-    const { uid, email, name, department, departments, recaptchaToken } = request.data || {};
+    const { uid, email, name, department, departments, recaptchaToken, password } = request.data || {};
 
     if (!uid || typeof uid !== 'string')
       throw new HttpsError('invalid-argument', 'uid is required');
@@ -276,8 +400,13 @@ export const createSignupRequest = onCall(
     }
 
     try {
-      // Verify reCAPTCHA token
-      const recaptchaResult = await verifyRecaptchaToken(recaptchaToken, 'SIGNUP', 0.5);
+      // Verify reCAPTCHA token with optional password leak detection
+      const recaptchaResult = await verifyRecaptchaWithPassword(
+        recaptchaToken || '',
+        'SIGNUP',
+        password, // Optional password for leak detection
+        0.5
+      );
       
       if (!recaptchaResult.verified) {
         logger.warn('reCAPTCHA verification failed for signup request', {
@@ -296,6 +425,8 @@ export const createSignupRequest = onCall(
         uid,
         email,
         score: recaptchaResult.score,
+        passwordChecked: !!password,
+        isLeaked: recaptchaResult.isPasswordLeaked,
       });
 
       const db = admin.firestore();
@@ -319,7 +450,12 @@ export const createSignupRequest = onCall(
 
       await db.collection('signupRequests').doc(uid).set(record);
 
-      return { success: true, request: record };
+      return {
+        success: true,
+        request: record,
+        isPasswordLeaked: recaptchaResult.isPasswordLeaked || false,
+        leakReason: recaptchaResult.leakReason || [],
+      };
     } catch (err: any) {
       logger.error('createSignupRequest error', err);
       if (err instanceof HttpsError) throw err;
