@@ -193,7 +193,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       errors.firstName = 'First name is required';
       hasErrors = true;
     } else if (!/^[a-zA-Z\s'-]+$/.test(data.firstName.trim())) {
-      errors.firstName = 'First name can only contain letters, spaces, hyphens, and apostrophes';
+      errors.firstName = "No special characters except spaces, hyphens (-), apostrophes (')";
       hasErrors = true;
     } else if (data.firstName.trim().length < 2) {
       errors.firstName = 'First name must be at least 2 characters';
@@ -204,7 +204,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       errors.lastName = 'Last name is required';
       hasErrors = true;
     } else if (!/^[a-zA-Z\s'-]+$/.test(data.lastName.trim())) {
-      errors.lastName = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
+      errors.lastName = "No special characters except spaces, hyphens (-), apostrophes (')";
       hasErrors = true;
     } else if (data.lastName.trim().length < 2) {
       errors.lastName = 'Last name must be at least 2 characters';
@@ -482,7 +482,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
         if (!signupData.firstName.trim()) {
           errors.firstName = 'First name is required';
         } else if (!/^[a-zA-Z\s'-]+$/.test(signupData.firstName.trim())) {
-          errors.firstName = 'First name can only contain letters, spaces, hyphens, and apostrophes';
+          errors.firstName = "No special characters except spaces, hyphens (-), apostrophes (')";
         } else if (signupData.firstName.trim().length < 2) {
           errors.firstName = 'First name must be at least 2 characters';
         } else {
@@ -493,7 +493,7 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
         if (!signupData.lastName.trim()) {
           errors.lastName = 'Last name is required';
         } else if (!/^[a-zA-Z\s'-]+$/.test(signupData.lastName.trim())) {
-          errors.lastName = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
+          errors.lastName = "No special characters except spaces, hyphens (-), apostrophes (')";
         } else if (signupData.lastName.trim().length < 2) {
           errors.lastName = 'Last name must be at least 2 characters';
         } else {
