@@ -84,6 +84,10 @@ const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
   '/favicon.ico',
+  // Also cache local public copies of logos so the SW can serve them when the app
+  // references them from `/plv-logo.webp` and `/ceit-logo.webp`.
+  '/plv-logo.webp',
+  '/ceit-logo.webp',
   ...LOGO_URLS,
 ];
 
@@ -167,6 +171,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('.woff') ||
     url.pathname.endsWith('.ttf') ||
     url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.webp') ||
     url.pathname.endsWith('.jpg') ||
     url.pathname.endsWith('.jpeg') ||
     url.pathname.endsWith('.svg') ||
