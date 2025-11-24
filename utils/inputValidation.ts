@@ -103,6 +103,60 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
+ * Validates if an email is from the PLV domain or is an allowed test account.
+ * 
+ * Accepts:
+ * - Email addresses ending with @plv.edu.ph
+ * - Email addresses listed in VITE_TEST_EMAILS environment variable (comma-separated)
+ * 
+ * This allows the system to maintain strict PLV email requirements in production
+ * while enabling test accounts for documentation and testing purposes.
+ * 
+ * @param email - The email address to validate
+ * @returns Object with isValid flag and optional error message
+ * 
+ * @example
+ * ```typescript
+ * // In .env: VITE_TEST_EMAILS=testfaculty21@gmail.com,test@example.com
+ * 
+ * validatePLVEmail("faculty@plv.edu.ph")
+ * // Returns { isValid: true }
+ * 
+ * validatePLVEmail("testfaculty21@gmail.com")
+ * // Returns { isValid: true }
+ * 
+ * validatePLVEmail("random@gmail.com")
+ * // Returns { isValid: false, error: "Email must be from @plv.edu.ph domain" }
+ * ```
+ */
+export function validatePLVEmail(email: string): { isValid: boolean; error?: string } {
+  const sanitizedEmail = email.trim().toLowerCase();
+  
+  // Check if email is from PLV domain
+  if (sanitizedEmail.endsWith('@plv.edu.ph')) {
+    return { isValid: true };
+  }
+  
+  // Check if email is in the allowed test emails list
+  const testEmails = import.meta.env.VITE_TEST_EMAILS as string | undefined;
+  if (testEmails) {
+    const allowedTestEmails = testEmails
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(e => e.length > 0);
+    
+    if (allowedTestEmails.includes(sanitizedEmail)) {
+      return { isValid: true };
+    }
+  }
+  
+  return { 
+    isValid: false, 
+    error: 'Email must be from @plv.edu.ph domain' 
+  };
+}
+
+/**
  * Validates name format (letters, spaces, hyphens, and apostrophes only).
  * 
  * Ensures names contain only alphabetic characters and common name punctuation.

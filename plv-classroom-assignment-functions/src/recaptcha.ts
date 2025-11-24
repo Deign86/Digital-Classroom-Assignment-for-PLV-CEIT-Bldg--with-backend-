@@ -15,6 +15,40 @@ import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterp
 let cachedRecaptchaSecret: string | undefined;
 
 /**
+ * Validates if an email is from the PLV domain or is an allowed test account.
+ * 
+ * Server-side validation to prevent bypassing client-side checks.
+ * Reads test emails from TEST_EMAILS environment variable.
+ */
+function validatePLVEmail(email: string): { isValid: boolean; error?: string } {
+  const sanitizedEmail = email.trim().toLowerCase();
+  
+  // Check if email is from PLV domain
+  if (sanitizedEmail.endsWith('@plv.edu.ph')) {
+    return { isValid: true };
+  }
+  
+  // Check if email is in the allowed test emails list
+  const testEmails = process.env.TEST_EMAILS;
+  if (testEmails) {
+    const allowedTestEmails = testEmails
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(e => e.length > 0);
+    
+    if (allowedTestEmails.includes(sanitizedEmail)) {
+      logger.info('Test email allowed for signup', { email: sanitizedEmail });
+      return { isValid: true };
+    }
+  }
+  
+  return { 
+    isValid: false, 
+    error: 'Email must be from @plv.edu.ph domain' 
+  };
+}
+
+/**
  * Retrieves the reCAPTCHA secret from environment or Secret Manager
  */
 async function getRecaptchaSecret(): Promise<string> {
@@ -378,6 +412,13 @@ export const createSignupRequest = onCall(
       throw new HttpsError('invalid-argument', 'email is required');
     if (!name || typeof name !== 'string')
       throw new HttpsError('invalid-argument', 'name is required');
+    
+    // Validate email domain (PLV or test account)
+    const emailValidation = validatePLVEmail(email);
+    if (!emailValidation.isValid) {
+      logger.warn('Invalid email domain for signup', { email, error: emailValidation.error });
+      throw new HttpsError('invalid-argument', emailValidation.error || 'Invalid email domain');
+    }
     
     // Support both single department (legacy) and multiple departments (new)
     const depts = departments && Array.isArray(departments) && departments.length > 0

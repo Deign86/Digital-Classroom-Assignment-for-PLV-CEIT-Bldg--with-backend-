@@ -12,6 +12,7 @@ import { useAnnouncer } from './Announcer';
 import { logger } from '../lib/logger';
 import ProcessingFieldset from './ui/ProcessingFieldset';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
+import { validatePLVEmail } from '../utils/inputValidation';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
 
@@ -201,6 +202,13 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     if (!data.email.trim()) {
       errors.email = 'Email is required';
       hasErrors = true;
+    } else {
+      // Validate PLV email domain or test account
+      const emailValidation = validatePLVEmail(data.email);
+      if (!emailValidation.isValid) {
+        errors.email = emailValidation.error || 'Invalid email domain';
+        hasErrors = true;
+      }
     }
 
     if (!data.departments || data.departments.length === 0) {
