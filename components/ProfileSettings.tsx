@@ -239,6 +239,51 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     setIsEditingProfile(false);
   };
 
+  const handlePasswordFieldBlur = (field: 'currentPassword' | 'newPassword' | 'confirmPassword') => {
+    const newErrors = { ...errors };
+
+    if (field === 'currentPassword') {
+      if (!passwordData.currentPassword.trim()) {
+        newErrors.currentPassword = 'Current password is required';
+      } else {
+        newErrors.currentPassword = '';
+      }
+    }
+
+    if (field === 'newPassword') {
+      if (!passwordData.newPassword.trim()) {
+        newErrors.newPassword = 'New password is required';
+      } else if (passwordData.newPassword.length < 8) {
+        newErrors.newPassword = 'Password must be at least 8 characters';
+      } else {
+        const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
+        const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
+        const hasNumber = /[0-9]/.test(passwordData.newPassword);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword);
+
+        if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+          newErrors.newPassword = 'Must contain uppercase, lowercase, number, and special character';
+        } else if (passwordData.newPassword === passwordData.currentPassword) {
+          newErrors.newPassword = 'New password cannot be the same as current password';
+        } else {
+          newErrors.newPassword = '';
+        }
+      }
+    }
+
+    if (field === 'confirmPassword') {
+      if (!passwordData.confirmPassword.trim()) {
+        newErrors.confirmPassword = 'Please confirm your password';
+      } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      } else {
+        newErrors.confirmPassword = '';
+      }
+    }
+
+    setErrors(newErrors);
+  };
+
   const validatePassword = (): boolean => {
     const newErrors = {
       currentPassword: '',
@@ -844,6 +889,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, currentPassword: '' }));
                       }
                     }}
+                    onBlur={() => handlePasswordFieldBlur('currentPassword')}
                     className={`pl-10 pr-10 ${errors.currentPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
@@ -882,6 +928,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, newPassword: '' }));
                       }
                     }}
+                    onBlur={() => handlePasswordFieldBlur('newPassword')}
                     className={`pl-10 pr-10 ${errors.newPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
@@ -924,6 +971,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                         setErrors(prev => ({ ...prev, confirmPassword: '' }));
                       }
                     }}
+                    onBlur={() => handlePasswordFieldBlur('confirmPassword')}
                     className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     required
                   />
