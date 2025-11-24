@@ -524,17 +524,23 @@ export default function App() {
     }
   }, []);
 
-  const handleLogin = useCallback(async (email: string, password: string) => {
+  const handleLogin = useCallback(async (email: string, password: string): Promise<boolean | { success: boolean; passwordLeakWarning?: string }> => {
     try {
-      const user = await authService.signIn(email, password);
+      const result = await authService.signIn(email, password);
 
-      if (user) {
+      if (result && result.user) {
+        const user = result.user;
         setCurrentUser(user);
         const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
         toast.success(`${greeting}, ${user.name}!`, {
           duration: 4000,
         });
-        return true;
+        
+        // Return success with optional password leak warning
+        return { 
+          success: true, 
+          passwordLeakWarning: result.passwordLeakWarning 
+        };
       }
 
       return false;
@@ -618,7 +624,8 @@ export default function App() {
 
   const oldHandleLogin = useCallback(async (email: string, password: string) => {
     try {
-      const user = await authService.signIn(email, password);
+      const result = await authService.signIn(email, password);
+      const user = result && result.user ? result.user : null;
       if (user) {
         setCurrentUser(user);
 

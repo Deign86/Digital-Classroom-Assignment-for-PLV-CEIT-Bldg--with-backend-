@@ -1060,7 +1060,7 @@ export const authService = {
     }
   },
 
-  async signIn(email: string, password: string): Promise<User | null> {
+  async signIn(email: string, password: string): Promise<{ user: User | null; passwordLeakWarning?: string }> {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
     const database = getDb();
@@ -1069,17 +1069,40 @@ export const authService = {
     try {
       // STEP 1: Verify reCAPTCHA token before attempting authentication
       // This prevents brute force attacks at the application layer
+      // Also checks for password leaks via reCAPTCHA Enterprise
       const recaptchaToken = (window as any).__recaptchaToken;
+      let passwordLeakWarning: string | null = null;
       
       if (recaptchaToken) {
         try {
-          logger.log('🛡️ Verifying reCAPTCHA token for login...');
-          const verifyLoginRecaptcha = httpsCallable(functions, 'verifyLoginRecaptcha');
-          await withRetry(() => verifyLoginRecaptcha({ email, recaptchaToken }), { 
+          logger.log('🛡️ Verifying reCAPTCHA token for login with password leak detection...');
+          const verifyLoginRecaptcha = httpsCallable<
+            { email: string; recaptchaToken: string; password: string },
+            { success: boolean; verified: boolean; score: number; isPasswordLeaked: boolean; leakReason: string[] }
+          >(functions, 'verifyLoginRecaptcha');
+          
+          const result = await withRetry(() => verifyLoginRecaptcha({ 
+            email, 
+            recaptchaToken,
+            password // Send password for leak detection
+          }), { 
             attempts: 2, 
             shouldRetry: isNetworkError 
           });
-          logger.log('✅ reCAPTCHA verification successful');
+          
+          logger.log('✅ reCAPTCHA verification successful', {
+            score: result.data.score,
+            passwordChecked: true,
+            isLeaked: result.data.isPasswordLeaked,
+          });
+          
+          // Check if password is leaked
+          if (result.data.isPasswordLeaked) {
+            passwordLeakWarning = 
+              '⚠️ Warning: This password has been found in a data breach. ' +
+              'Please change your password immediately for better security.';
+            logger.warn('🚨 Password leak detected for user:', email);
+          }
           
           // Clear the token after use
           delete (window as any).__recaptchaToken;
@@ -1194,7 +1217,12 @@ export const authService = {
 
       currentUserCache = user;
       notifyAuthListeners(user);
-      return user;
+      
+      // Return user along with password leak warning if applicable
+      return { 
+        user, 
+        ...(passwordLeakWarning ? { passwordLeakWarning } : {})
+      };
     } catch (error) {
       if (error instanceof AuthStatusError) {
         throw error;
