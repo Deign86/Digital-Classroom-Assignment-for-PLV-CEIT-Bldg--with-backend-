@@ -69,6 +69,7 @@ loadCacheFromStorage();
 const LOGO_PATHS = {
   plv: 'logos/plv-logo.webp',
   ceit: 'logos/ceit-logo.webp',
+  system: 'logos/system-logo.webp',
 } as const;
 
 export type LogoType = keyof typeof LOGO_PATHS;
@@ -118,6 +119,14 @@ export const getAllLogos = async (): Promise<{
   ]);
 
   return { plv, ceit };
+};
+
+/**
+ * Fetch system logo URL
+ * @returns Promise resolving to the system logo URL
+ */
+export const getSystemLogo = async (): Promise<string | null> => {
+  return getLogoUrl('system');
 };
 
 /**

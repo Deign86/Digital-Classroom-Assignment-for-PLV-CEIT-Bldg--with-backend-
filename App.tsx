@@ -1930,6 +1930,17 @@ export default function App() {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center space-y-8 w-full max-w-md">
             <div>
+              {/* System Logo */}
+              <div className="flex justify-center mb-6">
+                <img
+                  src="/system-logo.webp"
+                  alt="PLV CEIT Classroom Reservation System"
+                  className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 object-contain transition-transform hover:scale-105"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                />
+              </div>
               <h1 className="mb-6">Classroom Reservation</h1>
               <p className="text-gray-600 mb-8">
                 Efficient classroom reservation management for PLV CEIT.

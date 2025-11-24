@@ -70,13 +70,14 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // Cache configuration
-const CACHE_VERSION = 'v1.1';
+const CACHE_VERSION = 'v1.2';
 const CACHE_NAME = `plv-ceit-classroom-${CACHE_VERSION}`;
 
 // Logo URLs to cache (Firebase Storage) - WebP format for better performance
 const LOGO_URLS = [
   'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fceit-logo.webp?alt=media'
+  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fceit-logo.webp?alt=media',
+  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media'
 ];
 
 // Assets to cache on install
@@ -85,9 +86,10 @@ const STATIC_CACHE_URLS = [
   '/index.html',
   '/favicon.ico',
   // Also cache local public copies of logos so the SW can serve them when the app
-  // references them from `/plv-logo.webp` and `/ceit-logo.webp`.
+  // references them from `/plv-logo.webp`, `/ceit-logo.webp`, and `/system-logo.webp`.
   '/plv-logo.webp',
   '/ceit-logo.webp',
+  '/system-logo.webp',
   ...LOGO_URLS,
 ];
 
