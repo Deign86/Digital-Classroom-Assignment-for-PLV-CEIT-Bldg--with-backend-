@@ -953,7 +953,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               </div>
             </ProcessingFieldset>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-6">
               <Button
                 type="submit"
                 disabled={isChangingPassword || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
