@@ -1067,7 +1067,40 @@ export const authService = {
     const functions = getFunctions(getFirebaseApp(), 'us-central1');
 
     try {
-      // Attempt to sign in with Firebase Authentication first
+      // STEP 1: Verify reCAPTCHA token before attempting authentication
+      // This prevents brute force attacks at the application layer
+      const recaptchaToken = (window as any).__recaptchaToken;
+      
+      if (recaptchaToken) {
+        try {
+          logger.log('🛡️ Verifying reCAPTCHA token for login...');
+          const verifyLoginRecaptcha = httpsCallable(functions, 'verifyLoginRecaptcha');
+          await withRetry(() => verifyLoginRecaptcha({ email, recaptchaToken }), { 
+            attempts: 2, 
+            shouldRetry: isNetworkError 
+          });
+          logger.log('✅ reCAPTCHA verification successful');
+          
+          // Clear the token after use
+          delete (window as any).__recaptchaToken;
+        } catch (recaptchaError) {
+          logger.error('❌ reCAPTCHA verification failed:', recaptchaError);
+          
+          // Extract error message from Cloud Function response
+          let errorMessage = 'reCAPTCHA verification failed. Please try again.';
+          if (recaptchaError instanceof Error) {
+            errorMessage = recaptchaError.message;
+          }
+          
+          throw new Error(errorMessage);
+        }
+      } else {
+        logger.warn('⚠️ No reCAPTCHA token found - login attempt without verification');
+        // In production, you might want to enforce reCAPTCHA by throwing an error here
+        // For now, we'll allow graceful degradation for backwards compatibility
+      }
+      
+      // STEP 2: Attempt to sign in with Firebase Authentication
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = credential.user;
       

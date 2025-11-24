@@ -88,16 +88,28 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
   const STORAGE_KEY = 'plv:loginForm:activeTab';
   const allowed = ['login', 'signup'];
   const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'login', allowed));
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
 
-  // Lazy-load reCAPTCHA only when signup tab is activated (not on initial mount)
-  // This improves LCP by deferring non-critical third-party scripts
+  // Load reCAPTCHA on component mount to ensure it's available for both login and signup
   useEffect(() => {
-    if (activeTab === 'signup' && typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
-      loadRecaptchaScript().catch((error) => {
-        logger.error('Failed to load reCAPTCHA on tab switch:', error);
-      });
+    if (typeof window !== 'undefined' && RECAPTCHA_SITE_KEY) {
+      loadRecaptchaScript()
+        .then(() => {
+          // Wait for reCAPTCHA to be ready
+          if (window.grecaptcha?.enterprise) {
+            window.grecaptcha.enterprise.ready(() => {
+              setRecaptchaReady(true);
+              logger.log('reCAPTCHA is ready');
+            });
+          }
+        })
+        .catch((error) => {
+          logger.error('Failed to load reCAPTCHA:', error);
+        });
+    } else if (!RECAPTCHA_SITE_KEY) {
+      logger.warn('reCAPTCHA site key not configured - security verification disabled');
     }
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -263,6 +275,21 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     setIsLoading(true);
     
     try {
+      // Execute reCAPTCHA before login
+      if (RECAPTCHA_SITE_KEY && recaptchaReady && window.grecaptcha?.enterprise) {
+        try {
+          const recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { 
+            action: 'LOGIN' 
+          });
+          logger.log('reCAPTCHA token obtained for login');
+          // Store token for backend verification (to be implemented)
+          (window as any).__recaptchaToken = recaptchaToken;
+        } catch (recaptchaError) {
+          logger.error('reCAPTCHA execution failed on login:', recaptchaError);
+          // Continue with login even if reCAPTCHA fails (graceful degradation)
+        }
+      }
+
       // Call onLogin directly - App.tsx handles all error messages and toasts
       // This prevents duplicate toast notifications (one immediate, one after processing)
       const success = await onLogin(email, password);
@@ -331,22 +358,29 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
         async () => {
           // Execute reCAPTCHA before signup
           let recaptchaToken: string | undefined;
-          if (RECAPTCHA_SITE_KEY && typeof window !== 'undefined' && window.grecaptcha?.enterprise) {
+          if (RECAPTCHA_SITE_KEY && recaptchaReady && window.grecaptcha?.enterprise) {
             try {
-              await new Promise<void>((resolve) => {
-                window.grecaptcha!.enterprise.ready(() => resolve());
-              });
-              
               recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { 
                 action: 'SIGNUP' 
               });
               logger.log('reCAPTCHA token obtained for signup');
             } catch (recaptchaError) {
               logger.error('reCAPTCHA execution failed:', recaptchaError);
-              throw new Error('Security verification failed');
+              throw new Error('Security verification failed. Please try again.');
             }
-          } else {
-            logger.warn('reCAPTCHA not configured or unavailable');
+          } else if (!RECAPTCHA_SITE_KEY) {
+            logger.warn('reCAPTCHA not configured - proceeding without security verification');
+          } else if (!recaptchaReady) {
+            logger.warn('reCAPTCHA not ready yet - waiting...');
+            // Wait a bit for reCAPTCHA to load
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (window.grecaptcha?.enterprise) {
+              recaptchaToken = await window.grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { 
+                action: 'SIGNUP' 
+              });
+            } else {
+              throw new Error('Security verification is loading. Please try again in a moment.');
+            }
           }
 
           const fullName = `${finalData.firstName} ${finalData.lastName}`;
