@@ -6,11 +6,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 async function generateFavicon() {
-  const inputPath = join(__dirname, '../public/plv-logo.webp');
+  const inputPath = join(__dirname, '../public/system-logo.webp');
   const outputPath = join(__dirname, '../public/favicon.ico');
 
   try {
-    console.log('Converting webp to png for favicon...');
+    console.log('Converting system-logo.webp to favicon.ico...');
     
     // Convert webp to png with 32x32 size (standard favicon size)
     const pngBuffer = await sharp(inputPath)

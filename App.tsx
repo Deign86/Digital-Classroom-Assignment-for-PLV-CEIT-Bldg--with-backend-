@@ -1907,13 +1907,13 @@ export default function App() {
         <div className="text-center">
           <div className="mx-auto mb-4">
             <img
-              src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
-              alt="PLV Logo"
-              className="h-16 w-16 object-contain animate-pulse no-invert"
+              src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media"
+              alt="PLV CEIT System Logo"
+              className="h-20 w-20 object-contain animate-pulse no-invert"
               data-theme-exclude
-              loading="lazy"
+              loading="eager"
               decoding="async"
-              fetchPriority="low"
+              fetchPriority="high"
             />
           </div>
           <p className="text-foreground">{loadingMessage ?? 'Loading...'}</p>
@@ -2197,13 +2197,13 @@ export default function App() {
                   <div className="text-center">
                     <div className="mx-auto mb-4">
                       <img
-                        src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
-                        alt="PLV Logo"
-                        className="h-16 w-16 object-contain animate-pulse no-invert"
+                        src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media"
+                        alt="PLV CEIT System Logo"
+                        className="h-20 w-20 object-contain animate-pulse no-invert"
                         data-theme-exclude
-                        loading="lazy"
+                        loading="eager"
                         decoding="async"
-                        fetchPriority="low"
+                        fetchPriority="high"
                       />
                     </div>
                     <p className="text-foreground">{overlayMessage ?? 'Loading...'}</p>
