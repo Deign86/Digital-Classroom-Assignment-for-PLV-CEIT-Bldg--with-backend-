@@ -836,6 +836,80 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
  * Called after each failed authentication attempt.
  * Increments attempt counter and locks account after threshold is exceeded.
  */
+/**
+ * Verify reCAPTCHA token before login attempt
+ * This function MUST be called before trackFailedLogin to prevent brute force attacks
+ * Now includes password leak detection via reCAPTCHA Enterprise
+ * CORS enabled for localhost:3000 and production domains
+ */
+export const verifyLoginRecaptcha = onCall(
+  {
+    cors: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://plv-classroom-assigment.web.app',
+      'https://plv-classroom-assigment.firebaseapp.com',
+      /\.vercel\.app$/
+    ]
+  },
+  async (request: CallableRequest<{ email?: string; recaptchaToken?: string; password?: string }>) => {
+    const { email, recaptchaToken, password } = request.data || {};
+
+    if (!email || typeof email !== "string") {
+      throw new HttpsError("invalid-argument", "email is required and must be a string");
+    }
+
+    if (!recaptchaToken || typeof recaptchaToken !== "string") {
+      throw new HttpsError("invalid-argument", "reCAPTCHA token is required");
+    }
+
+    try {
+      // Import the verifyRecaptchaWithPassword helper from recaptcha.ts
+      const { verifyRecaptchaWithPassword } = await import('./recaptcha');
+      
+      // Verify the reCAPTCHA token with action 'LOGIN' and optional password check
+      const result = await verifyRecaptchaWithPassword(
+        recaptchaToken,
+        'LOGIN',
+        password, // Optional password for leak detection
+        0.5 // Score threshold
+      );
+      
+      if (!result.verified) {
+        logger.warn(`reCAPTCHA verification failed for login attempt: ${email}`, {
+          reason: result.reason,
+          score: result.score,
+        });
+        throw new HttpsError("permission-denied", "reCAPTCHA verification failed. Please try again.");
+      }
+
+      logger.info(`reCAPTCHA verification successful for login: ${email}`, {
+        score: result.score,
+        passwordChecked: !!password,
+        isLeaked: result.isPasswordLeaked,
+      });
+      
+      return {
+        success: true,
+        verified: true,
+        score: result.score,
+        isPasswordLeaked: result.isPasswordLeaked || false,
+        leakReason: result.leakReason || [],
+      };
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      
+      // If it's already an HttpsError, re-throw it
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      
+      logger.error(`Error verifying reCAPTCHA for login ${email}:`, error);
+      throw new HttpsError("internal", `reCAPTCHA verification error: ${err.message}`);
+    }
+  }
+);
+
 export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?: string }>) => {
   const {email} = request.data || {};
 
@@ -2173,3 +2247,6 @@ export const checkAdminActionRateLimit = onCall(async (request: CallableRequest)
     throw new HttpsError('internal', `Failed to check admin action rate limit: ${err.message}`);
   }
 });
+
+// Export reCAPTCHA verification functions
+export * from './recaptcha';

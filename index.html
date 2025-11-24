@@ -41,6 +41,41 @@
       }
     </style>
     
+    <!-- Apply persisted theme early to avoid flash-of-incorrect-theme -->
+    <script>
+      (function(){
+        try {
+          var stored = null;
+          try { stored = localStorage.getItem('smartDarkMode'); } catch(e) { stored = null; }
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+          if (stored === 'dark') {
+            document.documentElement.classList.add('smart-dark-mode');
+          } else if (stored === 'light') {
+            document.documentElement.classList.remove('smart-dark-mode');
+          } else if (stored === 'system') {
+            if (prefersDark) document.documentElement.classList.add('smart-dark-mode');
+            else document.documentElement.classList.remove('smart-dark-mode');
+          } else {
+            // No stored preference -> follow system preference
+            if (prefersDark) document.documentElement.classList.add('smart-dark-mode');
+            else document.documentElement.classList.remove('smart-dark-mode');
+          }
+          // Set an initial background CSS variable early so the page doesn't flash
+          // an unexpected color before the stylesheet loads. Use a simple dark/Light
+          // baseline that matches our theme colors.
+          try {
+            var initialBg = (stored === 'light') ? '#ffffff' : (stored === 'dark' ? '#000000' : (prefersDark ? '#000000' : '#ffffff'));
+            document.documentElement.style.setProperty('--initial-bg', initialBg);
+          } catch (e) {
+            // ignore
+          }
+        } catch (e) {
+          // best-effort only; do not block rendering
+        }
+      })();
+    </script>
+
     <!-- Mark as hydrated to prevent FOUC -->
     <script>
       document.documentElement.classList.add('hydrated');
@@ -58,6 +93,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Inline initial loader: visible immediately while React mounts. Uses local asset so it appears fast. -->
+    <div id="initial-loader" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--initial-bg,#ffffff);z-index:99999;">
+      <div style="text-align:center">
+        <img src="/plv-logo.webp" alt="PLV Logo" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto;" loading="lazy" decoding="async" fetchpriority="low" />
+        <div style="color:rgba(0,0,0,0.6);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin-top:8px;font-size:14px">Loading...</div>
+      </div>
+    </div>
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>

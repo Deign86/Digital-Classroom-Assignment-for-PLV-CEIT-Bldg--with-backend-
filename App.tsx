@@ -43,7 +43,7 @@ if (import.meta.env.DEV) {
   (window as any).realtimeService = realtimeService;
   (window as any).classroomService = classroomService;
   // Expose pushService for test push sending from the console
-    try {
+  try {
     // Dynamically import to avoid circular import issues
     import('./lib/pushService').then((mod) => {
       (window as any).pushService = mod.pushService;
@@ -169,7 +169,7 @@ export default function App() {
     // optimistic UI update
     setNotifications((prev) => {
       const next = prev.map((n) => (n.id === id ? { ...n, acknowledgedAt: new Date().toISOString() } : n));
-      try { notificationsRef.current = next; } catch (e) {}
+      try { notificationsRef.current = next; } catch (e) { }
       return next;
     });
     setUnreadCount((c) => Math.max(0, c - 1));
@@ -187,7 +187,7 @@ export default function App() {
     // optimistic
     setNotifications((prev) => {
       const next = prev.map((n) => (unreadIds.includes(n.id) ? { ...n, acknowledgedAt: new Date().toISOString() } : n));
-      try { notificationsRef.current = next; } catch (e) {}
+      try { notificationsRef.current = next; } catch (e) { }
       return next;
     });
     setUnreadCount(0);
@@ -273,7 +273,7 @@ export default function App() {
     if (!currentUser) return [];
     return schedules.filter(s => s.facultyId === currentUser.id);
   }, [schedules, currentUser]);
-  
+
   const facultyBookingRequests = useMemo(() => {
     if (!currentUser) return [];
     return bookingRequests.filter(r => r.facultyId === currentUser.id);
@@ -289,7 +289,7 @@ export default function App() {
     const lastLoggedRef = (setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>;
     const shouldLogSetup = Boolean(user && lastLoggedRef.current !== user.id);
     if (shouldLogSetup) logger.log('🔄 Setting up real-time data listeners...');
-    
+
     if (!user) {
       // Clear data when no user
       setUsers([]);
@@ -298,21 +298,21 @@ export default function App() {
       setBookingRequests([]);
       setSchedules([]);
       realtimeService.cleanup();
-      try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = null; } catch (_) {}
+      try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = null; } catch (_) { }
       return;
     }
 
     try {
-  setLoadingMessage('Loading...');
+      setLoadingMessage('Loading...');
       setIsLoading(true);
-      
+
       realtimeService.subscribeToData(user, {
         onClassroomsUpdate: (classrooms) => {
           logger.log('📍 Real-time update: Classrooms', classrooms.length);
           setClassrooms(classrooms);
           setLoadingMessage('Loading...');
         },
-        
+
         onBookingRequestsUpdate: (requests) => {
           logger.log('📋 Real-time update: Booking Requests', requests.length);
 
@@ -329,8 +329,8 @@ export default function App() {
                   const msg = `New reservation request from ${req.facultyName} for ${req.classroomName} on ${new Date(req.date).toLocaleDateString()} at ${req.startTime}`;
                   announce?.(msg, 'polite');
                   // Track briefly so notification-created messages for the same booking don't duplicate
-                  try { recentlyAnnouncedBookingReqIdsRef.current.add(req.id); } catch (e) {}
-                  setTimeout(() => { try { recentlyAnnouncedBookingReqIdsRef.current.delete(req.id); } catch (e) {} }, 3000);
+                  try { recentlyAnnouncedBookingReqIdsRef.current.add(req.id); } catch (e) { }
+                  setTimeout(() => { try { recentlyAnnouncedBookingReqIdsRef.current.delete(req.id); } catch (e) { } }, 3000);
                 } catch (e) { /* swallow */ }
               });
             }
@@ -347,7 +347,7 @@ export default function App() {
                     const msg = `Your reservation request for ${r.classroomName} on ${new Date(r.date).toLocaleDateString()} at ${r.startTime} was ${verb}.`;
                     announce?.(msg, mode as 'polite' | 'assertive');
                   }
-                } catch (e) {}
+                } catch (e) { }
               }
             });
 
@@ -363,7 +363,7 @@ export default function App() {
           setBookingRequests(requests);
           setLoadingMessage('Loading...');
         },
-        
+
         onSchedulesUpdate: (schedules) => {
           logger.log('📅 Real-time update: Schedules', schedules.length);
 
@@ -389,7 +389,7 @@ export default function App() {
                       announce?.(msg, 'polite');
                     }
                   }
-                } catch (e) {}
+                } catch (e) { }
               }
             });
 
@@ -404,7 +404,7 @@ export default function App() {
           setSchedules(schedules);
           setLoadingMessage('Loading...');
         },
-        
+
         onSignupRequestsUpdate: user.role === 'admin' ? (requests) => {
           logger.log('👥 Real-time update: Signup Requests', requests.length);
           setSignupRequests(requests);
@@ -413,12 +413,12 @@ export default function App() {
           logger.log('📜 Real-time update: Signup History', history.length);
           setSignupHistory(history);
         } : undefined,
-        
+
         onUsersUpdate: user.role === 'admin' ? (users) => {
           logger.log('👤 Real-time update: Users', users.length);
           setUsers(users);
         } : undefined,
-        
+
         onError: (error) => {
           logger.error('❌ Real-time listener error:', error);
           toast.error('Real-time sync error. Some data may be outdated.');
@@ -454,16 +454,16 @@ export default function App() {
             }
           });
       }
-      
+
       if (shouldLogSetup) {
         logger.log('✅ Real-time listeners setup complete');
-        try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) {}
+        try { ((setupRealtimeListeners as any)._lastLoggedRealtimeUserIdRef as React.MutableRefObject<string | null>).current = user?.id ?? null; } catch (_) { }
       }
       // Set up central notifications listener (UI components handle rendering)
       try {
         // Clean up previous listener if any
         if (notifUnsubRef.current) {
-          try { notifUnsubRef.current(); } catch (e) {}
+          try { notifUnsubRef.current(); } catch (e) { }
           notifUnsubRef.current = null;
         }
 
@@ -476,7 +476,7 @@ export default function App() {
               if (!user) return;
               // Update UI state
               setNotifications(items);
-              try { notificationsRef.current = items; } catch (e) {}
+              try { notificationsRef.current = items; } catch (e) { }
               setUnreadCount(items.filter((i) => !i.acknowledgedAt).length);
 
               // Items are ordered by createdAt desc already
@@ -486,7 +486,7 @@ export default function App() {
                 // Announce only the most recent one to avoid flooding
                 const newest = newOnes[0];
                 try {
-                  const assertiveTypes = new Set(['cancelled','classroom_disabled','faculty_cancelled'] as const);
+                  const assertiveTypes = new Set(['cancelled', 'classroom_disabled', 'faculty_cancelled'] as const);
                   const mode = assertiveTypes.has(newest.type as any) ? 'assertive' : 'polite';
                   // Skip announcing notification if we recently announced the same booking request
                   if (newest.bookingRequestId && recentlyAnnouncedBookingReqIdsRef.current.has(newest.bookingRequestId)) {
@@ -494,7 +494,7 @@ export default function App() {
                   } else {
                     announce?.(`New notification: ${newest.message}`, mode as 'polite' | 'assertive');
                   }
-                } catch (e) {}
+                } catch (e) { }
               }
               // update prev ids
               notifPrevIdsRef.current = new Set(items.map(i => i.id));
@@ -515,7 +515,7 @@ export default function App() {
       } catch (e) {
         logger.warn('Could not setup central notifications listener', e);
       }
-      } catch (err) {
+    } catch (err) {
       logger.error('❌ Failed to setup real-time listeners:', err);
       toast.error('Failed to setup real-time data sync');
     } finally {
@@ -524,19 +524,25 @@ export default function App() {
     }
   }, []);
 
-  const handleLogin = useCallback(async (email: string, password: string) => {
+  const handleLogin = useCallback(async (email: string, password: string): Promise<boolean | { success: boolean; passwordLeakWarning?: string }> => {
     try {
-      const user = await authService.signIn(email, password);
-      
-      if (user) {
+      const result = await authService.signIn(email, password);
+
+      if (result && result.user) {
+        const user = result.user;
         setCurrentUser(user);
         const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
         toast.success(`${greeting}, ${user.name}!`, {
           duration: 4000,
         });
-        return true;
+        
+        // Return success with optional password leak warning
+        return { 
+          success: true, 
+          passwordLeakWarning: result.passwordLeakWarning 
+        };
       }
-      
+
       return false;
     } catch (err) {
       // If the sign-in failed due to an account lock (tracked server-side),
@@ -549,9 +555,9 @@ export default function App() {
         if (err instanceof Error) {
           const msg = err.message || '';
           if (msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining') || msg.includes('disabled by an administrator')) {
-            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
-            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
-            
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) { }
+            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) { }
+
             // Determine lock reason from error message
             let lockReason: 'failed_attempts' | 'admin_lock' | 'realtime_lock' = 'admin_lock';
             if (msg.includes('disabled by an administrator')) {
@@ -559,11 +565,11 @@ export default function App() {
             } else if (msg.includes('failed login attempts') || msg.includes('attempts remaining') || msg.includes('too many failed attempts')) {
               lockReason = 'failed_attempts';
             }
-            try { sessionStorage.setItem('accountLockReason', lockReason); } catch (_) {}
-            
+            try { sessionStorage.setItem('accountLockReason', lockReason); } catch (_) { }
+
             setAccountLockedMessage(msg);
             setAccountLockReason(lockReason);
-            
+
             // IMMEDIATELY show the modal - no delay to prevent race conditions
             setShowAccountLockedDialog(true);
 
@@ -572,7 +578,7 @@ export default function App() {
               const ts = Date.now();
               try {
                 logger.debug(`DEBUG[lock] Lock modal shown immediately at ${new Date(ts).toISOString()} for`, email, { msg, lockReason });
-              } catch (_) {}
+              } catch (_) { }
             }
           }
         }
@@ -591,11 +597,11 @@ export default function App() {
           return false;
         }
       })();
-      
+
       if (err instanceof Error) {
         const msg = err.message || '';
         const isLockError = msg.includes('Account locked') || msg.includes('locked') || msg.includes('attempts remaining') || msg.includes('disabled by an administrator');
-        
+
         // Don't show toast if:
         // 1. Error message indicates a lock, OR
         // 2. Account lock modal is already shown, OR
@@ -618,20 +624,21 @@ export default function App() {
 
   const oldHandleLogin = useCallback(async (email: string, password: string) => {
     try {
-      const user = await authService.signIn(email, password);
+      const result = await authService.signIn(email, password);
+      const user = result && result.user ? result.user : null;
       if (user) {
         setCurrentUser(user);
-        
+
         // Show welcome message immediately based on user role
         const greeting = user.role === 'admin' ? 'Welcome back, Administrator' : 'Welcome back';
         toast.success(`${greeting}, ${user.name}!`, {
           description: `You're logged in as ${user.role === 'admin' ? 'Administrator' : 'Faculty'}`,
           duration: 4000,
         });
-        
-  // Real-time listeners will be set up by the auth state listener
-  // to centralize lifecycle handling and avoid duplicates.
-        
+
+        // Real-time listeners will be set up by the auth state listener
+        // to centralize lifecycle handling and avoid duplicates.
+
         return true;
       }
       // Only show error if this is actually a login attempt with credentials
@@ -643,7 +650,7 @@ export default function App() {
       return false;
     } catch (err) {
       logger.error('Login error:', err);
-      
+
       // Check for specific status errors (pending/rejected accounts)
       if (err instanceof Error && 'status' in err) {
         const status = (err as { status: SignupRequest['status'] }).status;
@@ -661,7 +668,7 @@ export default function App() {
           return false;
         }
       }
-      
+
       // Handle Firebase auth errors
       let message = 'Please check your email and password and try again.';
       if (err && typeof err === 'object' && 'code' in err) {
@@ -703,7 +710,7 @@ export default function App() {
           message = err.message;
         }
       }
-      
+
       toast.error('Login failed', { description: message, duration: 6000 });
       return false;
     }
@@ -714,7 +721,7 @@ export default function App() {
       try {
         // For backward compatibility, use first department as primary department
         const primaryDepartment = departments[0] || '';
-        
+
         // Check for duplicate requests (optional - don't fail signup if this fails)
         // Only attempt reads if we have an authenticated client session to avoid permission errors
         try {
@@ -734,7 +741,7 @@ export default function App() {
         }
 
         let request: SignupRequest;
-        
+
         try {
           const result = await authService.registerFaculty(email, password, name, primaryDepartment, departments, recaptchaToken);
           request = result.request;
@@ -797,7 +804,7 @@ export default function App() {
           });
         }
         let message = 'Unable to submit signup request.';
-        
+
         if (err && typeof err === 'object') {
           // Check for Firebase error code first
           if ('code' in err) {
@@ -844,11 +851,11 @@ export default function App() {
       await authService.signOut();
 
       // Clear any account lock flags from previous sessions
-      try { 
+      try {
         sessionStorage.removeItem('accountLocked');
         sessionStorage.removeItem('accountLockedMessage');
         sessionStorage.removeItem('accountLockReason');
-      } catch (_) {}
+      } catch (_) { }
 
       // Set flag for login page to show success notification
       sessionStorage.setItem('logoutSuccess', 'true');
@@ -889,16 +896,16 @@ export default function App() {
   // Idle timeout handlers
   const handleIdleTimeout = useCallback(async () => {
     logger.log('🕒 Session expired due to inactivity');
-    
+
     // Dismiss only the session warning toast, not all toasts
     if (sessionWarningToastIdRef.current !== null) {
       toast.dismiss(sessionWarningToastIdRef.current);
       sessionWarningToastIdRef.current = null;
     }
-    
+
     try {
       await authService.signOutDueToIdleTimeout();
-      
+
       // Set flag for login page to show session timeout notification
       sessionStorage.setItem('sessionExpired', 'true');
 
@@ -922,7 +929,7 @@ export default function App() {
     logger.log(`⚠️ Session warning - ${Math.ceil(timeRemaining / 1000)}s remaining`);
     setSessionTimeRemaining(timeRemaining);
     setShowSessionWarning(true);
-    
+
     const toastId = toast.warning('Session Expiring Soon', {
       description: `Your session will expire in ${Math.ceil(timeRemaining / 60000)} minutes due to inactivity`,
       duration: 8000
@@ -938,8 +945,8 @@ export default function App() {
 
   function SuspenseFallback({ message, show, hide }: { message?: string | null; show: (msg?: string) => void; hide: () => void; }) {
     useEffect(() => {
-      try { show(message ?? 'Loading...'); } catch (e) {}
-      return () => { try { hide(); } catch (e) {} };
+      try { show(message ?? 'Loading...'); } catch (e) { }
+      return () => { try { hide(); } catch (e) { } };
     }, [message, show, hide]);
     return null;
   }
@@ -1012,7 +1019,7 @@ export default function App() {
 
       // Submit the booking request
       const newRequest = await bookingRequestService.create(request);
-      
+
       // Optimistically add to state only if not already present (real-time listener will also add it)
       setBookingRequests(prev => {
         const exists = prev.some(r => r.id === newRequest.id);
@@ -1127,12 +1134,12 @@ export default function App() {
         const updateData: { status: 'approved' | 'rejected'; adminFeedback?: string } = {
           status: approved ? 'approved' : 'rejected'
         };
-        
+
         // Only include adminFeedback if it's provided
         if (feedback && feedback.trim()) {
           updateData.adminFeedback = feedback.trim();
         }
-        
+
         const updatedRequest = await bookingRequestService.update(requestId, updateData);
 
         // Notification creation is handled by the bookingRequest service boundary
@@ -1142,7 +1149,7 @@ export default function App() {
         setBookingRequests(prev =>
           prev.map(req => req.id === requestId ? updatedRequest : req)
         );
-        
+
         // Create schedule only if approved
         if (approved) {
           const newSchedule = await scheduleService.create({
@@ -1156,10 +1163,10 @@ export default function App() {
             purpose: request.purpose,
             status: 'confirmed'
           });
-          
+
           setSchedules(prev => [...prev, newSchedule]);
         }
-        
+
         return { approved };
       },
       {
@@ -1272,7 +1279,7 @@ export default function App() {
           // Dialog opened, no toast needed
           return;
         }
-        
+
         if (result.data.approved) {
           toast.success(`Faculty account approved for ${result.data.requestName}!`, {
             description: 'They can now sign in with the password they created during signup.',
@@ -1312,8 +1319,8 @@ export default function App() {
         await scheduleService.cancelApprovedBooking(scheduleId, feedback);
 
         setSchedules(prev =>
-          prev.map(schedule => 
-            schedule.id === scheduleId 
+          prev.map(schedule =>
+            schedule.id === scheduleId
               ? { ...schedule, status: 'cancelled' as const, adminFeedback: feedback }
               : schedule
           )
@@ -1351,7 +1358,7 @@ export default function App() {
         }
 
         // Find the corresponding schedule for this booking request
-        const correspondingSchedule = schedules.find(schedule => 
+        const correspondingSchedule = schedules.find(schedule =>
           schedule.facultyId === bookingRequests.find(req => req.id === requestId)?.facultyId &&
           schedule.date === bookingRequests.find(req => req.id === requestId)?.date &&
           schedule.startTime === bookingRequests.find(req => req.id === requestId)?.startTime &&
@@ -1367,8 +1374,8 @@ export default function App() {
           await scheduleService.cancelApprovedBooking(correspondingSchedule.id, feedback);
 
           setSchedules(prev =>
-            prev.map(schedule => 
-              schedule.id === correspondingSchedule.id 
+            prev.map(schedule =>
+              schedule.id === correspondingSchedule.id
                 ? { ...schedule, status: 'cancelled' as const, ...(feedback ? { adminFeedback: feedback } : {}) }
                 : schedule
             )
@@ -1377,8 +1384,8 @@ export default function App() {
           // Optimistically update bookingRequests in the UI — the server will
           // also update Firestore; this local update prevents a visual race.
           setBookingRequests(prev =>
-            prev.map(request => 
-              request.id === requestId 
+            prev.map(request =>
+              request.id === requestId
                 ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
                 : request
             )
@@ -1389,8 +1396,8 @@ export default function App() {
           await bookingRequestService.update(requestId, { status: 'cancelled', adminFeedback: feedback });
 
           setBookingRequests(prev =>
-            prev.map(request => 
-              request.id === requestId 
+            prev.map(request =>
+              request.id === requestId
                 ? { ...request, status: 'cancelled' as const, adminFeedback: feedback }
                 : request
             )
@@ -1423,14 +1430,14 @@ export default function App() {
   const handleUnlockAccount = useCallback(async (userId: string) => {
     try {
       const unlockedUser = await userService.unlockAccount(userId);
-      
+
       // Update the user in the users list
       setUsers(prev =>
-        prev.map(user => 
+        prev.map(user =>
           user.id === userId ? unlockedUser : user
         )
       );
-      
+
       toast.success('Account unlocked successfully!', {
         description: `${unlockedUser.name}'s account has been unlocked and can now login.`,
         duration: 5000,
@@ -1525,12 +1532,12 @@ export default function App() {
     const initializeApp = async () => {
       try {
         logger.log('🚀 Initializing app...');
-  setLoadingMessage('Loading...');
-  // show the shared overlay while initializing
-  showOverlay('Loading...');
+        setLoadingMessage('Loading...');
+        // show the shared overlay while initializing
+        showOverlay('Loading...');
 
         const user = await authService.getCurrentUser();
-        
+
         if (user) {
           logger.log('✅ Valid user session found:', user.email);
           setCurrentUser(user);
@@ -1542,7 +1549,7 @@ export default function App() {
         } else {
           logger.log('ℹ️ No valid session found');
         }
-        
+
         logger.log('✅ App initialized successfully');
       } catch (err) {
         logger.error('❌ Failed to initialize app:', err);
@@ -1568,7 +1575,7 @@ export default function App() {
     } else {
       document.body.classList.remove('authenticated');
     }
-    
+
     // Cleanup on unmount
     return () => {
       document.body.classList.remove('authenticated');
@@ -1581,14 +1588,14 @@ export default function App() {
     const { data: { subscription } } = authService.onAuthStateChange(
       async (user) => {
         logger.log('👤 Auth state changed, new user:', user?.email || 'none');
-        
+
         // Only update if user actually changed to prevent loops
         setCurrentUser(prevUser => {
           if (prevUser?.id === user?.id) {
             logger.log('ℹ️ Same user, skipping update');
             return prevUser;
           }
-          
+
           // If a new user logged in and we have no data yet, load it
           if (user && !prevUser) {
             logger.log('📊 New user detected, setting up listeners...');
@@ -1598,7 +1605,7 @@ export default function App() {
               logger.error('Failed to setup listeners after auth change:', err);
             }
           }
-          
+
           return user;
         });
       },
@@ -1630,7 +1637,7 @@ export default function App() {
           duration: 4000
         });
       }
-      
+
       // Check for logout error notification
       if (sessionStorage.getItem('logoutError') === 'true') {
         sessionStorage.removeItem('logoutError');
@@ -1639,7 +1646,7 @@ export default function App() {
           duration: 5000
         });
       }
-      
+
       // Check for session expired notification
       if (sessionStorage.getItem('sessionExpired') === 'true') {
         sessionStorage.removeItem('sessionExpired');
@@ -1658,7 +1665,7 @@ export default function App() {
         try {
           const msg = sessionStorage.getItem('accountLockedMessage');
           if (msg) setAccountLockedMessage(msg);
-          
+
           const reason = sessionStorage.getItem('accountLockReason') as 'failed_attempts' | 'admin_lock' | 'realtime_lock' | null;
           if (reason) setAccountLockReason(reason);
         } catch (_) {
@@ -1676,14 +1683,14 @@ export default function App() {
     const checkAccountLockStatus = () => {
       if (sessionStorage.getItem('accountLocked') === 'true') {
         const msg = sessionStorage.getItem('accountLockedMessage');
-        
+
         // Only show modal if we have a real lock message (not the temporary "Checking..." placeholder)
         // This prevents showing the modal during the brief async trackFailedLogin call
         if (msg && msg !== 'Checking account status...') {
           // Always update the message and reason, even if modal is already showing
           // This ensures subsequent login attempts show the correct details
           let reason = sessionStorage.getItem('accountLockReason') as 'failed_attempts' | 'admin_lock' | 'realtime_lock' | null;
-          
+
           // If no reason in storage, infer it from the message
           if (!reason) {
             if (msg.includes('disabled by an administrator')) {
@@ -1695,19 +1702,19 @@ export default function App() {
             }
             // Store the inferred reason for consistency
             if (reason) {
-              try { sessionStorage.setItem('accountLockReason', reason); } catch (_) {}
+              try { sessionStorage.setItem('accountLockReason', reason); } catch (_) { }
             }
           }
-          
+
           setAccountLockedMessage(msg);
           setAccountLockReason(reason);
-          
+
           // Restore lockedUntil timestamp if available
           const lockedUntil = sessionStorage.getItem('accountLockedUntil');
           if (lockedUntil) {
             setAccountLockedUntil(lockedUntil);
           }
-          
+
           if (!showAccountLockedDialog) {
             logger.log('🔒 Detected account lock flag in sessionStorage, showing modal');
             setShowAccountLockedDialog(true);
@@ -1784,7 +1791,7 @@ export default function App() {
             // Determine lock reason: admin lock, failed attempts (brute force), or other realtime lock
             let reason: 'failed_attempts' | 'admin_lock' | 'realtime_lock' = 'realtime_lock';
             let msg = 'Your account has been locked for security reasons.';
-            
+
             if (data?.lockedByAdmin) {
               reason = 'admin_lock';
               // Use the admin-provided lock reason if available
@@ -1796,28 +1803,28 @@ export default function App() {
               const lockedUntilISO = lockedUntil.toISOString();
               const now = new Date();
               const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
-              
+
               if (minutesRemaining > 0) {
                 msg = `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`;
               } else {
                 msg = 'Account locked due to too many failed login attempts. Please try again.';
               }
-              
+
               // Store the lockedUntil timestamp for countdown
-              try { sessionStorage.setItem('accountLockedUntil', lockedUntilISO); } catch (_) {}
+              try { sessionStorage.setItem('accountLockedUntil', lockedUntilISO); } catch (_) { }
               setAccountLockedUntil(lockedUntilISO);
             }
-            
+
             // Mark the login page to show the lock notification
-            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) {}
-            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) {}
-            try { sessionStorage.setItem('accountLockReason', reason); } catch (_) {}
-            
+            try { sessionStorage.setItem('accountLocked', 'true'); } catch (_) { }
+            try { sessionStorage.setItem('accountLockedMessage', msg); } catch (_) { }
+            try { sessionStorage.setItem('accountLockReason', reason); } catch (_) { }
+
             // IMMEDIATELY show the modal dialog
             setAccountLockedMessage(msg);
             setAccountLockReason(reason);
             setShowAccountLockedDialog(true);
-            
+
             // Clear local user state and real-time listeners
             setCurrentUser(null);
             realtimeService.cleanup();
@@ -1855,7 +1862,7 @@ export default function App() {
       (window as any).scheduleService = scheduleService;
       (window as any).signupRequestService = signupRequestService;
       logger.log('🛠️ All services exposed to window for debugging');
-      
+
       // Also expose a quick test function
       (window as any).testRealtimeNow = () => {
         logger.log('🧪 Real-time Service Test:');
@@ -1881,8 +1888,8 @@ export default function App() {
           </div>
           <h1 className="text-2xl font-bold text-red-800 mb-4">Application Error</h1>
           <p className="text-red-600 mb-6">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
           >
             Refresh Page
@@ -1897,16 +1904,20 @@ export default function App() {
   // This prevents the flash of login page while checking auth state
   if (!isAuthChecked || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="loader-overlay min-h-screen bg-background flex items-center justify-center" data-theme-exclude>
         <div className="text-center">
           <div className="mx-auto mb-4">
             <img
               src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
               alt="PLV Logo"
-              className="h-16 w-16 object-contain animate-pulse"
+              className="h-16 w-16 object-contain animate-pulse no-invert"
+              data-theme-exclude
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
             />
           </div>
-          <p className="text-gray-600">{loadingMessage ?? 'Loading...'}</p>
+          <p className="text-foreground">{loadingMessage ?? 'Loading...'}</p>
           <Analytics />
         </div>
       </div>
@@ -1929,13 +1940,13 @@ export default function App() {
                 Efficient classroom reservation management for PLV CEIT.
               </p>
             </div>
-            
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
-                <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} accountLockedMessage={accountLockedMessage} />
-              </div>
+
+            <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20">
+              <LoginForm onLogin={handleLogin} onSignup={handleSignup} users={users} isLocked={showAccountLockedDialog} accountLockedMessage={accountLockedMessage} />
+            </div>
           </div>
         </div>
-  <Footer />
+        <Footer />
 
         {/* Account locked AlertDialog — blocking modal shown on login when sessionStorage.accountLocked is set */}
         <AlertDialog open={showAccountLockedDialog} onOpenChange={(open) => {
@@ -2045,7 +2056,7 @@ export default function App() {
               )}
             </AlertDialogDescription>
             <div className="mt-4 flex gap-2 justify-end">
-              <button 
+              <button
                 type="button"
                 className={buttonVariants({ variant: 'outline' })}
                 onClick={() => {
@@ -2072,9 +2083,9 @@ export default function App() {
               <AlertDialogAction asChild>
                 <button className={buttonVariants({ variant: 'destructive' })} onClick={() => {
                   // ensure removal of all flags when dismissed
-                  try { sessionStorage.removeItem('accountLocked'); } catch (_) {}
-                  try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) {}
-                  try { sessionStorage.removeItem('accountLockReason'); } catch (_) {}
+                  try { sessionStorage.removeItem('accountLocked'); } catch (_) { }
+                  try { sessionStorage.removeItem('accountLockedMessage'); } catch (_) { }
+                  try { sessionStorage.removeItem('accountLockReason'); } catch (_) { }
                   setShowAccountLockedDialog(false);
                   setAccountLockedMessage(null);
                   setAccountLockReason(null);
@@ -2109,7 +2120,7 @@ export default function App() {
       if (mountedRef.current) {
         try {
           announce(!enabled ? 'Screen reader enabled' : 'Screen reader disabled', 'polite');
-        } catch (e) {}
+        } catch (e) { }
       }
     };
 
@@ -2118,7 +2129,7 @@ export default function App() {
       if (mountedRef.current) {
         try {
           announce(!useTTS ? 'Browser text to speech enabled' : 'Browser text to speech disabled', 'polite');
-        } catch (e) {}
+        } catch (e) { }
       }
     };
 
@@ -2166,86 +2177,90 @@ export default function App() {
           onToggleCenter,
           onMarkAllAsRead
         }}>
-            {/* Network status indicator */}
-            <NetworkStatusIndicator />
-          
+          {/* Network status indicator */}
+          <NetworkStatusIndicator />
+
           {/* Skip link for keyboard users */}
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-blue-700 px-3 py-2 rounded shadow">Skip to main</a>
           <div className="min-h-screen bg-background flex flex-col">
             <ToggleAnnouncer />
-          <div className="flex-1">
-            {/* Top-level shared loader overlay */}
-            {overlayVisible ? (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/95">
-                <div className="text-center">
-                  <div className="mx-auto mb-4">
-                    <img
-                      src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
-                      alt="PLV Logo"
-                      className="h-16 w-16 object-contain animate-pulse"
-                    />
+            <div className="flex-1">
+              {/* Top-level shared loader overlay */}
+              {overlayVisible ? (
+                <div className="loader-overlay fixed inset-0 z-50 flex items-center justify-center bg-background" data-theme-exclude>
+                  <div className="text-center">
+                    <div className="mx-auto mb-4">
+                      <img
+                        src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media"
+                        alt="PLV Logo"
+                        className="h-16 w-16 object-contain animate-pulse no-invert"
+                        data-theme-exclude
+                        loading="lazy"
+                        decoding="async"
+                        fetchPriority="low"
+                      />
+                    </div>
+                    <p className="text-foreground">{overlayMessage ?? 'Loading...'}</p>
                   </div>
-                  <p className="text-gray-600">{overlayMessage ?? 'Loading...'}</p>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            <ErrorBoundary>
-              <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
-                {/* Render the appropriate dashboard directly (react-router removed). */}
-                {activeUser.role === 'admin' ? (
-                  <AdminDashboard {...adminDashboardProps} />
-                ) : (
-                  <FacultyDashboard {...facultyDashboardProps} />
-                )}
-              </Suspense>
-            </ErrorBoundary>
-            {/* Using the single inline PLV loader for Suspense fallback; no portal loader mounted */}
-          </div>
-          <Footer />
-          <SessionTimeoutWarning
-            isOpen={showSessionWarning}
-            timeRemaining={sessionTimeRemaining}
-            onExtendSession={() => {
-              extendSession();
-              handleExtendSession();
-            }}
-            onLogout={handleIdleTimeout}
-          />
-          {/* Global Toaster moved to main.tsx */}
+              <ErrorBoundary>
+                <Suspense fallback={<SuspenseFallback message={loadingMessage ?? 'Loading...'} show={showOverlay} hide={hideOverlay} />}>
+                  {/* Render the appropriate dashboard directly (react-router removed). */}
+                  {activeUser.role === 'admin' ? (
+                    <AdminDashboard {...adminDashboardProps} />
+                  ) : (
+                    <FacultyDashboard {...facultyDashboardProps} />
+                  )}
+                </Suspense>
+              </ErrorBoundary>
+                  {/* Using the single inline PLV loader for Suspense fallback; no portal loader mounted */}
+                </div>
+                <Footer />
+                <SessionTimeoutWarning
+                  isOpen={showSessionWarning}
+                  timeRemaining={sessionTimeRemaining}
+                  onExtendSession={() => {
+                    extendSession();
+                    handleExtendSession();
+                  }}
+                  onLogout={handleIdleTimeout}
+                />
+                {/* Global Toaster moved to main.tsx */}
 
-          {/* App-styled confirm dialog for destructive signup rejection */}
-          <AlertDialog open={!!pendingRejectAction}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Reject and Delete Account?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete the account and associated data for{' '}
-                  <strong>{pendingRejectAction?.requestName}</strong>. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={cancelPendingReject} disabled={isRejecting}>Cancel</AlertDialogCancel>
-                {/* Use a plain button here to avoid Radix auto-closing the dialog before our handler runs.
+                {/* App-styled confirm dialog for destructive signup rejection */}
+                <AlertDialog open={!!pendingRejectAction}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reject and Delete Account?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the account and associated data for{' '}
+                        <strong>{pendingRejectAction?.requestName}</strong>. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={cancelPendingReject} disabled={isRejecting}>Cancel</AlertDialogCancel>
+                      {/* Use a plain button here to avoid Radix auto-closing the dialog before our handler runs.
                     Apply the same visual style as the AlertDialogCancel by using the shared buttonVariants
                     with the 'outline' variant so both buttons match visually (pill-shaped, same size).
                 */}
-                <button
-                  type="button"
-                  onClick={confirmPendingReject}
-                  className={cn(buttonVariants({ variant: 'outline' }), 'ml-2')}
-                  disabled={isRejecting}
-                >
-                  {isRejecting ? 'Processing...' : 'Confirm Delete'}
-                </button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                      <button
+                        type="button"
+                        onClick={confirmPendingReject}
+                        className={cn(buttonVariants({ variant: 'outline' }), 'ml-2')}
+                        disabled={isRejecting}
+                      >
+                        {isRejecting ? 'Processing...' : 'Confirm Delete'}
+                      </button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
-          <Analytics />
-          </div>
-        </NotificationProvider>
-      </AnnouncerProvider>
-    </ErrorBoundary>
+                <Analytics />
+            </div >
+        </NotificationProvider >
+      </AnnouncerProvider >
+    </ErrorBoundary >
   );
 }

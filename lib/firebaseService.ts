@@ -42,6 +42,8 @@ import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { isPastBookingTime } from '../utils/timeUtils';
 import withRetry, { isNetworkError } from './withRetry';
 import { logger } from './logger';
+import { systemCache, CACHE_NAMESPACES, CACHE_TTL } from './systemCache';
+import { invalidateRelated } from './cachedFirestore';
 
 /**
  * Firebase Service - Main data layer for the Digital Classroom Assignment system.
@@ -1058,14 +1060,70 @@ export const authService = {
     }
   },
 
-  async signIn(email: string, password: string): Promise<User | null> {
+  async signIn(email: string, password: string): Promise<{ user: User | null; passwordLeakWarning?: string }> {
     ensureAuthStateListener();
     const auth = getFirebaseAuth();
     const database = getDb();
     const functions = getFunctions(getFirebaseApp(), 'us-central1');
 
     try {
-      // Attempt to sign in with Firebase Authentication first
+      // STEP 1: Verify reCAPTCHA token before attempting authentication
+      // This prevents brute force attacks at the application layer
+      // Also checks for password leaks via reCAPTCHA Enterprise
+      const recaptchaToken = (window as any).__recaptchaToken;
+      let passwordLeakWarning: string | null = null;
+      
+      if (recaptchaToken) {
+        try {
+          logger.log('🛡️ Verifying reCAPTCHA token for login with password leak detection...');
+          const verifyLoginRecaptcha = httpsCallable<
+            { email: string; recaptchaToken: string; password: string },
+            { success: boolean; verified: boolean; score: number; isPasswordLeaked: boolean; leakReason: string[] }
+          >(functions, 'verifyLoginRecaptcha');
+          
+          const result = await withRetry(() => verifyLoginRecaptcha({ 
+            email, 
+            recaptchaToken,
+            password // Send password for leak detection
+          }), { 
+            attempts: 2, 
+            shouldRetry: isNetworkError 
+          });
+          
+          logger.log('✅ reCAPTCHA verification successful', {
+            score: result.data.score,
+            passwordChecked: true,
+            isLeaked: result.data.isPasswordLeaked,
+          });
+          
+          // Check if password is leaked
+          if (result.data.isPasswordLeaked) {
+            passwordLeakWarning = 
+              '⚠️ Warning: This password has been found in a data breach. ' +
+              'Please change your password immediately for better security.';
+            logger.warn('🚨 Password leak detected for user:', email);
+          }
+          
+          // Clear the token after use
+          delete (window as any).__recaptchaToken;
+        } catch (recaptchaError) {
+          logger.error('❌ reCAPTCHA verification failed:', recaptchaError);
+          
+          // Extract error message from Cloud Function response
+          let errorMessage = 'reCAPTCHA verification failed. Please try again.';
+          if (recaptchaError instanceof Error) {
+            errorMessage = recaptchaError.message;
+          }
+          
+          throw new Error(errorMessage);
+        }
+      } else {
+        logger.warn('⚠️ No reCAPTCHA token found - login attempt without verification');
+        // In production, you might want to enforce reCAPTCHA by throwing an error here
+        // For now, we'll allow graceful degradation for backwards compatibility
+      }
+      
+      // STEP 2: Attempt to sign in with Firebase Authentication
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = credential.user;
       
@@ -1159,7 +1217,12 @@ export const authService = {
 
       currentUserCache = user;
       notifyAuthListeners(user);
-      return user;
+      
+      // Return user along with password leak warning if applicable
+      return { 
+        user, 
+        ...(passwordLeakWarning ? { passwordLeakWarning } : {})
+      };
     } catch (error) {
       if (error instanceof AuthStatusError) {
         throw error;
@@ -1469,14 +1532,24 @@ export const authService = {
  */
 export const userService = {
   async getAll(): Promise<User[]> {
+    // Check cache first
+    const cached = systemCache.get<User[]>(CACHE_NAMESPACES.USERS_ALL, 'list');
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const usersRef = collection(database, COLLECTIONS.USERS);
     const q = query(usersRef, orderBy('name'));
       const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
-    return snapshot.docs.map((docSnapshot) => {
+    const users = snapshot.docs.map((docSnapshot) => {
       const record = ensureUserData(docSnapshot);
       return toUser(docSnapshot.id, record);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.USERS_ALL, 'list', users, CACHE_TTL.USERS);
+    return users;
   },
 
   async getByEmail(email: string): Promise<User | null> {
@@ -1488,7 +1561,20 @@ export const userService = {
   },
 
   async getById(id: string): Promise<User | null> {
-    return fetchUserById(id);
+    // Check cache first
+    const cached = systemCache.get<User>(CACHE_NAMESPACES.USERS, id);
+    if (cached) {
+      return cached;
+    }
+
+    const user = await fetchUserById(id);
+    
+    // Cache the result if user exists
+    if (user) {
+      systemCache.set(CACHE_NAMESPACES.USERS, id, user, CACHE_TTL.USERS);
+    }
+    
+    return user;
   },
 
   async update(
@@ -1535,6 +1621,9 @@ export const userService = {
     if (Object.keys(sanitized).length > 0) {
       await updateDoc(userRef, sanitized);
     }
+
+    // Invalidate cache
+    invalidateRelated('user', id);
 
     const snapshot = await getDoc(userRef);
     if (!snapshot.exists()) {
@@ -1711,17 +1800,33 @@ export const userService = {
  */
 export const classroomService = {
   async getAll(): Promise<Classroom[]> {
+    // Check cache first
+    const cached = systemCache.get<Classroom[]>(CACHE_NAMESPACES.CLASSROOMS_ALL, 'list');
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const classroomsRef = collection(database, COLLECTIONS.CLASSROOMS);
     const q = query(classroomsRef, orderBy('name'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnapshot) => {
+    const classrooms = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreClassroomRecord;
       return toClassroom(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.CLASSROOMS_ALL, 'list', classrooms, CACHE_TTL.CLASSROOMS);
+    return classrooms;
   },
 
   async getById(id: string): Promise<Classroom | null> {
+    // Check cache first
+    const cached = systemCache.get<Classroom>(CACHE_NAMESPACES.CLASSROOMS, id);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = doc(database, COLLECTIONS.CLASSROOMS, id);
     const snapshot = await getDoc(ref);
@@ -1729,7 +1834,11 @@ export const classroomService = {
       return null;
     }
     const data = snapshot.data() as FirestoreClassroomRecord;
-    return toClassroom(snapshot.id, data);
+    const classroom = toClassroom(snapshot.id, data);
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.CLASSROOMS, id, classroom, CACHE_TTL.CLASSROOMS);
+    return classroom;
   },
 
   async create(classroom: Omit<Classroom, 'id'>): Promise<Classroom> {
@@ -1740,7 +1849,12 @@ export const classroomService = {
       updatedAt: nowIso(),
     };
     const ref = await addDoc(collection(database, COLLECTIONS.CLASSROOMS), record);
-    return toClassroom(ref.id, record);
+    const newClassroom = toClassroom(ref.id, record);
+    
+    // Invalidate cache
+    invalidateRelated('classroom', ref.id);
+    
+    return newClassroom;
   },
 
   async update(id: string, updates: Partial<Classroom>): Promise<Classroom> {
@@ -1755,6 +1869,10 @@ export const classroomService = {
       updatedAt: nowIso(),
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
+    
+    // Invalidate cache
+    invalidateRelated('classroom', id);
+    
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) {
       throw new Error('Classroom not found');
@@ -1840,6 +1958,9 @@ export const classroomService = {
     }
 
     await deleteDoc(ref);
+    
+    // Invalidate cache
+    invalidateRelated('classroom', id);
   },
 
   // Call server-side cascade delete (admin-only). Returns deleted related count.
@@ -1899,28 +2020,54 @@ const timesOverlap = (
  */
 export const bookingRequestService = {
   async getAll(): Promise<BookingRequest[]> {
+    // Check cache first
+    const cached = systemCache.get<BookingRequest[]>(CACHE_NAMESPACES.BOOKING_REQUESTS_ALL, 'list');
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
   const q = query(ref, orderBy('requestDate', 'desc'));
   const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
-    return snapshot.docs.map((docSnapshot) => {
+    const requests = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreBookingRequestRecord;
       return toBookingRequest(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.BOOKING_REQUESTS_ALL, 'list', requests, CACHE_TTL.BOOKING_REQUESTS);
+    return requests;
   },
 
   async getAllForFaculty(facultyId: string): Promise<BookingRequest[]> {
+    // Check cache first
+    const cached = systemCache.get<BookingRequest[]>(CACHE_NAMESPACES.BOOKING_REQUESTS_FACULTY, facultyId);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = collection(database, COLLECTIONS.BOOKING_REQUESTS);
   const q = query(ref, where('facultyId', '==', facultyId), orderBy('requestDate', 'desc'));
   const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
-    return snapshot.docs.map((docSnapshot) => {
+    const requests = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreBookingRequestRecord;
       return toBookingRequest(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.BOOKING_REQUESTS_FACULTY, facultyId, requests, CACHE_TTL.BOOKING_REQUESTS);
+    return requests;
   },
 
   async getById(id: string): Promise<BookingRequest | null> {
+    // Check cache first
+    const cached = systemCache.get<BookingRequest>(CACHE_NAMESPACES.BOOKING_REQUESTS, id);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
   const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
   const snapshot = await withRetry(() => getDoc(ref), { attempts: 3, shouldRetry: isNetworkError });
@@ -1928,7 +2075,11 @@ export const bookingRequestService = {
       return null;
     }
     const data = snapshot.data() as FirestoreBookingRequestRecord;
-    return toBookingRequest(snapshot.id, data);
+    const request = toBookingRequest(snapshot.id, data);
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.BOOKING_REQUESTS, id, request, CACHE_TTL.BOOKING_REQUESTS);
+    return request;
   },
 
   async create(
@@ -1961,7 +2112,13 @@ export const bookingRequestService = {
     } catch (err) {
       logger.warn('Failed to notify admins of new booking request:', err);
     }
-    return toBookingRequest(ref.id, record);
+    
+    const newRequest = toBookingRequest(ref.id, record);
+    
+    // Invalidate cache
+    invalidateRelated('bookingRequest', ref.id, { facultyId: record.facultyId });
+    
+    return newRequest;
   },
 
   async update(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest> {
@@ -2012,13 +2169,27 @@ export const bookingRequestService = {
       }
     }
 
+    // Invalidate cache
+    invalidateRelated('bookingRequest', snapshot.id, { facultyId: data.facultyId });
+
     return toBookingRequest(snapshot.id, data);
   },
 
   async delete(id: string): Promise<void> {
+    // Get the booking request data before deletion for cache invalidation
+    const bookingRequest = await this.getById(id);
+    
     const database = getDb();
     const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
     await deleteDoc(ref);
+    
+    // Invalidate cache
+    if (bookingRequest) {
+      invalidateRelated('bookingRequest', id, { facultyId: bookingRequest.facultyId });
+    } else {
+      // Fallback if we couldn't get the booking request data
+      invalidateRelated('bookingRequest', id);
+    }
   },
 
   // Fallback: call server-side callable to cancel a booking request when client-side delete is blocked by rules
@@ -2142,28 +2313,54 @@ function doTimeRangesOverlap(
  */
 export const scheduleService = {
   async getAll(): Promise<Schedule[]> {
+    // Check cache first
+    const cached = systemCache.get<Schedule[]>(CACHE_NAMESPACES.SCHEDULES_ALL, 'list');
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SCHEDULES);
     const q = query(ref, orderBy('date'), orderBy('startTime'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnapshot) => {
+    const schedules = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreScheduleRecord;
       return toSchedule(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SCHEDULES_ALL, 'list', schedules, CACHE_TTL.SCHEDULES);
+    return schedules;
   },
 
   async getAllForFaculty(facultyId: string): Promise<Schedule[]> {
+    // Check cache first
+    const cached = systemCache.get<Schedule[]>(CACHE_NAMESPACES.SCHEDULES_FACULTY, facultyId);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SCHEDULES);
     const q = query(ref, where('facultyId', '==', facultyId), orderBy('date'), orderBy('startTime'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnapshot) => {
+    const schedules = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreScheduleRecord;
       return toSchedule(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SCHEDULES_FACULTY, facultyId, schedules, CACHE_TTL.SCHEDULES);
+    return schedules;
   },
 
   async getById(id: string): Promise<Schedule | null> {
+    // Check cache first
+    const cached = systemCache.get<Schedule>(CACHE_NAMESPACES.SCHEDULES, id);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SCHEDULES, id);
     const snapshot = await getDoc(ref);
@@ -2171,7 +2368,11 @@ export const scheduleService = {
       return null;
     }
     const data = snapshot.data() as FirestoreScheduleRecord;
-    return toSchedule(snapshot.id, data);
+    const schedule = toSchedule(snapshot.id, data);
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SCHEDULES, id, schedule, CACHE_TTL.SCHEDULES);
+    return schedule;
   },
 
   async create(schedule: Omit<Schedule, 'id'>): Promise<Schedule> {
@@ -2182,7 +2383,12 @@ export const scheduleService = {
       updatedAt: nowIso(),
     };
     const ref = await addDoc(collection(database, COLLECTIONS.SCHEDULES), record);
-    return toSchedule(ref.id, record);
+    const newSchedule = toSchedule(ref.id, record);
+    
+    // Invalidate cache
+    invalidateRelated('schedule', ref.id, { facultyId: record.facultyId });
+    
+    return newSchedule;
   },
 
   async update(id: string, updates: Partial<Schedule>): Promise<Schedule> {
@@ -2197,18 +2403,33 @@ export const scheduleService = {
       updatedAt: nowIso(),
     };
     await updateDoc(ref, updatePayload as Record<string, unknown>);
+    
     const snapshot = await getDoc(ref);
     if (!snapshot.exists()) {
       throw new Error('Schedule not found');
     }
     const data = snapshot.data() as FirestoreScheduleRecord;
+    
+    // Invalidate cache
+    invalidateRelated('schedule', snapshot.id, { facultyId: data.facultyId });
+    
     return toSchedule(snapshot.id, data);
   },
 
   async delete(id: string): Promise<void> {
+    // Get the schedule data before deletion for cache invalidation
+    const schedule = await this.getById(id);
+    
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SCHEDULES, id);
     await deleteDoc(ref);
+    
+    // Invalidate cache
+    if (schedule) {
+      invalidateRelated('schedule', id, { facultyId: schedule.facultyId });
+    } else {
+      invalidateRelated('schedule', id);
+    }
   },
 
   async checkConflict(
@@ -2274,17 +2495,33 @@ export const scheduleService = {
  */
 export const signupRequestService = {
   async getAll(): Promise<SignupRequest[]> {
+    // Check cache first
+    const cached = systemCache.get<SignupRequest[]>(CACHE_NAMESPACES.SIGNUP_REQUESTS_ALL, 'list');
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SIGNUP_REQUESTS);
   const q = query(ref, orderBy('requestDate', 'desc'));
   const snapshot = await withRetry(() => getDocs(q), { attempts: 3, shouldRetry: isNetworkError });
-    return snapshot.docs.map((docSnapshot) => {
+    const requests = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreSignupRequestRecord;
       return toSignupRequest(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SIGNUP_REQUESTS_ALL, 'list', requests, CACHE_TTL.SIGNUP_REQUESTS);
+    return requests;
   },
 
   async getById(id: string): Promise<SignupRequest | null> {
+    // Check cache first
+    const cached = systemCache.get<SignupRequest>(CACHE_NAMESPACES.SIGNUP_REQUESTS, id);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
   const ref = doc(database, COLLECTIONS.SIGNUP_REQUESTS, id);
   const snapshot = await withRetry(() => getDoc(ref), { attempts: 3, shouldRetry: isNetworkError });
@@ -2292,7 +2529,11 @@ export const signupRequestService = {
       return null;
     }
     const data = snapshot.data() as FirestoreSignupRequestRecord;
-    return toSignupRequest(snapshot.id, data);
+    const request = toSignupRequest(snapshot.id, data);
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SIGNUP_REQUESTS, id, request, CACHE_TTL.SIGNUP_REQUESTS);
+    return request;
   },
 
   async getByEmail(email: string): Promise<SignupRequest | null> {
@@ -2328,7 +2569,12 @@ export const signupRequestService = {
       updatedAt: now,
     };
     const ref = await addDoc(collection(database, COLLECTIONS.SIGNUP_REQUESTS), record);
-    return toSignupRequest(ref.id, record);
+    const newRequest = toSignupRequest(ref.id, record);
+    
+    // Invalidate cache
+    invalidateRelated('signupRequest', ref.id);
+    
+    return newRequest;
   },
 
   async update(id: string, updates: Partial<SignupRequest>): Promise<SignupRequest> {
@@ -2369,6 +2615,10 @@ export const signupRequestService = {
         logger.warn('Failed to create signup notification:', err);
       }
     }
+    
+    // Invalidate cache
+    invalidateRelated('signupRequest', snapshot.id);
+    
     return toSignupRequest(snapshot.id, data);
   },
 
@@ -2376,6 +2626,9 @@ export const signupRequestService = {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SIGNUP_REQUESTS, id);
     await deleteDoc(ref);
+    
+    // Invalidate cache
+    invalidateRelated('signupRequest', id);
   },
 
   // Method to properly reject a signup and clean up everything
@@ -2507,17 +2760,33 @@ export const notificationService = _notificationServiceWrapped as typeof notific
  * Useful for auditing and tracking registration history.
  */export const signupHistoryService = {
   async getAll(): Promise<SignupHistory[]> {
+    // Check cache first
+    const cached = systemCache.get<SignupHistory[]>(CACHE_NAMESPACES.SIGNUP_HISTORY_ALL, 'list');
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = collection(database, COLLECTIONS.SIGNUP_HISTORY);
     const q = query(ref, orderBy('resolvedAt', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnapshot) => {
+    const history = snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as FirestoreSignupHistoryRecord;
       return toSignupHistory(docSnapshot.id, data);
     });
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SIGNUP_HISTORY_ALL, 'list', history, CACHE_TTL.SIGNUP_HISTORY);
+    return history;
   },
 
   async getById(id: string): Promise<SignupHistory | null> {
+    // Check cache first
+    const cached = systemCache.get<SignupHistory>(CACHE_NAMESPACES.SIGNUP_HISTORY, id);
+    if (cached) {
+      return cached;
+    }
+
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SIGNUP_HISTORY, id);
     const snapshot = await getDoc(ref);
@@ -2525,7 +2794,11 @@ export const notificationService = _notificationServiceWrapped as typeof notific
       return null;
     }
     const data = snapshot.data() as FirestoreSignupHistoryRecord;
-    return toSignupHistory(snapshot.id, data);
+    const historyItem = toSignupHistory(snapshot.id, data);
+
+    // Cache the result
+    systemCache.set(CACHE_NAMESPACES.SIGNUP_HISTORY, id, historyItem, CACHE_TTL.SIGNUP_HISTORY);
+    return historyItem;
   },
 
   async getByEmail(email: string): Promise<SignupHistory[]> {
@@ -2560,13 +2833,23 @@ export const notificationService = _notificationServiceWrapped as typeof notific
       updatedAt: now,
     };
     const ref = await addDoc(collection(database, COLLECTIONS.SIGNUP_HISTORY), record);
-    return toSignupHistory(ref.id, record);
+    const newHistory = toSignupHistory(ref.id, record);
+    
+    // Invalidate cache - signup history affects signup requests too
+    systemCache.invalidateNamespace(CACHE_NAMESPACES.SIGNUP_HISTORY);
+    systemCache.invalidateNamespace(CACHE_NAMESPACES.SIGNUP_HISTORY_ALL);
+    
+    return newHistory;
   },
 
   async delete(id: string): Promise<void> {
     const database = getDb();
     const ref = doc(database, COLLECTIONS.SIGNUP_HISTORY, id);
     await deleteDoc(ref);
+    
+    // Invalidate cache
+    systemCache.invalidateNamespace(CACHE_NAMESPACES.SIGNUP_HISTORY);
+    systemCache.invalidateNamespace(CACHE_NAMESPACES.SIGNUP_HISTORY_ALL);
   },
 };
 

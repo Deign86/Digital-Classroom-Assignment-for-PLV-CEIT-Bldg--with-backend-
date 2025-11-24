@@ -7,11 +7,11 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { 
-  User as UserIcon, 
-  Mail, 
-  Building, 
-  Shield, 
+import {
+  User as UserIcon,
+  Mail,
+  Building,
+  Shield,
   Lock,
   Eye,
   EyeOff,
@@ -19,12 +19,16 @@ import {
   AlertCircle,
   Loader2,
   Bell,
-  X
+  X,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
 import { authService, userService } from '../lib/firebaseService';
 import { pushService } from '../lib/pushService';
+import { useDarkMode } from '../hooks/useDarkMode';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import ProcessingFieldset from './ui/ProcessingFieldset';
@@ -54,7 +58,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [pushSupported, setPushSupported] = useState<boolean>(true);
-  
+  const { theme, setTheme } = useDarkMode();
+
   // Profile editing state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -74,7 +79,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       // Don't reset form data while user is editing or saving
       return;
     }
-    
+
     try {
       setPushEnabled(!!(user as any).pushEnabled);
       setProfileData({
@@ -147,12 +152,12 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     }
 
     // Check if any changes were actually made
-    const originalDepartments = user.departments && user.departments.length > 0 
-      ? user.departments 
+    const originalDepartments = user.departments && user.departments.length > 0
+      ? user.departments
       : (user.department ? [user.department] : []);
-    
+
     const nameUnchanged = profileData.name.trim() === user.name;
-    const departmentsUnchanged = 
+    const departmentsUnchanged =
       profileData.departments.length === originalDepartments.length &&
       profileData.departments.every((dept, index) => dept === originalDepartments[index]);
 
@@ -184,7 +189,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
       // Update Firestore user document
       const updatedUser = await userService.update(user.id, trimmedData);
-      
+
       // CRITICAL: Also update Firebase Auth displayName to prevent it from overwriting Firestore on next auth state change
       try {
         const auth = await import('firebase/auth');
@@ -199,15 +204,15 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         logger.error('Failed to update Firebase Auth displayName:', authError);
         // Don't fail the whole operation if this fails
       }
-      
+
       logger.info('Profile updated successfully:', updatedUser);
-      
+
       toast.success('Profile updated successfully', {
         description: `Name: ${updatedUser.name}, Department: ${updatedUser.department || 'N/A'}`
       });
-      
+
       setIsEditingProfile(false);
-      
+
       // Wait a moment then reload to ensure all state is fresh
       setTimeout(() => {
         window.location.reload();
@@ -298,7 +303,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Clear previous errors
     setErrors({
       currentPassword: '',
@@ -351,14 +356,14 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           description: 'For security, you will now be logged out. Please log back in with your new password.',
           duration: 3000
         });
-        
+
         // Clear the form
         setPasswordData({
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
-        
+
         // The logout happens automatically in updatePassword method after 1.5s
         // No need for additional logout call here
       }
@@ -382,8 +387,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
       // Show a helpful toast while waiting for service worker
       const loadingToast = toast.loading(
-        enabled 
-          ? 'Initializing push notifications...' 
+        enabled
+          ? 'Initializing push notifications...'
           : 'Disabling push notifications...'
       );
 
@@ -475,7 +480,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
   const getPasswordStrength = (password: string): { strength: string; color: string } => {
     if (password.length === 0) return { strength: '', color: '' };
-    
+
     let score = 0;
     if (password.length >= 8) score++;
     if (password.length >= 12) score++;
@@ -616,9 +621,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                     value=""
                     onValueChange={(value) => {
                       if (value && !profileData.departments.includes(value)) {
-                        setProfileData(prev => ({ 
-                          ...prev, 
-                          departments: [...prev.departments, value] 
+                        setProfileData(prev => ({
+                          ...prev,
+                          departments: [...prev.departments, value]
                         }));
                         if (profileErrors.departments) {
                           setProfileErrors(prev => ({ ...prev, departments: '' }));
@@ -633,21 +638,21 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                       </div>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem 
+                      <SelectItem
                         value="Information Technology"
                         disabled={profileData.departments.includes('Information Technology')}
                         className={profileData.departments.includes('Information Technology') ? 'opacity-50 cursor-not-allowed' : ''}
                       >
                         Information Technology
                       </SelectItem>
-                      <SelectItem 
+                      <SelectItem
                         value="Civil Engineering"
                         disabled={profileData.departments.includes('Civil Engineering')}
                         className={profileData.departments.includes('Civil Engineering') ? 'opacity-50 cursor-not-allowed' : ''}
                       >
                         Civil Engineering
                       </SelectItem>
-                      <SelectItem 
+                      <SelectItem
                         value="Electrical Engineering"
                         disabled={profileData.departments.includes('Electrical Engineering')}
                         className={profileData.departments.includes('Electrical Engineering') ? 'opacity-50 cursor-not-allowed' : ''}
@@ -656,7 +661,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   {/* Selected Departments Badges */}
                   {profileData.departments.length > 0 && (
                     <div className="flex flex-wrap gap-2 p-2 bg-gray-50 rounded-lg">
@@ -679,7 +684,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                       ))}
                     </div>
                   )}
-                  
+
                   {profileErrors.departments && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
@@ -738,6 +743,56 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           {!pushSupported && (
             <p className="mt-2 text-xs text-muted-foreground">Push notifications are not supported in this browser or device. On iOS use Safari 16.4+ and enable Web Push in system settings.</p>
           )}
+        </CardContent>
+      </Card>
+
+      {/* System Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            System Preferences
+          </CardTitle>
+          <CardDescription>
+            Customize your interface experience
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0 pr-4">
+              <p className="font-medium">Theme Preference</p>
+              <p className="text-sm text-muted-foreground">
+                Choose between Light, Dark, or System default theme.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Select value={theme} onValueChange={(val) => setTheme(val as any)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select theme" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4" />
+                      <span>Light</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="dark">
+                    <div className="flex items-center gap-2">
+                      <Moon className="h-4 w-4" />
+                      <span>Dark</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="system">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4" />
+                      <span>System</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -946,6 +1001,6 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           </AlertDialog>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }

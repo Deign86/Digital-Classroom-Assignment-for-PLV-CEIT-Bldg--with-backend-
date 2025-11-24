@@ -40,21 +40,21 @@
   --input: transparent;
   --input-background: #f2f2f7;
   --switch-background: #e5e5ea;
-  
+
   /* Apple-style Typography Weights */
   --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  
+
   --ring: #007aff;
   --chart-1: #007aff;
   --chart-2: #34c759;
   --chart-3: #ff9500;
   --chart-4: #ff3b30;
   --chart-5: #af52de;
-  
+
   /* Apple-style Border Radius */
   --radius-xs: 0.25rem;
   --radius-sm: 0.5rem;
@@ -64,19 +64,19 @@
   --radius-2xl: 2rem;
   --radius: 1rem;
   /* iOS-style corner smoothing value (approx 60% smoothing as in Figma for iOS pills) */
-  
+
   /* Apple-style Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 8px 25px rgba(0, 0, 0, 0.15);
   --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
-  
+
   /* Apple-style Blur Effects */
   --blur-sm: 4px;
   --blur-md: 8px;
   --blur-lg: 16px;
   --blur-xl: 24px;
-  
+
   --sidebar: #f2f2f7;
   --sidebar-foreground: #1d1d1f;
   --sidebar-primary: #007aff;
@@ -149,7 +149,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  
+
   /* Apple-style Typography Scale */
   --fontSize-xs: var(--text-xs);
   --fontSize-sm: var(--text-sm);
@@ -163,7 +163,7 @@
   --fontSize-6xl: var(--text-6xl);
   --fontSize-7xl: var(--text-7xl);
   --fontSize-8xl: var(--text-8xl);
-  
+
   /* Apple-style Border Radius */
   --radius-xs: var(--radius-xs);
   --radius-sm: var(--radius-sm);
@@ -171,13 +171,13 @@
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
   --radius-2xl: var(--radius-2xl);
-  
+
   /* Apple-style Shadows */
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
-  
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -208,6 +208,7 @@
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -241,7 +242,7 @@
     .animate-in {
       animation: none;
     }
-    
+
     .transition-all,
     .transition-transform,
     .transition-colors,
@@ -411,12 +412,12 @@
     align-items: center !important;
     width: 100%;
   }
-  
+
   /* Request tabs: distribute evenly across full width */
   .request-tabs-mobile .mobile-tab-scroll {
     justify-content: space-evenly !important;
   }
-  
+
   /* Request tabs: make items take equal width */
   .request-tabs-mobile .mobile-tab-item {
     flex: 1;
@@ -435,7 +436,8 @@
   .login-tabs {
     /* keep overflow hidden (already set on the element) but reinforce */
     overflow: hidden;
-    border-radius: 24px; /* parent radius used in layout */
+    border-radius: 24px;
+    /* parent radius used in layout */
   }
 
   .login-tabs [role="tab"] {
@@ -445,14 +447,20 @@
 
   /* Desktop-only base styling (1025px+) - responsive.css overrides for smaller screens */
   @media (min-width: 1025px) {
+
     .login-tabs [role="tab"][data-state="active"],
     .login-tabs [role="tab"][aria-selected="true"] {
-      border-radius: 24px !important; /* match parent curvature */
-      box-shadow: none !important; /* remove inner notch shadow */
-      z-index: 2 !important; /* bring active pill above neighbors */
-      transform: none !important; /* ensure no unexpected translations */
+      border-radius: 24px !important;
+      /* match parent curvature */
+      box-shadow: none !important;
+      /* remove inner notch shadow */
+      z-index: 2 !important;
+      /* bring active pill above neighbors */
+      transform: none !important;
+      /* ensure no unexpected translations */
     }
   }
+
   .mobile-tab-scroll::-webkit-scrollbar {
     display: none;
   }
@@ -502,7 +510,7 @@
       display: grid;
       gap: 0.25rem;
     }
-    
+
     .desktop-tab-item {
       display: flex;
       align-items: center;
@@ -532,11 +540,12 @@
   }
 
   @media (max-width: 640px) {
+
     /* Additional mobile spacing */
     .space-y-6 {
       gap: 1rem;
     }
-    
+
     .space-y-4 {
       gap: 0.75rem;
     }
@@ -547,20 +556,20 @@
     .grid {
       gap: 0.75rem;
     }
-    
+
     .gap-4 {
       gap: 0.75rem;
     }
-    
+
     .gap-6 {
       gap: 1rem;
     }
-    
+
     /* Better mobile padding for cards */
     .card {
       padding: 1rem;
     }
-    
+
     /* Responsive badge positioning */
     .relative .absolute {
       position: absolute;
@@ -573,43 +582,43 @@
     position: fixed !important;
     isolation: isolate !important;
   }
-  
+
   [data-slot="popover-content"] {
     z-index: 9999 !important;
     position: fixed !important;
     isolation: isolate !important;
   }
-  
+
   /* Ensure calendar popover is always on top */
   .calendar-popover {
     z-index: 9999 !important;
     position: fixed !important;
     isolation: isolate !important;
   }
-  
+
   /* Fix for calendar widget specifically */
   [data-radix-popover-content] {
     z-index: 9999 !important;
     position: fixed !important;
     isolation: isolate !important;
   }
-  
+
   /* Prevent any transform-based stacking context issues */
   [data-radix-popover-trigger] {
     position: relative;
     z-index: 1;
   }
-  
+
   /* Additional popover portal fixes */
   [data-radix-portal] {
     z-index: 9999 !important;
   }
-  
+
   /* Ensure Motion components don't interfere with popover stacking */
   [data-framer-motion-id] {
     isolation: auto;
   }
-  
+
   /* Form container should not create stacking context */
   form {
     isolation: auto;
@@ -630,7 +639,7 @@
   @media (max-width: 320px) {
     /* UNIFIED FIX FOR ALL RADIX PORTAL-BASED DROPDOWNS AT 320PX */
     /* This applies to Select, Popover, Dialog, AlertDialog, etc. */
-    
+
     /* Target all Radix portals */
     [data-radix-select-portal],
     [data-radix-popover-portal],
@@ -642,10 +651,10 @@
     }
 
     /* Allow pointer events on portal children */
-    [data-radix-select-portal] > *,
-    [data-radix-popover-portal] > *,
-    [data-radix-dialog-portal] > *,
-    [data-radix-alert-dialog-portal] > * {
+    [data-radix-select-portal]>*,
+    [data-radix-popover-portal]>*,
+    [data-radix-dialog-portal]>*,
+    [data-radix-alert-dialog-portal]>* {
       pointer-events: auto !important;
     }
 
@@ -672,13 +681,14 @@
       left: 8px !important;
       right: 8px !important;
       top: auto !important;
-      bottom: 72px !important; /* leave space for bottom nav / safe area */
+      bottom: 72px !important;
+      /* leave space for bottom nav / safe area */
       max-width: calc(100vw - 16px) !important;
       width: calc(100vw - 16px) !important;
       max-height: calc(100vh - 160px) !important;
       overflow: auto !important;
       border-radius: 8px !important;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25) !important;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
       z-index: 99999 !important;
     }
 
@@ -703,100 +713,159 @@
     }
 
     /* Ensure all portal content children are visible */
-    [data-slot="select-content"] > *,
-    [data-radix-select-content] > *,
-    [data-slot="popover-content"] > *,
-    [data-radix-popover-content] > *,
-    [data-slot="dialog-content"] > *,
-    [data-radix-dialog-content] > *,
-    [data-slot="alert-dialog-content"] > *,
-    [data-radix-alert-dialog-content] > * {
+    [data-slot="select-content"]>*,
+    [data-radix-select-content]>*,
+    [data-slot="popover-content"]>*,
+    [data-radix-popover-content]>*,
+    [data-slot="dialog-content"]>*,
+    [data-radix-dialog-content]>*,
+    [data-slot="alert-dialog-content"]>*,
+    [data-radix-alert-dialog-content]>* {
       visibility: visible !important;
       opacity: 1 !important;
     }
   }
 
-/* Scoped calendar tweaks to match app: make selected day square and use app accent */
-.app-calendar .rdp-day {
-  border-radius: 6px; /* slightly rounded square */
-}
+  /* Scoped calendar tweaks to match app: make selected day square and use app accent */
+  .app-calendar .rdp-day {
+    border-radius: 6px;
+    /* slightly rounded square */
+  }
 
-.app-calendar .rdp-day_selected {
-  /* enforce filled square for selected day */
-  background: var(--color-primary) !important;
-  color: var(--color-primary-foreground) !important;
-  box-shadow: none !important;
-  border: none !important;
-  border-radius: 6px !important;
-  width: 36px !important;
-  height: 36px !important;
-  line-height: 36px !important;
-  padding: 0 !important;
-}
+  .app-calendar .rdp-day_selected {
+    /* enforce filled square for selected day */
+    background: var(--color-primary) !important;
+    color: var(--color-primary-foreground) !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 6px !important;
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    padding: 0 !important;
+  }
 
-/* target other DayPicker button variants to ensure no circular ring remains */
-.app-calendar .rdp-button.rdp-day_selected,
-.app-calendar .rdp-day.rdp-day_selected > .rdp-button,
-.app-calendar .rdp-button.rdp-selected,
-.app-calendar .rdp-day.rdp-selected > .rdp-button,
-.app-calendar .rdp-day.rdp-selected {
-  background: var(--color-primary) !important;
-  color: var(--color-primary-foreground) !important;
-  box-shadow: none !important;
-  border: none !important;
-  border-radius: 6px !important;
-  width: 36px !important;
-  height: 36px !important;
-  line-height: 36px !important;
-  padding: 0 !important;
-}
+  /* target other DayPicker button variants to ensure no circular ring remains */
+  .app-calendar .rdp-button.rdp-day_selected,
+  .app-calendar .rdp-day.rdp-day_selected>.rdp-button,
+  .app-calendar .rdp-button.rdp-selected,
+  .app-calendar .rdp-day.rdp-selected>.rdp-button,
+  .app-calendar .rdp-day.rdp-selected {
+    background: var(--color-primary) !important;
+    color: var(--color-primary-foreground) !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 6px !important;
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    padding: 0 !important;
+  }
 
-/* Remove any pseudo-element rings and unset DayPicker selection variables */
-.app-calendar .rdp-root {
-  /* make the DayPicker buttons default to square-ish */
-  --rdp-day_button-border-radius: 6px !important;
-  --rdp-selected-border: none !important;
-  --rdp-day_button-border: none !important;
-}
+  /* Remove any pseudo-element rings and unset DayPicker selection variables */
+  .app-calendar .rdp-root {
+    /* make the DayPicker buttons default to square-ish */
+    --rdp-day_button-border-radius: 6px !important;
+    --rdp-selected-border: none !important;
+    --rdp-day_button-border: none !important;
+  }
 
-/* Hide pseudo-elements that some DayPicker versions use for inner ring/highlight */
-.app-calendar .rdp-day_button::after,
-.app-calendar .rdp-day_button::before,
-.app-calendar .rdp-day_button > *::after,
-.app-calendar .rdp-day_button > *::before {
-  content: none !important;
-  box-shadow: none !important;
-  border: none !important;
-}
+  /* Hide pseudo-elements that some DayPicker versions use for inner ring/highlight */
+  .app-calendar .rdp-day_button::after,
+  .app-calendar .rdp-day_button::before,
+  .app-calendar .rdp-day_button>*::after,
+  .app-calendar .rdp-day_button>*::before {
+    content: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
 
-/* Extra precaution: hide ring/outlines on selected day button variants */
-.app-calendar .rdp-button.rdp-day_selected:focus,
-.app-calendar .rdp-button.rdp-selected:focus,
-.app-calendar .rdp-day.rdp-selected:focus {
-  outline: none !important;
-  box-shadow: none !important;
-}
+  /* Extra precaution: hide ring/outlines on selected day button variants */
+  .app-calendar .rdp-button.rdp-day_selected:focus,
+  .app-calendar .rdp-button.rdp-selected:focus,
+  .app-calendar .rdp-day.rdp-selected:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
 
-/* remove any pseudo-element rings */
-.app-calendar .rdp-day_selected::before,
-.app-calendar .rdp-day_selected::after,
-.app-calendar .rdp-button.rdp-day_selected::before,
-.app-calendar .rdp-button.rdp-day_selected::after {
-  display: none !important;
-  box-shadow: none !important;
-}
+  /* remove any pseudo-element rings */
+  .app-calendar .rdp-day_selected::before,
+  .app-calendar .rdp-day_selected::after,
+  .app-calendar .rdp-button.rdp-day_selected::before,
+  .app-calendar .rdp-button.rdp-day_selected::after {
+    display: none !important;
+    box-shadow: none !important;
+  }
 
-.app-calendar .rdp-day:not(.rdp-day_disabled):hover {
-  background: rgba(0,0,0,0.03);
-}
+  .app-calendar .rdp-day:not(.rdp-day_disabled):hover {
+    background: rgba(0, 0, 0, 0.03);
+  }
 
-.app-calendar .rdp-caption {
-  color: var(--muted-foreground);
-}
+  .app-calendar .rdp-caption {
+    color: var(--muted-foreground);
+  }
 
   .will-change-opacity {
     will-change: opacity;
   }
+
+  /* Smart Dark Mode - Class Based */
+  html.smart-dark-mode {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Selective Re-inversion to preserve original look of media */
+  html.smart-dark-mode img,
+  html.smart-dark-mode video,
+  html.smart-dark-mode iframe,
+  html.smart-dark-mode canvas,
+  html.smart-dark-mode :not(object):not(body)[style*="background-image"],
+  html.smart-dark-mode [role="img"],
+  html.smart-dark-mode svg {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Exclude reCAPTCHA badge and loader overlay from inversion */
+  /* Badge should NOT be inverted when html has smart-dark-mode because */
+  /* the html filter already inverts everything, adding another invert cancels it out */
+  html.smart-dark-mode .grecaptcha-badge,
+  html.smart-dark-mode .grecaptcha-badge *,
+  html.smart-dark-mode iframe[src*="recaptcha"],
+  html.smart-dark-mode iframe[src*="google.com/recaptcha"] {
+    filter: none !important;
+  }
+
+  /* Loader overlay should NOT be visually inverted by ancestor filter.
+     Because the `html.smart-dark-mode` filter is applied on the root element,
+     setting `filter:none` on the child does not cancel the ancestor filter.
+     To preserve the intended (non-inverted) appearance of images inside
+     the overlay, we explicitly re-invert those images so the net effect
+     is the original colors. Keep the container itself unfiltered so CSS
+     variables continue to adapt to theme. */
+  html.smart-dark-mode [data-theme-exclude] {
+    filter: none !important;
+  }
+
+  /* Re-invert media inside excluded overlays to cancel the root inversion. */
+  html.smart-dark-mode [data-theme-exclude] img,
+  html.smart-dark-mode [data-theme-exclude] svg,
+  html.smart-dark-mode [data-theme-exclude] picture,
+  html.smart-dark-mode [data-theme-exclude] video {
+    filter: invert(1) hue-rotate(180deg) !important;
+  }
+
+  /* Shadow Correction: Invert shadows so they look dark in inverted mode */
+  html.smart-dark-mode {
+    --shadow-sm: 0 1px 3px rgba(255, 255, 255, 0.1);
+    --shadow-md: 0 4px 12px rgba(255, 255, 255, 0.1);
+
+    --shadow-lg: 0 8px 25px rgba(255, 255, 255, 0.15);
+    --shadow-xl: 0 20px 40px rgba(255, 255, 255, 0.2);
+
+    /* Adjust other specific colors if needed */
+    --border: rgba(255, 255, 255, 0.08);
+  }
+
 
   /* Prevent layout thrashing */
   .contain-layout {
@@ -819,7 +888,10 @@
 
   /* Reduce motion for performance */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -902,7 +974,9 @@
       line-height: 1.4;
     }
 
-    input, textarea, select {
+    input,
+    textarea,
+    select {
       font-size: var(--text-base);
       font-weight: var(--font-weight-normal);
       line-height: 1.5;
@@ -973,22 +1047,27 @@ html {
 
 /* Toast/Sonner Customization - Make description text more visible */
 [data-sonner-toast] [data-description] {
-  color: rgb(55, 65, 81) !important; /* gray-700 - much darker and more readable */
+  color: rgb(55, 65, 81) !important;
+  /* gray-700 - much darker and more readable */
   opacity: 1 !important;
-  font-weight: 500 !important; /* medium weight for better visibility */
+  font-weight: 500 !important;
+  /* medium weight for better visibility */
 }
 
 .dark [data-sonner-toast] [data-description] {
-  color: rgb(209, 213, 219) !important; /* gray-300 - lighter for dark mode */
+  color: rgb(209, 213, 219) !important;
+  /* gray-300 - lighter for dark mode */
 }
 
 /* Make success toast descriptions even more visible */
 [data-sonner-toast][data-type="success"] [data-description] {
-  color: rgb(21, 128, 61) !important; /* green-700 - matches success theme */
+  color: rgb(21, 128, 61) !important;
+  /* green-700 - matches success theme */
 }
 
 .dark [data-sonner-toast][data-type="success"] [data-description] {
-  color: rgb(134, 239, 172) !important; /* green-300 - for dark mode */
+  color: rgb(134, 239, 172) !important;
+  /* green-300 - for dark mode */
 }
 
 /* Hide reCAPTCHA badge when user is logged in (after signup/login) */
@@ -997,6 +1076,33 @@ html {
   opacity: 1;
   visibility: visible;
   transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+/* Theme-aware reCAPTCHA badge styling */
+/* Light mode - match the light theme */
+.grecaptcha-badge {
+  filter: none;
+}
+
+/* Dark mode - invert colors to match dark theme */
+.dark .grecaptcha-badge {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.9;
+}
+
+/* Smart dark mode support */
+/* When html.smart-dark-mode is active, the html element already has invert filter */
+/* So we don't apply another filter to avoid double inversion */
+html.smart-dark-mode .grecaptcha-badge {
+  filter: none;
+  opacity: 0.9;
+}
+
+/* Adjust reCAPTCHA iframe for better integration */
+.dark iframe[src*="google.com/recaptcha"],
+html.smart-dark-mode iframe[src*="google.com/recaptcha"] {
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.9;
 }
 
 /* Hide badge when user is authenticated (body will have this class after login) */
