@@ -59,7 +59,7 @@ const loadRecaptchaScript = (): Promise<void> => {
 };
 
 interface LoginFormProps {
-  onLogin: (email: string, password: string) => boolean | Promise<boolean>;
+  onLogin: (email: string, password: string) => boolean | Promise<boolean | { success: boolean; passwordLeakWarning?: string }>;
   onSignup: (
     email: string,
     name: string,
@@ -292,12 +292,27 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
       // Call onLogin directly - App.tsx handles all error messages and toasts
       // This prevents duplicate toast notifications (one immediate, one after processing)
-      const success = await onLogin(email, password);
+      const result = await onLogin(email, password);
+      
+      // Handle the result which now includes user and optional passwordLeakWarning
+      const success = typeof result === 'boolean' ? result : (result && typeof result === 'object' && 'success' in result ? result.success : false);
+      const passwordLeakWarning = (typeof result === 'object' && result && 'passwordLeakWarning' in result)
+        ? (result as { success: boolean; passwordLeakWarning?: string }).passwordLeakWarning 
+        : null;
       
       if (!success) {
         setPassword('');
         try { announce('Login failed. Please check your email and password.', 'assertive'); } catch (e) {}
       } else {
+        // Show password leak warning if present (non-blocking)
+        if (passwordLeakWarning) {
+          toast.warning(passwordLeakWarning, {
+            duration: 10000, // 10 seconds
+            description: 'Your password was found in a data breach. Please change it in your profile settings.',
+          });
+          try { announce(passwordLeakWarning, 'polite'); } catch (e) {}
+        }
+        
         try { announce('Login successful. Redirecting to your dashboard.', 'polite'); } catch (e) {}
       }
     } catch (error) {
