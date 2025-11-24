@@ -35,6 +35,7 @@ import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
 import type { Notification } from '../lib/notificationService';
 import { useAnnouncer } from './Announcer';
+import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
 /* spinner removed by request; fallbacks reverted to text */
 import { userService, adminDeleteUser } from '../lib/firebaseService';
@@ -82,6 +83,7 @@ export default function AdminDashboard({
   const [showNotifications, setShowNotifications] = useState(false);
   // Use the same notification render strategy as FacultyDashboard: fixed top-right panel
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   // Per-request processing id to prevent double-approve/reject clicks
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
@@ -234,7 +236,7 @@ export default function AdminDashboard({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onLogout}
+                    onClick={() => setShowLogoutConfirm(true)}
                     // ARIA: provide accessible name for icon-only and responsive logout control
                     aria-label="Logout"
                     className="transition-all duration-200 text-xs sm:text-sm"
@@ -919,6 +921,15 @@ export default function AdminDashboard({
           </TabsContent>
         </Tabs>
       </div>
+
+      <LogoutConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          onLogout();
+        }}
+      />
     </div>
   );
 }

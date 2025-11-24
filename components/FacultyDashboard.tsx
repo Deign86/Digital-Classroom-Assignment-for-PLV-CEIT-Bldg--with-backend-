@@ -29,6 +29,7 @@ const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
 import type { Notification } from '../lib/notificationService';
+import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
@@ -295,6 +296,7 @@ export default function FacultyDashboard({
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -327,7 +329,7 @@ export default function FacultyDashboard({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={onLogout}
+                    onClick={() => setShowLogoutConfirm(true)}
                     // ARIA: provide accessible name for icon-only and responsive logout control
                     aria-label="Logout"
                     className="transition-all duration-200 text-xs sm:text-sm"
@@ -787,6 +789,15 @@ export default function FacultyDashboard({
           </TabsContent>
         </Tabs>
       </div>
+
+      <LogoutConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          onLogout();
+        }}
+      />
     </div>
   );
 }
