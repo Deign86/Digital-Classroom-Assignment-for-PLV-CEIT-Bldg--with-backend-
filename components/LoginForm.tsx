@@ -14,7 +14,6 @@ import ProcessingFieldset from './ui/ProcessingFieldset';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import type { User } from '../App';
 import PasswordResetDialog from './PasswordResetDialog';
-import LogoHeader from './LogoHeader';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
 

@@ -36,7 +36,6 @@ import NotificationCenter from './NotificationCenter';
 import type { Notification } from '../lib/notificationService';
 import { useAnnouncer } from './Announcer';
 const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
-import LogoHeader from './LogoHeader';
 /* spinner removed by request; fallbacks reverted to text */
 import { userService, adminDeleteUser } from '../lib/firebaseService';
 import { notificationService } from '../lib/notificationService';
@@ -209,8 +208,8 @@ export default function AdminDashboard({
         <div className="px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 min-w-0 flex-1">
-              {/* Institutional Logos */}
-              <LogoHeader size="sm" className="flex-shrink-0" showSkeleton={false} />
+              {/* Admin Icon */}
+              <Building2 className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-blue-600 flex-shrink-0" />
               
               <div className="min-w-0 flex-1">
                 <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">PLV CEIT Admin Dashboard</h1>

@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'reac
 import { Analytics } from '@vercel/analytics/react';
 import { logger } from './lib/logger';
 import LoginForm from './components/LoginForm';
-import LogoHeader from './components/LogoHeader';
 // Lazy-load heavy dashboard components to reduce initial bundle size
 const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
 const FacultyDashboard = React.lazy(() => import('./components/FacultyDashboard'));
@@ -1931,10 +1930,6 @@ export default function App() {
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center space-y-8 w-full max-w-md">
             <div>
-              {/* Institutional Logos */}
-              <div className="flex justify-center mb-6">
-                <LogoHeader size="xl" showSkeleton={true} />
-              </div>
               <h1 className="mb-6">Classroom Reservation</h1>
               <p className="text-gray-600 mb-8">
                 Efficient classroom reservation management for PLV CEIT.
