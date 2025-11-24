@@ -479,6 +479,12 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       case 'email':
         if (!signupData.email.trim()) {
           errors.email = 'Email is required';
+        } else {
+          // Validate PLV email domain or test account
+          const emailValidation = validatePLVEmail(signupData.email);
+          if (!emailValidation.isValid) {
+            errors.email = emailValidation.error || 'Invalid email domain';
+          }
         }
         break;
       case 'password':
