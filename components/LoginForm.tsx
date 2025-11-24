@@ -192,10 +192,22 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
     if (!data.firstName.trim()) {
       errors.firstName = 'First name is required';
       hasErrors = true;
+    } else if (!/^[a-zA-Z\s'-]+$/.test(data.firstName.trim())) {
+      errors.firstName = 'First name can only contain letters, spaces, hyphens, and apostrophes';
+      hasErrors = true;
+    } else if (data.firstName.trim().length < 2) {
+      errors.firstName = 'First name must be at least 2 characters';
+      hasErrors = true;
     }
 
     if (!data.lastName.trim()) {
       errors.lastName = 'Last name is required';
+      hasErrors = true;
+    } else if (!/^[a-zA-Z\s'-]+$/.test(data.lastName.trim())) {
+      errors.lastName = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
+      hasErrors = true;
+    } else if (data.lastName.trim().length < 2) {
+      errors.lastName = 'Last name must be at least 2 characters';
       hasErrors = true;
     }
 
@@ -469,11 +481,23 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
       case 'firstName':
         if (!signupData.firstName.trim()) {
           errors.firstName = 'First name is required';
+        } else if (!/^[a-zA-Z\s'-]+$/.test(signupData.firstName.trim())) {
+          errors.firstName = 'First name can only contain letters, spaces, hyphens, and apostrophes';
+        } else if (signupData.firstName.trim().length < 2) {
+          errors.firstName = 'First name must be at least 2 characters';
+        } else {
+          errors.firstName = '';
         }
         break;
       case 'lastName':
         if (!signupData.lastName.trim()) {
           errors.lastName = 'Last name is required';
+        } else if (!/^[a-zA-Z\s'-]+$/.test(signupData.lastName.trim())) {
+          errors.lastName = 'Last name can only contain letters, spaces, hyphens, and apostrophes';
+        } else if (signupData.lastName.trim().length < 2) {
+          errors.lastName = 'Last name must be at least 2 characters';
+        } else {
+          errors.lastName = '';
         }
         break;
       case 'email':
@@ -484,6 +508,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           const emailValidation = validatePLVEmail(signupData.email);
           if (!emailValidation.isValid) {
             errors.email = emailValidation.error || 'Invalid email domain';
+          } else {
+            errors.email = '';
           }
         }
         break;
@@ -499,6 +525,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
 
           if (!hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
             errors.password = 'Password does not meet all requirements';
+          } else {
+            errors.password = '';
           }
         }
         break;
@@ -507,6 +535,8 @@ export default function LoginForm({ onLogin, onSignup, users, isLocked = false, 
           errors.confirmPassword = 'Please confirm your password';
         } else if (signupData.password !== signupData.confirmPassword) {
           errors.confirmPassword = 'Passwords do not match';
+        } else {
+          errors.confirmPassword = '';
         }
         break;
     }
