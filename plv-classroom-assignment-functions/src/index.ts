@@ -839,6 +839,7 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
 /**
  * Verify reCAPTCHA token before login attempt
  * This function MUST be called before trackFailedLogin to prevent brute force attacks
+ * Now includes password leak detection via reCAPTCHA Enterprise
  * CORS enabled for localhost:3000 and production domains
  */
 export const verifyLoginRecaptcha = onCall(
@@ -851,8 +852,8 @@ export const verifyLoginRecaptcha = onCall(
       /\.vercel\.app$/
     ]
   },
-  async (request: CallableRequest<{ email?: string; recaptchaToken?: string }>) => {
-    const { email, recaptchaToken } = request.data || {};
+  async (request: CallableRequest<{ email?: string; recaptchaToken?: string; password?: string }>) => {
+    const { email, recaptchaToken, password } = request.data || {};
 
     if (!email || typeof email !== "string") {
       throw new HttpsError("invalid-argument", "email is required and must be a string");
@@ -863,22 +864,37 @@ export const verifyLoginRecaptcha = onCall(
     }
 
     try {
-      // Import the verifyRecaptchaToken helper from recaptcha.ts
-      const { verifyRecaptchaToken } = await import('./recaptcha');
+      // Import the verifyRecaptchaWithPassword helper from recaptcha.ts
+      const { verifyRecaptchaWithPassword } = await import('./recaptcha');
       
-      // Verify the reCAPTCHA token with action 'LOGIN' and threshold 0.5
-      const isValid = await verifyRecaptchaToken(recaptchaToken, 'LOGIN', 0.5);
+      // Verify the reCAPTCHA token with action 'LOGIN' and optional password check
+      const result = await verifyRecaptchaWithPassword(
+        recaptchaToken,
+        'LOGIN',
+        password, // Optional password for leak detection
+        0.5 // Score threshold
+      );
       
-      if (!isValid) {
-        logger.warn(`reCAPTCHA verification failed for login attempt: ${email}`);
+      if (!result.verified) {
+        logger.warn(`reCAPTCHA verification failed for login attempt: ${email}`, {
+          reason: result.reason,
+          score: result.score,
+        });
         throw new HttpsError("permission-denied", "reCAPTCHA verification failed. Please try again.");
       }
 
-      logger.info(`reCAPTCHA verification successful for login: ${email}`);
+      logger.info(`reCAPTCHA verification successful for login: ${email}`, {
+        score: result.score,
+        passwordChecked: !!password,
+        isLeaked: result.isPasswordLeaked,
+      });
       
       return {
         success: true,
         verified: true,
+        score: result.score,
+        isPasswordLeaked: result.isPasswordLeaked || false,
+        leakReason: result.leakReason || [],
       };
     } catch (error: unknown) {
       const err = error as { message?: string };
