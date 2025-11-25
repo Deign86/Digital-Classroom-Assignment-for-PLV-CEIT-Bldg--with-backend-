@@ -849,6 +849,7 @@ export const verifyLoginRecaptcha = onCall(
       'http://localhost:5173',
       'https://plv-classroom-assigment.web.app',
       'https://plv-classroom-assigment.firebaseapp.com',
+      'https://digital-classroom-reservation-for-plv.vercel.app',
       /\.vercel\.app$/
     ]
   },

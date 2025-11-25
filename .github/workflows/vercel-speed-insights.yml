@@ -24,13 +24,13 @@ jobs:
 
       - name: Run Vercel Speed Insights (mobile)
         env:
-          TARGET_URL: 'https://digital-classroom-assignment-for-plv.vercel.app/'
+          TARGET_URL: 'https://digital-classroom-reservation-for-plv.vercel.app/'
         run: |
           npx speed-insights --url "$TARGET_URL" --config speed-insights.config.js --runName mobile --formFactor mobile || true
 
       - name: Run Vercel Speed Insights (desktop)
         env:
-          TARGET_URL: 'https://digital-classroom-assignment-for-plv.vercel.app/'
+          TARGET_URL: 'https://digital-classroom-reservation-for-plv.vercel.app/'
         run: |
           npx speed-insights --url "$TARGET_URL" --config speed-insights.config.js --runName desktop --formFactor desktop || true
 

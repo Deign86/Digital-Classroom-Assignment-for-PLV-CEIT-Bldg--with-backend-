@@ -988,75 +988,122 @@ export const authService = {
     // Use departments array if provided, otherwise fallback to single department
     const depts = departments && departments.length > 0 ? departments : [department];
 
-    // Suppress auth state handling to avoid racing the global listener
-    suppressAuthStateHandling = true;
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
-    const firebaseUser = credential.user;
-
     try {
-      if (firebaseUser) {
-        await updateProfile(firebaseUser, { displayName: name }).catch(() => undefined);
-      }
+      // Suppress auth state handling to avoid racing the global listener
+      suppressAuthStateHandling = true;
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = credential.user;
 
-      const record = await ensureUserRecordFromAuth(firebaseUser, {
-        email,
-        name,
-        department: depts[0], // Primary department for backward compatibility
-        departments: depts,
-        role: 'faculty',
-        status: 'pending',
-      });
-
-      const database = getDb();
-      const now = nowIso();
-
-      const requestRecord: FirestoreSignupRequestRecord = {
-        uid: firebaseUser.uid,
-        email: record.email,
-        emailLower: record.emailLower,
-        name: record.name,
-        department: depts[0], // Primary department for backward compatibility
-        departments: depts,
-        status: 'pending',
-        requestDate: now,
-        createdAt: now,
-        updatedAt: now,
-        ...(recaptchaToken && { recaptchaToken }), // Store token if provided
-      };
-
-      await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
-
-      // Notify admins about the new signup request using the server callable for consistency and permissions
-      // (wrap in try/catch to avoid failing the signup flow if the callable is temporarily unreachable)
       try {
-        const app = getFirebaseApp();
-        const functions = getFunctions(app, 'us-central1');
-        const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
-        await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
-      } catch (err) {
-        logger.warn('Failed to notify admins of new signup:', err);
+        if (firebaseUser) {
+          await updateProfile(firebaseUser, { displayName: name }).catch(() => undefined);
+        }
+
+        const record = await ensureUserRecordFromAuth(firebaseUser, {
+          email,
+          name,
+          department: depts[0], // Primary department for backward compatibility
+          departments: depts,
+          role: 'faculty',
+          status: 'pending',
+        });
+
+        const database = getDb();
+        const now = nowIso();
+
+        const requestRecord: FirestoreSignupRequestRecord = {
+          uid: firebaseUser.uid,
+          email: record.email,
+          emailLower: record.emailLower,
+          name: record.name,
+          department: depts[0], // Primary department for backward compatibility
+          departments: depts,
+          status: 'pending',
+          requestDate: now,
+          createdAt: now,
+          updatedAt: now,
+          ...(recaptchaToken && { recaptchaToken }), // Store token if provided
+        };
+
+        await setDoc(doc(database, COLLECTIONS.SIGNUP_REQUESTS, firebaseUser.uid), requestRecord);
+
+        // Notify admins about the new signup request using the server callable for consistency and permissions
+        // (wrap in try/catch to avoid failing the signup flow if the callable is temporarily unreachable)
+        try {
+          const app = getFirebaseApp();
+          const functions = getFunctions(app, 'us-central1');
+          const fn = httpsCallable(functions, 'notifyAdminsOfNewSignup');
+          await withRetry(() => fn({ requestId: firebaseUser.uid, name: record.name, email: record.email }), { attempts: 3, shouldRetry: isNetworkError });
+        } catch (err) {
+          logger.warn('Failed to notify admins of new signup:', err);
+        }
+
+        // Email verification disabled - not required for this system
+        // await sendEmailVerification(firebaseUser).catch(() => undefined);
+
+        return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
+      } catch (error) {
+        // If Firestore operations fail, delete the Auth user to prevent orphaned accounts
+        logger.error('Signup failed, cleaning up Auth user:', error);
+        try {
+          await firebaseUser.delete();
+          logger.log('Auth user deleted successfully');
+        } catch (deleteError) {
+          logger.error('Failed to delete Auth user:', deleteError);
+        }
+        
+        // Re-throw with better error messaging
+        if (error && typeof error === 'object' && 'code' in error) {
+          const code = (error as { code?: string }).code;
+          
+          // Handle Firestore-specific errors
+          if (code?.startsWith('firestore/')) {
+            throw new Error('Database service temporarily unavailable. Please try again in a moment.');
+          }
+
+          // Handle network errors
+          if (code?.includes('network') || code?.includes('unavailable')) {
+            throw new Error('Network connection error. Please check your internet connection and try again.');
+          }
+        }
+        
+        throw error;
+      } finally {
+        // Clear suppression and sign out the programmatic session
+        suppressAuthStateHandling = false;
+        await firebaseSignOut(auth).catch(() => undefined);
+        currentUserCache = null;
+        notifyAuthListeners(null);
       }
-
-      // Email verification disabled - not required for this system
-      // await sendEmailVerification(firebaseUser).catch(() => undefined);
-
-      return { request: toSignupRequest(firebaseUser.uid, requestRecord) };
     } catch (error) {
-      // If Firestore operations fail, delete the Auth user to prevent orphaned accounts
-      logger.error('Signup failed, cleaning up Auth user:', error);
-      try {
-        await firebaseUser.delete();
-        logger.log('Auth user deleted successfully');
-      } catch (deleteError) {
-        logger.error('Failed to delete Auth user:', deleteError);
+      // Handle Firebase Auth errors during account creation
+      if (error && typeof error === 'object' && 'code' in error) {
+        const code = (error as { code?: string }).code;
+        
+        // Handle specific Firebase Auth error codes with user-friendly messages
+        switch (code) {
+          case 'auth/email-already-in-use':
+            throw new Error('An account with this email already exists. Please sign in instead.');
+          case 'auth/invalid-email':
+            throw new Error('Invalid email format. Please check your email address.');
+          case 'auth/operation-not-allowed':
+            throw new Error('Account creation is currently disabled. Please contact support.');
+          case 'auth/weak-password':
+            throw new Error('Password is too weak. Please use a stronger password with at least 8 characters.');
+          case 'auth/network-request-failed':
+            throw new Error('Network connection error. Please check your internet connection and try again.');
+          case 'auth/too-many-requests':
+            throw new Error('Too many signup attempts. Please wait a few minutes and try again.');
+          default:
+            // If it's an auth error but not one we specifically handle, check if it's already a custom message
+            if (!code.startsWith('auth/')) {
+              throw error;
+            }
+        }
       }
+      
+      // Re-throw the error if it's already formatted (from inner try-catch)
       throw error;
-    } finally {
-      // Clear suppression and sign out the programmatic session
-      suppressAuthStateHandling = false;
-      await firebaseSignOut(auth).catch(() => undefined);
-      currentUserCache = null;
-      notifyAuthListeners(null);
     }
   },
 
@@ -1109,10 +1156,21 @@ export const authService = {
         } catch (recaptchaError) {
           logger.error('❌ reCAPTCHA verification failed:', recaptchaError);
           
-          // Extract error message from Cloud Function response
-          let errorMessage = 'reCAPTCHA verification failed. Please try again.';
+          // Extract specific error message from Cloud Function response
+          let errorMessage = 'Security verification failed. Please refresh the page and try again.';
+          
           if (recaptchaError instanceof Error) {
-            errorMessage = recaptchaError.message;
+            // Check if it's a network error
+            if (recaptchaError.message.includes('network') || 
+                recaptchaError.message.includes('fetch') ||
+                recaptchaError.message.includes('offline')) {
+              errorMessage = 'Network error during security verification. Please check your connection and try again.';
+            } else if (recaptchaError.message.includes('CORS')) {
+              errorMessage = 'Security service configuration error. Please contact support.';
+            } else {
+              // Use the actual error message from the Cloud Function
+              errorMessage = recaptchaError.message;
+            }
           }
           
           throw new Error(errorMessage);
@@ -1236,9 +1294,26 @@ export const authService = {
         message: error instanceof Error ? error.message : 'unknown'
       });
 
+      // Check if this is already a formatted error message (from reCAPTCHA, Firestore, etc.)
+      if (error instanceof Error && !('code' in error)) {
+        // This is likely a custom error from our code (reCAPTCHA, network, etc.)
+        throw error;
+      }
+
       // Track failed login attempts via Cloud Function for any auth-related error
       if (error && typeof error === 'object' && 'code' in error) {
         const code = (error as { code?: string }).code;
+        
+        // Handle Firestore-specific errors
+        if (code?.startsWith('firestore/')) {
+          logger.error('Firestore error during login:', error);
+          throw new Error('Database service temporarily unavailable. Please try again in a moment.');
+        }
+
+        // Handle network errors
+        if (code?.includes('network') || code?.includes('unavailable')) {
+          throw new Error('Network connection error. Please check your internet connection and try again.');
+        }
         
         if (code?.startsWith('auth/')) {
           logger.log('🔒 Calling trackFailedLogin for:', email);
@@ -1272,20 +1347,43 @@ export const authService = {
             }
             
             // If not locked but we have attempts remaining info, we could show it
-            // (but we'll just fall through to the generic error below)
+            // (but we'll just fall through to the auth error below)
           } catch (cloudFunctionError) {
-            // If the Cloud Function call itself failed, log it but don't block the error flow
-            logger.warn('⚠️ Failed to call trackFailedLogin cloud function:', cloudFunctionError);
-            
-            // If the error is an Error with a message (thrown from above), re-throw it
-            if (cloudFunctionError instanceof Error && cloudFunctionError.message.includes('locked')) {
-              throw cloudFunctionError;
+            // If the Cloud Function call itself failed, check if it's a network error
+            if (cloudFunctionError instanceof Error) {
+              if (cloudFunctionError.message.includes('locked')) {
+                throw cloudFunctionError;
+              }
+              if (cloudFunctionError.message.includes('network') || 
+                  cloudFunctionError.message.includes('unavailable')) {
+                throw new Error('Authentication service temporarily unavailable. Please try again in a moment.');
+              }
             }
+            logger.warn('⚠️ Failed to call trackFailedLogin cloud function:', cloudFunctionError);
+          }
+
+          // Handle specific Firebase Auth error codes with user-friendly messages
+          switch (code) {
+            case 'auth/invalid-email':
+              throw new Error('Invalid email format. Please check your email address.');
+            case 'auth/user-disabled':
+              throw new Error('This account has been disabled. Please contact support.');
+            case 'auth/user-not-found':
+              throw new Error('No account found with this email address.');
+            case 'auth/wrong-password':
+            case 'auth/invalid-credential':
+              throw new Error('Incorrect password. Please try again.');
+            case 'auth/too-many-requests':
+              throw new Error('Too many failed login attempts. Please wait a few minutes and try again.');
+            case 'auth/network-request-failed':
+              throw new Error('Network connection error. Please check your internet connection.');
+            default:
+              throw new Error('Invalid email or password. Please check your credentials and try again.');
           }
         }
       }
 
-      throw new Error('Invalid credentials. Please check your email and password.');
+      throw new Error('Invalid email or password. Please check your credentials and try again.');
     }
   },
 

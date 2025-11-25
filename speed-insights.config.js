@@ -3,7 +3,7 @@
 
 module.exports = {
   // The URL to measure. In CI you'll set VERCEL_URL via workflow or repo variable.
-  url: process.env.TARGET_URL || process.env.VERCEL_URL || 'https://digital-classroom-assignment-for-plv.vercel.app/',
+  url: process.env.TARGET_URL || process.env.VERCEL_URL || 'https://digital-classroom-reservation-for-plv.vercel.app/',
 
   // Lighthouse options
   lighthouse: {
