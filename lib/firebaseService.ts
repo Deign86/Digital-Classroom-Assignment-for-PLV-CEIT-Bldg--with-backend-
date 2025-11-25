@@ -1096,7 +1096,7 @@ export const authService = {
             throw new Error('Too many signup attempts. Please wait a few minutes and try again.');
           default:
             // If it's an auth error but not one we specifically handle, check if it's already a custom message
-            if (!code.startsWith('auth/')) {
+            if (code && !code.startsWith('auth/')) {
               throw error;
             }
         }
