@@ -1996,7 +1996,7 @@ export default function App() {
                 <img
                   src="/system-logo.webp"
                   alt="PLV CEIT Classroom Reservation System"
-                  className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 object-contain transition-transform hover:scale-105"
+                  className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 object-contain"
                   loading="eager"
                   decoding="async"
                   fetchPriority="high"

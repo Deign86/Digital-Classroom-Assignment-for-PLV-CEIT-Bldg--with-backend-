@@ -87,7 +87,7 @@ export default function LogoHeader({
         <img
           src={logos.plv}
           alt="Pamantasan ng Lungsod ng Valenzuela Logo"
-          className={`${sizeClass} object-contain flex-shrink-0 transition-transform hover:scale-110`}
+          className={`${sizeClass} object-contain flex-shrink-0`}
           loading="lazy"
           decoding="async"
           fetchPriority="low"
@@ -97,7 +97,7 @@ export default function LogoHeader({
         <img
           src={logos.ceit}
           alt="College of Engineering and Information Technology Logo"
-          className={`${sizeClass} object-contain flex-shrink-0 transition-transform hover:scale-110`}
+          className={`${sizeClass} object-contain flex-shrink-0`}
           loading="lazy"
           decoding="async"
           fetchPriority="low"

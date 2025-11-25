@@ -42,7 +42,7 @@ export default function Footer() {
               <img
                 src={logos.plv}
                 alt="Pamantasan ng Lungsod ng Valenzuela Logo"
-                className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain transition-transform hover:scale-110"
+                className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain"
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
@@ -56,7 +56,7 @@ export default function Footer() {
               <img
                 src={logos.ceit}
                 alt="College of Engineering and Information Technology Logo"
-                className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain transition-transform hover:scale-110"
+                className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain"
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
