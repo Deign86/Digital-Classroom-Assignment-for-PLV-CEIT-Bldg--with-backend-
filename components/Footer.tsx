@@ -32,18 +32,8 @@ export default function Footer() {
   return (
     <footer className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 py-6 mt-12">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-center gap-4 sm:gap-6">
-          {/* Text - Center */}
-          <div className="text-center space-y-1 sm:space-y-2">
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-              © 2025 Pamantasan ng Lungsod ng Valenzuela
-            </p>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              College of Engineering and Information Technology
-            </p>
-          </div>
-
-          {/* Logos - Right beside text */}
+        <div className="flex flex-col items-center justify-center gap-4">
+          {/* Logos - Top */}
           <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
             {/* PLV Logo */}
             {isLoading ? (
@@ -72,6 +62,16 @@ export default function Footer() {
                 fetchPriority="low"
               />
             ) : null}
+          </div>
+
+          {/* Text - Below logos */}
+          <div className="text-center space-y-1 sm:space-y-2">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
+              © 2025 Pamantasan ng Lungsod ng Valenzuela
+            </p>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              College of Engineering and Information Technology
+            </p>
           </div>
         </div>
       </div>

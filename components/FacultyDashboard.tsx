@@ -28,6 +28,9 @@ const FacultySchedule = React.lazy(() => import('./FacultySchedule'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import { OfflineQueueViewer } from './OfflineQueueViewer';
+import { OfflineNotice } from './OfflineNotice';
+import ErrorBoundary from './ErrorBoundary';
 import type { Notification } from '../lib/notificationService';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { useNotificationContext } from '../contexts/NotificationContext';
@@ -222,10 +225,14 @@ export default function FacultyDashboard({
     const hasRefreshedForSettings = sessionStorage.getItem('settingsTabRefreshed');
     
     if (activeTab === 'settings' && !hasRefreshedForSettings) {
-      console.log('[FacultyDashboard] First time opening settings tab, refreshing page for service worker init...');
-      sessionStorage.setItem('settingsTabRefreshed', 'true');
-      sessionStorage.setItem('returnToTab', 'settings');
-      window.location.reload();
+      if (navigator.onLine) {
+        console.log('[FacultyDashboard] First time opening settings tab, refreshing page for service worker init...');
+        sessionStorage.setItem('settingsTabRefreshed', 'true');
+        sessionStorage.setItem('returnToTab', 'settings');
+        window.location.reload();
+      } else {
+        console.log('[FacultyDashboard] Settings tab opened offline, skipping refresh (will refresh on next online visit)');
+      }
     }
   }, [activeTab]);
 
@@ -415,6 +422,9 @@ export default function FacultyDashboard({
           </div>
 
           <TabsContent value="overview" className="space-y-4 sm:space-y-5 md:space-y-6">
+            {/* Offline Queue Viewer */}
+            <OfflineQueueViewer classrooms={classrooms} />
+
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6 animate-in">
               <div className="transition-all duration-300 hover:-translate-y-1">
@@ -735,56 +745,66 @@ export default function FacultyDashboard({
 
           <TabsContent value="booking">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading booking form…</div>}>
-                <RoomBooking
-                  classrooms={classrooms}
-                  schedules={allSchedules}
-                  bookingRequests={allBookingRequests}
-                  onBookingRequest={handleBookingRequestWithRedirect}
-                  initialData={bookingInitialData ?? undefined}
-                  user={user}
-                  checkConflicts={checkConflicts}
-                />
-              </Suspense>
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading booking form. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading booking form…</div>}>
+                  <RoomBooking
+                    classrooms={classrooms}
+                    schedules={allSchedules}
+                    bookingRequests={allBookingRequests}
+                    onBookingRequest={handleBookingRequestWithRedirect}
+                    initialData={bookingInitialData ?? undefined}
+                    user={user}
+                    checkConflicts={checkConflicts}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="search">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading search…</div>}>
-                <RoomSearch
-                  classrooms={classrooms}
-                  schedules={allSchedules}
-                  bookingRequests={allBookingRequests}
-                  onReserve={handleReserveFromSearch}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading search. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading search…</div>}>
+                  <RoomSearch
+                    classrooms={classrooms}
+                    schedules={allSchedules}
+                    bookingRequests={allBookingRequests}
+                    onReserve={handleReserveFromSearch}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="schedule">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
-                <FacultySchedule
-                  schedules={schedules}
-                  bookingRequests={bookingRequests}
-                  initialTab={scheduleInitialTab}
-                  userId={user?.id}
-                  acknowledgedNotifications={acknowledgedNotifications}
-                  allNotifications={allNotifications}
-                  onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
-                    void handleQuickRebook(initial);
-                  }}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading schedule. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
+                  <FacultySchedule
+                    schedules={schedules}
+                    bookingRequests={bookingRequests}
+                    initialTab={scheduleInitialTab}
+                    userId={user?.id}
+                    acknowledgedNotifications={acknowledgedNotifications}
+                    allNotifications={allNotifications}
+                    onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+                      void handleQuickRebook(initial);
+                    }}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="settings">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading settings…</div>}>
-                <ProfileSettings user={user} />
-              </Suspense>
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading settings. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading settings…</div>}>
+                  <ProfileSettings user={user} />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
         </Tabs>

@@ -32,6 +32,7 @@ import {
   realtimeService
 } from './lib/firebaseService';
 import { notificationService } from './lib/notificationService';
+import { offlineQueueService } from './lib/offlineQueueService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
 import { preloadLogos } from './lib/logoService';
@@ -1526,6 +1527,66 @@ export default function App() {
       logger.warn('Failed to preload logos on mount:', error);
     });
   }, []);
+
+  // Handle offline queue sync when connection is restored
+  useEffect(() => {
+    const handleSyncNeeded = async () => {
+      if (!currentUser) return;
+
+      logger.log('[OfflineQueue] Sync triggered by connection restore');
+
+      try {
+        const results = await offlineQueueService.syncQueue(
+          async (request) => {
+            // Submit booking and return the ID
+            const booking = await bookingRequestService.create(request);
+            return booking.id;
+          },
+          async (classroomId, date, startTime, endTime) => {
+            // Check conflicts
+            return await checkConflicts(classroomId, date, startTime, endTime, true);
+          }
+        );
+
+        // Process results
+        const succeeded = results.filter(r => r.success).length;
+        const failed = results.filter(r => !r.success && !r.conflict).length;
+        const conflicts = results.filter(r => r.conflict).length;
+
+        // Show notifications
+        if (succeeded > 0) {
+          toast.success(`${succeeded} queued ${succeeded === 1 ? 'booking' : 'bookings'} synced successfully`);
+        }
+
+        if (conflicts > 0) {
+          toast.warning(`${conflicts} queued ${conflicts === 1 ? 'booking' : 'bookings'} had conflicts`, {
+            description: 'Check your offline queue for details',
+          });
+        }
+
+        if (failed > 0) {
+          toast.error(`${failed} queued ${failed === 1 ? 'booking' : 'bookings'} failed to sync`, {
+            description: 'Will retry automatically',
+          });
+        }
+
+        // Clear synced requests
+        await offlineQueueService.clearSynced();
+
+        // Notify UI that sync is complete
+        window.dispatchEvent(new CustomEvent('offline-queue-sync-complete'));
+      } catch (error) {
+        logger.error('[OfflineQueue] Sync failed:', error);
+        toast.error('Failed to sync offline bookings');
+      }
+    };
+
+    window.addEventListener('offline-queue-sync-needed', handleSyncNeeded);
+
+    return () => {
+      window.removeEventListener('offline-queue-sync-needed', handleSyncNeeded);
+    };
+  }, [currentUser, checkConflicts]);
 
   useEffect(() => {
     const initializeApp = async () => {

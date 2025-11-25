@@ -33,6 +33,8 @@ const AdminReports = React.lazy(() => import('./AdminReports'));
 const ProfileSettings = React.lazy(() => import('./ProfileSettings'));
 import NotificationBell from './NotificationBell';
 import NotificationCenter from './NotificationCenter';
+import { OfflineNotice } from './OfflineNotice';
+import ErrorBoundary from './ErrorBoundary';
 import type { Notification } from '../lib/notificationService';
 import { useAnnouncer } from './Announcer';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
@@ -101,10 +103,14 @@ export default function AdminDashboard({
     const hasRefreshedForSettings = sessionStorage.getItem('settingsTabRefreshed');
     
     if (activeTab === 'settings' && !hasRefreshedForSettings) {
-      console.log('[AdminDashboard] First time opening settings tab, refreshing page for service worker init...');
-      sessionStorage.setItem('settingsTabRefreshed', 'true');
-      sessionStorage.setItem('returnToTab', 'settings');
-      window.location.reload();
+      if (navigator.onLine) {
+        console.log('[AdminDashboard] First time opening settings tab, refreshing page for service worker init...');
+        sessionStorage.setItem('settingsTabRefreshed', 'true');
+        sessionStorage.setItem('returnToTab', 'settings');
+        window.location.reload();
+      } else {
+        console.log('[AdminDashboard] Settings tab opened offline, skipping refresh (will refresh on next online visit)');
+      }
     }
   }, [activeTab]);
 
@@ -704,63 +710,78 @@ export default function AdminDashboard({
 
           <TabsContent value="classrooms">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading classrooms…</div>}>
-                <ClassroomManagement
-                  classrooms={classrooms}
-                  onClassroomUpdate={onClassroomUpdate}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading classrooms. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading classrooms…</div>}>
+                  <ClassroomManagement
+                    classrooms={classrooms}
+                    onClassroomUpdate={onClassroomUpdate}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="requests">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading requests…</div>}>
-                <RequestApproval
-                  requests={bookingRequests}
-                  onRequestApproval={onRequestApproval}
-                  onCancelApproved={onCancelApprovedBooking}
-                  checkConflicts={checkConflicts}
-                  userId={user?.id}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading requests. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading requests…</div>}>
+                  <RequestApproval
+                    requests={bookingRequests}
+                    onRequestApproval={onRequestApproval}
+                    onCancelApproved={onCancelApprovedBooking}
+                    checkConflicts={checkConflicts}
+                    userId={user?.id}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="signups">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading signups…</div>}>
-                <SignupApproval
-                  signupRequests={signupRequests}
-                  signupHistory={signupHistory}
-                  onSignupApproval={onSignupApproval}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading signups. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading signups…</div>}>
+                  <SignupApproval
+                    signupRequests={signupRequests}
+                    signupHistory={signupHistory}
+                    onSignupApproval={onSignupApproval}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="schedule">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
-                <ScheduleViewer
-                  schedules={schedules}
-                  classrooms={classrooms}
-                  onCancelSchedule={onCancelSchedule}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading schedule. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading schedule…</div>}>
+                  <ScheduleViewer
+                    schedules={schedules}
+                    classrooms={classrooms}
+                    onCancelSchedule={onCancelSchedule}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="reports">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading reports…</div>}>
-                <AdminReports
-                  classrooms={classrooms}
-                  bookingRequests={bookingRequests}
-                  schedules={schedules}
-                  signupRequests={signupRequests}
-                />
-              </Suspense>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading reports. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading reports…</div>}>
+                  <AdminReports
+                    classrooms={classrooms}
+                    bookingRequests={bookingRequests}
+                    schedules={schedules}
+                    signupRequests={signupRequests}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
 
@@ -768,7 +789,9 @@ export default function AdminDashboard({
 
           <TabsContent value="user-management">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading user management…</div>}>
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading user management. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading user management…</div>}>
                 <AdminUserManagement users={users} processingUserId={processingUserId}
                 onDisableUser={async (id: string, lockReason: string) => {
                   // Use admin-specific lock so the account is marked as admin-disabled
@@ -909,14 +932,17 @@ export default function AdminDashboard({
                 }}
                 />
               </Suspense>
+            </ErrorBoundary>
             </div>
           </TabsContent>
 
           <TabsContent value="settings">
             <div className="animate-in">
-              <Suspense fallback={<div className="p-4">Loading settings…</div>}>
-                <ProfileSettings user={user} />
-              </Suspense>
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading settings. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading settings…</div>}>
+                  <ProfileSettings user={user} />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </TabsContent>
         </Tabs>

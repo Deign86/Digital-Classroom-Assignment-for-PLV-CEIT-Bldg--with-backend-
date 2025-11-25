@@ -7,7 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge'; 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, AlertTriangle, CheckCircle, Loader2, WifiOff, CloudOff } from 'lucide-react';
 import { getIconForEquipment } from '../lib/equipmentIcons';
 import { toast } from 'sonner';
 import { useAnnouncer } from './Announcer';
@@ -16,6 +16,7 @@ import Calendar from './ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { generateTimeSlots, convertTo24Hour, convertTo12Hour, getValidEndTimes, isPastBookingTime, isValidSchoolTime, isReasonableBookingDuration } from '../utils/timeUtils';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
+import { offlineQueueService } from '../lib/offlineQueueService';
 import type { User, Classroom, BookingRequest, Schedule } from '../App';
 
 interface RoomBookingProps {
@@ -75,8 +76,24 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showPolicyWarning, setShowPolicyWarning] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [hasLocalConflict, setHasLocalConflict] = useState(false);
 
   const availableClassrooms = classrooms.filter(c => c.isAvailable);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Get minimum date (today) in local timezone to avoid offset issues
   const today = (() => {
@@ -174,47 +191,66 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
 
   // Check for conflicts when form data changes
   React.useEffect(() => {
-    if (formData.classroomId && formData.date && formData.startTime && formData.endTime) {
-      const startTime24 = convertTo24Hour(formData.startTime);
-      const endTime24 = convertTo24Hour(formData.endTime);
-      
-      // Check confirmed conflicts
-      const confirmedConflicts = schedules.filter(schedule => 
-        schedule.classroomId === formData.classroomId &&
-        schedule.date === formData.date &&
-        schedule.status === 'confirmed' &&
-        (
-          (startTime24 >= schedule.startTime && startTime24 < schedule.endTime) ||
-          (endTime24 > schedule.startTime && endTime24 <= schedule.endTime) ||
-          (startTime24 <= schedule.startTime && endTime24 >= schedule.endTime)
-        )
-      );
+    const checkAllConflicts = async () => {
+      if (formData.classroomId && formData.date && formData.startTime && formData.endTime) {
+        const startTime24 = convertTo24Hour(formData.startTime);
+        const endTime24 = convertTo24Hour(formData.endTime);
+        
+        // Check confirmed conflicts
+        const confirmedConflicts = schedules.filter(schedule => 
+          schedule.classroomId === formData.classroomId &&
+          schedule.date === formData.date &&
+          schedule.status === 'confirmed' &&
+          (
+            (startTime24 >= schedule.startTime && startTime24 < schedule.endTime) ||
+            (endTime24 > schedule.startTime && endTime24 <= schedule.endTime) ||
+            (startTime24 <= schedule.startTime && endTime24 >= schedule.endTime)
+          )
+        );
 
-      // Check pending conflicts
-      const pendingConflictReqs = bookingRequests.filter(request => 
-        request.classroomId === formData.classroomId &&
-        request.date === formData.date &&
-        request.status === 'pending' &&
-        (
-          (startTime24 >= request.startTime && startTime24 < request.endTime) ||
-          (endTime24 > request.startTime && endTime24 <= request.endTime) ||
-          (startTime24 <= request.startTime && endTime24 >= request.endTime)
-        )
-      );
+        // Check pending conflicts
+        const pendingConflictReqs = bookingRequests.filter(request => 
+          request.classroomId === formData.classroomId &&
+          request.date === formData.date &&
+          request.status === 'pending' &&
+          (
+            (startTime24 >= request.startTime && startTime24 < request.endTime) ||
+            (endTime24 > request.startTime && endTime24 <= request.endTime) ||
+            (startTime24 <= request.startTime && endTime24 >= request.endTime)
+          )
+        );
 
-      // Set conflicts
-      setConflicts(confirmedConflicts.map(schedule => 
-        `${schedule.facultyName} has reserved this room from ${convertTo12Hour(schedule.startTime)} to ${convertTo12Hour(schedule.endTime)}`
-      ));
+        // Check local offline queue conflicts
+        const localConflict = await offlineQueueService.checkLocalConflicts({
+          facultyId: user.id,
+          facultyName: user.name,
+          classroomId: formData.classroomId,
+          classroomName: classrooms.find(c => c.id === formData.classroomId)?.name || '',
+          date: formData.date,
+          startTime: startTime24,
+          endTime: endTime24,
+          purpose: formData.purpose,
+        });
 
-      setPendingConflicts(pendingConflictReqs.map(request => 
-        `${request.facultyName} has a pending reservation request for this room from ${convertTo12Hour(request.startTime)} to ${convertTo12Hour(request.endTime)}`
-      ));
-    } else {
-      setConflicts([]);
-      setPendingConflicts([]);
-    }
-  }, [formData, schedules, bookingRequests]);
+        setHasLocalConflict(localConflict);
+
+        // Set conflicts
+        setConflicts(confirmedConflicts.map(schedule => 
+          `${schedule.facultyName} has reserved this room from ${convertTo12Hour(schedule.startTime)} to ${convertTo12Hour(schedule.endTime)}`
+        ));
+
+        setPendingConflicts(pendingConflictReqs.map(request => 
+          `${request.facultyName} has a pending reservation request for this room from ${convertTo12Hour(request.startTime)} to ${convertTo12Hour(request.endTime)}`
+        ));
+      } else {
+        setConflicts([]);
+        setPendingConflicts([]);
+        setHasLocalConflict(false);
+      }
+    };
+
+    checkAllConflicts();
+  }, [formData, schedules, bookingRequests, user.id, user.name, classrooms]);
 
   const validate = () => {
     const newErrors = { classroomId: '', date: '', startTime: '', endTime: '', purpose: '' };
@@ -295,22 +331,6 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         return;
       }
 
-      // Re-check for conflicts right before submission
-      const hasConflict = await checkConflicts(
-        formData.classroomId,
-        formData.date,
-        convertTo24Hour(formData.startTime),
-        convertTo24Hour(formData.endTime),
-        true // Also check against past times as a final safeguard
-      );
-
-      if (hasConflict) {
-        toast.error('A conflict was detected. The requested time slot is no longer available.');
-        try { announce('A conflict was detected. The requested time slot is no longer available.', 'assertive'); } catch (e) {}
-        // Optionally, you might want to refresh schedules/bookings here
-        return;
-      }
-
       const selectedClassroom = classrooms.find(c => c.id === formData.classroomId);
       if (!selectedClassroom) {
         toast.error('Selected classroom not found');
@@ -327,6 +347,55 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         endTime: convertTo24Hour(formData.endTime),
         purpose: formData.purpose
       };
+
+      // OFFLINE MODE: Queue the request
+      if (isOffline) {
+        try {
+          await offlineQueueService.queueBooking(request);
+          
+          toast.success('Booking queued for when you\'re back online', {
+            description: 'Your request will be submitted automatically when connection is restored.',
+            icon: <CloudOff className="h-4 w-4" />,
+          });
+          
+          try { 
+            announce('Booking request queued for offline sync. It will be submitted when connection is restored.', 'polite'); 
+          } catch (e) {}
+
+          // Reset form on successful queue
+          setFormData({
+            classroomId: '',
+            date: '',
+            startTime: '',
+            endTime: '',
+            purpose: ''
+          });
+          setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
+          
+          return;
+        } catch (error) {
+          toast.error('Failed to queue booking request');
+          console.error('Queue error:', error);
+          return;
+        }
+      }
+
+      // ONLINE MODE: Normal submission with conflict check
+      // Re-check for conflicts right before submission
+      const hasConflict = await checkConflicts(
+        formData.classroomId,
+        formData.date,
+        convertTo24Hour(formData.startTime),
+        convertTo24Hour(formData.endTime),
+        true // Also check against past times as a final safeguard
+      );
+
+      if (hasConflict) {
+        toast.error('A conflict was detected. The requested time slot is no longer available.');
+        try { announce('A conflict was detected. The requested time slot is no longer available.', 'assertive'); } catch (e) {}
+        // Optionally, you might want to refresh schedules/bookings here
+        return;
+      }
 
       // Execute with network error handling
       const result = await executeWithNetworkHandling(
@@ -354,8 +423,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
         endTime: '',
         purpose: ''
       });
-  setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
-  try { announce('Reservation request submitted. You will be notified when it is approved.', 'polite'); } catch (e) {}
+      setErrors({ classroomId: '', date: '', startTime: '', endTime: '', purpose: '' });
+      try { announce('Reservation request submitted. You will be notified when it is approved.', 'polite'); } catch (e) {}
 
     } finally {
       setIsSubmitting(false);
@@ -848,6 +917,56 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                 )}
               </AnimatePresence>
 
+              {/* Local Queue Conflict Warning */}
+              <AnimatePresence>
+                {hasLocalConflict && (
+                  <motion.div 
+                    className="flex items-center space-x-2 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+                    initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, -10, 10, -10, 0] }}
+                      transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 1 }}
+                    >
+                      <CloudOff className="h-5 w-5 text-orange-600" />
+                    </motion.div>
+                    <div>
+                      <p className="text-sm font-medium text-orange-800">Offline Queue Conflict</p>
+                      <p className="text-sm text-orange-700">
+                        You already have a queued booking for this time slot waiting to sync.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Offline Mode Warning */}
+              <AnimatePresence>
+                {isOffline && formData.classroomId && formData.date && formData.startTime && formData.endTime && (
+                  <motion.div 
+                    className="flex items-center space-x-2 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+                    initial={{ opacity: 0, scale: 0.9, x: -20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <WifiOff className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">Offline Mode</p>
+                      <p className="text-sm text-blue-700">
+                        You're currently offline. Your booking will be queued and submitted when connection is restored.
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1 italic">
+                        Note: Conflict detection is limited offline. Your request may be rejected if a conflict is detected during sync.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Pending Conflicts Warning */}
               <AnimatePresence>
                 {pendingConflicts.length > 0 && (
@@ -977,8 +1096,8 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                   <Button 
-                    type="submit" 
-                    disabled={isSubmitting || conflicts.length > 0 || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim() || Object.values(errors).some(e => e)}
+                    type="submit"
+                    disabled={isSubmitting || (conflicts.length > 0 && !isOffline) || hasLocalConflict || !formData.classroomId || !formData.date || !formData.startTime || !formData.endTime || !formData.purpose.trim() || Object.values(errors).some(e => e)}
                     className="w-full sm:w-auto transition-all duration-200 disabled:opacity-50"
                   >
                     {isSubmitting ? (
@@ -989,12 +1108,12 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
                         >
                           <Clock className="h-4 w-4 mr-2" />
                         </motion.div>
-                        Submitting...
+                        {isOffline ? 'Queueing...' : 'Submitting...'}
                       </>
                     ) : (
                       <>
-                        <CalendarIcon className="h-4 w-4 mr-2" />
-                        Submit Reservation Request
+                        {isOffline ? <CloudOff className="h-4 w-4 mr-2" /> : <CalendarIcon className="h-4 w-4 mr-2" />}
+                        {isOffline ? 'Queue Reservation (Offline)' : 'Submit Reservation Request'}
                       </>
                     )}
                   </Button>
