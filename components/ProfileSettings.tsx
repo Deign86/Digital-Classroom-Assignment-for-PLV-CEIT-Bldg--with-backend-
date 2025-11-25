@@ -127,6 +127,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     if (!profileData.name.trim()) {
       newErrors.name = 'Name is required';
       isValid = false;
+    } else if (!/^[a-zA-Z\s'-]+$/.test(profileData.name.trim())) {
+      newErrors.name = "No special characters except spaces, hyphens (-), apostrophes (')";
+      isValid = false;
     } else if (profileData.name.trim().length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
       isValid = false;
@@ -614,7 +617,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
                       placeholder="Enter your full name"
                       value={profileData.name}
                       onChange={(e) => {
-                        setProfileData(prev => ({ ...prev, name: e.target.value }));
+                        // Only allow letters, spaces, hyphens, and apostrophes
+                        const filtered = e.target.value.replace(/[^a-zA-Z\s'-]/g, '');
+                        setProfileData(prev => ({ ...prev, name: filtered }));
                         if (profileErrors.name) {
                           setProfileErrors(prev => ({ ...prev, name: '' }));
                         }
