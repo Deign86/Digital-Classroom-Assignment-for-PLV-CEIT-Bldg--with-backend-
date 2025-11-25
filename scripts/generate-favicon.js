@@ -27,10 +27,14 @@ async function generateFavicon() {
       .toFile(outputPath);
 
     console.log('✓ Favicon generated successfully at public/favicon.ico');
+    process.exit(0);
   } catch (error) {
     console.error('Error generating favicon:', error);
     process.exit(1);
   }
 }
 
-generateFavicon();
+generateFavicon().catch((error) => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});
