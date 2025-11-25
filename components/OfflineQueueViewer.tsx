@@ -28,9 +28,16 @@ import type { Classroom } from '../App';
 
 interface OfflineQueueViewerProps {
   classrooms: Classroom[];
+  onRetryBooking?: (bookingData: {
+    classroomId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    purpose: string;
+  }) => void;
 }
 
-export function OfflineQueueViewer({ classrooms }: OfflineQueueViewerProps) {
+export function OfflineQueueViewer({ classrooms, onRetryBooking }: OfflineQueueViewerProps) {
   const [queuedRequests, setQueuedRequests] = useState<QueuedBookingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +77,29 @@ export function OfflineQueueViewer({ classrooms }: OfflineQueueViewerProps) {
     } catch (error) {
       toast.error('Failed to remove queued booking');
       console.error('Remove error:', error);
+    }
+  };
+
+  const handleRetryConflict = async (queued: QueuedBookingRequest) => {
+    if (!onRetryBooking) return;
+
+    // Remove from queue first
+    try {
+      await offlineQueueService.removeQueuedRequest(queued.queueId);
+      
+      // Call the callback to switch to booking tab with pre-filled data
+      onRetryBooking({
+        classroomId: queued.bookingData.classroomId,
+        date: queued.bookingData.date,
+        startTime: queued.bookingData.startTime,
+        endTime: queued.bookingData.endTime,
+        purpose: queued.bookingData.purpose
+      });
+      
+      toast.info('Booking form opened with your previous data. Please adjust and resubmit.');
+    } catch (error) {
+      console.error('Error retrying booking:', error);
+      toast.error('Failed to retry booking');
     }
   };
 
@@ -178,15 +208,27 @@ export function OfflineQueueViewer({ classrooms }: OfflineQueueViewerProps) {
                     </p>
                   </div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemove(queued.queueId)}
-                    disabled={queued.queueStatus === 'syncing'}
-                    className="ml-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    {queued.queueStatus === 'conflict' && onRetryBooking && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRetryConflict(queued)}
+                        className="ml-2"
+                      >
+                        Retry Booking
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemove(queued.queueId)}
+                      disabled={queued.queueStatus === 'syncing'}
+                      className="ml-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t">

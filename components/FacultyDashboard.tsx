@@ -213,6 +213,12 @@ export default function FacultyDashboard({
     }
   };
 
+  // Handle conflict retry from offline queue
+  const handleConflictRetry = (bookingData: { classroomId: string; date: string; startTime: string; endTime: string; purpose: string }) => {
+    setBookingInitialData(bookingData);
+    setActiveTab('booking');
+  };
+
   // Tab persistence removed: no storage side-effects for active tab
 
   // Scroll to top when component mounts
@@ -423,7 +429,10 @@ export default function FacultyDashboard({
 
           <TabsContent value="overview" className="space-y-4 sm:space-y-5 md:space-y-6">
             {/* Offline Queue Viewer */}
-            <OfflineQueueViewer classrooms={classrooms} />
+            <OfflineQueueViewer 
+              classrooms={classrooms} 
+              onRetryBooking={handleConflictRetry}
+            />
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6 animate-in">
