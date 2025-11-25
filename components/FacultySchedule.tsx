@@ -25,7 +25,7 @@ interface FacultyScheduleProps {
   initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected';
   onCancelSelected?: (scheduleId: string) => Promise<void> | void;
   // Callback when user chooses to "Quick Rebook" — attempt one-click submission
-  onQuickRebook?: (initialData: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => void;
+  onQuickRebook?: (initialData: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => void;
   userId?: string;
   acknowledgedNotifications?: Notification[];
   allNotifications?: Notification[];
@@ -53,9 +53,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const [attemptedCancelSchedule, setAttemptedCancelSchedule] = useState<Schedule | null>(null);
   // Quick rebook confirmation dialog state
   const [quickDialogOpen, setQuickDialogOpen] = useState(false);
-  const [quickDialogData, setQuickDialogData] = useState<{ classroomId: string; date: string; startTime: string; endTime: string; purpose?: string } | null>(null);
+  const [quickDialogData, setQuickDialogData] = useState<{ classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string } | null>(null);
 
-  const openQuickDialog = (data: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+  const openQuickDialog = (data: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
     setQuickDialogData(data);
     setQuickDialogOpen(true);
   };
@@ -215,6 +215,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                     try { announce?.('Attempting quick rebook', 'polite'); } catch (e) {}
                     openQuickDialog({
                       classroomId: schedule.classroomId,
+                      classroomName: schedule.classroomName,
                       date: schedule.date,
                       startTime: convertTo12Hour(schedule.startTime),
                       endTime: convertTo12Hour(schedule.endTime),
@@ -312,6 +313,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                 try { announce?.('Attempting quick rebook', 'polite'); } catch (e) {}
                 openQuickDialog({
                   classroomId: request.classroomId,
+                  classroomName: request.classroomName,
                   date: request.date,
                   startTime: convertTo12Hour(request.startTime),
                   endTime: convertTo12Hour(request.endTime),
@@ -463,7 +465,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4 space-y-2">
-              <p className="text-sm"><strong>Classroom:</strong> {quickDialogData?.classroomId}</p>
+              <p className="text-sm"><strong>Classroom:</strong> {quickDialogData?.classroomName}</p>
               <p className="text-sm"><strong>Date:</strong> {quickDialogData?.date}</p>
               <p className="text-sm"><strong>Time:</strong> {quickDialogData ? `${quickDialogData.startTime} - ${quickDialogData.endTime}` : ''}</p>
               {quickDialogData?.purpose && <p className="text-sm"><strong>Purpose:</strong> {quickDialogData.purpose}</p>}

@@ -147,7 +147,7 @@ export default function FacultyDashboard({
   }, [externalInitialData, onExternalInitialDataConsumed]);
 
   // Quick rebook: attempt to submit immediately, otherwise fall back to opening the booking form with prefill
-  const handleQuickRebook = async (initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+  const handleQuickRebook = async (initial: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
     if (!initial || !initial.classroomId || !initial.date || !initial.startTime || !initial.endTime) {
       toast.error('Missing booking information for quick rebook.');
       setBookingInitialData(initial);
@@ -194,7 +194,7 @@ export default function FacultyDashboard({
         facultyId: user.id,
         facultyName: user.name,
         classroomId: initial.classroomId,
-        classroomName: (classrooms.find(c => c.id === initial.classroomId)?.name) || '',
+        classroomName: initial.classroomName,
         date: targetDate,
         startTime: start24,
         endTime: end24,
@@ -798,7 +798,7 @@ export default function FacultyDashboard({
                     userId={user?.id}
                     acknowledgedNotifications={acknowledgedNotifications}
                     allNotifications={allNotifications}
-                    onQuickRebook={(initial: { classroomId: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
+                    onQuickRebook={(initial: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
                       void handleQuickRebook(initial);
                     }}
                   />
