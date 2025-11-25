@@ -33,13 +33,15 @@ export function useDarkMode() {
         const root = document.documentElement;
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-        const applyTheme = () => {
+        const applyTheme = (isDarkMode?: boolean) => {
             if (theme === 'dark') {
                 root.classList.add('smart-dark-mode');
             } else if (theme === 'light') {
                 root.classList.remove('smart-dark-mode');
             } else if (theme === 'system') {
-                if (mediaQuery.matches) {
+                // Use provided value or read current state
+                const prefersDark = isDarkMode !== undefined ? isDarkMode : mediaQuery.matches;
+                if (prefersDark) {
                     root.classList.add('smart-dark-mode');
                 } else {
                     root.classList.remove('smart-dark-mode');
@@ -52,10 +54,11 @@ export function useDarkMode() {
         localStorage.setItem('smartDarkMode', theme);
         console.log('[useDarkMode] Saved to localStorage:', theme);
 
-        // Listener for system changes
-        const handleChange = () => {
+        // Listener for system changes - pass the event's matches value
+        const handleChange = (e: MediaQueryListEvent) => {
             if (theme === 'system') {
-                applyTheme();
+                console.log('[useDarkMode] System theme changed to:', e.matches ? 'dark' : 'light');
+                applyTheme(e.matches);
             }
         };
 
