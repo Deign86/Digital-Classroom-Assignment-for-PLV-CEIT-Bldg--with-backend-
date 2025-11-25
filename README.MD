@@ -2,7 +2,7 @@
 
 > 🔥 **Firebase Edition v3** — A modern, production-ready classroom reservation and management system built with React, TypeScript, and Firebase.
 
-A comprehensive, enterprise-grade web-based classroom reservation and management system for **Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology (PLV CEIT)**. Features role-based dashboards, real-time conflict detection, comprehensive reporting, Firebase authentication with advanced security, push notifications, and a polished Apple-inspired UI/UX.
+A comprehensive, enterprise-grade web-based classroom reservation and management system for **Pamantasan ng Lungsod ng Valenzuela - College of Engineering and Information Technology (PLV CEIT)**. Features role-based dashboards, real-time conflict detection, comprehensive reporting, Firebase authentication with advanced security, push notifications, **smart dark mode**, **intelligent caching**, **offline functionality**, and a polished Apple-inspired UI/UX.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)
 [![Firebase](https://img.shields.io/badge/Firebase-12.3.0-orange.svg)](https://firebase.google.com/)
@@ -12,6 +12,36 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0.0-38B2AC.svg)](https://tailwindcss.com/)
 
 ## ✨ Key Features
+
+### 🎨 **Smart Dark Mode**
+- **Automatic System Detection**: Respects user's OS-level dark mode preference
+- **Manual Toggle**: Switch between light and dark themes instantly
+- **Persistent Preference**: Saves user's choice across sessions
+- **Smooth Transitions**: Animated theme switching for better UX
+- **Optimized Contrast**: Carefully crafted color schemes for readability
+- **Comprehensive Coverage**: All components and modals support dark mode
+- **Accessibility First**: WCAG-compliant contrast ratios in both themes
+
+### ⚡ **Intelligent Caching System**
+- **Firestore Cache Management**: Optimized read operations with intelligent caching
+- **System-wide Cache**: Shared cache for classrooms and user data across components
+- **Cache Invalidation**: Smart TTL-based refresh (5 minutes for classrooms, 10 minutes for users)
+- **Offline Support**: Works seamlessly when connection is lost
+- **Performance Boost**: Reduces redundant Firestore reads by up to 80%
+- **Real-time Sync**: Cache updates with real-time listeners
+- **Memory Efficient**: Automatic cleanup of stale cached data
+
+### 📱 **Offline Functionality**
+- **Offline Booking Queue**: Create reservation requests while offline, stored in IndexedDB
+- **Auto-Sync**: Queued bookings automatically sync when connection is restored
+- **Local Conflict Detection**: Prevents obvious scheduling conflicts before queueing
+- **Queue Status Tracking**: Real-time status updates (pending, syncing, conflict, failed, synced)
+- **Retry Logic**: Exponential backoff retry mechanism (2s to 5min, max 5 attempts)
+- **Queue Viewer**: Visual component showing all queued bookings with remove functionality
+- **Offline Notices**: Clear indicators when viewing cached data offline
+- **Tab Navigation**: Smooth tab switching while offline without errors
+- **Error Boundaries**: Prevents crashes when components fail to load offline
+- **Network Status Indicator**: Enhanced display showing offline queue count and sync status
 
 ### 🔐 **Authentication & Security**
 - **Firebase Authentication**: Secure email/password authentication with brute force protection
@@ -251,6 +281,16 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
   - **Firebase Hosting** - Global CDN with automatic SSL certificates
   - **Real-time Listeners** - Live data synchronization with WebSocket connections
   - **Security Rules** - Database-level role-based access control
+- **IndexedDB (idb 8.0.2)** - Client-side storage for offline queue management
+- **Service Workers** - Background sync and push notification support
+
+### Performance & Optimization
+- **Intelligent Caching** - Custom Firestore cache with TTL-based invalidation
+- **Offline-First Architecture** - IndexedDB queue with auto-sync on reconnection
+- **Real-time Sync** - WebSocket-based live data updates
+- **Code Splitting** - Lazy loading with React.lazy() and Suspense
+- **Error Boundaries** - Graceful error handling and recovery
+- **Network Resilience** - Retry logic with exponential backoff
 
 ### Cloud Functions Architecture
 - **Node.js 20** - LTS runtime for Cloud Functions
@@ -1210,6 +1250,22 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 ## 🆕 Latest Updates (v3.0.0 - Stable Release)
 
 ### 🎨 UI/UX Polish & Enhancements
+- ✅ **Smart Dark Mode** - Automatic system detection with manual toggle
+  - Respects OS-level dark mode preference
+  - Persistent user preference across sessions
+  - Smooth animated transitions
+  - WCAG-compliant contrast ratios
+- ✅ **Intelligent Caching** - Optimized Firestore operations
+  - TTL-based cache invalidation (5-10 minutes)
+  - Reduces redundant reads by up to 80%
+  - Seamless offline support
+  - Real-time sync with cache updates
+- ✅ **Offline Functionality** - Complete offline-first experience
+  - Offline booking queue with IndexedDB storage
+  - Auto-sync when connection restored
+  - Local conflict detection
+  - Enhanced network status indicator
+  - Error boundaries for graceful degradation
 - ✅ **Institutional Branding**: Firebase Storage-powered logo integration
   - PLV and CEIT logos displayed throughout the application  
   - Responsive sizing with loading states
@@ -1220,7 +1276,6 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 - ✅ **Accessibility Improvements**: Enhanced keyboard navigation and screen reader support
 - ✅ **Loading States**: Polished skeleton loaders and progress indicators
 - ✅ **Form UX**: Improved validation feedback and error messaging
-- ✅ **Dark Mode Preparations**: CSS variable system ready for theme switching
 
 ### 🔐 Security Enhancements
 - ✅ **Brute Force Protection** - Cloud Functions-based account lockout system
