@@ -1615,11 +1615,11 @@ export const bookingRequestOnUpdateNotifyAdmins = onDocumentUpdated('bookingRequ
     // Determine the actor id (if any) so we can attribute actions and avoid self-notifications
     const actorId = (afterData && afterData.updatedBy) || (beforeData && beforeData.updatedBy) || null;
 
-    // Determine actor info to attribute actions properly (admin vs faculty)
+    // Determine actor info to attribute actions properly (admin vs faculty vs system)
     const firestoreDb = admin.firestore();
     let actorName: string | null = null;
     let actorRole: string | null = null;
-    if (actorId && typeof actorId === 'string') {
+    if (actorId && typeof actorId === 'string' && actorId !== 'system') {
       try {
         const actorDoc = await firestoreDb.collection('users').doc(actorId).get();
         if (actorDoc.exists) {
@@ -1633,7 +1633,10 @@ export const bookingRequestOnUpdateNotifyAdmins = onDocumentUpdated('bookingRequ
     }
 
     let shortMessage: string;
-    if (actorRole === 'admin' && actorName) {
+    if (actorId === 'system') {
+      // System-triggered action (e.g., auto-expiration)
+      shortMessage = `The system marked ${facultyName}'s request for ${classroomName} on ${date} ${startTime}${endTime ? `-${endTime}` : ''} as ${afterData.status}: ${shortChangeSummary}`;
+    } else if (actorRole === 'admin' && actorName) {
       // Admin performed the action; attribute to admin and mention the affected faculty
       shortMessage = `Admin ${actorName} updated the request for ${facultyName} (${classroomName} on ${date} ${startTime}${endTime ? `-${endTime}` : ''}): ${shortChangeSummary}`;
     } else {
