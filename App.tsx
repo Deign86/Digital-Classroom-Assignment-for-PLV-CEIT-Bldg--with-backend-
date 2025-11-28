@@ -540,6 +540,11 @@ export default function App() {
           duration: 4000,
         });
         
+        // Clear the URL hash (e.g., #tab=login) after successful login
+        if (window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        
         // Return success with optional password leak warning
         return { 
           success: true, 
