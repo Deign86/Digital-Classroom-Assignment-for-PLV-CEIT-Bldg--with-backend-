@@ -81,7 +81,15 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
   const { announce } = useAnnouncer();
   const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management'] as const;
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  
+  // Read initial tab from URL path or default to overview
+  const getInitialTab = (): string => {
+    const path = window.location.pathname.split('/').filter(Boolean);
+    const lastSegment = path[path.length - 1];
+    return allowedTabs.includes(lastSegment as any) ? lastSegment : 'overview';
+  };
+  
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab());b());
   const [showNotifications, setShowNotifications] = useState(false);
   // Use the same notification render strategy as FacultyDashboard: fixed top-right panel
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
@@ -91,6 +99,30 @@ export default function AdminDashboard({
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
   // Track requests being hidden during minimum loader display time
   const [hiddenRequestIds, setHiddenRequestIds] = useState<Set<string>>(new Set());
+  
+  // Sync URL with active tab
+  const updateURL = (tab: string) => {
+    const newPath = `/admin/${tab}`;
+    if (window.location.pathname !== newPath) {
+      window.history.pushState(null, '', newPath);
+    }
+  };
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const newTab = getInitialTab();
+      setActiveTab(newTab);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Update URL when tab changes
+  useEffect(() => {
+    updateURL(activeTab);
+  }, [activeTab]);
   
 
   // Scroll to top when component mounts

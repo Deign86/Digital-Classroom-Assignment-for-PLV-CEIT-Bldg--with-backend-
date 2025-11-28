@@ -73,10 +73,40 @@ export default function FacultyDashboard({
   const allowedTabs = ['overview','booking','search','schedule','settings'] as const;
   type FacultyTab = typeof allowedTabs[number];
 
-  // Default to overview; don't persist last-active tab across logout/login.
-  const [activeTab, setActiveTab] = useState<FacultyTab>('overview');
+  // Read initial tab from URL path or default to overview
+  const getInitialTab = (): FacultyTab => {
+    const path = window.location.pathname.split('/').filter(Boolean);
+    const lastSegment = path[path.length - 1];
+    return allowedTabs.includes(lastSegment as FacultyTab) ? lastSegment as FacultyTab : 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState<FacultyTab>(getInitialTab());
 
   const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
+
+  // Sync URL with active tab
+  const updateURL = (tab: FacultyTab) => {
+    const newPath = `/faculty/${tab}`;
+    if (window.location.pathname !== newPath) {
+      window.history.pushState(null, '', newPath);
+    }
+  };
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const newTab = getInitialTab();
+      setActiveTab(newTab);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Update URL when tab changes
+  useEffect(() => {
+    updateURL(activeTab);
+  }, [activeTab]);
 
   // When user clicks "Book Similar", we store initial data and switch to booking tab
   const [bookingInitialData, setBookingInitialData] = useState<{
@@ -95,7 +125,7 @@ export default function FacultyDashboard({
   // Wrap onBookingRequest to redirect to overview tab after successful submission
   const handleBookingRequestWithRedirect = async (request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>, suppressToast?: boolean) => {
     await onBookingRequest(request, suppressToast);
-    // Redirect to overview tab after successful booking
+    // Redirect to overview tab after successful booking (URL will update via useEffect)
     setActiveTab('overview');
   };
 

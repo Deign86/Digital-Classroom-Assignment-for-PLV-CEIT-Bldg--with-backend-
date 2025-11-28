@@ -540,10 +540,9 @@ export default function App() {
           duration: 4000,
         });
         
-        // Clear the URL hash (e.g., #tab=login) after successful login
-        if (window.location.hash) {
-          window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
+        // Set the appropriate dashboard URL based on user role
+        const dashboardPath = user.role === 'admin' ? '/admin/overview' : '/faculty/overview';
+        window.history.replaceState(null, '', dashboardPath);
         
         // Return success with optional password leak warning
         return { 
@@ -882,6 +881,9 @@ export default function App() {
       setSchedules([]);
       setUsers([]);
 
+      // Reset URL to root path
+      window.history.replaceState(null, '', '/');
+
       logger.log('✅ User state cleared');
     } catch (err) {
       logger.error('❌ Logout error:', err);
@@ -899,6 +901,9 @@ export default function App() {
       setSignupRequests([]);
       setSchedules([]);
       setUsers([]);
+
+      // Reset URL to root path even on error
+      window.history.replaceState(null, '', '/');
     }
   }, [currentUser]);
 
@@ -925,12 +930,18 @@ export default function App() {
       setSchedules([]);
       setUsers([]);
       setShowSessionWarning(false);
+
+      // Reset URL to root path
+      window.history.replaceState(null, '', '/');
     } catch (err) {
       logger.error('❌ Idle timeout logout error:', err);
       // Force logout even if service fails
       sessionStorage.setItem('sessionExpired', 'true');
       setCurrentUser(null);
       setShowSessionWarning(false);
+
+      // Reset URL to root path even on error
+      window.history.replaceState(null, '', '/');
     }
   }, []);
 
