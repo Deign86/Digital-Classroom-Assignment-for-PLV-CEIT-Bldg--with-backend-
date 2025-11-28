@@ -89,7 +89,7 @@ export default function AdminDashboard({
     return allowedTabs.includes(lastSegment as any) ? lastSegment : 'overview';
   };
   
-  const [activeTab, setActiveTab] = useState<string>(getInitialTab());b());
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab());
   const [showNotifications, setShowNotifications] = useState(false);
   // Use the same notification render strategy as FacultyDashboard: fixed top-right panel
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
