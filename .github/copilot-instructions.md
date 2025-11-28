@@ -1,4 +1,4 @@
-# Copilot Instructions for Digital Classroom Assignment System (PLV CEIT)
+# Copilot Instructions for Digital Classroom Reservation System (PLV CEIT)
 
 ## Project Overview
 - **Purpose:** Modern classroom reservation and management for PLV CEIT, with role-based dashboards (Admin/Faculty), real-time conflict detection, comprehensive reporting, and security features.

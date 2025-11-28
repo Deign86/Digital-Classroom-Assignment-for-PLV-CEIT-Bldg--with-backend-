@@ -1,8 +1,8 @@
 # Firebase Deployment Guide for Developers
 
-**PLV CEIT Digital Classroom Assignment System**
+**PLV CEIT Digital Classroom Reservation System**
 
-This comprehensive guide will help developers set up their own Firebase backend for the PLV CEIT Digital Classroom Assignment System.
+This comprehensive guide will help developers set up their own Firebase backend for the PLV CEIT Digital Classroom Reservation System.
 
 ---
 

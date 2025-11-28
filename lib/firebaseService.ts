@@ -46,7 +46,7 @@ import { systemCache, CACHE_NAMESPACES, CACHE_TTL } from './systemCache';
 import { invalidateRelated } from './cachedFirestore';
 
 /**
- * Firebase Service - Main data layer for the Digital Classroom Assignment system.
+ * Firebase Service - Main data layer for the Digital Classroom Reservation system.
  * 
  * This service provides a complete abstraction layer over Firebase Authentication
  * and Firestore, offering:

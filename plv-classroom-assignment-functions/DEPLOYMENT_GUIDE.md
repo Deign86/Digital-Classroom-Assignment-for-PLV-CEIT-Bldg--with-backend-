@@ -1,7 +1,7 @@
 # Cloud Functions Deployment Guide
 
 ## Overview
-This directory contains Firebase Cloud Functions that provide backend functionality for the PLV Classroom Assignment System, including:
+This directory contains Firebase Cloud Functions that provide backend functionality for the PLV Classroom Reservation System, including:
 
 1. **Brute Force Protection** - Tracks failed login attempts and locks accounts
 2. **User Account Management** - Admin-level user deletion capabilities

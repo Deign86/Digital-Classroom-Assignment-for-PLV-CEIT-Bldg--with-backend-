@@ -283,7 +283,7 @@ export const cleanupAcknowledgedNotifications = scheduler.onSchedule(
 );
 
 /**
- * Firebase Cloud Functions for PLV Classroom Assignment System
+ * Firebase Cloud Functions for PLV Classroom Reservation System
  * Provides admin-level user management capabilities using Firebase Admin SDK
  */
 

@@ -221,7 +221,7 @@ export default function AdminDashboard({
               
               <div className="min-w-0 flex-1">
                 <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 truncate">PLV CEIT Admin Dashboard</h1>
-                <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">Classroom Assignment Management System</p>
+                <p className="text-xs sm:text-sm md:text-base text-gray-600 hidden sm:block truncate">Classroom Reservation Management System</p>
               </div>
             </div>
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 lg:space-x-4 flex-shrink-0">

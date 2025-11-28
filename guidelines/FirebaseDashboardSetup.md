@@ -1,6 +1,6 @@
-# Connecting the Digital Classroom Assignment App to Firebase
+# Connecting the Digital Classroom Reservation App to Firebase
 
-This comprehensive guide walks you through setting up Firebase for the Digital Classroom Assignment System. You'll learn how to create a Firebase project, configure authentication, set up Firestore, configure security rules, and connect your existing React + Vite codebase to Firebase.
+This comprehensive guide walks you through setting up Firebase for the Digital Classroom Reservation System. You'll learn how to create a Firebase project, configure authentication, set up Firestore, configure security rules, and connect your existing React + Vite codebase to Firebase.
 
 ## 📋 Table of Contents
 
@@ -154,7 +154,7 @@ Before you begin, ensure you have:
 
 ## 7. Configure Firestore Security Rules
 
-Proper security rules are crucial for protecting your data. Here are production-ready rules for the Digital Classroom Assignment System:
+Proper security rules are crucial for protecting your data. Here are production-ready rules for the Digital Classroom Reservation System:
 
 1. **Navigate to Rules**
    - In Firestore Database, click the **Rules** tab
@@ -496,7 +496,7 @@ Having issues? Check out the comprehensive troubleshooting guide:
 
 ## 🎉 Setup Complete!
 
-Your Digital Classroom Assignment System is now connected to Firebase! You can:
+Your Digital Classroom Reservation System is now connected to Firebase! You can:
 
 ✅ **Manage everything from Firebase Console**
 - View and edit data in Firestore

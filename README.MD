@@ -1,4 +1,4 @@
-# Digital Classroom Assignment System
+# Digital Classroom Reservation System
 
 > 🔥 **Firebase Edition v3** — A modern, production-ready classroom reservation and management system built with React, TypeScript, and Firebase.
 
@@ -1201,7 +1201,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 ## 👨‍💻 Developer Information
 
 **Built by**: [Deign](https://github.com/Deign86)  
-**Repository**: [GitHub - Digital Classroom Assignment System](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  
+**Repository**: [GitHub - Digital Classroom Reservation System](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)  
 **Latest Stable**: `stable-v3` (merged to master)  
 **Contact**: Available via GitHub Issues and Pull Requests
 

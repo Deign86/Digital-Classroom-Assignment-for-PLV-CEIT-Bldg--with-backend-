@@ -1,5 +1,5 @@
 // Firebase Messaging Service Worker for Push Notifications
-// This service worker handles background push notifications for the PLV CEIT Digital Classroom Assignment System
+// This service worker handles background push notifications for the PLV CEIT Digital Classroom Reservation System
 
 // Import Firebase scripts (must be at the top, before any other code)
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
