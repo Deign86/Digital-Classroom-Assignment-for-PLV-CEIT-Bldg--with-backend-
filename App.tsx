@@ -19,6 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { buttonVariants } from './components/ui/button';
 import { cn } from './components/ui/utils';
 import useIdleTimeout from './hooks/useIdleTimeout';
+import { useDarkMode } from './hooks/useDarkMode';
 import { isPastBookingTime, convertTo12Hour } from './utils/timeUtils';
 import { executeWithNetworkHandling } from './lib/networkErrorHandler';
 import {
@@ -143,6 +144,9 @@ export interface Schedule {
 }
 
 export default function App() {
+  // Initialize theme tracking globally (affects both login page and dashboard)
+  useDarkMode();
+  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [bookingRequests, setBookingRequests] = useState<BookingRequest[]>([]);
