@@ -119,6 +119,16 @@ export default function AdminDashboard({
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Validate URL matches role - redirect if user manually navigated to wrong role URL
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/faculty')) {
+      // Admin user trying to access faculty URL - redirect to admin overview
+      window.history.replaceState(null, '', '/admin/overview');
+      setActiveTab('overview');
+    }
+  }, []);
+
   // Update URL when tab changes
   useEffect(() => {
     updateURL(activeTab);
