@@ -29,13 +29,18 @@ interface RequestApprovalProps {
   onHighlightConsumed?: () => void;
 }
 
-// Utility function to scroll to and highlight an element
+// Utility function to scroll to and highlight an element with a blue glow
 const highlightAndScroll = (el: HTMLElement | null) => {
   if (!el) return;
   try {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50', 'transition-all', 'duration-300');
-    setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50'), 2500);
+    // Apply blue glow effect that works in both light and dark modes
+    el.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.4)';
+    el.style.borderRadius = '0.5rem';
+    el.style.transition = 'box-shadow 0.3s ease-in-out';
+    setTimeout(() => {
+      el.style.boxShadow = '';
+    }, 2500);
   } catch (e) {
     // ignore
   }
