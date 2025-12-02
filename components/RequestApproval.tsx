@@ -23,13 +23,23 @@ interface RequestApprovalProps {
   onCancelApproved?: (requestId: string, reason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
   userId?: string;
+  initialTab?: 'pending' | 'approved' | 'rejected' | 'expired';
+  onInitialTabConsumed?: () => void;
 }
 
-export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts, userId }: RequestApprovalProps) {
+export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts, userId, initialTab, onInitialTabConsumed }: RequestApprovalProps) {
   const STORAGE_KEY_BASE = 'plv:requestApproval:activeTab';
   const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
   const allowedTabs = ['pending', 'approved', 'rejected', 'expired'];
-  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'pending', allowedTabs));
+  const [activeTab, setActiveTab] = useState<string>(() => initialTab || readPreferredTab(STORAGE_KEY, 'pending', allowedTabs));
+
+  // Handle external initialTab changes (e.g., from notification navigation)
+  useEffect(() => {
+    if (initialTab && allowedTabs.includes(initialTab)) {
+      setActiveTab(initialTab);
+      onInitialTabConsumed?.();
+    }
+  }, [initialTab, onInitialTabConsumed]);
 
   useEffect(() => {
     try {

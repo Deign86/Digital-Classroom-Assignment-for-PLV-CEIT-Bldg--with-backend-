@@ -93,6 +93,8 @@ export default function AdminDashboard({
   const [showNotifications, setShowNotifications] = useState(false);
   // Use the same notification render strategy as FacultyDashboard: fixed top-right panel
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
+  // Track initial tab for RequestApproval when navigating from notifications
+  const [requestsInitialTab, setRequestsInitialTab] = useState<'pending' | 'approved' | 'rejected' | 'expired' | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   // Per-request processing id to prevent double-approve/reject clicks
@@ -183,9 +185,12 @@ export default function AdminDashboard({
     } else if (notification.type === 'classroom_disabled') {
       setActiveTab('classrooms');
     } else if (notification.type === 'info') {
-      // Generic info notifications - show overview or most relevant tab
-      // If there's a bookingRequestId, show requests tab, otherwise overview
-      if (notification.bookingRequestId) {
+      // Check if this is an expired booking notification
+      const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
+      if (isExpiredNotification && notification.bookingRequestId) {
+        setRequestsInitialTab('expired');
+        setActiveTab('requests');
+      } else if (notification.bookingRequestId) {
         setActiveTab('requests');
       } else {
         setActiveTab('overview');
@@ -786,6 +791,8 @@ export default function AdminDashboard({
                     onCancelApproved={onCancelApprovedBooking}
                     checkConflicts={checkConflicts}
                     userId={user?.id}
+                    initialTab={requestsInitialTab ?? undefined}
+                    onInitialTabConsumed={() => setRequestsInitialTab(null)}
                   />
                 </Suspense>
               </ErrorBoundary>
