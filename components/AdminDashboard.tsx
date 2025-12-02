@@ -182,6 +182,17 @@ export default function AdminDashboard({
       setActiveTab('schedule');
     } else if (notification.type === 'classroom_disabled') {
       setActiveTab('classrooms');
+    } else if (notification.type === 'info') {
+      // Generic info notifications - show overview or most relevant tab
+      // If there's a bookingRequestId, show requests tab, otherwise overview
+      if (notification.bookingRequestId) {
+        setActiveTab('requests');
+      } else {
+        setActiveTab('overview');
+      }
+    } else {
+      // Fallback for any other notification types - show overview
+      setActiveTab('overview');
     }
   };
 

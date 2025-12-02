@@ -157,6 +157,20 @@ export default function FacultyDashboard({
       // For classroom disabled, show in requests/pending tab as it affects pending bookings
       setActiveTab('schedule');
       setScheduleInitialTab('requests');
+    } else if (notification.type === 'signup') {
+      // Faculty users shouldn't receive signup notifications, but handle it gracefully
+      setActiveTab('overview');
+    } else if (notification.type === 'info') {
+      // Generic info notifications - show schedule or overview based on context
+      if (notification.bookingRequestId) {
+        setActiveTab('schedule');
+        setScheduleInitialTab('requests');
+      } else {
+        setActiveTab('overview');
+      }
+    } else {
+      // Fallback for any other notification types - show overview
+      setActiveTab('overview');
     }
   };
 
