@@ -652,9 +652,10 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         toast.loading('Service worker not ready. Refreshing page to retry...', {
           duration: 2000
         });
-        // Store intent to enable push after refresh
+        // Store intent to enable push after refresh, and redirect to settings tab
         try {
           sessionStorage.setItem('pushAutoRetry', 'true');
+          sessionStorage.setItem('pushAutoRetryTab', 'settings');
         } catch (e) {
           // sessionStorage may be unavailable
         }
