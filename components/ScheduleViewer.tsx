@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -24,7 +24,7 @@ const isScheduleLapsed = (schedule: Schedule): boolean => {
   return now > scheduleEndDateTime;
 }
 
-export default function ScheduleViewer({ schedules, classrooms, onCancelSchedule }: ScheduleViewerProps) {
+function ScheduleViewer({ schedules, classrooms, onCancelSchedule }: ScheduleViewerProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClassroom, setSelectedClassroom] = useState<string>('');
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
@@ -429,3 +429,6 @@ function WeekView({ schedules, classrooms, weekDates, onCancelSchedule, announce
     </div>
   );
 }
+
+// Memoize to prevent unnecessary re-renders
+export default memo(ScheduleViewer);

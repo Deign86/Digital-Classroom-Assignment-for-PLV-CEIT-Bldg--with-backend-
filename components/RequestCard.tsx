@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, memo } from 'react';
 import { logger } from '../lib/logger';
 import { useAnnouncer } from './Announcer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -14,7 +14,7 @@ import { convertTo12Hour, formatTimeRange, isPastBookingTime } from '../utils/ti
 import type { BookingRequest } from '../App';
 import ProcessingFieldset from './ui/ProcessingFieldset';
 
-export default function RequestCard({
+function RequestCard({
   request,
   onApprove,
   onReject,
@@ -362,3 +362,6 @@ export default function RequestCard({
     </Card>
   );
 }
+
+// Memoize to prevent unnecessary re-renders when parent state changes
+export default memo(RequestCard);
