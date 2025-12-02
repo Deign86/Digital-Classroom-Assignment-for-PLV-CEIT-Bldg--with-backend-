@@ -93,6 +93,10 @@ export default function AdminDashboard({
   const [showNotifications, setShowNotifications] = useState(false);
   // Use the same notification render strategy as FacultyDashboard: fixed top-right panel
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
+  // Track initial tab for RequestApproval when navigating from notifications
+  const [requestsInitialTab, setRequestsInitialTab] = useState<'pending' | 'approved' | 'rejected' | 'expired' | null>(null);
+  // Track highlighted request ID for scroll and highlight
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   // Per-request processing id to prevent double-approve/reject clicks
@@ -171,6 +175,11 @@ export default function AdminDashboard({
   const handleNotificationNavigate = (notification: Notification) => {
     setShowNotifications(false); // Close notification panel
     
+    // Set highlighted request ID if available (for scroll and highlight)
+    if (notification.bookingRequestId) {
+      setHighlightedRequestId(notification.bookingRequestId);
+    }
+    
     // Map notification type to appropriate admin tab
     if (notification.type === 'signup') {
       setActiveTab('signups');
@@ -182,6 +191,20 @@ export default function AdminDashboard({
       setActiveTab('schedule');
     } else if (notification.type === 'classroom_disabled') {
       setActiveTab('classrooms');
+    } else if (notification.type === 'info') {
+      // Check if this is an expired booking notification
+      const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
+      if (isExpiredNotification && notification.bookingRequestId) {
+        setRequestsInitialTab('expired');
+        setActiveTab('requests');
+      } else if (notification.bookingRequestId) {
+        setActiveTab('requests');
+      } else {
+        setActiveTab('overview');
+      }
+    } else {
+      // Fallback for any other notification types - show overview
+      setActiveTab('overview');
     }
   };
 
@@ -775,6 +798,10 @@ export default function AdminDashboard({
                     onCancelApproved={onCancelApprovedBooking}
                     checkConflicts={checkConflicts}
                     userId={user?.id}
+                    initialTab={requestsInitialTab ?? undefined}
+                    onInitialTabConsumed={() => setRequestsInitialTab(null)}
+                    highlightedRequestId={highlightedRequestId}
+                    onHighlightConsumed={() => setHighlightedRequestId(null)}
                   />
                 </Suspense>
               </ErrorBoundary>

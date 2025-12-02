@@ -82,7 +82,9 @@ export default function FacultyDashboard({
 
   const [activeTab, setActiveTab] = useState<FacultyTab>(getInitialTab());
 
-  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
+  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected' | null>(null);
+  // Track highlighted request ID for scroll and highlight
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
 
   // Sync URL with active tab
   const updateURL = (tab: FacultyTab) => {
@@ -143,6 +145,11 @@ export default function FacultyDashboard({
   const handleNotificationNavigate = (notification: Notification) => {
     setShowNotifications(false); // Close notification panel
     
+    // Set highlighted request ID if available (for scroll and highlight)
+    if (notification.bookingRequestId) {
+      setHighlightedRequestId(notification.bookingRequestId);
+    }
+    
     // Map notification type to appropriate tab and sub-tab
     if (notification.type === 'approved') {
       setActiveTab('schedule');
@@ -157,6 +164,25 @@ export default function FacultyDashboard({
       // For classroom disabled, show in requests/pending tab as it affects pending bookings
       setActiveTab('schedule');
       setScheduleInitialTab('requests');
+    } else if (notification.type === 'signup') {
+      // Faculty users shouldn't receive signup notifications, but handle it gracefully
+      setActiveTab('overview');
+    } else if (notification.type === 'info') {
+      // Check if this is an expired booking notification
+      const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
+      if (isExpiredNotification && notification.bookingRequestId) {
+        // Expired bookings should show in History tab
+        setActiveTab('schedule');
+        setScheduleInitialTab('history');
+      } else if (notification.bookingRequestId) {
+        setActiveTab('schedule');
+        setScheduleInitialTab('requests');
+      } else {
+        setActiveTab('overview');
+      }
+    } else {
+      // Fallback for any other notification types - show overview
+      setActiveTab('overview');
     }
   };
 
@@ -841,6 +867,9 @@ export default function FacultyDashboard({
                     userId={user?.id}
                     acknowledgedNotifications={acknowledgedNotifications}
                     allNotifications={allNotifications}
+                    highlightedRequestId={highlightedRequestId}
+                    onHighlightConsumed={() => setHighlightedRequestId(null)}
+                    onInitialTabConsumed={() => setScheduleInitialTab(null)}
                     onQuickRebook={(initial: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
                       void handleQuickRebook(initial);
                     }}

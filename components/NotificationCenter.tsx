@@ -14,7 +14,8 @@ type Props = {
 
 const NotificationItem: React.FC<{ n: Notification; onAcknowledge: (id: string) => void; acknowledging?: boolean; onNavigate?: (notification: Notification) => void }> = ({ n, onAcknowledge, acknowledging, onNavigate }) => {
   const isUnread = !n.acknowledgedAt;
-  const isClickable = onNavigate && (n.type === 'approved' || n.type === 'rejected' || n.type === 'cancelled' || n.type === 'faculty_cancelled' || n.type === 'signup');
+  // All notification types are now clickable when onNavigate is provided
+  const isClickable = !!onNavigate;
   return (
     <li 
       key={n.id} 

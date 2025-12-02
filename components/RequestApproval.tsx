@@ -23,13 +23,55 @@ interface RequestApprovalProps {
   onCancelApproved?: (requestId: string, reason: string) => void;
   checkConflicts: (classroomId: string, date: string, startTime: string, endTime: string, checkPastTime?: boolean, excludeRequestId?: string) => boolean | Promise<boolean>;
   userId?: string;
+  initialTab?: 'pending' | 'approved' | 'rejected' | 'expired';
+  onInitialTabConsumed?: () => void;
+  highlightedRequestId?: string | null;
+  onHighlightConsumed?: () => void;
 }
 
-export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts, userId }: RequestApprovalProps) {
+// Utility function to scroll to and highlight an element with a blue glow
+const highlightAndScroll = (el: HTMLElement | null) => {
+  if (!el) return;
+  try {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Apply blue glow effect that works in both light and dark modes
+    el.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.4)';
+    el.style.borderRadius = '0.5rem';
+    el.style.transition = 'box-shadow 0.3s ease-in-out';
+    setTimeout(() => {
+      el.style.boxShadow = '';
+    }, 2500);
+  } catch (e) {
+    // ignore
+  }
+};
+
+export default function RequestApproval({ requests, onRequestApproval, onCancelApproved, checkConflicts, userId, initialTab, onInitialTabConsumed, highlightedRequestId, onHighlightConsumed }: RequestApprovalProps) {
   const STORAGE_KEY_BASE = 'plv:requestApproval:activeTab';
   const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
   const allowedTabs = ['pending', 'approved', 'rejected', 'expired'];
-  const [activeTab, setActiveTab] = useState<string>(() => readPreferredTab(STORAGE_KEY, 'pending', allowedTabs));
+  const [activeTab, setActiveTab] = useState<string>(() => initialTab || readPreferredTab(STORAGE_KEY, 'pending', allowedTabs));
+
+  // Handle external initialTab changes (e.g., from notification navigation)
+  useEffect(() => {
+    if (initialTab && allowedTabs.includes(initialTab)) {
+      setActiveTab(initialTab);
+      onInitialTabConsumed?.();
+    }
+  }, [initialTab, onInitialTabConsumed]);
+
+  // Handle scroll and highlight for a specific request
+  useEffect(() => {
+    if (highlightedRequestId) {
+      // Small delay to allow tab content to render
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`request-card-${highlightedRequestId}`);
+        highlightAndScroll(el);
+        onHighlightConsumed?.();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedRequestId, activeTab, onHighlightConsumed]);
 
   useEffect(() => {
     try {
@@ -363,18 +405,19 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
 
                 <div className="grid gap-4">
                   {pendingRequests.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      onApprove={() => handleAction(request, 'approve')}
-                      onReject={() => handleAction(request, 'reject')}
-                      checkConflicts={checkConflicts}
-                      status="pending"
-                      showSelect
-                      selected={!!selectedIds[request.id]}
-                      onToggleSelect={(checked: boolean) => toggleSelect(request.id, checked)}
-                      disabled={isProcessingBulk}
-                    />
+                    <div key={request.id} id={`request-card-${request.id}`}>
+                      <RequestCard
+                        request={request}
+                        onApprove={() => handleAction(request, 'approve')}
+                        onReject={() => handleAction(request, 'reject')}
+                        checkConflicts={checkConflicts}
+                        status="pending"
+                        showSelect
+                        selected={!!selectedIds[request.id]}
+                        onToggleSelect={(checked: boolean) => toggleSelect(request.id, checked)}
+                        disabled={isProcessingBulk}
+                      />
+                    </div>
                   ))}
                 </div>
               </ProcessingFieldset>
@@ -420,19 +463,20 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
 
                 <div className="grid gap-4">
                   {approvedRequests.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      onApprove={() => {}}
-                      onReject={() => {}}
-                      onCancelApproved={onCancelApproved}
-                      checkConflicts={checkConflicts}
-                      status="approved"
-                      showSelect
-                      selected={!!approvedSelectedIds[request.id]}
-                      onToggleSelect={(checked: boolean) => toggleApprovedSelect(request.id, checked)}
-                      disabled={isProcessingBulk}
-                    />
+                    <div key={request.id} id={`request-card-${request.id}`}>
+                      <RequestCard
+                        request={request}
+                        onApprove={() => {}}
+                        onReject={() => {}}
+                        onCancelApproved={onCancelApproved}
+                        checkConflicts={checkConflicts}
+                        status="approved"
+                        showSelect
+                        selected={!!approvedSelectedIds[request.id]}
+                        onToggleSelect={(checked: boolean) => toggleApprovedSelect(request.id, checked)}
+                        disabled={isProcessingBulk}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -453,11 +497,12 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             ) : (
               <div className="grid gap-4">
                 {expiredRequests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    status="expired"
-                  />
+                  <div key={request.id} id={`request-card-${request.id}`}>
+                    <RequestCard
+                      request={request}
+                      status="expired"
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -477,14 +522,15 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
             ) : (
               <div className="grid gap-4">
                 {rejectedRequests.map((request) => (
-                  <RequestCard
-                    key={request.id}
-                    request={request}
-                    onApprove={() => {}}
-                    onReject={() => {}}
-                    checkConflicts={checkConflicts}
-                    status="rejected"
-                  />
+                  <div key={request.id} id={`request-card-${request.id}`}>
+                    <RequestCard
+                      request={request}
+                      onApprove={() => {}}
+                      onReject={() => {}}
+                      checkConflicts={checkConflicts}
+                      status="rejected"
+                    />
+                  </div>
                 ))}
               </div>
             )}
