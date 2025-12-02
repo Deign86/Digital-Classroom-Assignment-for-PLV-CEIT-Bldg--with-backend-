@@ -220,16 +220,19 @@ export default function AdminDashboard({
     } else if (notification.type === 'classroom_disabled') {
       setActiveTab('classrooms');
     } else if (notification.type === 'info') {
-      // Check if this is an expired booking notification
-      const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
-      if (isExpiredNotification && notification.bookingRequestId) {
-        setRequestsInitialTab('expired');
-        setActiveTab('requests');
-      } else if (notification.bookingRequestId) {
+      if (notification.bookingRequestId) {
         // Navigate based on current booking status (it may have changed since the notification was created)
+        // The booking could have been approved, rejected, cancelled, or expired since the info notification
         navigateByBookingStatus(notification.bookingRequestId);
       } else {
-        setActiveTab('overview');
+        // No booking ID - check message for context or go to overview
+        const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
+        if (isExpiredNotification) {
+          setRequestsInitialTab('expired');
+          setActiveTab('requests');
+        } else {
+          setActiveTab('overview');
+        }
       }
     } else {
       // Fallback for any other notification types - show overview

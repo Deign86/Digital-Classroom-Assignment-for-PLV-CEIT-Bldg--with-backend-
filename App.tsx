@@ -1995,7 +1995,8 @@ export default function App() {
               data-theme-exclude
               loading="eager"
               decoding="async"
-              fetchPriority="high"
+              // @ts-expect-error - React doesn't recognize fetchpriority yet
+              fetchpriority="high"
             />
           </div>
           <p className="text-foreground">{loadingMessage ?? 'Loading...'}</p>
@@ -2020,7 +2021,8 @@ export default function App() {
                   className="h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 object-contain"
                   loading="eager"
                   decoding="async"
-                  fetchPriority="high"
+                  // @ts-expect-error - React doesn't recognize fetchpriority yet
+                  fetchpriority="high"
                 />
               </div>
               <h1 className="mb-6">Classroom Reservation</h1>
@@ -2285,7 +2287,8 @@ export default function App() {
                         data-theme-exclude
                         loading="eager"
                         decoding="async"
-                        fetchPriority="high"
+                        // @ts-expect-error - React doesn't recognize fetchpriority yet
+                        fetchpriority="high"
                       />
                     </div>
                     <p className="text-foreground">{overlayMessage ?? 'Loading...'}</p>
