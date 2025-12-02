@@ -1249,15 +1249,17 @@ async function persistAndSendNotification(
       });
 
       if (tokens.length > 0) {
+        // Use DATA-ONLY payload to avoid duplicate notifications.
+        // When a 'notification' payload is present, the browser auto-displays it
+        // AND onBackgroundMessage fires (showing a second one).
+        // With data-only, only onBackgroundMessage fires, giving us full control.
         const notificationPayload = {
-          notification: {
-            title: 'PLV CEIT Notification',
-            body: finalMessage.substring(0, 200),
-          },
           data: {
             notificationId: ref.id,
             message: finalMessage,
             type: String(type),
+            title: 'PLV CEIT Notification',
+            body: finalMessage.substring(0, 200),
           }
         } as any;
 

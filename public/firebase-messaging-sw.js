@@ -30,10 +30,12 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-  // Customize notification here
-  const notificationTitle = payload.notification?.title || 'PLV CEIT Notification';
+  // With data-only FCM messages, title/body are in payload.data
+  const notificationTitle = payload.data?.title || payload.notification?.title || 'PLV CEIT Notification';
+  const notificationBody = payload.data?.body || payload.data?.message || payload.notification?.body || 'You have a new notification';
+  
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new notification',
+    body: notificationBody,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
     tag: payload.data?.notificationId || 'default',
