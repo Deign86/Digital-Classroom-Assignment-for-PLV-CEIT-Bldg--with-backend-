@@ -150,6 +150,37 @@ export default function FacultyDashboard({
       setHighlightedRequestId(notification.bookingRequestId);
     }
     
+    // Helper to navigate based on booking request's current status
+    const navigateByBookingStatus = (bookingId: string) => {
+      const booking = bookingRequests.find(r => r.id === bookingId);
+      if (!booking) {
+        // Booking not found - might be deleted, go to overview
+        setActiveTab('overview');
+        return;
+      }
+      
+      setActiveTab('schedule');
+      switch (booking.status) {
+        case 'pending':
+          setScheduleInitialTab('requests');
+          break;
+        case 'approved':
+          setScheduleInitialTab('approved');
+          break;
+        case 'rejected':
+          setScheduleInitialTab('rejected');
+          break;
+        case 'cancelled':
+          setScheduleInitialTab('cancelled');
+          break;
+        case 'expired':
+          setScheduleInitialTab('history');
+          break;
+        default:
+          setScheduleInitialTab('requests');
+      }
+    };
+    
     // Map notification type to appropriate tab and sub-tab
     if (notification.type === 'approved') {
       setActiveTab('schedule');
@@ -175,8 +206,8 @@ export default function FacultyDashboard({
         setActiveTab('schedule');
         setScheduleInitialTab('history');
       } else if (notification.bookingRequestId) {
-        setActiveTab('schedule');
-        setScheduleInitialTab('requests');
+        // Navigate based on current booking status (it may have changed since the notification was created)
+        navigateByBookingStatus(notification.bookingRequestId);
       } else {
         setActiveTab('overview');
       }

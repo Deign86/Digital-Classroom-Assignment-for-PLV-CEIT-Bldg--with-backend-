@@ -180,6 +180,34 @@ export default function AdminDashboard({
       setHighlightedRequestId(notification.bookingRequestId);
     }
     
+    // Helper to navigate based on booking request's current status
+    const navigateByBookingStatus = (bookingId: string) => {
+      const booking = bookingRequests.find(r => r.id === bookingId);
+      if (!booking) {
+        // Booking not found - might be deleted, go to overview
+        setActiveTab('overview');
+        return;
+      }
+      
+      setActiveTab('requests');
+      switch (booking.status) {
+        case 'pending':
+          setRequestsInitialTab('pending');
+          break;
+        case 'approved':
+          setRequestsInitialTab('approved');
+          break;
+        case 'rejected':
+          setRequestsInitialTab('rejected');
+          break;
+        case 'expired':
+          setRequestsInitialTab('expired');
+          break;
+        default:
+          setRequestsInitialTab('pending');
+      }
+    };
+    
     // Map notification type to appropriate admin tab
     if (notification.type === 'signup') {
       setActiveTab('signups');
@@ -198,7 +226,8 @@ export default function AdminDashboard({
         setRequestsInitialTab('expired');
         setActiveTab('requests');
       } else if (notification.bookingRequestId) {
-        setActiveTab('requests');
+        // Navigate based on current booking status (it may have changed since the notification was created)
+        navigateByBookingStatus(notification.bookingRequestId);
       } else {
         setActiveTab('overview');
       }
