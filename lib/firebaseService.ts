@@ -2339,6 +2339,11 @@ export const bookingRequestService = {
     }
   },
 
+  /**
+   * Check for conflicts with pending/approved booking requests.
+   * NOTE: For comprehensive conflict checking (including confirmed schedules),
+   * use checkAllConflicts() instead.
+   */
   async checkConflicts(
     classroomId: string,
     date: string,
@@ -2369,6 +2374,62 @@ export const bookingRequestService = {
     }
 
     return false; // No conflicts found
+  },
+
+  /**
+   * Comprehensive conflict check that runs booking requests and schedules queries in parallel.
+   * This is more efficient than running separate checks sequentially.
+   */
+  async checkAllConflicts(
+    classroomId: string,
+    date: string,
+    startTime: string,
+    endTime: string,
+    excludeRequestId?: string,
+    excludeScheduleId?: string
+  ): Promise<boolean> {
+    const database = getDb();
+    
+    // Build both queries
+    const bookingQuery = query(
+      collection(database, COLLECTIONS.BOOKING_REQUESTS),
+      where('classroomId', '==', classroomId),
+      where('date', '==', date),
+      where('status', 'in', ['pending', 'approved'])
+    );
+    
+    const scheduleQuery = query(
+      collection(database, COLLECTIONS.SCHEDULES),
+      where('classroomId', '==', classroomId),
+      where('date', '==', date)
+    );
+    
+    // Run both queries in parallel
+    const [bookingSnap, scheduleSnap] = await Promise.all([
+      getDocs(bookingQuery),
+      getDocs(scheduleQuery)
+    ]);
+    
+    // Check booking conflicts
+    for (const doc of bookingSnap.docs) {
+      if (excludeRequestId && doc.id === excludeRequestId) continue;
+      const data = doc.data() as FirestoreBookingRequestRecord;
+      if (doTimeRangesOverlap(startTime, endTime, data.startTime, data.endTime)) {
+        return true;
+      }
+    }
+    
+    // Check schedule conflicts
+    for (const doc of scheduleSnap.docs) {
+      if (excludeScheduleId && doc.id === excludeScheduleId) continue;
+      const data = doc.data() as FirestoreScheduleRecord;
+      if (data.status === 'cancelled') continue;
+      if (timesOverlap(startTime, endTime, data.startTime, data.endTime)) {
+        return true;
+      }
+    }
+    
+    return false;
   },
 
   // Bulk update multiple booking requests atomically using a write batch.

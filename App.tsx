@@ -999,7 +999,8 @@ export default function App() {
     }
 
     try {
-      return await bookingRequestService.checkConflicts(
+      // Use the parallel conflict checker that checks both booking requests and schedules
+      return await bookingRequestService.checkAllConflicts(
         classroomId,
         date,
         startTime,
