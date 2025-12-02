@@ -695,12 +695,11 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           description: 'Please wait a few seconds and try again. The page will be ready shortly.',
           duration: 5000
         });
-      } else if (/load failed/i.test(msg)) {
-        // iOS Safari specific error - network request failed
-        // Check if we're on iOS to provide targeted advice
+      } else if (/load failed|network connection issue|failed to fetch/i.test(msg)) {
+        // iOS Safari specific error - network request failed during FCM token request
         if (currentIosStatus?.isIOS) {
-          toast.error('Network request failed', {
-            description: 'Please check your internet connection and try again. On iOS, ensure you have a stable WiFi or cellular connection.',
+          toast.error('Connection issue during setup', {
+            description: 'Push notification setup requires a stable connection. Please try again in a moment.',
             duration: 6000
           });
         } else {
@@ -709,6 +708,12 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
             duration: 5000
           });
         }
+      } else if (/home screen|not safari|pushmanager not available/i.test(msg)) {
+        // iOS-specific: app not properly installed as PWA
+        toast.error('Home Screen app required', {
+          description: 'On iOS, push notifications only work when the app is added to your Home Screen. Use Safari\'s Share button → "Add to Home Screen".',
+          duration: 8000
+        });
       } else {
         // generic fallback
         toast.error('Push notification change failed', {

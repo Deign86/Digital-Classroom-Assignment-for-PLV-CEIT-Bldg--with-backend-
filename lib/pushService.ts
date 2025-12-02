@@ -180,13 +180,43 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   // This prevents "no active Service Worker" errors on first page load
   const registration = await waitForServiceWorkerReady();
   
+  if (!registration) {
+    throw new Error('Service worker registration not available');
+  }
+  
+  // On iOS, verify we can access PushManager before attempting FCM token
+  // This provides better error messages if the PWA isn't properly installed
+  if (isIOSDevice()) {
+    logger.log('[pushService] iOS detected, verifying PushManager access...');
+    
+    try {
+      // Check if PushManager is available on the registration
+      if (!registration.pushManager) {
+        throw new Error('PushManager not available. Make sure you opened this app from the Home Screen.');
+      }
+      
+      // Try to get existing subscription to verify PushManager works
+      const existingSubscription = await registration.pushManager.getSubscription();
+      logger.log('[pushService] iOS PushManager accessible, existing subscription:', !!existingSubscription);
+    } catch (pmError) {
+      const errMsg = pmError instanceof Error ? pmError.message : String(pmError);
+      logger.error('[pushService] iOS PushManager access failed:', errMsg);
+      
+      // Provide helpful error messages based on the failure
+      if (errMsg.toLowerCase().includes('not allowed') || errMsg.toLowerCase().includes('permission')) {
+        throw new Error('Push notifications not allowed. Please ensure the app is opened from your Home Screen.');
+      }
+      throw new Error('Push notifications are not available. Please open this app from your Home Screen (not Safari).');
+    }
+  }
+  
   logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
   
   // Retry getToken on iOS since Safari can fail with "Load failed" on first attempt
   // This is especially common when the device is on battery saver or has aggressive network timeouts
   let token: string | null = null;
   let lastError: Error | null = null;
-  const maxAttempts = isIOSDevice() ? 3 : 1; // Only retry on iOS
+  const maxAttempts = isIOSDevice() ? 4 : 1; // More retries on iOS
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -197,18 +227,21 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
       lastError = err instanceof Error ? err : new Error(String(err));
       const errMsg = lastError.message.toLowerCase();
       
+      logger.warn(`[pushService] getToken attempt ${attempt} failed:`, lastError.message);
+      
       // On iOS, "Load failed" usually means a transient network issue - retry with delay
-      if (errMsg.includes('load failed') || errMsg.includes('network') || errMsg.includes('timeout')) {
-        logger.warn(`[pushService] getToken attempt ${attempt} failed with network error:`, lastError.message);
+      if (errMsg.includes('load failed') || errMsg.includes('network') || errMsg.includes('timeout') || errMsg.includes('failed to fetch')) {
         if (attempt < maxAttempts) {
-          // Exponential backoff: 500ms, 1000ms, 2000ms
-          const delay = 500 * Math.pow(2, attempt - 1);
+          // Exponential backoff: 1s, 2s, 4s (longer delays for iOS network issues)
+          const delay = 1000 * Math.pow(2, attempt - 1);
           logger.log(`[pushService] Retrying getToken in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
+        // All retries exhausted for network error
+        throw new Error('Network connection issue while setting up push notifications. Please check your internet connection and try again.');
       }
-      // Non-network error or out of retries - throw
+      // Non-network error - throw immediately
       throw lastError;
     }
   }
