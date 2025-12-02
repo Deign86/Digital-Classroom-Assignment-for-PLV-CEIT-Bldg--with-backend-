@@ -4,8 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/webp" href="/system-logo.webp" sizes="any" />
     <link rel="apple-touch-icon" href="/system-logo.webp" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>PLV CEIT - Digital Classroom Reservation System</title>
+    
+    <!-- PWA Manifest - Required for iOS Web Push (Home Screen Web Apps) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    
+    <!-- iOS PWA Meta Tags - Required for standalone mode and push notifications -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PLV CEIT" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- Theme colors for browsers and installed PWAs -->
+    <meta name="theme-color" content="#1e40af" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e3a8a" media="(prefers-color-scheme: dark)" />
+    
+    <!-- Application description for search engines and app stores -->
+    <meta name="description" content="Digital Classroom Reservation System for PLV CEIT Building - Book classrooms, manage schedules, and receive notifications" />
     
     <!-- Critical CSS - inline for instant rendering -->
     <style>

@@ -22,7 +22,10 @@ import {
   X,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  Smartphone,
+  Share,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '../App';
@@ -32,6 +35,7 @@ import { useDarkMode } from '../hooks/useDarkMode';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import ProcessingFieldset from './ui/ProcessingFieldset';
+import type { IOSWebPushStatus } from '../lib/iosDetection';
 
 interface ProfileSettingsProps {
   user: User;
@@ -58,6 +62,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [pushSupported, setPushSupported] = useState<boolean>(true);
+  // iOS-specific status for showing appropriate guidance
+  const [iosStatus, setIosStatus] = useState<IOSWebPushStatus | null>(null);
   const [pushStatusVerified, setPushStatusVerified] = useState<boolean>(false);
   // Track if user has manually toggled push - once they have, don't let async verify overwrite
   const userHasToggledRef = React.useRef(false);
@@ -99,9 +105,16 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     }
   }, [user?.pushEnabled, user?.name, user?.department, user?.departments, pushStatusVerified]); // Include pushStatusVerified
 
-  // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
+  // Detect runtime push support and iOS-specific status
   useEffect(() => {
     try {
+      // Get iOS-specific status for detailed UI messaging
+      if (pushService.getIOSPushStatus) {
+        const status = pushService.getIOSPushStatus();
+        setIosStatus(status);
+        logger.log('[ProfileSettings] iOS push status:', status);
+      }
+      
       const supported = pushService.isPushSupported ? pushService.isPushSupported() : true;
       setPushSupported(!!supported);
     } catch (e) {
@@ -642,8 +655,19 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       const msg = err instanceof Error ? err.message : String(err);
       console.log('[ProfileSettings] Push toggle error caught:', msg);
       logger.error('Push toggle error:', msg);
+      
+      // Get iOS status for better error messaging
+      const currentIosStatus = pushService.getIOSPushStatus?.() ?? null;
+      
       if (msg === 'Push-not-supported' || /not supported/i.test(msg)) {
-        toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
+        // Show iOS-specific messaging if applicable
+        if (currentIosStatus?.isIOS && currentIosStatus.message) {
+          toast.error('Push notifications unavailable', {
+            description: currentIosStatus.message
+          });
+        } else {
+          toast.error('Push is not supported in this browser/device.');
+        }
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
         toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
       } else if (/ready timeout|no active service worker|subscription failed|registration failed|storage error/i.test(msg)) {
@@ -949,8 +973,41 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
               )}
             </div>
           </ProcessingFieldset>
-          {!pushSupported && (
-            <p className="mt-2 text-xs text-muted-foreground">Push notifications are not supported in this browser or device. On iOS use Safari 16.4+ and enable Web Push in system settings.</p>
+          
+          {/* iOS-specific guidance */}
+          {iosStatus?.isIOS && !pushSupported && (
+            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
+              <div className="flex items-start gap-3">
+                <Smartphone className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                <div className="space-y-2">
+                  <p className="font-medium text-amber-800 dark:text-amber-200">
+                    {iosStatus.action === 'install' && 'Add to Home Screen Required'}
+                    {iosStatus.action === 'upgrade-ios' && 'iOS Update Required'}
+                    {iosStatus.action === 'use-safari' && 'Safari Required'}
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {iosStatus.message}
+                  </p>
+                  {iosStatus.action === 'install' && (
+                    <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 mt-2">
+                      <Share className="h-4 w-4" />
+                      <span>Tap</span>
+                      <Share className="h-4 w-4" />
+                      <span>→</span>
+                      <Plus className="h-4 w-4" />
+                      <span>"Add to Home Screen"</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Generic unsupported message for non-iOS browsers */}
+          {!pushSupported && !iosStatus?.isIOS && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Push notifications are not supported in this browser. Please use a modern browser like Chrome, Firefox, Edge, or Safari.
+            </p>
           )}
         </CardContent>
       </Card>

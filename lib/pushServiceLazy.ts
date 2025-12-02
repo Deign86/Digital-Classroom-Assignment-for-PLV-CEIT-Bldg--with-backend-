@@ -5,6 +5,8 @@
  */
 
 import { logger } from './logger';
+// Import iOS detection directly since it's lightweight and needed for sync checks
+import { getIOSWebPushStatus, isIOSDevice, isStandaloneMode, type IOSWebPushStatus } from './iosDetection';
 
 // Type-only imports don't affect bundle
 type PushService = typeof import('./pushService').pushService;
@@ -52,6 +54,28 @@ export const pushServiceLazy = {
   async isPushSupported(): Promise<boolean> {
     const service = await loadPushService();
     return service.isPushSupported();
+  },
+
+  /**
+   * Synchronous check for iOS push support status.
+   * This doesn't require loading the full push service.
+   */
+  getIOSPushStatus(): IOSWebPushStatus {
+    return getIOSWebPushStatus();
+  },
+
+  /**
+   * Check if running on iOS device (synchronous).
+   */
+  isIOS(): boolean {
+    return isIOSDevice();
+  },
+
+  /**
+   * Check if the app is running as an installed PWA (synchronous).
+   */
+  isInstalledPWA(): boolean {
+    return isStandaloneMode();
   },
 
   async enablePush(): Promise<RegisterResult> {

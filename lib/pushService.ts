@@ -3,6 +3,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 import { logger } from './logger';
+import { getIOSWebPushStatus, isIOSDevice, isStandaloneMode, type IOSWebPushStatus } from './iosDetection';
 
 type RegisterResult = { success: boolean; token?: string; message?: string };
 
@@ -248,14 +249,50 @@ export const pushService = {
   // Return whether this runtime environment supports Firebase web messaging and the
   // Notifications API. Useful for UI to hide/disable controls on unsupported browsers
   // (for example older Safari or iOS versions that don't support web push).
+  // 
+  // IMPORTANT: On iOS, Web Push is only supported when:
+  // 1. iOS version is 16.4 or later
+  // 2. The app is running in Safari
+  // 3. The app is installed as a PWA (added to Home Screen)
   isPushSupported(): boolean {
     try {
       if (typeof window === 'undefined') return false;
       if (!('Notification' in window)) return false;
-      return !!isSupported();
+      if (!isSupported()) return false;
+      
+      // On iOS, we need additional checks
+      if (isIOSDevice()) {
+        const status = getIOSWebPushStatus();
+        // Only return true if all iOS requirements are met
+        return status.canUsePush;
+      }
+      
+      return true;
     } catch (e) {
       return false;
     }
+  },
+
+  /**
+   * Get detailed iOS Web Push status for UI messaging.
+   * Returns the status object with actionable information for the user.
+   */
+  getIOSPushStatus(): IOSWebPushStatus {
+    return getIOSWebPushStatus();
+  },
+
+  /**
+   * Check if running on iOS device.
+   */
+  isIOS(): boolean {
+    return isIOSDevice();
+  },
+
+  /**
+   * Check if the app is running as an installed PWA (standalone mode).
+   */
+  isInstalledPWA(): boolean {
+    return isStandaloneMode();
   },
   async enablePush(): Promise<RegisterResult> {
     try {

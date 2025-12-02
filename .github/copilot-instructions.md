@@ -46,8 +46,26 @@ When adding infra-affecting changes, update client usage in `lib/firebaseService
 
 - **Implementation:** Firebase Cloud Messaging (FCM) via `lib/pushService.ts`. Service worker in `public/firebase-messaging-sw.js`.
 - **Token management:** Users enable/disable in ProfileSettings. Tokens stored in Firestore `users` collection (`pushEnabled` flag).
-- **Browser support:** Check `pushService.isPushSupported()` before showing UI. iOS requires Safari 16.4+ with Web Push enabled in system settings.
+- **Browser support:** Check `pushService.isPushSupported()` before showing UI. This handles both general browser support and iOS-specific requirements.
 - **Service worker ready:** `waitForServiceWorkerReady()` ensures SW is active before token retrieval (prevents "no active Service Worker" errors).
+
+### iOS-Specific Requirements (iOS 16.4+)
+
+Web Push on iOS/iPadOS **only works** for PWAs installed to the Home Screen. The following are required:
+
+1. **Web App Manifest:** `public/manifest.webmanifest` with `display: "standalone"` or `display: "fullscreen"`
+2. **PWA Meta Tags:** `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style` in `index.html`
+3. **Safari Browser:** Only Safari supports "Add to Home Screen" with PWA capabilities
+4. **Installation:** User must install the app via Share → "Add to Home Screen"
+5. **iOS 16.4+:** Older versions do not support Web Push
+
+**iOS Detection Utilities:** `lib/iosDetection.ts` provides:
+- `isIOSDevice()` - Detect iOS/iPadOS
+- `isStandaloneMode()` - Check if running as installed PWA
+- `getIOSVersion()` - Get iOS version
+- `getIOSWebPushStatus()` - Comprehensive status for UI messaging
+
+**UI Guidance:** `ProfileSettings.tsx` shows iOS-specific instructions when push is unavailable (e.g., "Add to Home Screen Required" with visual guide).
 
 ## Forms, Validation & Input Sanitization
 
