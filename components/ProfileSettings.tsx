@@ -695,12 +695,12 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           description: 'Please wait a few seconds and try again. The page will be ready shortly.',
           duration: 5000
         });
-      } else if (/load failed|network connection issue|failed to fetch/i.test(msg)) {
+      } else if (/load failed|network connection issue|failed to fetch|unable to connect/i.test(msg)) {
         // iOS Safari specific error - network request failed during FCM token request
         if (currentIosStatus?.isIOS) {
-          toast.error('Connection issue during setup', {
-            description: 'Push notification setup requires a stable connection. Please try again in a moment.',
-            duration: 6000
+          toast.error('Setup temporarily unavailable', {
+            description: 'The notification service is not responding. Please close this app completely, wait 30 seconds, then try again.',
+            duration: 8000
           });
         } else {
           toast.error('Network request failed', {

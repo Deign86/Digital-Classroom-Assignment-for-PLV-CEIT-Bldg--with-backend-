@@ -202,36 +202,10 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
       const existingSubscription = await registration.pushManager.getSubscription();
       logger.log('[pushService] iOS PushManager accessible, existing subscription:', !!existingSubscription);
       
-      // If no existing subscription on iOS, try to create one first to test connectivity
-      // This can help identify if the issue is with the push subscription itself
-      if (!existingSubscription) {
-        logger.log('[pushService] iOS: No existing subscription, testing push subscription creation...');
-        try {
-          // Convert VAPID key to Uint8Array for applicationServerKey
-          const vapidKeyArray = urlBase64ToUint8Array(VAPID_KEY);
-          
-          // Try to subscribe - this will test the actual push service connectivity
-          const testSubscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: vapidKeyArray as BufferSource
-          });
-          
-          logger.log('[pushService] iOS: Push subscription test successful');
-          
-          // Unsubscribe the test - FCM will create its own subscription
-          await testSubscription.unsubscribe();
-          logger.log('[pushService] iOS: Test subscription cleaned up');
-        } catch (subError) {
-          const subErrMsg = subError instanceof Error ? subError.message : String(subError);
-          logger.error('[pushService] iOS: Push subscription test failed:', subErrMsg);
-          
-          // If this fails, provide a specific error
-          if (subErrMsg.toLowerCase().includes('load failed')) {
-            throw new Error('Unable to connect to push notification service. This may be a temporary issue - please try again in a few moments.');
-          }
-          // Let it continue - FCM might still work
-        }
-      }
+      // Note: We don't do a pre-flight subscription test here because:
+      // 1. FCM uses its own subscription endpoint which may differ from a raw subscribe()
+      // 2. The test subscription could interfere with FCM's token generation
+      // 3. We have retry logic in getToken() that handles transient failures
     } catch (pmError) {
       const errMsg = pmError instanceof Error ? pmError.message : String(pmError);
       logger.error('[pushService] iOS PushManager access failed:', errMsg);
