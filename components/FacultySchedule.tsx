@@ -29,9 +29,24 @@ interface FacultyScheduleProps {
   userId?: string;
   acknowledgedNotifications?: Notification[];
   allNotifications?: Notification[];
+  highlightedRequestId?: string | null;
+  onHighlightConsumed?: () => void;
+  onInitialTabConsumed?: () => void;
 }
 
-export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, onQuickRebook, userId, acknowledgedNotifications = [], allNotifications = [] }: FacultyScheduleProps) {
+// Utility function to scroll to and highlight an element
+const highlightAndScroll = (el: HTMLElement | null) => {
+  if (!el) return;
+  try {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50', 'transition-all', 'duration-300');
+    setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50'), 2500);
+  } catch (e) {
+    // ignore
+  }
+};
+
+export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, onQuickRebook, userId, acknowledgedNotifications = [], allNotifications = [], highlightedRequestId, onHighlightConsumed, onInitialTabConsumed }: FacultyScheduleProps) {
   const STORAGE_KEY_BASE = 'plv:facultySchedule:activeTab';
   const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
   const allowed = ['upcoming', 'requests', 'approved', 'cancelled', 'history', 'rejected'] as const;
@@ -43,6 +58,28 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  // Handle external initialTab changes (e.g., from notification navigation)
+  useEffect(() => {
+    if (initialTab && allowed.includes(initialTab)) {
+      setActiveTab(initialTab);
+      onInitialTabConsumed?.();
+    }
+  }, [initialTab, onInitialTabConsumed]);
+
+  // Handle scroll and highlight for a specific request
+  useEffect(() => {
+    if (highlightedRequestId) {
+      // Small delay to allow tab content to render
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`faculty-schedule-card-${highlightedRequestId}`);
+        highlightAndScroll(el);
+        onHighlightConsumed?.();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedRequestId, activeTab, onHighlightConsumed]);
+
   const { announce } = useAnnouncer();
   const [approvedSelectedIds, setApprovedSelectedIds] = useState<Record<string, boolean>>({});
   const [isCancelling, setIsCancelling] = useState(false);
@@ -552,7 +589,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             </Card>
           ) : (
             pendingRequests.map((request) => (
-              <RequestCard key={request.id} request={request} />
+              <div key={request.id} id={`faculty-schedule-card-${request.id}`}>
+                <RequestCard request={request} />
+              </div>
             ))
           )}
         </TabsContent>
@@ -869,7 +908,7 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                           </span>
                         )}
                       </div>
-                      <div className="flex-1">
+                      <div id={`faculty-schedule-card-${request.id}`} className="flex-1">
                         <RequestCard request={request} />
                       </div>
                     </div>
@@ -892,7 +931,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
             rejectedRequests
               .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
               .map((request) => (
-                <RequestCard key={request.id} request={request} />
+                <div key={request.id} id={`faculty-schedule-card-${request.id}`}>
+                  <RequestCard request={request} />
+                </div>
               ))
           )}
         </TabsContent>
@@ -920,7 +961,9 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
               {cancelledRequests
                 .sort((a, b) => new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime())
                 .map((request) => (
-                  <RequestCard key={request.id} request={request} />
+                  <div key={request.id} id={`faculty-schedule-card-${request.id}`}>
+                    <RequestCard request={request} />
+                  </div>
                 ))}
             </>
           )}

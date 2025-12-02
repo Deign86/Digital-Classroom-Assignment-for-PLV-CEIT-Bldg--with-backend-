@@ -95,6 +95,8 @@ export default function AdminDashboard({
   const [forceBellUnread, setForceBellUnread] = useState<number | null>(null);
   // Track initial tab for RequestApproval when navigating from notifications
   const [requestsInitialTab, setRequestsInitialTab] = useState<'pending' | 'approved' | 'rejected' | 'expired' | null>(null);
+  // Track highlighted request ID for scroll and highlight
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   // Per-request processing id to prevent double-approve/reject clicks
@@ -172,6 +174,11 @@ export default function AdminDashboard({
   // Handle notification navigation for admin
   const handleNotificationNavigate = (notification: Notification) => {
     setShowNotifications(false); // Close notification panel
+    
+    // Set highlighted request ID if available (for scroll and highlight)
+    if (notification.bookingRequestId) {
+      setHighlightedRequestId(notification.bookingRequestId);
+    }
     
     // Map notification type to appropriate admin tab
     if (notification.type === 'signup') {
@@ -793,6 +800,8 @@ export default function AdminDashboard({
                     userId={user?.id}
                     initialTab={requestsInitialTab ?? undefined}
                     onInitialTabConsumed={() => setRequestsInitialTab(null)}
+                    highlightedRequestId={highlightedRequestId}
+                    onHighlightConsumed={() => setHighlightedRequestId(null)}
                   />
                 </Suspense>
               </ErrorBoundary>
