@@ -1301,7 +1301,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   filteredClassrooms.map((classroom) => (
                     <TableRow key={classroom.id}>
                       <TableCell>
-                        <input type="checkbox" aria-label={`Select classroom ${classroom.id}`} checked={!!selectedIds[classroom.id]} onChange={(e) => toggleSelect(classroom.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300" />
+                        <input type="checkbox" aria-label={`Select classroom ${classroom.name}`} checked={!!selectedIds[classroom.id]} onChange={(e) => toggleSelect(classroom.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300" />
                       </TableCell>
                       <TableCell className="font-medium">{classroom.name}</TableCell>
                       <TableCell>

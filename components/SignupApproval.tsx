@@ -243,8 +243,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
       return onSignupApproval(id, approved, approved ? feedbackText || undefined : feedbackText, true);
     });
 
-    // prepare items for dialog
-    const itemsForDialog = ids.map(id => ({ id, label: `Signup ${id}` }));
+    // prepare items for dialog - use requester name or email instead of document ID
+    const itemsForDialog = ids.map(id => {
+      const req = signupRequests.find(r => r.id === id);
+      return { id, label: req?.name || req?.email || `Signup Request` };
+    });
     lastTasksRef.current = tasks;
     setLastItems(itemsForDialog);
     // Only show bulk progress dialog for multiple items
@@ -322,8 +325,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
 
   // Use a concurrency of 4 to avoid throttling spikes
   setBulkProgress({ processed: 0, total: ids.length });
-  // prepare items and run with shared bulk runner
-  const itemsForDialog = ids.map(id => ({ id, label: `Signup ${id}` }));
+  // prepare items and run with shared bulk runner - use requester name or email instead of document ID
+  const itemsForDialog = ids.map(id => {
+    const req = signupRequests.find(r => r.id === id);
+    return { id, label: req?.name || req?.email || `Signup Request` };
+  });
   lastTasksRef.current = tasks;
   setLastItems(itemsForDialog);
   // Only show bulk progress dialog for multiple items
@@ -386,7 +392,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
     const tasks: BulkTask[] = ids.map(id => async () => onSignupApproval(id, bulkActionApprove ?? false, bulkFeedback.trim() || undefined, true));
     setBulkProgress({ processed: 0, total: ids.length });
     lastTasksRef.current = tasks;
-    setLastItems(ids.map(id => ({ id, label: `Signup ${id}` })));
+    // Use requester name or email instead of document ID
+    setLastItems(ids.map(id => {
+      const req = signupRequests.find(r => r.id === id);
+      return { id, label: req?.name || req?.email || `Signup Request` };
+    }));
     // Only show bulk progress dialog for multiple items
     if (ids.length > 1) {
       setShowBulkProgress(true);
@@ -537,7 +547,7 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
                 <CardHeader className="pb-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <input type="checkbox" aria-label={`Select signup ${request.id}`} checked={!!selectedIds[request.id]} onChange={(e) => toggleSelect(request.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300 flex-shrink-0" />
+                      <input type="checkbox" aria-label={`Select signup request by ${request.name}`} checked={!!selectedIds[request.id]} onChange={(e) => toggleSelect(request.id, e.target.checked)} className="h-4 w-4 text-indigo-600 rounded border-gray-300 flex-shrink-0" />
                       <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 flex-shrink-0" />
                       <CardTitle className="text-sm sm:text-lg break-words min-w-0">{request.name}</CardTitle>
                     </div>
@@ -869,7 +879,11 @@ export default function SignupApproval({ signupRequests = [], signupHistory = []
           if (failedIds.length === 0) return;
           const tasks: BulkTask[] = failedIds.map(id => async () => onSignupApproval(id, bulkActionApprove ?? false, bulkFeedback.trim() || undefined, true));
           lastTasksRef.current = tasks;
-          setLastItems(failedIds.map(id => ({ id, label: `Signup ${id}` })));
+          // Use requester name or email instead of document ID
+          setLastItems(failedIds.map(id => {
+            const req = signupRequests.find(r => r.id === id);
+            return { id, label: req?.name || req?.email || `Signup Request` };
+          }));
           bulkRunner.retry();
           await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
           const results = bulkRunner.results;

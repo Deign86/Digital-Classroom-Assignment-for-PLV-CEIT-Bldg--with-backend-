@@ -97,7 +97,7 @@ export default function RequestCard({
               <div className="mt-0.5 xs:mt-1 flex-shrink-0">
                 <input
                   type="checkbox"
-                  aria-label={`Select request ${request.id}`}
+                  aria-label={`Select request by ${request.facultyName} for ${request.classroomName}`}
                   checked={!!selected}
                   onChange={(e) => onToggleSelect?.(e.target.checked)}
                   disabled={!!disabled}
