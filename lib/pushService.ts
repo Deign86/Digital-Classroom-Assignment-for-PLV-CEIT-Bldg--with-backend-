@@ -184,6 +184,9 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
     throw new Error('Service worker registration not available');
   }
   
+  logger.log('[pushService] Service worker ready, scope:', registration.scope);
+  logger.log('[pushService] Service worker state:', registration.active?.state);
+  
   // On iOS, verify we can access PushManager before attempting FCM token
   // This provides better error messages if the PWA isn't properly installed
   if (isIOSDevice()) {
@@ -198,9 +201,45 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
       // Try to get existing subscription to verify PushManager works
       const existingSubscription = await registration.pushManager.getSubscription();
       logger.log('[pushService] iOS PushManager accessible, existing subscription:', !!existingSubscription);
+      
+      // If no existing subscription on iOS, try to create one first to test connectivity
+      // This can help identify if the issue is with the push subscription itself
+      if (!existingSubscription) {
+        logger.log('[pushService] iOS: No existing subscription, testing push subscription creation...');
+        try {
+          // Convert VAPID key to Uint8Array for applicationServerKey
+          const vapidKeyArray = urlBase64ToUint8Array(VAPID_KEY);
+          
+          // Try to subscribe - this will test the actual push service connectivity
+          const testSubscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: vapidKeyArray as BufferSource
+          });
+          
+          logger.log('[pushService] iOS: Push subscription test successful');
+          
+          // Unsubscribe the test - FCM will create its own subscription
+          await testSubscription.unsubscribe();
+          logger.log('[pushService] iOS: Test subscription cleaned up');
+        } catch (subError) {
+          const subErrMsg = subError instanceof Error ? subError.message : String(subError);
+          logger.error('[pushService] iOS: Push subscription test failed:', subErrMsg);
+          
+          // If this fails, provide a specific error
+          if (subErrMsg.toLowerCase().includes('load failed')) {
+            throw new Error('Unable to connect to push notification service. This may be a temporary issue - please try again in a few moments.');
+          }
+          // Let it continue - FCM might still work
+        }
+      }
     } catch (pmError) {
       const errMsg = pmError instanceof Error ? pmError.message : String(pmError);
       logger.error('[pushService] iOS PushManager access failed:', errMsg);
+      
+      // Re-throw our custom errors
+      if (errMsg.includes('Unable to connect') || errMsg.includes('PushManager not available') || errMsg.includes('Home Screen')) {
+        throw pmError;
+      }
       
       // Provide helpful error messages based on the failure
       if (errMsg.toLowerCase().includes('not allowed') || errMsg.toLowerCase().includes('permission')) {
@@ -210,38 +249,56 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
     }
   }
   
-  logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
+  logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration');
   
   // Retry getToken on iOS since Safari can fail with "Load failed" on first attempt
   // This is especially common when the device is on battery saver or has aggressive network timeouts
   let token: string | null = null;
   let lastError: Error | null = null;
-  const maxAttempts = isIOSDevice() ? 4 : 1; // More retries on iOS
+  const maxAttempts = isIOSDevice() ? 5 : 2; // More retries on iOS, allow 2 on other platforms too
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       logger.log(`[pushService] getToken attempt ${attempt}/${maxAttempts}`);
-      token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
-      if (token) break; // Success
+      
+      // Add a small delay before retries to let iOS network stack settle
+      if (attempt > 1) {
+        const delay = 1500 * Math.pow(1.5, attempt - 2); // 1.5s, 2.25s, 3.4s, 5s
+        logger.log(`[pushService] Waiting ${Math.round(delay)}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      token = await getToken(messaging, { 
+        vapidKey: VAPID_KEY, 
+        serviceWorkerRegistration: registration 
+      });
+      
+      if (token) {
+        logger.log(`[pushService] getToken succeeded on attempt ${attempt}`);
+        break;
+      }
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       const errMsg = lastError.message.toLowerCase();
       
       logger.warn(`[pushService] getToken attempt ${attempt} failed:`, lastError.message);
       
-      // On iOS, "Load failed" usually means a transient network issue - retry with delay
-      if (errMsg.includes('load failed') || errMsg.includes('network') || errMsg.includes('timeout') || errMsg.includes('failed to fetch')) {
-        if (attempt < maxAttempts) {
-          // Exponential backoff: 1s, 2s, 4s (longer delays for iOS network issues)
-          const delay = 1000 * Math.pow(2, attempt - 1);
-          logger.log(`[pushService] Retrying getToken in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        // All retries exhausted for network error
-        throw new Error('Network connection issue while setting up push notifications. Please check your internet connection and try again.');
+      // Check if this is a retryable error
+      const isRetryable = errMsg.includes('load failed') || 
+                          errMsg.includes('network') || 
+                          errMsg.includes('timeout') || 
+                          errMsg.includes('failed to fetch') ||
+                          errMsg.includes('aborted');
+      
+      if (isRetryable && attempt < maxAttempts) {
+        logger.log(`[pushService] Retryable error, will attempt again...`);
+        continue;
       }
-      // Non-network error - throw immediately
+      
+      // All retries exhausted or non-retryable error
+      if (isRetryable) {
+        throw new Error('Unable to connect to notification service. Please ensure you have a stable internet connection and try again.');
+      }
       throw lastError;
     }
   }
@@ -250,9 +307,27 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
     throw lastError || new Error('Failed to obtain messaging token');
   }
   
-  logger.log('[pushService] Obtained FCM token:', token);
+  logger.log('[pushService] Obtained FCM token:', token.substring(0, 20) + '...');
   return token;
 };
+
+/**
+ * Convert a base64 VAPID key to Uint8Array for use with PushManager.subscribe()
+ */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const registerTokenOnServer = async (token: string): Promise<RegisterResult> => {
   const functions = getFunctions(getFirebaseApp(), 'us-central1');
