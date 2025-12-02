@@ -172,6 +172,61 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     };
   }, [user?.id, pushSupported]); // Re-verify if user changes or push support changes
 
+  // State for auto-retry after page refresh
+  const [autoRetryPending, setAutoRetryPending] = useState(false);
+  
+  // Ref to hold the toggle handler for use in effects
+  const handleTogglePushRef = React.useRef<((enabled: boolean) => Promise<void>) | null>(null);
+
+  // Auto-retry enabling push after page refresh (if triggered by SW error)
+  useEffect(() => {
+    const checkAutoRetry = async () => {
+      try {
+        const shouldRetry = sessionStorage.getItem('pushAutoRetry');
+        if (shouldRetry === 'true') {
+          // Clear the flag immediately to prevent loops
+          sessionStorage.removeItem('pushAutoRetry');
+          
+          logger.log('[ProfileSettings] Auto-retrying push enable after refresh...');
+          
+          // Wait for SW to be ready and component to settle
+          await new Promise(r => setTimeout(r, 2000));
+          
+          // Check if push is already enabled (in case it worked)
+          const status = await pushService.getActualPushStatus?.();
+          if (status?.hasSubscription) {
+            logger.log('[ProfileSettings] Push already enabled after refresh');
+            toast.success('Push notifications enabled!');
+            setPushEnabled(true);
+            return;
+          }
+          
+          // Try to enable push
+          toast.loading('Retrying push notification setup...', { duration: 2000 });
+          
+          // Set flag to trigger toggle after handler is ready
+          setAutoRetryPending(true);
+        }
+      } catch (e) {
+        logger.warn('[ProfileSettings] Auto-retry check failed:', e);
+      }
+    };
+    
+    checkAutoRetry();
+  }, []); // Run once on mount
+
+  // Handle the actual auto-retry after handler is ready
+  useEffect(() => {
+    if (autoRetryPending && !isTogglingPush && pushSupported && handleTogglePushRef.current) {
+      setAutoRetryPending(false);
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(() => {
+        handleTogglePushRef.current?.(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoRetryPending, isTogglingPush, pushSupported]);
+
   // Auto-check password matching in real-time
   useEffect(() => {
     if (passwordData.newPassword && passwordData.confirmPassword) {
@@ -583,10 +638,21 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           duration: 5000
         });
       } else if (/ready timeout|no active service worker|subscription failed/i.test(msg)) {
-        toast.error('Unable to enable push notifications', {
-          description: 'Please refresh the page and try again in a moment.',
-          duration: 5000
+        // This error means SW isn't active - refresh and auto-retry
+        toast.loading('Service worker not ready. Refreshing page to retry...', {
+          duration: 2000
         });
+        // Store intent to enable push after refresh
+        try {
+          sessionStorage.setItem('pushAutoRetry', 'true');
+        } catch (e) {
+          // sessionStorage may be unavailable
+        }
+        // Refresh after a short delay to let user see the message
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+        return; // Don't show additional errors
       } else {
         // generic fallback
         toast.error('Push notification change failed', {
@@ -597,6 +663,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setIsTogglingPush(false);
     }
   };
+
+  // Update ref so auto-retry effect can access the handler
+  handleTogglePushRef.current = handleTogglePush;
 
   const getPasswordStrength = (password: string): { strength: string; color: string } => {
     if (password.length === 0) return { strength: '', color: '' };
