@@ -201,8 +201,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
           return { id, ok: true };
         });
 
-      // Save tasks/items for retrying or progress dialog
-      const itemsForDialog = targetIds.map(id => ({ id, label: `Request ${id}` }));
+      // Save tasks/items for retrying or progress dialog - use faculty name instead of document ID
+      const itemsForDialog = targetIds.map(id => {
+        const req = requests.find(r => r.id === id);
+        return { id, label: req ? `${req.facultyName} - ${req.classroomName}` : 'Request' };
+      });
       lastTasksRef.current = tasks;
       setLastItems(itemsForDialog);
       // Only show bulk progress dialog for multiple items
@@ -271,7 +274,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
     });
 
     lastTasksRef.current = tasks;
-    setLastItems(ids.map(id => ({ id, label: `Request ${id}` })));
+    // Use faculty name instead of document ID
+    setLastItems(ids.map(id => {
+      const req = requests.find(r => r.id === id);
+      return { id, label: req ? `${req.facultyName} - ${req.classroomName}` : 'Request' };
+    }));
     // Only show bulk progress dialog for multiple items
     if (ids.length > 1) {
       setShowBulkProgress(true);
@@ -728,7 +735,11 @@ export default function RequestApproval({ requests, onRequestApproval, onCancelA
               return { id, ok: true };
             });
             lastTasksRef.current = tasks;
-            setLastItems(failedIds.map(id => ({ id, label: `Request ${id}` })));
+            // Use faculty name instead of document ID
+            setLastItems(failedIds.map(id => {
+              const req = requests.find(r => r.id === id);
+              return { id, label: req ? `${req.facultyName} - ${req.classroomName}` : 'Request' };
+            }));
             bulkRunner.retry();
             await bulkRunner.start(tasks, 4, (processed, total) => setBulkProgress({ processed, total }));
             const results = bulkRunner.results;

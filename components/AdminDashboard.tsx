@@ -617,13 +617,13 @@ export default function AdminDashboard({
                                           }
                                         }}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
-                                        aria-label={`Approve request ${request.id}`}
+                                        aria-label={`Approve request by ${request.facultyName} for ${request.classroomName}`}
                                         disabled={processingRequestId === request.id}
                                       >
                                         {processingRequestId === request.id ? (
                                           <span className="inline-flex items-center">
                                             <Loader2 className="animate-spin mr-1 h-3 w-3" />
-                                            <span className="sr-only">Approving request {request.id}</span>
+                                            <span className="sr-only">Approving request by {request.facultyName}</span>
                                           </span>
                                         ) : (
                                           <><CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Approve</>
@@ -659,13 +659,13 @@ export default function AdminDashboard({
                                           }
                                         }}
                                         className={`transition-colors duration-200 w-full sm:w-auto text-xs sm:text-sm`}
-                                        aria-label={`Reject request ${request.id}`}
+                                        aria-label={`Reject request by ${request.facultyName} for ${request.classroomName}`}
                                         disabled={processingRequestId === request.id}
                                       >
                                         {processingRequestId === request.id ? (
                                           <span className="inline-flex items-center">
                                             <Loader2 className="animate-spin mr-1 h-3 w-3" />
-                                            <span className="sr-only">Rejecting request {request.id}</span>
+                                            <span className="sr-only">Rejecting request by {request.facultyName}</span>
                                           </span>
                                         ) : (
                                           <><XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />Reject</>
