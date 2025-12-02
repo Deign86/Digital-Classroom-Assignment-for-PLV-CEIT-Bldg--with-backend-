@@ -96,6 +96,58 @@ export const pushServiceLazy = {
   },
 
   /**
+   * Check the actual push subscription status.
+   * Returns the real subscription state from PushManager, not Firestore.
+   */
+  async getActualPushStatus(): Promise<{
+    hasSubscription: boolean;
+    hasPermission: boolean;
+    token: string | null;
+    swReady: boolean;
+  }> {
+    const service = await loadPushService();
+    return service.getActualPushStatus();
+  },
+
+  /**
+   * Check if the service worker is ready without waiting.
+   */
+  isServiceWorkerReady(): boolean {
+    if (!pushServiceInstance) return false;
+    return pushServiceInstance.isServiceWorkerReady();
+  },
+
+  /**
+   * Pre-warm the service worker for faster push toggle response.
+   */
+  async preWarmServiceWorker(): Promise<void> {
+    const service = await loadPushService();
+    return service.preWarmServiceWorker();
+  },
+
+  /**
+   * Listen for push subscription change events from the service worker.
+   */
+  onSubscriptionChange(handler: (event: { reason: string; timestamp: number }) => void): () => void {
+    // For this method, we load synchronously if available, otherwise set up listener after load
+    if (pushServiceInstance) {
+      return pushServiceInstance.onSubscriptionChange(handler);
+    }
+    
+    // If not loaded yet, set up after load
+    let unsubscribe: (() => void) | null = null;
+    loadPushService().then(service => {
+      unsubscribe = service.onSubscriptionChange(handler);
+    }).catch(error => {
+      logger.error('[pushServiceLazy] Failed to setup subscription change listener:', error);
+    });
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  },
+
+  /**
    * Preload the push service without waiting for it.
    * Call this after LCP to start loading in the background.
    */

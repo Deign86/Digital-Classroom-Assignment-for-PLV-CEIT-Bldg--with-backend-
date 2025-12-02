@@ -58,6 +58,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [pushSupported, setPushSupported] = useState<boolean>(true);
+  const [pushStatusVerified, setPushStatusVerified] = useState<boolean>(false);
   const { theme, setTheme } = useDarkMode();
 
   // Profile editing state
@@ -74,6 +75,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
   // But DON'T update if user is currently editing to avoid overwriting their changes
+  // Also skip if we've already verified the actual push status
   useEffect(() => {
     if (isEditingProfile || isSavingProfile) {
       // Don't reset form data while user is editing or saving
@@ -81,7 +83,10 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     }
 
     try {
-      setPushEnabled(!!(user as any).pushEnabled);
+      // Only sync pushEnabled from user prop if we haven't verified actual status yet
+      if (!pushStatusVerified) {
+        setPushEnabled(!!(user as any).pushEnabled);
+      }
       setProfileData({
         name: user.name,
         departments: (user.departments && user.departments.length > 0 ? user.departments : (user.department ? [user.department] : [])) as string[]
@@ -90,7 +95,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       // If something odd happens, keep current local state and log for diagnostics
       logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
-  }, [user?.pushEnabled, user?.name, user?.department, user?.departments]); // Remove isEditingProfile and isSavingProfile from dependencies
+  }, [user?.pushEnabled, user?.name, user?.department, user?.departments, pushStatusVerified]); // Include pushStatusVerified
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
   useEffect(() => {
@@ -101,6 +106,61 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setPushSupported(false);
     }
   }, []);
+
+  // Verify actual push subscription status on mount
+  // This reconciles UI state with actual PushManager state to fix drift issues
+  useEffect(() => {
+    let mounted = true;
+    
+    const verifyPushStatus = async () => {
+      if (!pushSupported) return;
+      
+      try {
+        logger.log('[ProfileSettings] Verifying actual push subscription status...');
+        const status = await pushService.getActualPushStatus();
+        
+        if (!mounted) return;
+        
+        logger.log('[ProfileSettings] Actual push status:', status);
+        
+        // If actual subscription status differs from Firestore state, log it
+        const firestoreEnabled = !!(user as any).pushEnabled;
+        if (status.hasSubscription !== firestoreEnabled || status.hasPermission !== firestoreEnabled) {
+          logger.warn('[ProfileSettings] Push state drift detected:', {
+            firestoreEnabled,
+            actualSubscription: status.hasSubscription,
+            hasPermission: status.hasPermission,
+          });
+        }
+        
+        // Use actual subscription status as source of truth
+        // If permission is denied or no subscription, show as disabled
+        const actualEnabled = status.hasSubscription && status.hasPermission;
+        setPushEnabled(actualEnabled);
+        
+        if (status.token) {
+          setPushToken(status.token);
+        }
+        
+        setPushStatusVerified(true);
+      } catch (err) {
+        logger.warn('[ProfileSettings] Failed to verify push status:', err);
+        // Fall back to Firestore state on error
+        setPushStatusVerified(true);
+      }
+    };
+    
+    // Pre-warm the service worker to reduce latency when user toggles
+    pushService.preWarmServiceWorker?.().catch(() => {});
+    
+    // Slight delay to let the component settle
+    const timer = setTimeout(verifyPushStatus, 100);
+    
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [user?.id, pushSupported]); // Re-verify if user changes or push support changes
 
   // Auto-check password matching in real-time
   useEffect(() => {

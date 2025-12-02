@@ -69,6 +69,26 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Handle push subscription changes (expiration, browser updates, etc.)
+// This ensures the app can detect when a subscription becomes invalid
+self.addEventListener('pushsubscriptionchange', (event) => {
+  console.log('[firebase-messaging-sw.js] Push subscription changed:', event);
+  
+  // Notify any open clients that the subscription changed
+  // They should re-verify their push status
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      clientList.forEach((client) => {
+        client.postMessage({
+          type: 'PUSH_SUBSCRIPTION_CHANGE',
+          reason: event.oldSubscription ? 'renewed' : 'expired',
+          timestamp: Date.now()
+        });
+      });
+    })
+  );
+});
+
 // Cache configuration
 const CACHE_VERSION = 'v1.2';
 const CACHE_NAME = `plv-ceit-classroom-${CACHE_VERSION}`;

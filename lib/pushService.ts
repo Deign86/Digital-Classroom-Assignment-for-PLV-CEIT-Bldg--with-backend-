@@ -8,92 +8,155 @@ type RegisterResult = { success: boolean; token?: string; message?: string };
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
 
+// Track service worker readiness state to avoid redundant polling
+let swReadyPromise: Promise<ServiceWorkerRegistration | undefined> | null = null;
+let swIsReady = false;
+
+/**
+ * Ensures the service worker is registered if it hasn't been already.
+ * This is called before attempting any push operations to guarantee SW exists.
+ */
+const ensureServiceWorkerRegistered = async (): Promise<void> => {
+  if (!('serviceWorker' in navigator)) return;
+  
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  if (registrations.length > 0) {
+    logger.log('[pushService] Service worker already registered');
+    return;
+  }
+  
+  // Register the service worker if not already registered
+  logger.log('[pushService] No service worker found, registering now...');
+  try {
+    await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    logger.log('[pushService] Service worker registered successfully');
+  } catch (err) {
+    logger.error('[pushService] Failed to register service worker:', err);
+    throw new Error('Failed to register service worker for push notifications');
+  }
+};
+
 /**
  * Wait for service worker to be ready with a timeout.
  * On first page load, SW registration may be in progress; this ensures we don't
  * attempt to subscribe before the SW is active.
+ * 
+ * This function:
+ * 1. Ensures SW is registered if not already
+ * 2. Waits for SW to become active with caching for subsequent calls
+ * 3. Returns the active registration for use with FCM
  */
-const waitForServiceWorkerReady = async (timeoutMs: number = 15000): Promise<ServiceWorkerRegistration | undefined> => {
+const waitForServiceWorkerReady = async (timeoutMs: number = 20000): Promise<ServiceWorkerRegistration | undefined> => {
   if (!('serviceWorker' in navigator)) return undefined;
 
-  try {
-    // First check if there's already an active controller
-    if (navigator.serviceWorker.controller) {
-      logger.log('[pushService] Service worker controller already active');
-      return await navigator.serviceWorker.ready;
-    }
+  // Return cached promise if already waiting or ready
+  if (swIsReady && swReadyPromise) {
+    logger.log('[pushService] Returning cached SW ready promise');
+    return swReadyPromise;
+  }
 
-    // Wait for SW to become ready with timeout
-    logger.log('[pushService] Waiting for service worker to become ready...');
-    
-    // Poll for service worker registration with exponential backoff
-    const startTime = Date.now();
-    let attempt = 0;
-    while (Date.now() - startTime < timeoutMs) {
-      attempt++;
+  // If we have an in-flight promise, return it to avoid duplicate work
+  if (swReadyPromise) {
+    return swReadyPromise;
+  }
+
+  swReadyPromise = (async () => {
+    try {
+      // First, ensure the service worker is registered
+      await ensureServiceWorkerRegistered();
       
-      // Check if a registration exists
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      logger.log(`[pushService] Attempt ${attempt}: Found ${registrations.length} registration(s)`);
+      // If there's already an active controller, we're good
+      if (navigator.serviceWorker.controller) {
+        logger.log('[pushService] Service worker controller already active');
+        swIsReady = true;
+        return await navigator.serviceWorker.ready;
+      }
+
+      // Wait for SW to become ready with timeout
+      logger.log('[pushService] Waiting for service worker to become ready...');
       
-      if (registrations.length > 0) {
-        const registration = registrations[0];
+      // Poll for service worker registration with exponential backoff
+      const startTime = Date.now();
+      let attempt = 0;
+      while (Date.now() - startTime < timeoutMs) {
+        attempt++;
         
-        // Check if registration has an active or activating worker
-        if (registration.active) {
-          logger.log('[pushService] Service worker is active and ready');
-          return registration;
+        // Check if a registration exists
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        if (attempt <= 3 || attempt % 5 === 0) {
+          logger.log(`[pushService] Attempt ${attempt}: Found ${registrations.length} registration(s)`);
         }
         
-        if (registration.installing) {
-          logger.log('[pushService] Service worker is installing, waiting for activation...');
-          // Wait for the installing worker to become active
-          await new Promise<void>((resolve) => {
-            const checkState = () => {
-              if (registration.active) {
-                resolve();
-              } else if (registration.installing) {
-                registration.installing.addEventListener('statechange', function handler() {
-                  if (this.state === 'activated') {
-                    this.removeEventListener('statechange', handler);
-                    resolve();
-                  }
-                });
-              } else {
-                // Fallback: just resolve after a short delay
-                setTimeout(resolve, 500);
-              }
-            };
-            checkState();
-            // Safety timeout
-            setTimeout(resolve, 3000);
-          });
+        if (registrations.length > 0) {
+          const registration = registrations[0];
           
-          // Re-check if active now
+          // Check if registration has an active worker
           if (registration.active) {
-            logger.log('[pushService] Service worker activated successfully');
+            logger.log('[pushService] Service worker is active and ready');
+            swIsReady = true;
             return registration;
           }
+          
+          // Check if there's an installing or waiting worker
+          const pendingWorker = registration.installing || registration.waiting;
+          if (pendingWorker) {
+            logger.log(`[pushService] Service worker is ${pendingWorker.state}, waiting for activation...`);
+            
+            // Wait for the worker to activate
+            await new Promise<void>((resolve) => {
+              const onStateChange = () => {
+                if (pendingWorker.state === 'activated') {
+                  pendingWorker.removeEventListener('statechange', onStateChange);
+                  resolve();
+                } else if (pendingWorker.state === 'redundant') {
+                  pendingWorker.removeEventListener('statechange', onStateChange);
+                  resolve(); // Will be caught on next iteration
+                }
+              };
+              
+              pendingWorker.addEventListener('statechange', onStateChange);
+              
+              // Safety timeout to prevent infinite hang
+              setTimeout(() => {
+                pendingWorker.removeEventListener('statechange', onStateChange);
+                resolve();
+              }, 5000);
+            });
+            
+            // Re-check if active now
+            if (registration.active) {
+              logger.log('[pushService] Service worker activated successfully');
+              swIsReady = true;
+              return registration;
+            }
+          }
         }
+        
+        // Wait before next attempt (exponential backoff: 100ms, 200ms, 400ms, 800ms, then 1s max)
+        const delay = Math.min(100 * Math.pow(2, attempt - 1), 1000);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-      
-      // Wait before next attempt (exponential backoff: 100ms, 200ms, 400ms, 800ms, then 1s)
-      const delay = Math.min(100 * Math.pow(2, attempt - 1), 1000);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
 
-    // Timeout reached - try one last time with navigator.serviceWorker.ready
-    logger.warn('[pushService] Polling timed out, attempting navigator.serviceWorker.ready as fallback...');
-    const readyPromise = navigator.serviceWorker.ready;
-    const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Service worker ready timeout after 15 seconds')), 5000)
-    );
-    
-    return await Promise.race([readyPromise, timeoutPromise]);
-  } catch (e) {
-    logger.warn('[pushService] Error waiting for service worker:', e);
-    throw new Error('Service worker is still initializing. Please wait a moment and try again.');
-  }
+      // Timeout reached - try one last time with navigator.serviceWorker.ready
+      logger.warn('[pushService] Polling timed out, attempting navigator.serviceWorker.ready as fallback...');
+      const readyPromise = navigator.serviceWorker.ready;
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Service worker ready timeout')), 5000)
+      );
+      
+      const registration = await Promise.race([readyPromise, timeoutPromise]);
+      swIsReady = true;
+      return registration;
+    } catch (e) {
+      // Reset cached promise on failure so next attempt can retry
+      swReadyPromise = null;
+      swIsReady = false;
+      logger.warn('[pushService] Error waiting for service worker:', e);
+      throw new Error('Service worker is still initializing. Please wait a moment and try again.');
+    }
+  })();
+
+  return swReadyPromise;
 };
 
 const requestPermissionAndGetToken = async (): Promise<string> => {
@@ -257,6 +320,98 @@ export const pushService = {
     }
   },
 
+  /**
+   * Check the actual push subscription status by querying PushManager.
+   * This is the source of truth for whether push is actually enabled,
+   * independent of Firestore state. Use this on component mount to
+   * reconcile UI state with actual subscription status.
+   * 
+   * @returns Object with:
+   *   - hasSubscription: true if there's an active push subscription
+   *   - hasPermission: true if notification permission is granted
+   *   - token: FCM token if subscription exists, null otherwise
+   *   - swReady: true if service worker is active
+   */
+  async getActualPushStatus(): Promise<{
+    hasSubscription: boolean;
+    hasPermission: boolean;
+    token: string | null;
+    swReady: boolean;
+  }> {
+    const result = {
+      hasSubscription: false,
+      hasPermission: false,
+      token: null as string | null,
+      swReady: false,
+    };
+
+    try {
+      if (!this.isPushSupported()) {
+        logger.log('[pushService] getActualPushStatus: Push not supported');
+        return result;
+      }
+
+      // Check notification permission
+      result.hasPermission = Notification.permission === 'granted';
+
+      // Check if service worker is ready (don't wait too long for status check)
+      if (!('serviceWorker' in navigator)) {
+        return result;
+      }
+
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      if (registrations.length > 0 && registrations[0].active) {
+        result.swReady = true;
+
+        // Check for existing push subscription
+        const subscription = await registrations[0].pushManager.getSubscription();
+        result.hasSubscription = !!subscription;
+
+        // If we have permission and SW is ready, try to get current token
+        if (result.hasPermission && result.hasSubscription) {
+          try {
+            result.token = await this.getCurrentToken();
+          } catch {
+            // Token retrieval failed, but subscription exists
+            logger.warn('[pushService] getActualPushStatus: Token retrieval failed');
+          }
+        }
+      }
+
+      logger.log('[pushService] getActualPushStatus result:', result);
+      return result;
+    } catch (err) {
+      logger.warn('[pushService] getActualPushStatus error:', err);
+      return result;
+    }
+  },
+
+  /**
+   * Check if the service worker is ready without waiting.
+   * Useful for UI to show appropriate messaging.
+   */
+  isServiceWorkerReady(): boolean {
+    return swIsReady;
+  },
+
+  /**
+   * Pre-warm the service worker by initiating registration and activation.
+   * Call this early (e.g., after login) to reduce latency when user toggles push.
+   */
+  async preWarmServiceWorker(): Promise<void> {
+    if (!this.isPushSupported()) return;
+    
+    try {
+      logger.log('[pushService] Pre-warming service worker...');
+      // This will register and wait for activation, caching the result
+      await waitForServiceWorkerReady();
+      logger.log('[pushService] Service worker pre-warmed successfully');
+    } catch (err) {
+      // Non-fatal - user can still enable push later
+      logger.warn('[pushService] Pre-warm failed (non-fatal):', err);
+    }
+  },
+
   onMessage(handler: (payload: any) => void) {
     try {
       const messaging = getMessaging(getFirebaseApp());
@@ -265,6 +420,36 @@ export const pushService = {
       // not supported or not initialized
       return () => {};
     }
+  },
+
+  /**
+   * Listen for push subscription change events from the service worker.
+   * This handles cases where the subscription expires or is invalidated.
+   * Call this once during app initialization.
+   * 
+   * @param handler - Callback when subscription changes (e.g., to re-verify push status)
+   * @returns Unsubscribe function
+   */
+  onSubscriptionChange(handler: (event: { reason: string; timestamp: number }) => void): () => void {
+    if (!('serviceWorker' in navigator)) {
+      return () => {};
+    }
+
+    const messageHandler = (event: MessageEvent) => {
+      if (event.data?.type === 'PUSH_SUBSCRIPTION_CHANGE') {
+        logger.log('[pushService] Received subscription change from SW:', event.data);
+        handler({
+          reason: event.data.reason || 'unknown',
+          timestamp: event.data.timestamp || Date.now(),
+        });
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', messageHandler);
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', messageHandler);
+    };
   },
 };
 
