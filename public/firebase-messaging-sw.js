@@ -90,27 +90,22 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 });
 
 // Cache configuration
-const CACHE_VERSION = 'v1.2';
+const CACHE_VERSION = 'v1.3';
 const CACHE_NAME = `plv-ceit-classroom-${CACHE_VERSION}`;
 
-// Logo URLs to cache (Firebase Storage) - WebP format for better performance
-const LOGO_URLS = [
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fceit-logo.webp?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media'
-];
+// Firebase Storage logo URLs - cached opportunistically via fetch handler
+// (not in initial cache because Firebase Storage has CORS restrictions for SW fetch)
+const FIREBASE_STORAGE_LOGO_PATTERN = /firebasestorage\.googleapis\.com.*logos.*\.(webp|png|jpg|jpeg)/i;
 
-// Assets to cache on install
+// Assets to cache on install (only same-origin or CORS-enabled resources)
 const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
   '/favicon.ico',
-  // Also cache local public copies of logos so the SW can serve them when the app
-  // references them from `/plv-logo.webp`, `/ceit-logo.webp`, and `/system-logo.webp`.
+  // Local public copies of logos (same-origin, no CORS issues)
   '/plv-logo.webp',
   '/ceit-logo.webp',
   '/system-logo.webp',
-  ...LOGO_URLS,
 ];
 
 // Firebase SDK URLs to cache (these are large and don't change often)
@@ -173,13 +168,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Check if this is a Firebase Storage logo request (we want to cache these)
+  const isFirebaseStorageLogo = FIREBASE_STORAGE_LOGO_PATTERN.test(request.url);
+
   // Skip Firebase Auth/Firestore/Functions requests (must always be fresh)
+  // But allow Firebase Storage logo requests through for caching
   if (
-    url.hostname.includes('firebaseapp.com') ||
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('cloudfunctions.net') ||
-    url.pathname.includes('/__/auth/') ||
-    url.pathname.includes('/__/firebase/')
+    !isFirebaseStorageLogo && (
+      url.hostname.includes('firebaseapp.com') ||
+      url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('cloudfunctions.net') ||
+      url.pathname.includes('/__/auth/') ||
+      url.pathname.includes('/__/firebase/')
+    )
   ) {
     return;
   }
