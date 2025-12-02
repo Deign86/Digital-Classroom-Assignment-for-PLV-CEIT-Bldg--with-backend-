@@ -217,12 +217,22 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
   // Handle the actual auto-retry after handler is ready
   useEffect(() => {
-    if (autoRetryPending && !isTogglingPush && pushSupported && handleTogglePushRef.current) {
-      setAutoRetryPending(false);
+    if (autoRetryPending && !isTogglingPush && pushSupported) {
+      // Use a polling approach since refs don't trigger updates
+      const checkAndRetry = () => {
+        if (handleTogglePushRef.current) {
+          setAutoRetryPending(false);
+          logger.log('[ProfileSettings] Handler ready, executing auto-retry...');
+          handleTogglePushRef.current(true);
+        } else {
+          // Handler not ready yet, check again shortly
+          logger.log('[ProfileSettings] Handler not ready, will retry...');
+          setTimeout(checkAndRetry, 200);
+        }
+      };
+      
       // Small delay to ensure everything is ready
-      const timer = setTimeout(() => {
-        handleTogglePushRef.current?.(true);
-      }, 500);
+      const timer = setTimeout(checkAndRetry, 500);
       return () => clearTimeout(timer);
     }
   }, [autoRetryPending, isTogglingPush, pushSupported]);
@@ -627,18 +637,15 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.log('[ProfileSettings] Push toggle error caught:', msg);
       logger.error('Push toggle error:', msg);
       if (msg === 'Push-not-supported' || /not supported/i.test(msg)) {
         toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
         toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
-      } else if (/service worker|still initializing/i.test(msg)) {
-        toast.error('Service worker is still starting up', {
-          description: 'Please wait a few seconds and try again. The page will be ready shortly.',
-          duration: 5000
-        });
-      } else if (/ready timeout|no active service worker|subscription failed/i.test(msg)) {
+      } else if (/ready timeout|no active service worker|subscription failed|registration failed|storage error/i.test(msg)) {
         // This error means SW isn't active - refresh and auto-retry
+        // Must check BEFORE generic "service worker" match below
         toast.loading('Service worker not ready. Refreshing page to retry...', {
           duration: 2000
         });
@@ -653,6 +660,11 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           window.location.reload();
         }, 1500);
         return; // Don't show additional errors
+      } else if (/service worker|still initializing/i.test(msg)) {
+        toast.error('Service worker is still starting up', {
+          description: 'Please wait a few seconds and try again. The page will be ready shortly.',
+          duration: 5000
+        });
       } else {
         // generic fallback
         toast.error('Push notification change failed', {
