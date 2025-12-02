@@ -108,7 +108,8 @@ export const isNetworkError = (err: unknown) => {
     if (!err) return false;
     const e = err as any;
     const msg = (e?.message ?? '').toString().toLowerCase();
-    if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('timeout') || msg.includes('timed out')) return true;
+    // Include 'load failed' - this is iOS Safari's error message for network/CORS failures
+    if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('timeout') || msg.includes('timed out') || msg.includes('load failed')) return true;
     if (typeof navigator !== 'undefined' && 'onLine' in navigator && !(navigator as any).onLine) return true;
     // Firebase Unavailable
     if (e?.code && typeof e.code === 'string' && (e.code === 'unavailable' || e.code === 'unknown')) return true;

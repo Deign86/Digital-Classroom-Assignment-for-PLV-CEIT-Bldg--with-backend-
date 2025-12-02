@@ -181,8 +181,42 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   const registration = await waitForServiceWorkerReady();
   
   logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration:', !!registration);
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
-  if (!token) throw new Error('Failed to obtain messaging token');
+  
+  // Retry getToken on iOS since Safari can fail with "Load failed" on first attempt
+  // This is especially common when the device is on battery saver or has aggressive network timeouts
+  let token: string | null = null;
+  let lastError: Error | null = null;
+  const maxAttempts = isIOSDevice() ? 3 : 1; // Only retry on iOS
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      logger.log(`[pushService] getToken attempt ${attempt}/${maxAttempts}`);
+      token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration as any });
+      if (token) break; // Success
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const errMsg = lastError.message.toLowerCase();
+      
+      // On iOS, "Load failed" usually means a transient network issue - retry with delay
+      if (errMsg.includes('load failed') || errMsg.includes('network') || errMsg.includes('timeout')) {
+        logger.warn(`[pushService] getToken attempt ${attempt} failed with network error:`, lastError.message);
+        if (attempt < maxAttempts) {
+          // Exponential backoff: 500ms, 1000ms, 2000ms
+          const delay = 500 * Math.pow(2, attempt - 1);
+          logger.log(`[pushService] Retrying getToken in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      // Non-network error or out of retries - throw
+      throw lastError;
+    }
+  }
+  
+  if (!token) {
+    throw lastError || new Error('Failed to obtain messaging token');
+  }
+  
   logger.log('[pushService] Obtained FCM token:', token);
   return token;
 };
@@ -192,7 +226,13 @@ const registerTokenOnServer = async (token: string): Promise<RegisterResult> => 
   const fn = httpsCallable(functions, 'registerPushToken');
   try {
     logger.log('[pushService] Calling registerPushToken callable');
-    const res = await withRetry(() => fn({ token }), { attempts: 3, shouldRetry: isNetworkError });
+    // Use more attempts on iOS since Safari can fail with "Load failed" on first attempts
+    const attempts = isIOSDevice() ? 5 : 3;
+    const res = await withRetry(() => fn({ token }), { 
+      attempts, 
+      shouldRetry: isNetworkError,
+      initialDelayMs: isIOSDevice() ? 500 : 300  // Longer delay on iOS
+    });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
       logger.log('[pushService] registerPushToken succeeded');
@@ -231,7 +271,13 @@ const setPushEnabledOnServer = async (enabled: boolean): Promise<{ success: bool
   const fn = httpsCallable(functions, 'setPushEnabled');
   try {
     logger.log('[pushService] Calling setPushEnabled callable with', enabled);
-    const res = await withRetry(() => fn({ enabled }), { attempts: 3, shouldRetry: isNetworkError });
+    // Use more attempts on iOS since Safari can fail with "Load failed" on first attempts
+    const attempts = isIOSDevice() ? 5 : 3;
+    const res = await withRetry(() => fn({ enabled }), { 
+      attempts, 
+      shouldRetry: isNetworkError,
+      initialDelayMs: isIOSDevice() ? 500 : 300  // Longer delay on iOS
+    });
     const anyRes: any = res;
     if (anyRes?.data?.success) {
       logger.log('[pushService] setPushEnabled succeeded');

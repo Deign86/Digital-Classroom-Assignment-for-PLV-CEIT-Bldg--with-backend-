@@ -695,6 +695,20 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           description: 'Please wait a few seconds and try again. The page will be ready shortly.',
           duration: 5000
         });
+      } else if (/load failed/i.test(msg)) {
+        // iOS Safari specific error - network request failed
+        // Check if we're on iOS to provide targeted advice
+        if (currentIosStatus?.isIOS) {
+          toast.error('Network request failed', {
+            description: 'Please check your internet connection and try again. On iOS, ensure you have a stable WiFi or cellular connection.',
+            duration: 6000
+          });
+        } else {
+          toast.error('Network request failed', {
+            description: 'Please check your internet connection and try again.',
+            duration: 5000
+          });
+        }
       } else {
         // generic fallback
         toast.error('Push notification change failed', {
