@@ -42,17 +42,16 @@ export default function LogoHeader({
       try {
         setIsLoading(true);
         const fetchedLogos = await getAllLogos();
-        console.log('Fetched logos:', fetchedLogos);
+        logger.debug('Fetched logos:', fetchedLogos);
         setLogos(fetchedLogos);
         
         // Track if any logo failed to load
         if (!fetchedLogos.plv || !fetchedLogos.ceit) {
-          console.warn('One or more logos failed to load:', { plv: !!fetchedLogos.plv, ceit: !!fetchedLogos.ceit });
+          logger.warn('One or more logos failed to load:', { plv: !!fetchedLogos.plv, ceit: !!fetchedLogos.ceit });
           setError(true);
           logger.warn('One or more logos failed to load from Firebase Storage');
         }
       } catch (err) {
-        console.error('Failed to fetch logos:', err);
         logger.error('Failed to fetch logos:', err);
         setError(true);
       } finally {
@@ -77,7 +76,7 @@ export default function LogoHeader({
 
   // Show at least one logo if available, or nothing if both failed
   if (!logos.plv && !logos.ceit) {
-    console.log('Both logos failed to load, hiding component');
+    logger.debug('Both logos failed to load, hiding component');
     return null;
   }
 

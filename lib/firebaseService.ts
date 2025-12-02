@@ -46,6 +46,24 @@ import { systemCache, CACHE_NAMESPACES, CACHE_TTL } from './systemCache';
 import { invalidateRelated } from './cachedFirestore';
 
 /**
+ * Debounce utility for real-time listener callbacks.
+ * Prevents UI churn from rapid successive updates within the delay window.
+ */
+function debounce<T extends (...args: Parameters<T>) => void>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/** Default debounce delay for real-time updates (ms) */
+const REALTIME_DEBOUNCE_MS = 100;
+
+/**
  * Firebase Service - Main data layer for the Digital Classroom Reservation system.
  * 
  * This service provides a complete abstraction layer over Firebase Authentication
@@ -267,13 +285,16 @@ const setupClassroomsListener = (callback: DataListener<Classroom>, errorCallbac
   const classroomsRef = collection(database, COLLECTIONS.CLASSROOMS);
   const q = query(classroomsRef, orderBy('name'));
   
+  // Debounce callback to prevent rapid successive UI updates
+  const debouncedCallback = debounce(callback, REALTIME_DEBOUNCE_MS);
+  
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
       const classrooms = snapshot.docs.map((doc) => {
         const data = doc.data() as FirestoreClassroomRecord;
         return toClassroom(doc.id, data);
       });
-      callback(classrooms);
+      debouncedCallback(classrooms);
     } catch (error) {
       logger.error('Classrooms listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
@@ -304,6 +325,9 @@ const setupBookingRequestsListener = (
     q = query(bookingRequestsRef, orderBy('requestDate', 'desc'));
   }
   
+  // Debounce callback to prevent rapid successive UI updates
+  const debouncedCallback = debounce(callback, REALTIME_DEBOUNCE_MS);
+  
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
       // Deduplicate at service layer to reduce component overhead
@@ -320,7 +344,7 @@ const setupBookingRequestsListener = (
         }
       });
       
-      callback(requests);
+      debouncedCallback(requests);
     } catch (error) {
       logger.error('BookingRequests listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
@@ -351,13 +375,16 @@ const setupSchedulesListener = (
     q = query(schedulesRef, orderBy('date'), orderBy('startTime'));
   }
   
+  // Debounce callback to prevent rapid successive UI updates
+  const debouncedCallback = debounce(callback, REALTIME_DEBOUNCE_MS);
+  
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
       const schedules = snapshot.docs.map((doc) => {
         const data = doc.data() as FirestoreScheduleRecord;
         return toSchedule(doc.id, data);
       });
-      callback(schedules);
+      debouncedCallback(schedules);
     } catch (error) {
       logger.error('Schedules listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
@@ -376,13 +403,16 @@ const setupSignupRequestsListener = (callback: DataListener<SignupRequest>, erro
   const signupRequestsRef = collection(database, COLLECTIONS.SIGNUP_REQUESTS);
   const q = query(signupRequestsRef, orderBy('requestDate', 'desc'));
   
+  // Debounce callback to prevent rapid successive UI updates
+  const debouncedCallback = debounce(callback, REALTIME_DEBOUNCE_MS);
+  
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
       const requests = snapshot.docs.map((doc) => {
         const data = doc.data() as FirestoreSignupRequestRecord;
         return toSignupRequest(doc.id, data);
       });
-      callback(requests);
+      debouncedCallback(requests);
     } catch (error) {
       logger.error('SignupRequests listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
@@ -401,13 +431,16 @@ const setupSignupHistoryListener = (callback: DataListener<import('../App').Sign
   const signupHistoryRef = collection(database, COLLECTIONS.SIGNUP_HISTORY);
   const q = query(signupHistoryRef, orderBy('resolvedAt', 'desc'));
 
+  // Debounce callback to prevent rapid successive UI updates
+  const debouncedCallback = debounce(callback, REALTIME_DEBOUNCE_MS);
+
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
       const history = snapshot.docs.map((doc) => {
         const data = doc.data() as any;
         return toSignupHistory(doc.id, data);
       });
-      callback(history);
+      debouncedCallback(history);
     } catch (error) {
       logger.error('SignupHistory listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));
@@ -426,13 +459,16 @@ const setupUsersListener = (callback: DataListener<User>, errorCallback?: DataEr
   const usersRef = collection(database, COLLECTIONS.USERS);
   const q = query(usersRef, orderBy('name'));
   
+  // Debounce callback to prevent rapid successive UI updates
+  const debouncedCallback = debounce(callback, REALTIME_DEBOUNCE_MS);
+  
   const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
     try {
       const users = snapshot.docs.map((doc) => {
         const record = ensureUserData(doc);
         return toUser(doc.id, record);
       });
-      callback(users);
+      debouncedCallback(users);
     } catch (error) {
       logger.error('Users listener error:', error);
       errorCallback?.(error instanceof Error ? error : new Error(String(error)));

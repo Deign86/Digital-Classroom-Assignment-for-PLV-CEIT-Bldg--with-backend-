@@ -302,7 +302,7 @@ export default function FacultyDashboard({
     await Promise.resolve(onBookingRequest(request, true));
     toast.success('Reservation request submitted (Quick Rebook).');
     } catch (err) {
-      console.error('Quick rebook failed', err);
+      logger.error('Quick rebook failed', err);
       toast.error('Failed to submit quick rebook. Opening booking form for manual retry.');
       setBookingInitialData(initial);
       toast('Form pre-filled with the previous booking — please review and submit.');
@@ -329,12 +329,12 @@ export default function FacultyDashboard({
     
     if (activeTab === 'settings' && !hasRefreshedForSettings) {
       if (navigator.onLine) {
-        console.log('[FacultyDashboard] First time opening settings tab, refreshing page for service worker init...');
+        logger.debug('[FacultyDashboard] First time opening settings tab, refreshing page for service worker init...');
         sessionStorage.setItem('settingsTabRefreshed', 'true');
         sessionStorage.setItem('returnToTab', 'settings');
         window.location.reload();
       } else {
-        console.log('[FacultyDashboard] Settings tab opened offline, skipping refresh (will refresh on next online visit)');
+        logger.debug('[FacultyDashboard] Settings tab opened offline, skipping refresh (will refresh on next online visit)');
       }
     }
   }, [activeTab]);

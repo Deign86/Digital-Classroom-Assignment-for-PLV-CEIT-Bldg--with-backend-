@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logger } from '../lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -50,7 +51,7 @@ export function OfflineQueueViewer({ classrooms, onRetryBooking }: OfflineQueueV
       const pending = requests.filter(r => r.queueStatus !== 'synced');
       setQueuedRequests(pending);
     } catch (error) {
-      console.error('Failed to load offline queue:', error);
+      logger.error('Failed to load offline queue:', error);
       setError('Failed to load offline queue');
     } finally {
       setIsLoading(false);
@@ -63,7 +64,7 @@ export function OfflineQueueViewer({ classrooms, onRetryBooking }: OfflineQueueV
     // Subscribe to queue changes
     const unsubscribe = offlineQueueService.subscribe(() => {
       loadQueue().catch(err => {
-        console.error('Failed to reload queue on change:', err);
+        logger.error('Failed to reload queue on change:', err);
       });
     });
 
@@ -76,7 +77,7 @@ export function OfflineQueueViewer({ classrooms, onRetryBooking }: OfflineQueueV
       toast.success('Queued booking removed');
     } catch (error) {
       toast.error('Failed to remove queued booking');
-      console.error('Remove error:', error);
+      logger.error('Remove error:', error);
     }
   };
 
@@ -98,7 +99,7 @@ export function OfflineQueueViewer({ classrooms, onRetryBooking }: OfflineQueueV
       
       toast.info('Booking form opened with your previous data. Please adjust and resubmit.');
     } catch (error) {
-      console.error('Error retrying booking:', error);
+      logger.error('Error retrying booking:', error);
       toast.error('Failed to retry booking');
     }
   };

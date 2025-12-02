@@ -181,7 +181,7 @@ export default function App() {
       if (!currentUser?.id) return;
       await notificationService.acknowledgeNotification(id, currentUser.id);
     } catch (err) {
-      console.error('ack error', err);
+      logger.error('ack error', err);
     }
   }, [currentUser?.id]);
 
@@ -200,7 +200,7 @@ export default function App() {
       await notificationService.acknowledgeNotifications(unreadIds, currentUser.id);
       return unreadIds.length;
     } catch (err) {
-      console.error('ack all error', err);
+      logger.error('ack all error', err);
       return null;
     }
   }, [currentUser?.id]);

@@ -21,6 +21,7 @@ interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number; // milliseconds
+  lastAccessed: number; // For LRU tracking
 }
 
 interface CacheStats {
@@ -29,6 +30,7 @@ interface CacheStats {
   sets: number;
   invalidations: number;
   size: number;
+  lruEvictions: number;
 }
 
 /**
@@ -45,12 +47,15 @@ export interface CacheConfig {
 
 class SystemCache {
   private cache = new Map<string, CacheEntry<unknown>>();
+  // Track in-flight promises to deduplicate concurrent requests
+  private inflight = new Map<string, Promise<unknown>>();
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
     sets: 0,
     invalidations: 0,
     size: 0,
+    lruEvictions: 0,
   };
   
   private config: Required<CacheConfig>;
@@ -101,22 +106,25 @@ class SystemCache {
   }
 
   /**
-   * Enforce maximum cache size by removing oldest entries
+   * Enforce maximum cache size using LRU (Least Recently Used) eviction
+   * Entries that haven't been accessed recently are evicted first
    */
   private enforceMaxSize(): void {
     if (this.cache.size <= this.config.maxSize) {
       return;
     }
 
-    // Sort by timestamp (oldest first) and delete oldest entries
+    // Sort by lastAccessed (least recently used first) for LRU eviction
     const entries = Array.from(this.cache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+      .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
 
     const toDelete = entries.slice(0, this.cache.size - this.config.maxSize);
     toDelete.forEach(([key]) => this.cache.delete(key));
+    
+    this.stats.lruEvictions += toDelete.length;
 
     if (this.config.debug) {
-      logger.log(`[SystemCache] Pruned ${toDelete.length} entries to enforce max size`);
+      logger.log(`[SystemCache] LRU evicted ${toDelete.length} entries to enforce max size`);
     }
   }
 
@@ -145,6 +153,9 @@ class SystemCache {
       return null;
     }
 
+    // Update lastAccessed for LRU tracking
+    entry.lastAccessed = Date.now();
+
     this.stats.hits++;
     if (this.config.debug) {
       logger.log(`[SystemCache] HIT: ${key}`);
@@ -157,10 +168,12 @@ class SystemCache {
    */
   set<T>(namespace: string, id: string, data: T, ttl?: number): void {
     const key = this.generateKey(namespace, id);
+    const now = Date.now();
     const entry: CacheEntry<T> = {
       data,
-      timestamp: Date.now(),
+      timestamp: now,
       ttl: ttl ?? this.config.defaultTTL,
+      lastAccessed: now,
     };
 
     this.cache.set(key, entry as CacheEntry<unknown>);
@@ -176,6 +189,46 @@ class SystemCache {
       this.pruneExpired();
     }
     this.enforceMaxSize();
+  }
+
+  /**
+   * Get cached value or fetch with request deduplication.
+   * Prevents duplicate network requests when multiple callers ask for the same data simultaneously.
+   */
+  async getOrFetch<T>(
+    namespace: string,
+    id: string,
+    fetcher: () => Promise<T>,
+    ttl?: number
+  ): Promise<T> {
+    // Check cache first
+    const cached = this.get<T>(namespace, id);
+    if (cached !== undefined && cached !== null) {
+      return cached as T;
+    }
+
+    const key = this.generateKey(namespace, id);
+
+    // Check if request is already in-flight
+    if (this.inflight.has(key)) {
+      if (this.config.debug) {
+        logger.log(`[SystemCache] DEDUPE: ${key}`);
+      }
+      return this.inflight.get(key) as Promise<T>;
+    }
+
+    // Create new request and track it
+    const promise = fetcher()
+      .then((result) => {
+        this.set(namespace, id, result, ttl);
+        return result;
+      })
+      .finally(() => {
+        this.inflight.delete(key);
+      });
+
+    this.inflight.set(key, promise);
+    return promise;
   }
 
   /**
@@ -262,6 +315,7 @@ class SystemCache {
       sets: 0,
       invalidations: 0,
       size: this.cache.size,
+      lruEvictions: 0,
     };
 
     if (this.config.debug) {

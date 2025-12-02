@@ -39,28 +39,110 @@ interface CachedOptions {
 }
 
 /**
+ * Generate a stable, consistent hash using djb2 algorithm
+ * This produces the same output for the same input across sessions
+ */
+function djb2Hash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+  }
+  return hash >>> 0; // Convert to unsigned 32-bit integer
+}
+
+/**
+ * Extract collection path from a query by accessing internal Firestore properties
+ * Falls back gracefully if internal structure changes
+ */
+function getQueryPath(query: Query<DocumentData>): string {
+  try {
+    // Access the internal _query property to get collection path
+    const internalQuery = (query as any)._query;
+    if (internalQuery?.path?.segments) {
+      return internalQuery.path.segments.join('/');
+    }
+    // Fallback: try to extract from toString if available
+    const str = String(query);
+    const match = str.match(/collection\((["'])(.+?)\1\)/);
+    if (match) return match[2];
+  } catch {
+    // Ignore errors in path extraction
+  }
+  return 'unknown';
+}
+
+/**
+ * Extract query constraints (where, orderBy, limit) for cache key generation
+ */
+function extractQueryConstraints(query: Query<DocumentData>): string {
+  try {
+    const internalQuery = (query as any)._query;
+    if (!internalQuery) return '';
+
+    const parts: string[] = [];
+
+    // Extract filters (where clauses)
+    if (internalQuery.filters?.length > 0) {
+      const filters = internalQuery.filters.map((f: any) => {
+        try {
+          const field = f.field?.segments?.join('.') || f.field || 'unknown';
+          const op = f.op || '==';
+          const value = JSON.stringify(f.value?.arrayValue?.values || f.value);
+          return `${field}${op}${value}`;
+        } catch {
+          return 'filter';
+        }
+      });
+      parts.push(`f:${filters.sort().join(',')}`);
+    }
+
+    // Extract order by
+    if (internalQuery.orderBy?.length > 0) {
+      const orders = internalQuery.orderBy.map((o: any) => {
+        try {
+          const field = o.field?.segments?.join('.') || o.field || 'unknown';
+          const dir = o.dir || 'asc';
+          return `${field}:${dir}`;
+        } catch {
+          return 'order';
+        }
+      });
+      parts.push(`o:${orders.join(',')}`);
+    }
+
+    // Extract limit
+    if (internalQuery.limit) {
+      parts.push(`l:${internalQuery.limit}`);
+    }
+
+    return parts.join('|');
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Generate a stable cache key from a Firestore query
+ * 
+ * Creates a unique, consistent key based on:
+ * - Collection path
+ * - Query constraints (where, orderBy, limit)
+ * - Project ID for multi-project support
+ * 
+ * The key remains stable across sessions for the same query structure
  */
 function generateQueryCacheKey(query: Query<DocumentData>): string {
-  // Extract query constraints from the query object
-  // This is a simplified approach - in production you'd want more robust serialization
-  const queryStr = JSON.stringify({
-    // Use internal query representation for stable keys
-    type: query.type,
-    // Note: Firestore Query objects don't expose constraints directly in a stable way
-    // So we'll use the path and a simple hash
-    path: query.firestore.app.options.projectId,
-  });
+  const path = getQueryPath(query);
+  const constraints = extractQueryConstraints(query);
+  const projectId = query.firestore.app.options.projectId || 'default';
   
-  // Create a simple hash for the cache key
-  let hash = 0;
-  for (let i = 0; i < queryStr.length; i++) {
-    const char = queryStr.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
+  // Combine all parts into a stable string
+  const cacheString = `${projectId}:${path}:${constraints}`;
   
-  return `query_${Math.abs(hash)}`;
+  // Generate a stable hash
+  const hash = djb2Hash(cacheString);
+  
+  return `query_${path}_${hash}`;
 }
 
 /**

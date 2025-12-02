@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { logger } from '../lib/logger';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -8,7 +9,7 @@ const getInitialTheme = (): Theme => {
     
     try {
         const stored = localStorage.getItem('smartDarkMode');
-        console.log('[useDarkMode] Reading from localStorage:', stored);
+        logger.debug('[useDarkMode] Reading from localStorage:', stored);
         
         // Migration from boolean to string if necessary, or just load string
         if (stored === 'true') {
@@ -19,10 +20,10 @@ const getInitialTheme = (): Theme => {
             return stored as Theme;
         }
     } catch (e) {
-        console.error('[useDarkMode] Failed to read from localStorage:', e);
+        logger.error('[useDarkMode] Failed to read from localStorage:', e);
     }
     
-    console.log('[useDarkMode] No stored theme found, defaulting to system');
+    logger.debug('[useDarkMode] No stored theme found, defaulting to system');
     return 'system';
 };
 
@@ -49,15 +50,15 @@ export function useDarkMode() {
             }
         };
 
-        console.log('[useDarkMode] Applying theme:', theme);
+        logger.debug('[useDarkMode] Applying theme:', theme);
         applyTheme();
         localStorage.setItem('smartDarkMode', theme);
-        console.log('[useDarkMode] Saved to localStorage:', theme);
+        logger.debug('[useDarkMode] Saved to localStorage:', theme);
 
         // Listener for system changes - pass the event's matches value
         const handleChange = (e: MediaQueryListEvent) => {
             if (theme === 'system') {
-                console.log('[useDarkMode] System theme changed to:', e.matches ? 'dark' : 'light');
+                logger.debug('[useDarkMode] System theme changed to:', e.matches ? 'dark' : 'light');
                 applyTheme(e.matches);
             }
         };

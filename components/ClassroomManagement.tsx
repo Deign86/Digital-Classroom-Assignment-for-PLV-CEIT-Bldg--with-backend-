@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { logger } from '../lib/logger';
 import { classroomService, bookingRequestService, scheduleService } from '../lib/firebaseService';
 import { executeWithNetworkHandling } from '../lib/networkErrorHandler';
 import { notificationService } from '../lib/notificationService';
@@ -373,7 +374,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
       }
     } catch (err) {
       // If check fails, fall back to normal delete dialog to avoid blocking admin actions
-      console.error('Failed to check affected bookings before delete:', err);
+      logger.error('Failed to check affected bookings before delete:', err);
     }
 
     // No affected reservations, proceed with normal delete confirmation
@@ -444,7 +445,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
               { actorId: currentUserId || undefined }
             );
           } catch (error) {
-            console.error(`Failed to notify faculty ${facultyId}:`, error);
+            logger.error(`Failed to notify faculty ${facultyId}:`, error);
           }
         }
 
@@ -605,7 +606,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                 }
               );
             } catch (error) {
-              console.error(`Failed to notify faculty ${facultyId}:`, error);
+              logger.error(`Failed to notify faculty ${facultyId}:`, error);
             }
           }
         }
@@ -738,7 +739,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           }
         } catch (err) {
           // if the check fails, continue with the bulk action to avoid blocking admin
-          console.error('Failed to check affected bookings for bulk action:', err);
+          logger.error('Failed to check affected bookings for bulk action:', err);
         }
       }
       if (bulkActionType === 'enable' || bulkActionType === 'disable') {
@@ -780,12 +781,12 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                         : `The classroom "${classroomName}" has been disabled. Please contact admin regarding your affected reservations.`;
                       await notificationService.createNotification(fid, 'classroom_disabled', message, { actorId: currentUserId || undefined });
                     } catch (err) {
-                      console.error('Failed to notify faculty during bulk disable:', err);
+                      logger.error('Failed to notify faculty during bulk disable:', err);
                     }
                   }
                 }
               } catch (err) {
-                console.error('Error while post-processing bulk disable notifications:', err);
+                logger.error('Error while post-processing bulk disable notifications:', err);
               }
             }
             return true;
@@ -844,7 +845,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         if (failed > 0) toast.error(`${failed} delete(s) failed`);
       }
     } catch (err) {
-      console.error('Bulk action error:', err);
+      logger.error('Bulk action error:', err);
       toast.error('Bulk action failed');
     } finally {
       setIsProcessingBulk(false);
@@ -898,7 +899,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
           return; // show warning as first dialog
         }
       } catch (err) {
-        console.error('Failed to check affected bookings for bulk action:', err);
+        logger.error('Failed to check affected bookings for bulk action:', err);
         // proceed if check fails
       }
     }
@@ -949,7 +950,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
                   : `The classroom "${classroomName}" has been disabled. Please contact admin regarding your affected reservations.`;
                 await notificationService.createNotification(fid, 'classroom_disabled', message, { actorId: currentUserId || undefined });
               } catch (err) {
-                console.error('Failed to notify faculty during bulk disable:', err);
+                logger.error('Failed to notify faculty during bulk disable:', err);
               }
             }
           }
@@ -984,7 +985,7 @@ export default function ClassroomManagement({ classrooms, onClassroomUpdate }: C
         if (failed > 0) toast.error(`${failed} delete(s) failed`);
       }
     } catch (err) {
-      console.error('executePendingBulkAction failed:', err);
+      logger.error('executePendingBulkAction failed:', err);
       toast.error('Bulk action failed');
     } finally {
       setBulkConfirming(false);

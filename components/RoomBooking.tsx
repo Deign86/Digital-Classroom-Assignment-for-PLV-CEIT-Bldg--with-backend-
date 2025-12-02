@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logger } from '../lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
@@ -375,7 +376,7 @@ export default function RoomBooking({ user, classrooms = [], schedules = [], boo
           return;
         } catch (error) {
           toast.error('Failed to queue booking request');
-          console.error('Queue error:', error);
+          logger.error('Queue error:', error);
           return;
         }
       }
