@@ -652,16 +652,18 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         toast.loading('Service worker not ready. Refreshing page to retry...', {
           duration: 2000
         });
-        // Store intent to enable push after refresh, and redirect to settings tab
+        // Store intent to enable push after refresh
         try {
           sessionStorage.setItem('pushAutoRetry', 'true');
-          sessionStorage.setItem('pushAutoRetryTab', 'settings');
         } catch (e) {
           // sessionStorage may be unavailable
         }
-        // Refresh after a short delay to let user see the message
+        // Navigate to settings tab (not just reload) to ensure auto-retry runs
         setTimeout(() => {
-          window.location.reload();
+          // Determine the correct settings URL based on current path
+          const isAdmin = window.location.pathname.startsWith('/admin');
+          const settingsUrl = isAdmin ? '/admin/settings' : '/faculty/settings';
+          window.location.href = settingsUrl;
         }, 1500);
         return; // Don't show additional errors
       } else if (/service worker|still initializing/i.test(msg)) {

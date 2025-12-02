@@ -75,17 +75,6 @@ export default function FacultyDashboard({
 
   // Read initial tab from URL path or default to overview
   const getInitialTab = (): FacultyTab => {
-    // Check if we need to redirect to settings for push auto-retry
-    try {
-      const autoRetryTab = sessionStorage.getItem('pushAutoRetryTab');
-      if (autoRetryTab === 'settings') {
-        sessionStorage.removeItem('pushAutoRetryTab');
-        return 'settings';
-      }
-    } catch (e) {
-      // sessionStorage may be unavailable
-    }
-    
     const path = window.location.pathname.split('/').filter(Boolean);
     const lastSegment = path[path.length - 1];
     return allowedTabs.includes(lastSegment as FacultyTab) ? lastSegment as FacultyTab : 'overview';
