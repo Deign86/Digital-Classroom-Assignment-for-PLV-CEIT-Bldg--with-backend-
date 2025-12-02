@@ -45,7 +45,8 @@ export default function Footer() {
                 className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain"
                 loading="lazy"
                 decoding="async"
-                fetchPriority="low"
+                // @ts-expect-error - React doesn't recognize fetchpriority yet
+                fetchpriority="low"
               />
             ) : null}
 
@@ -59,7 +60,8 @@ export default function Footer() {
                 className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain"
                 loading="lazy"
                 decoding="async"
-                fetchPriority="low"
+                // @ts-expect-error - React doesn't recognize fetchpriority yet
+                fetchpriority="low"
               />
             ) : null}
           </div>

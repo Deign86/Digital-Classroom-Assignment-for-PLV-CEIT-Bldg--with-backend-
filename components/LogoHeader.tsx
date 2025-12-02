@@ -90,7 +90,8 @@ export default function LogoHeader({
           className={`${sizeClass} object-contain flex-shrink-0`}
           loading="lazy"
           decoding="async"
-          fetchPriority="low"
+          // @ts-expect-error - React doesn't recognize fetchpriority yet
+          fetchpriority="low"
         />
       )}
       {logos.ceit && (
@@ -100,7 +101,8 @@ export default function LogoHeader({
           className={`${sizeClass} object-contain flex-shrink-0`}
           loading="lazy"
           decoding="async"
-          fetchPriority="low"
+          // @ts-expect-error - React doesn't recognize fetchpriority yet
+          fetchpriority="low"
         />
       )}
     </div>
