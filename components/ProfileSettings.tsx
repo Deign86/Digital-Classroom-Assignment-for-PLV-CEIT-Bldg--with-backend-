@@ -59,6 +59,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [pushSupported, setPushSupported] = useState<boolean>(true);
   const [pushStatusVerified, setPushStatusVerified] = useState<boolean>(false);
+  // Track if user has manually toggled push - once they have, don't let async verify overwrite
+  const userHasToggledRef = React.useRef(false);
   const { theme, setTheme } = useDarkMode();
 
   // Profile editing state
@@ -123,9 +125,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
         
         logger.log('[ProfileSettings] Actual push status:', status);
         
-        // If actual subscription status differs from Firestore state, log it
+        // Compare actual subscription status with Firestore state
         const firestoreEnabled = !!(user as any).pushEnabled;
-        if (status.hasSubscription !== firestoreEnabled || status.hasPermission !== firestoreEnabled) {
+        if (status.hasSubscription !== firestoreEnabled) {
           logger.warn('[ProfileSettings] Push state drift detected:', {
             firestoreEnabled,
             actualSubscription: status.hasSubscription,
@@ -133,10 +135,18 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
           });
         }
         
-        // Use actual subscription status as source of truth
-        // If permission is denied or no subscription, show as disabled
-        const actualEnabled = status.hasSubscription && status.hasPermission;
-        setPushEnabled(actualEnabled);
+        // Use Firestore state as the source of truth for the toggle
+        // The server's pushEnabled flag controls whether notifications are actually sent,
+        // so the UI should reflect that. The browser subscription may persist for re-enablement.
+        // However, if permission is denied or no subscription exists, we must show disabled.
+        const actualEnabled = firestoreEnabled && status.hasPermission && status.hasSubscription;
+        
+        // Only update state if user hasn't manually toggled - user interaction takes precedence
+        if (!userHasToggledRef.current && !isTogglingPush) {
+          setPushEnabled(actualEnabled);
+        } else {
+          logger.log('[ProfileSettings] Skipping verify state update - user has toggled');
+        }
         
         if (status.token) {
           setPushToken(status.token);
@@ -487,6 +497,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   };
 
   const handleTogglePush = async (enabled: boolean) => {
+    // Mark that user has manually toggled - async verify should not overwrite
+    userHasToggledRef.current = true;
     setIsTogglingPush(true);
     try {
       if (!pushSupported) {
