@@ -199,17 +199,19 @@ export default function FacultyDashboard({
       // Faculty users shouldn't receive signup notifications, but handle it gracefully
       setActiveTab('overview');
     } else if (notification.type === 'info') {
-      // Check if this is an expired booking notification
-      const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
-      if (isExpiredNotification && notification.bookingRequestId) {
-        // Expired bookings should show in History tab
-        setActiveTab('schedule');
-        setScheduleInitialTab('history');
-      } else if (notification.bookingRequestId) {
+      if (notification.bookingRequestId) {
         // Navigate based on current booking status (it may have changed since the notification was created)
+        // The booking could have been approved, rejected, cancelled, or expired since the info notification
         navigateByBookingStatus(notification.bookingRequestId);
       } else {
-        setActiveTab('overview');
+        // No booking ID - check message for context or go to overview
+        const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
+        if (isExpiredNotification) {
+          setActiveTab('schedule');
+          setScheduleInitialTab('history');
+        } else {
+          setActiveTab('overview');
+        }
       }
     } else {
       // Fallback for any other notification types - show overview
