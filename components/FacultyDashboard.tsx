@@ -325,30 +325,11 @@ export default function FacultyDashboard({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Trigger page refresh when switching to settings tab (fixes push notification service worker init)
-  useEffect(() => {
-    const hasRefreshedForSettings = sessionStorage.getItem('settingsTabRefreshed');
-    
-    if (activeTab === 'settings' && !hasRefreshedForSettings) {
-      if (navigator.onLine) {
-        console.log('[FacultyDashboard] First time opening settings tab, refreshing page for service worker init...');
-        sessionStorage.setItem('settingsTabRefreshed', 'true');
-        sessionStorage.setItem('returnToTab', 'settings');
-        window.location.reload();
-      } else {
-        console.log('[FacultyDashboard] Settings tab opened offline, skipping refresh (will refresh on next online visit)');
-      }
-    }
-  }, [activeTab]);
-
-  // Restore tab after refresh
-  useEffect(() => {
-    const returnToTab = sessionStorage.getItem('returnToTab');
-    if (returnToTab && allowedTabs.includes(returnToTab as any)) {
-      setActiveTab(returnToTab as FacultyTab);
-      sessionStorage.removeItem('returnToTab');
-    }
-  }, []);
+  // NOTE: Settings tab refresh workaround has been REMOVED.
+  // Push notification reliability is now handled by:
+  // 1. pushService.ts ensuring SW is registered before any push operations
+  // 2. ProfileSettings verifying actual subscription status on mount
+  // 3. pushService.preWarmServiceWorker() being called early
 
   // Statistics - optimized with single reduce pass to minimize overhead
   // Note: Deduplication now handled at service layer (lib/firebaseService.ts)

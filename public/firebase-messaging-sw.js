@@ -30,10 +30,12 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-  // Customize notification here
-  const notificationTitle = payload.notification?.title || 'PLV CEIT Notification';
+  // With data-only FCM messages, title/body are in payload.data
+  const notificationTitle = payload.data?.title || payload.notification?.title || 'PLV CEIT Notification';
+  const notificationBody = payload.data?.body || payload.data?.message || payload.notification?.body || 'You have a new notification';
+  
   const notificationOptions = {
-    body: payload.notification?.body || 'You have a new notification',
+    body: notificationBody,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
     tag: payload.data?.notificationId || 'default',
@@ -69,28 +71,43 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Handle push subscription changes (expiration, browser updates, etc.)
+// This ensures the app can detect when a subscription becomes invalid
+self.addEventListener('pushsubscriptionchange', (event) => {
+  console.log('[firebase-messaging-sw.js] Push subscription changed:', event);
+  
+  // Notify any open clients that the subscription changed
+  // They should re-verify their push status
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      clientList.forEach((client) => {
+        client.postMessage({
+          type: 'PUSH_SUBSCRIPTION_CHANGE',
+          reason: event.oldSubscription ? 'renewed' : 'expired',
+          timestamp: Date.now()
+        });
+      });
+    })
+  );
+});
+
 // Cache configuration
-const CACHE_VERSION = 'v1.2';
+const CACHE_VERSION = 'v1.3';
 const CACHE_NAME = `plv-ceit-classroom-${CACHE_VERSION}`;
 
-// Logo URLs to cache (Firebase Storage) - WebP format for better performance
-const LOGO_URLS = [
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fplv-logo.webp?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fceit-logo.webp?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media'
-];
+// Firebase Storage logo URLs - cached opportunistically via fetch handler
+// (not in initial cache because Firebase Storage has CORS restrictions for SW fetch)
+const FIREBASE_STORAGE_LOGO_PATTERN = /firebasestorage\.googleapis\.com.*logos.*\.(webp|png|jpg|jpeg)/i;
 
-// Assets to cache on install
+// Assets to cache on install (only same-origin or CORS-enabled resources)
 const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
   '/favicon.ico',
-  // Also cache local public copies of logos so the SW can serve them when the app
-  // references them from `/plv-logo.webp`, `/ceit-logo.webp`, and `/system-logo.webp`.
+  // Local public copies of logos (same-origin, no CORS issues)
   '/plv-logo.webp',
   '/ceit-logo.webp',
   '/system-logo.webp',
-  ...LOGO_URLS,
 ];
 
 // Firebase SDK URLs to cache (these are large and don't change often)
@@ -153,13 +170,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Check if this is a Firebase Storage logo request (we want to cache these)
+  const isFirebaseStorageLogo = FIREBASE_STORAGE_LOGO_PATTERN.test(request.url);
+
   // Skip Firebase Auth/Firestore/Functions requests (must always be fresh)
+  // But allow Firebase Storage logo requests through for caching
   if (
-    url.hostname.includes('firebaseapp.com') ||
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('cloudfunctions.net') ||
-    url.pathname.includes('/__/auth/') ||
-    url.pathname.includes('/__/firebase/')
+    !isFirebaseStorageLogo && (
+      url.hostname.includes('firebaseapp.com') ||
+      url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('cloudfunctions.net') ||
+      url.pathname.includes('/__/auth/') ||
+      url.pathname.includes('/__/firebase/')
+    )
   ) {
     return;
   }

@@ -144,30 +144,11 @@ export default function AdminDashboard({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Trigger page refresh when switching to settings tab (fixes push notification service worker init)
-  useEffect(() => {
-    const hasRefreshedForSettings = sessionStorage.getItem('settingsTabRefreshed');
-    
-    if (activeTab === 'settings' && !hasRefreshedForSettings) {
-      if (navigator.onLine) {
-        console.log('[AdminDashboard] First time opening settings tab, refreshing page for service worker init...');
-        sessionStorage.setItem('settingsTabRefreshed', 'true');
-        sessionStorage.setItem('returnToTab', 'settings');
-        window.location.reload();
-      } else {
-        console.log('[AdminDashboard] Settings tab opened offline, skipping refresh (will refresh on next online visit)');
-      }
-    }
-  }, [activeTab]);
-
-  // Restore tab after refresh
-  useEffect(() => {
-    const returnToTab = sessionStorage.getItem('returnToTab');
-    if (returnToTab && allowedTabs.includes(returnToTab as any)) {
-      setActiveTab(returnToTab);
-      sessionStorage.removeItem('returnToTab');
-    }
-  }, []);
+  // NOTE: Settings tab refresh workaround has been REMOVED.
+  // Push notification reliability is now handled by:
+  // 1. pushService.ts ensuring SW is registered before any push operations
+  // 2. ProfileSettings verifying actual subscription status on mount
+  // 3. pushService.preWarmServiceWorker() being called early
 
   // (Hash-based deep-linking removed — navigation now uses react-router)
 

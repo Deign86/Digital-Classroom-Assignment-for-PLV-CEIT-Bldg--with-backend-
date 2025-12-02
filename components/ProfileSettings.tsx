@@ -58,6 +58,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
   const [pushSupported, setPushSupported] = useState<boolean>(true);
+  const [pushStatusVerified, setPushStatusVerified] = useState<boolean>(false);
+  // Track if user has manually toggled push - once they have, don't let async verify overwrite
+  const userHasToggledRef = React.useRef(false);
   const { theme, setTheme } = useDarkMode();
 
   // Profile editing state
@@ -74,6 +77,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
   // Keep local state in sync when the parent `user` prop updates (for example after refresh)
   // But DON'T update if user is currently editing to avoid overwriting their changes
+  // Also skip if we've already verified the actual push status
   useEffect(() => {
     if (isEditingProfile || isSavingProfile) {
       // Don't reset form data while user is editing or saving
@@ -81,7 +85,10 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
     }
 
     try {
-      setPushEnabled(!!(user as any).pushEnabled);
+      // Only sync pushEnabled from user prop if we haven't verified actual status yet
+      if (!pushStatusVerified) {
+        setPushEnabled(!!(user as any).pushEnabled);
+      }
       setProfileData({
         name: user.name,
         departments: (user.departments && user.departments.length > 0 ? user.departments : (user.department ? [user.department] : [])) as string[]
@@ -90,7 +97,7 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       // If something odd happens, keep current local state and log for diagnostics
       logger.warn('Failed to sync pushEnabled from user prop:', err);
     }
-  }, [user?.pushEnabled, user?.name, user?.department, user?.departments]); // Remove isEditingProfile and isSavingProfile from dependencies
+  }, [user?.pushEnabled, user?.name, user?.department, user?.departments, pushStatusVerified]); // Include pushStatusVerified
 
   // Detect runtime push support (useful for iOS/Safari where web push may be unavailable)
   useEffect(() => {
@@ -101,6 +108,137 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setPushSupported(false);
     }
   }, []);
+
+  // Verify actual push subscription status on mount
+  // This reconciles UI state with actual PushManager state to fix drift issues
+  useEffect(() => {
+    let mounted = true;
+    
+    const verifyPushStatus = async () => {
+      if (!pushSupported) return;
+      
+      try {
+        logger.log('[ProfileSettings] Verifying actual push subscription status...');
+        const status = await pushService.getActualPushStatus();
+        
+        if (!mounted) return;
+        
+        logger.log('[ProfileSettings] Actual push status:', status);
+        
+        // Compare actual subscription status with Firestore state
+        const firestoreEnabled = !!(user as any).pushEnabled;
+        if (status.hasSubscription !== firestoreEnabled) {
+          logger.warn('[ProfileSettings] Push state drift detected:', {
+            firestoreEnabled,
+            actualSubscription: status.hasSubscription,
+            hasPermission: status.hasPermission,
+          });
+        }
+        
+        // Use Firestore state as the source of truth for the toggle
+        // The server's pushEnabled flag controls whether notifications are actually sent,
+        // so the UI should reflect that. The browser subscription may persist for re-enablement.
+        // However, if permission is denied or no subscription exists, we must show disabled.
+        const actualEnabled = firestoreEnabled && status.hasPermission && status.hasSubscription;
+        
+        // Only update state if user hasn't manually toggled - user interaction takes precedence
+        if (!userHasToggledRef.current && !isTogglingPush) {
+          setPushEnabled(actualEnabled);
+        } else {
+          logger.log('[ProfileSettings] Skipping verify state update - user has toggled');
+        }
+        
+        if (status.token) {
+          setPushToken(status.token);
+        }
+        
+        setPushStatusVerified(true);
+      } catch (err) {
+        logger.warn('[ProfileSettings] Failed to verify push status:', err);
+        // Fall back to Firestore state on error
+        setPushStatusVerified(true);
+      }
+    };
+    
+    // Pre-warm the service worker to reduce latency when user toggles
+    pushService.preWarmServiceWorker?.().catch(() => {});
+    
+    // Slight delay to let the component settle
+    const timer = setTimeout(verifyPushStatus, 100);
+    
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [user?.id, pushSupported]); // Re-verify if user changes or push support changes
+
+  // State for auto-retry after page refresh
+  const [autoRetryPending, setAutoRetryPending] = useState(false);
+  
+  // Ref to hold the toggle handler for use in effects
+  const handleTogglePushRef = React.useRef<((enabled: boolean) => Promise<void>) | null>(null);
+
+  // Auto-retry enabling push after page refresh (if triggered by SW error)
+  useEffect(() => {
+    const checkAutoRetry = async () => {
+      try {
+        const shouldRetry = sessionStorage.getItem('pushAutoRetry');
+        if (shouldRetry === 'true') {
+          // Clear the flag immediately to prevent loops
+          sessionStorage.removeItem('pushAutoRetry');
+          
+          logger.log('[ProfileSettings] Auto-retrying push enable after refresh...');
+          
+          // Wait for SW to be ready and component to settle
+          await new Promise(r => setTimeout(r, 2000));
+          
+          // Check if push is already enabled (in case it worked)
+          const status = await pushService.getActualPushStatus?.();
+          if (status?.hasSubscription) {
+            logger.log('[ProfileSettings] Push already enabled after refresh');
+            toast.success('Push notifications enabled!');
+            setPushEnabled(true);
+            return;
+          }
+          
+          // Try to enable push - use toast ID so we can dismiss it later
+          toast.loading('Retrying push notification setup...', { id: 'push-auto-retry' });
+          
+          // Set flag to trigger toggle after handler is ready
+          setAutoRetryPending(true);
+        }
+      } catch (e) {
+        logger.warn('[ProfileSettings] Auto-retry check failed:', e);
+        toast.dismiss('push-auto-retry');
+      }
+    };
+    
+    checkAutoRetry();
+  }, []); // Run once on mount
+
+  // Handle the actual auto-retry after handler is ready
+  useEffect(() => {
+    if (autoRetryPending && !isTogglingPush && pushSupported) {
+      // Use a polling approach since refs don't trigger updates
+      const checkAndRetry = () => {
+        if (handleTogglePushRef.current) {
+          setAutoRetryPending(false);
+          // Dismiss the retry toast before calling the handler (which shows its own toast)
+          toast.dismiss('push-auto-retry');
+          logger.log('[ProfileSettings] Handler ready, executing auto-retry...');
+          handleTogglePushRef.current(true);
+        } else {
+          // Handler not ready yet, check again shortly
+          logger.log('[ProfileSettings] Handler not ready, will retry...');
+          setTimeout(checkAndRetry, 200);
+        }
+      };
+      
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(checkAndRetry, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoRetryPending, isTogglingPush, pushSupported]);
 
   // Auto-check password matching in real-time
   useEffect(() => {
@@ -427,6 +565,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
   };
 
   const handleTogglePush = async (enabled: boolean) => {
+    // Mark that user has manually toggled - async verify should not overwrite
+    userHasToggledRef.current = true;
     setIsTogglingPush(true);
     try {
       if (!pushSupported) {
@@ -500,19 +640,35 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.log('[ProfileSettings] Push toggle error caught:', msg);
       logger.error('Push toggle error:', msg);
       if (msg === 'Push-not-supported' || /not supported/i.test(msg)) {
         toast.error('Push is not supported in this browser/device. On iOS use Safari 16.4+ or enable Web Push in system settings.');
       } else if (/permission not granted|denied/i.test(msg) || /permission/i.test(msg)) {
         toast.error('Notification permission denied. Please enable notifications in your browser or system settings.');
+      } else if (/ready timeout|no active service worker|subscription failed|registration failed|storage error/i.test(msg)) {
+        // This error means SW isn't active - refresh and auto-retry
+        // Must check BEFORE generic "service worker" match below
+        toast.loading('Service worker not ready. Refreshing page to retry...', {
+          duration: 2000
+        });
+        // Store intent to enable push after refresh
+        try {
+          sessionStorage.setItem('pushAutoRetry', 'true');
+        } catch (e) {
+          // sessionStorage may be unavailable
+        }
+        // Navigate to settings tab (not just reload) to ensure auto-retry runs
+        setTimeout(() => {
+          // Determine the correct settings URL based on current path
+          const isAdmin = window.location.pathname.startsWith('/admin');
+          const settingsUrl = isAdmin ? '/admin/settings' : '/faculty/settings';
+          window.location.href = settingsUrl;
+        }, 1500);
+        return; // Don't show additional errors
       } else if (/service worker|still initializing/i.test(msg)) {
         toast.error('Service worker is still starting up', {
           description: 'Please wait a few seconds and try again. The page will be ready shortly.',
-          duration: 5000
-        });
-      } else if (/ready timeout|no active service worker|subscription failed/i.test(msg)) {
-        toast.error('Unable to enable push notifications', {
-          description: 'Please refresh the page and try again in a moment.',
           duration: 5000
         });
       } else {
@@ -525,6 +681,9 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       setIsTogglingPush(false);
     }
   };
+
+  // Update ref so auto-retry effect can access the handler
+  handleTogglePushRef.current = handleTogglePush;
 
   const getPasswordStrength = (password: string): { strength: string; color: string } => {
     if (password.length === 0) return { strength: '', color: '' };
