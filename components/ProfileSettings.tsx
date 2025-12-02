@@ -201,14 +201,15 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
             return;
           }
           
-          // Try to enable push
-          toast.loading('Retrying push notification setup...', { duration: 2000 });
+          // Try to enable push - use toast ID so we can dismiss it later
+          toast.loading('Retrying push notification setup...', { id: 'push-auto-retry' });
           
           // Set flag to trigger toggle after handler is ready
           setAutoRetryPending(true);
         }
       } catch (e) {
         logger.warn('[ProfileSettings] Auto-retry check failed:', e);
+        toast.dismiss('push-auto-retry');
       }
     };
     
@@ -222,6 +223,8 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       const checkAndRetry = () => {
         if (handleTogglePushRef.current) {
           setAutoRetryPending(false);
+          // Dismiss the retry toast before calling the handler (which shows its own toast)
+          toast.dismiss('push-auto-retry');
           logger.log('[ProfileSettings] Handler ready, executing auto-retry...');
           handleTogglePushRef.current(true);
         } else {
