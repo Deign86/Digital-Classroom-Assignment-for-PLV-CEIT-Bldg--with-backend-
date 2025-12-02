@@ -22,7 +22,7 @@ import type { Notification } from '../lib/notificationService';
 interface FacultyScheduleProps {
   schedules: Schedule[];
   bookingRequests: BookingRequest[];
-  initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected';
+  initialTab?: 'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected' | null;
   onCancelSelected?: (scheduleId: string) => Promise<void> | void;
   // Callback when user chooses to "Quick Rebook" — attempt one-click submission
   onQuickRebook?: (initialData: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => void;
@@ -51,12 +51,12 @@ const highlightAndScroll = (el: HTMLElement | null) => {
   }
 };
 
-export default function FacultySchedule({ schedules, bookingRequests, initialTab = 'upcoming', onCancelSelected, onQuickRebook, userId, acknowledgedNotifications = [], allNotifications = [], highlightedRequestId, onHighlightConsumed, onInitialTabConsumed }: FacultyScheduleProps) {
+export default function FacultySchedule({ schedules, bookingRequests, initialTab, onCancelSelected, onQuickRebook, userId, acknowledgedNotifications = [], allNotifications = [], highlightedRequestId, onHighlightConsumed, onInitialTabConsumed }: FacultyScheduleProps) {
   const STORAGE_KEY_BASE = 'plv:facultySchedule:activeTab';
   const STORAGE_KEY = userId ? `${STORAGE_KEY_BASE}:${userId}` : STORAGE_KEY_BASE;
   const allowed = ['upcoming', 'requests', 'approved', 'cancelled', 'history', 'rejected'] as const;
   type TabName = typeof allowed[number];
-  const [activeTab, setActiveTab] = useState<TabName>(() => readPreferredTab(STORAGE_KEY, initialTab, Array.from(allowed)) as TabName);
+  const [activeTab, setActiveTab] = useState<TabName>(() => readPreferredTab(STORAGE_KEY, initialTab ?? 'upcoming', Array.from(allowed)) as TabName);
   // hydrated prevents a visual tab-flash when userId (and storage key) arrives asynchronously
   const [hydrated, setHydrated] = useState<boolean>(() => typeof window === 'undefined' ? true : false);
   // Mark hydrated on mount to allow client-only tab rendering and avoid a persistent empty state
@@ -65,9 +65,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   }, []);
 
   // Handle external initialTab changes (e.g., from notification navigation)
+  // Only trigger when initialTab is explicitly set (not null/undefined)
   useEffect(() => {
-    if (initialTab && allowed.includes(initialTab)) {
-      setActiveTab(initialTab);
+    if (initialTab && allowed.includes(initialTab as TabName)) {
+      setActiveTab(initialTab as TabName);
       onInitialTabConsumed?.();
     }
   }, [initialTab, onInitialTabConsumed]);

@@ -82,7 +82,7 @@ export default function FacultyDashboard({
 
   const [activeTab, setActiveTab] = useState<FacultyTab>(getInitialTab());
 
-  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected'>('upcoming');
+  const [scheduleInitialTab, setScheduleInitialTab] = useState<'upcoming' | 'requests' | 'approved' | 'cancelled' | 'history' | 'rejected' | null>(null);
   // Track highlighted request ID for scroll and highlight
   const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null);
 
@@ -864,7 +864,7 @@ export default function FacultyDashboard({
                     allNotifications={allNotifications}
                     highlightedRequestId={highlightedRequestId}
                     onHighlightConsumed={() => setHighlightedRequestId(null)}
-                    onInitialTabConsumed={() => setScheduleInitialTab('upcoming')}
+                    onInitialTabConsumed={() => setScheduleInitialTab(null)}
                     onQuickRebook={(initial: { classroomId: string; classroomName: string; date: string; startTime: string; endTime: string; purpose?: string }) => {
                       void handleQuickRebook(initial);
                     }}
