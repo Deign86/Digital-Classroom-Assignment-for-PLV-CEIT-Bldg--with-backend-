@@ -176,6 +176,10 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
   const approvedRequests = uniqueBookingRequests.filter(r => r.status === 'approved');
   const rejectedRequests = uniqueBookingRequests.filter(r => r.status === 'rejected');
   const cancelledRequests = uniqueBookingRequests.filter(r => r.status === 'cancelled');
+  // Expired requests: either server-marked as expired OR pending but past their start time
+  const expiredRequests = uniqueBookingRequests.filter(r => 
+    r.status === 'expired' || (r.status === 'pending' && isPastBookingTime(r.date, convertTo12Hour(r.startTime)))
+  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Count only items with unacknowledged notifications for badges
   const unacknowledgedApprovedCount = approvedRequests.filter(r => hasUnacknowledgedNotification(r.id)).length;
@@ -976,7 +980,56 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          {pastSchedules.filter(s => s.status === 'confirmed').length === 0 ? (
+          {/* Expired Requests Section */}
+          {expiredRequests.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Expired Requests ({expiredRequests.length})
+              </h3>
+              {expiredRequests.map((request) => (
+                <div key={request.id} id={`faculty-schedule-card-${request.id}`}>
+                  <Card className="border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">{formatDateShort(request.date)}</span>
+                          </div>
+                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            Expired
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span>{formatTimeRange(convertTo12Hour(request.startTime), convertTo12Hour(request.endTime))}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="h-4 w-4 text-gray-500" />
+                            <span>{request.classroomName}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{request.purpose}</p>
+                          <p className="text-sm text-amber-600 dark:text-amber-400 mt-1 italic">
+                            This request expired before it could be reviewed
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+              {pastSchedules.filter(s => s.status === 'confirmed').length > 0 && (
+                <hr className="border-gray-200 dark:border-gray-700" />
+              )}
+            </div>
+          )}
+
+          {/* Past Confirmed Classes Section */}
+          {pastSchedules.filter(s => s.status === 'confirmed').length === 0 && expiredRequests.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -984,13 +1037,21 @@ export default function FacultySchedule({ schedules, bookingRequests, initialTab
                 <p className="text-gray-600">Your past classes will appear here.</p>
               </CardContent>
             </Card>
-          ) : (
-            pastSchedules
-              .filter(s => s.status === 'confirmed')
-              .map((schedule) => (
-                <ScheduleCard key={schedule.id} schedule={schedule} />
-              ))
-          )}
+          ) : pastSchedules.filter(s => s.status === 'confirmed').length > 0 ? (
+            <>
+              {expiredRequests.length > 0 && (
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Past Classes ({pastSchedules.filter(s => s.status === 'confirmed').length})
+                </h3>
+              )}
+              {pastSchedules
+                .filter(s => s.status === 'confirmed')
+                .map((schedule) => (
+                  <ScheduleCard key={schedule.id} schedule={schedule} />
+                ))}
+            </>
+          ) : null}
         </TabsContent>
       </Tabs>
     ) : (

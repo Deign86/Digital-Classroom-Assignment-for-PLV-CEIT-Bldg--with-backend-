@@ -168,8 +168,13 @@ export default function FacultyDashboard({
       // Faculty users shouldn't receive signup notifications, but handle it gracefully
       setActiveTab('overview');
     } else if (notification.type === 'info') {
-      // Generic info notifications - show schedule or overview based on context
-      if (notification.bookingRequestId) {
+      // Check if this is an expired booking notification
+      const isExpiredNotification = notification.message?.toLowerCase().includes('expired');
+      if (isExpiredNotification && notification.bookingRequestId) {
+        // Expired bookings should show in History tab
+        setActiveTab('schedule');
+        setScheduleInitialTab('history');
+      } else if (notification.bookingRequestId) {
         setActiveTab('schedule');
         setScheduleInitialTab('requests');
       } else {
