@@ -59,6 +59,48 @@ export function isSafariBrowser(): boolean {
 }
 
 /**
+ * Detect if running on Safari browser on macOS (not iOS).
+ * This is relevant because Safari on macOS also has FCM issues but doesn't
+ * require PWA installation like iOS does.
+ */
+export function isSafariMacOS(): boolean {
+  if (!isSafariBrowser()) {
+    return false;
+  }
+  
+  // Not iOS means it's macOS Safari
+  return !isIOSDevice();
+}
+
+/**
+ * Get Safari version if running on Safari.
+ * Returns null if not Safari or version cannot be determined.
+ * 
+ * Known problematic versions:
+ * - Safari 17.4+ on macOS Ventura has getToken() issues
+ * - Safari 17.6 (WebKit 18618.3.11.11.5) is reported to work
+ * - Safari 18+ (WebKit 19620.1.2, 18618.3.11.11.7) has pushManager.subscribe issues
+ */
+export function getSafariVersion(): { major: number; minor: number } | null {
+  if (!isSafariBrowser()) {
+    return null;
+  }
+  
+  const ua = navigator.userAgent || '';
+  
+  // Safari version is in the user agent string as "Version/X.Y.Z Safari"
+  const match = ua.match(/Version\/(\d+)\.(\d+)/);
+  if (match) {
+    return {
+      major: parseInt(match[1], 10),
+      minor: parseInt(match[2], 10)
+    };
+  }
+  
+  return null;
+}
+
+/**
  * Check if the PWA is running in standalone mode (installed to home screen).
  * On iOS, this is REQUIRED for Web Push to work.
  */
@@ -148,6 +190,8 @@ export interface IOSWebPushStatus {
   isIOS: boolean;
   /** Whether Safari browser is being used (required for iOS PWA) */
   isSafari: boolean;
+  /** Whether Safari is on macOS (not iOS) */
+  isSafariMac: boolean;
   /** Whether the app is installed as a PWA (running standalone) */
   isInstalled: boolean;
   /** Whether the iOS version supports Web Push (16.4+) */
@@ -157,39 +201,77 @@ export interface IOSWebPushStatus {
   /** User-facing message explaining the current state */
   message: string;
   /** What action the user needs to take, if any */
-  action: 'none' | 'install' | 'upgrade-ios' | 'use-safari' | 'unsupported';
+  action: 'none' | 'install' | 'upgrade-ios' | 'use-safari' | 'unsupported' | 'safari-version-warning';
+  /** Safari version if available (for debugging) */
+  safariVersion?: { major: number; minor: number } | null;
+  /** iOS version if available (for debugging) */
+  iosVersion?: { major: number; minor: number; patch: number } | null;
+  /** Warning message for known Safari version issues */
+  versionWarning?: string;
 }
 
 export function getIOSWebPushStatus(): IOSWebPushStatus {
   const isIOS = isIOSDevice();
   const isSafari = isSafariBrowser();
+  const isSafariMac = isSafariMacOS();
   const isInstalled = isStandaloneMode();
   const versionSupported = isIOSVersionSupportingWebPush();
+  const safariVersion = getSafariVersion();
+  const iosVersion = getIOSVersion();
+  
+  // Check for known problematic Safari versions
+  let versionWarning: string | undefined;
+  if (safariVersion) {
+    // Safari 18+ has known pushManager.subscribe issues
+    // See: https://github.com/firebase/firebase-js-sdk/issues/8356
+    if (safariVersion.major >= 18) {
+      versionWarning = 'Safari 18+ has known push notification issues. If problems occur, try updating to the latest Safari version or check for iOS updates.';
+    }
+    // Safari 17.4+ on macOS Ventura has getToken issues
+    // Safari 17.6 reportedly works
+    else if (isSafariMac && safariVersion.major === 17 && safariVersion.minor >= 4 && safariVersion.minor < 6) {
+      versionWarning = 'Safari 17.4-17.5 may have push notification issues. Try updating Safari to 17.6 or later.';
+    }
+  }
 
   // Non-iOS devices - standard Web Push rules apply
   if (!isIOS) {
-    return {
+    // For Safari on macOS, we still want to provide version info
+    const result: IOSWebPushStatus = {
       isIOS: false,
       isSafari,
+      isSafariMac,
       isInstalled,
       versionSupported: true,
       canUsePush: true, // Will be checked by browser's own support detection
       message: '',
-      action: 'none'
+      action: versionWarning ? 'safari-version-warning' : 'none',
+      safariVersion,
+      iosVersion,
+      versionWarning
     };
+    
+    if (versionWarning) {
+      result.message = versionWarning;
+    }
+    
+    return result;
   }
 
   // iOS but version too old
   if (!versionSupported) {
-    const version = getIOSVersion();
     return {
       isIOS: true,
       isSafari,
+      isSafariMac: false,
       isInstalled,
       versionSupported: false,
       canUsePush: false,
-      message: `Your iOS version (${version?.major}.${version?.minor}) does not support push notifications. Please update to iOS 16.4 or later.`,
-      action: 'upgrade-ios'
+      message: `Your iOS version (${iosVersion?.major}.${iosVersion?.minor}) does not support push notifications. Please update to iOS 16.4 or later.`,
+      action: 'upgrade-ios',
+      safariVersion,
+      iosVersion,
+      versionWarning
     };
   }
 
@@ -198,11 +280,15 @@ export function getIOSWebPushStatus(): IOSWebPushStatus {
     return {
       isIOS: true,
       isSafari: false,
+      isSafariMac: false,
       isInstalled,
       versionSupported: true,
       canUsePush: false,
       message: 'To enable push notifications on iOS, please open this app in Safari and add it to your Home Screen.',
-      action: 'use-safari'
+      action: 'use-safari',
+      safariVersion,
+      iosVersion,
+      versionWarning
     };
   }
 
@@ -211,11 +297,15 @@ export function getIOSWebPushStatus(): IOSWebPushStatus {
     return {
       isIOS: true,
       isSafari: true,
+      isSafariMac: false,
       isInstalled: false,
       versionSupported: true,
       canUsePush: false,
       message: 'To enable push notifications, add this app to your Home Screen. Tap the Share button, then "Add to Home Screen".',
-      action: 'install'
+      action: 'install',
+      safariVersion,
+      iosVersion,
+      versionWarning
     };
   }
 
@@ -223,11 +313,15 @@ export function getIOSWebPushStatus(): IOSWebPushStatus {
   return {
     isIOS: true,
     isSafari: true,
+    isSafariMac: false,
     isInstalled: true,
     versionSupported: true,
     canUsePush: true,
-    message: '',
-    action: 'none'
+    message: versionWarning || '',
+    action: versionWarning ? 'safari-version-warning' : 'none',
+    safariVersion,
+    iosVersion,
+    versionWarning
   };
 }
 
@@ -236,15 +330,18 @@ export function getIOSWebPushStatus(): IOSWebPushStatus {
  */
 export function logIOSWebPushStatus(): void {
   const status = getIOSWebPushStatus();
-  logger.log('[iosDetection] iOS Web Push Status:', {
+  logger.log('[iosDetection] iOS/Safari Web Push Status:', {
     isIOS: status.isIOS,
     isSafari: status.isSafari,
+    isSafariMac: status.isSafariMac,
     isInstalled: status.isInstalled,
     versionSupported: status.versionSupported,
     canUsePush: status.canUsePush,
     action: status.action,
     message: status.message || '(none)',
-    iosVersion: getIOSVersion(),
+    safariVersion: status.safariVersion,
+    iosVersion: status.iosVersion,
+    versionWarning: status.versionWarning || '(none)',
     userAgent: navigator.userAgent
   });
 }
@@ -254,6 +351,8 @@ if (import.meta.env.DEV) {
   (window as any).iosDetection = {
     isIOSDevice,
     isSafariBrowser,
+    isSafariMacOS,
+    getSafariVersion,
     isStandaloneMode,
     getIOSVersion,
     isIOSVersionSupportingWebPush,

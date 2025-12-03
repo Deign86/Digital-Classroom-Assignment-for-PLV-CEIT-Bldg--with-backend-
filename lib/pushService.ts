@@ -1,13 +1,53 @@
 import { getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
-import { getMessaging, getToken, deleteToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, deleteToken, onMessage, isSupported, type Messaging } from 'firebase/messaging';
 import { logger } from './logger';
 import { getIOSWebPushStatus, isIOSDevice, isStandaloneMode, type IOSWebPushStatus } from './iosDetection';
 
 type RegisterResult = { success: boolean; token?: string; message?: string };
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
+
+// Track if we've initialized the messaging instance with VAPID key
+let messagingInitialized = false;
+let cachedMessaging: Messaging | null = null;
+
+/**
+ * Initialize Firebase Messaging with VAPID key set early.
+ * 
+ * CRITICAL FOR SAFARI/iOS: Firebase Functions internally calls getToken() without
+ * the VAPID key when initializing context. On Safari, this causes token mismatch
+ * and triggers DELETE to FCM registration, invalidating the token.
+ * 
+ * By setting messaging.vapidKey early (before any Functions call), we prevent this.
+ * See: https://github.com/firebase/firebase-js-sdk/issues/6620#issuecomment-2241080938
+ */
+const getInitializedMessaging = async (): Promise<Messaging> => {
+  if (cachedMessaging && messagingInitialized) {
+    return cachedMessaging;
+  }
+
+  if (!isSupported()) {
+    throw new Error('Firebase messaging is not supported in this environment');
+  }
+
+  const app = getFirebaseApp();
+  const messaging = getMessaging(app);
+
+  // CRITICAL: Set VAPID key on messaging instance IMMEDIATELY
+  // This prevents Firebase Functions from calling getToken without VAPID key
+  if (VAPID_KEY) {
+    // @ts-ignore - vapidKey is not in the public API but exists on the internal object
+    messaging.vapidKey = VAPID_KEY;
+    logger.log('[pushService] VAPID key set on messaging instance (Safari fix)');
+  }
+
+  cachedMessaging = messaging;
+  messagingInitialized = true;
+
+  return messaging;
+};
 
 // Track service worker readiness state to avoid redundant polling
 let swReadyPromise: Promise<ServiceWorkerRegistration | undefined> | null = null;
@@ -16,21 +56,40 @@ let swIsReady = false;
 /**
  * Ensures the service worker is registered if it hasn't been already.
  * This is called before attempting any push operations to guarantee SW exists.
+ * 
+ * IMPORTANT FOR SAFARI/iOS: The service worker scope MUST be set correctly.
+ * If you register your own service-worker, you must set the scope to be 
+ * "/firebase-messaging-sw.js". Otherwise on the next reload, Firebase sees 
+ * mismatch scopes and recreates the token.
+ * See: https://github.com/firebase/firebase-js-sdk/issues/6620#issuecomment-2241080938
  */
-const ensureServiceWorkerRegistered = async (): Promise<void> => {
-  if (!('serviceWorker' in navigator)) return;
+const ensureServiceWorkerRegistered = async (): Promise<ServiceWorkerRegistration | null> => {
+  if (!('serviceWorker' in navigator)) return null;
   
   const registrations = await navigator.serviceWorker.getRegistrations();
-  if (registrations.length > 0) {
-    logger.log('[pushService] Service worker already registered');
-    return;
+  
+  // Check if we already have the Firebase messaging SW registered with correct scope
+  const existingFCMReg = registrations.find(reg => 
+    reg.active?.scriptURL?.includes('firebase-messaging-sw.js')
+  );
+  
+  if (existingFCMReg) {
+    logger.log('[pushService] Firebase messaging service worker already registered, scope:', existingFCMReg.scope);
+    return existingFCMReg;
   }
   
   // Register the service worker if not already registered
-  logger.log('[pushService] No service worker found, registering now...');
+  // CRITICAL: On Safari/iOS, we MUST specify the scope explicitly to prevent
+  // scope mismatch issues that cause token regeneration
+  logger.log('[pushService] No Firebase messaging service worker found, registering now...');
   try {
-    await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-    logger.log('[pushService] Service worker registered successfully');
+    // Use explicit scope that matches the SW file location
+    // This prevents Safari from creating scope mismatches
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+      scope: '/firebase-cloud-messaging-push-scope'
+    });
+    logger.log('[pushService] Service worker registered successfully, scope:', registration.scope);
+    return registration;
   } catch (err) {
     logger.error('[pushService] Failed to register service worker:', err);
     throw new Error('Failed to register service worker for push notifications');
@@ -63,9 +122,16 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 20000): Promise<Ser
 
   swReadyPromise = (async () => {
     try {
-      // First, ensure the service worker is registered
-      await ensureServiceWorkerRegistered();
+      // First, ensure the service worker is registered (and get the registration)
+      const existingReg = await ensureServiceWorkerRegistered();
       
+      // If we got a registration with an active worker, use it directly
+      if (existingReg?.active) {
+        logger.log('[pushService] Using existing service worker registration');
+        swIsReady = true;
+        return existingReg;
+      }
+
       // If there's already an active controller, we're good
       if (navigator.serviceWorker.controller) {
         logger.log('[pushService] Service worker controller already active');
@@ -175,13 +241,8 @@ const requestPermissionAndGetToken = async (onProgress?: ProgressCallback): Prom
 
   if (!VAPID_KEY) throw new Error('Missing VAPID key. Set VITE_FIREBASE_VAPID_KEY in your environment.');
 
-  if (!isSupported()) {
-    logger.warn('[pushService] Firebase messaging not supported in this environment');
-    throw new Error('Firebase messaging is not supported in this environment');
-  }
-
-  const app = getFirebaseApp();
-  const messaging = getMessaging(app);
+  // Use our initialized messaging instance which has VAPID key set early (Safari fix)
+  const messaging = await getInitializedMessaging();
   
   // Wait for service worker to be ready before attempting to get token
   // This prevents "no active Service Worker" errors on first page load
@@ -527,9 +588,10 @@ export const pushService = {
   async getCurrentToken(): Promise<string | null> {
     try {
       if (!isSupported()) return null;
-      const app = getFirebaseApp();
-      const messaging = getMessaging(app);
       if (!VAPID_KEY) return null;
+      
+      // Use our initialized messaging instance (Safari fix)
+      const messaging = await getInitializedMessaging();
       
       // Wait for service worker to be ready to ensure background notifications work
       const registration = await waitForServiceWorkerReady();
@@ -620,12 +682,15 @@ export const pushService = {
   /**
    * Pre-warm the service worker by initiating registration and activation.
    * Call this early (e.g., after login) to reduce latency when user toggles push.
+   * Also initializes messaging with VAPID key (Safari fix).
    */
   async preWarmServiceWorker(): Promise<void> {
     if (!this.isPushSupported()) return;
     
     try {
-      logger.log('[pushService] Pre-warming service worker...');
+      logger.log('[pushService] Pre-warming service worker and messaging...');
+      // Initialize messaging early with VAPID key (Safari fix)
+      await getInitializedMessaging();
       // This will register and wait for activation, caching the result
       await waitForServiceWorkerReady();
       logger.log('[pushService] Service worker pre-warmed successfully');
@@ -635,10 +700,29 @@ export const pushService = {
     }
   },
 
+  /**
+   * Initialize messaging early with VAPID key set.
+   * Call this as early as possible (e.g., after Firebase app init) on Safari/iOS
+   * to prevent token invalidation issues when Firebase Functions are used.
+   */
+  async initializeMessagingEarly(): Promise<void> {
+    try {
+      await getInitializedMessaging();
+      logger.log('[pushService] Messaging initialized early with VAPID key');
+    } catch (err) {
+      logger.warn('[pushService] Early messaging init failed (non-fatal):', err);
+    }
+  },
+
   onMessage(handler: (payload: any) => void) {
     try {
-      const messaging = getMessaging(getFirebaseApp());
-      return onMessage(messaging, (payload_) => handler(payload_));
+      // Use async initialization but return sync for compatibility
+      getInitializedMessaging().then(messaging => {
+        onMessage(messaging, (payload_) => handler(payload_));
+      }).catch(err => {
+        logger.warn('[pushService] onMessage setup failed:', err);
+      });
+      return () => {}; // Return unsubscribe placeholder
     } catch (err) {
       // not supported or not initialized
       return () => {};

@@ -26,27 +26,97 @@ firebase.initializeApp(firebaseConfig);
 // Retrieve an instance of Firebase Messaging so that it can handle background messages
 const messaging = firebase.messaging();
 
-// Handle background messages when the app is not in focus
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+/**
+ * CRITICAL FIX FOR SAFARI/iOS:
+ * 
+ * Safari does NOT allow "silent" foreground notifications. If a push message is received
+ * and handled in the foreground without being pushed to the OS notification center,
+ * Safari will INVALIDATE the FCM token after approximately 3 such messages.
+ * 
+ * See: https://github.com/firebase/firebase-js-sdk/issues/6620#issuecomment-1525230346
+ * See: https://stackoverflow.com/questions/77912561/web-push-notifications-stop-working-on-safari
+ * 
+ * Solution: We handle ALL push events via the 'push' event listener and ALWAYS show
+ * a native OS notification. This prevents Safari from thinking the subscription is unused.
+ */
 
-  // With data-only FCM messages, title/body are in payload.data
-  const notificationTitle = payload.data?.title || payload.notification?.title || 'PLV CEIT Notification';
-  const notificationBody = payload.data?.body || payload.data?.message || payload.notification?.body || 'You have a new notification';
+// Handle ALL push messages - this is the Safari-compatible approach
+// We intercept the push event BEFORE Firebase's default handler
+self.addEventListener('push', function(event) {
+  console.log('[firebase-messaging-sw.js] Push event received');
+  
+  // Stop the event from propagating to Firebase's default handler
+  // This ensures WE control whether a notification is shown
+  event.stopImmediatePropagation();
+  
+  let payload;
+  try {
+    payload = event.data ? event.data.json() : {};
+    console.log('[firebase-messaging-sw.js] Push payload:', payload);
+  } catch (e) {
+    console.warn('[firebase-messaging-sw.js] Failed to parse push data:', e);
+    payload = {};
+  }
+  
+  // Extract notification data from various possible locations
+  const notificationTitle = 
+    payload.data?.title || 
+    payload.notification?.title || 
+    'PLV CEIT Notification';
+  
+  const notificationBody = 
+    payload.data?.body || 
+    payload.data?.message || 
+    payload.notification?.body || 
+    'You have a new notification';
   
   const notificationOptions = {
     body: notificationBody,
-    icon: '/favicon.ico',
+    icon: payload.notification?.icon || '/favicon.ico',
     badge: '/favicon.ico',
-    tag: payload.data?.notificationId || 'default',
-    data: payload.data,
+    // Use a unique tag to allow multiple notifications, or a consistent tag to replace
+    tag: payload.data?.notificationId || payload.collapseKey || 'plv-notification-' + Date.now(),
+    data: {
+      ...payload.data,
+      // Include FCM message ID for tracking
+      FCM_MSG_ID: payload.fcmMessageId || payload.from
+    },
     requireInteraction: false,
+    // Renotify ensures user is alerted even if replacing an existing notification
+    renotify: true,
     // Add vibration pattern for mobile devices
     vibrate: [200, 100, 200]
   };
 
-  return self.registration.showNotification(notificationTitle, notificationOptions);
+  // ALWAYS show a notification on Safari/iOS to prevent token invalidation
+  // This is the critical fix - Safari requires actual OS notifications
+  event.waitUntil(
+    self.registration.showNotification(notificationTitle, notificationOptions)
+      .then(() => {
+        console.log('[firebase-messaging-sw.js] Notification shown successfully');
+        // Notify any open clients that a notification was received
+        return clients.matchAll({ type: 'window', includeUncontrolled: true });
+      })
+      .then((clientList) => {
+        // Post message to open clients so they can update UI if needed
+        clientList.forEach((client) => {
+          client.postMessage({
+            type: 'PUSH_RECEIVED',
+            payload: payload,
+            timestamp: Date.now()
+          });
+        });
+      })
+      .catch((err) => {
+        console.error('[firebase-messaging-sw.js] Error showing notification:', err);
+      })
+  );
 });
+
+// Note: We no longer use onBackgroundMessage because we handle all push events
+// via the 'push' event listener above. This is required for Safari compatibility.
+// The Firebase SDK's onBackgroundMessage only handles background messages and
+// doesn't guarantee OS notification display, which Safari requires.
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {

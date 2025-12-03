@@ -37,22 +37,22 @@ import { offlineQueueService } from './lib/offlineQueueService';
 import { getFirebaseDb } from './lib/firebaseConfig';
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from 'firebase/firestore';
 import { preloadLogos } from './lib/logoService';
+import { pushService } from './lib/pushService';
+
+// Initialize messaging early with VAPID key set - CRITICAL for Safari/iOS
+// This must happen BEFORE any Firebase Functions are called to prevent token invalidation
+// See: https://github.com/firebase/firebase-js-sdk/issues/6620
+pushService.initializeMessagingEarly?.().catch(err => {
+  logger.warn('Early messaging init failed (non-fatal):', err);
+});
 
 // Expose services to window for debugging in development
 if (import.meta.env.DEV) {
   (window as any).authService = authService;
   (window as any).realtimeService = realtimeService;
   (window as any).classroomService = classroomService;
-  // Expose pushService for test push sending from the console
-  try {
-    // Dynamically import to avoid circular import issues
-    import('./lib/pushService').then((mod) => {
-      (window as any).pushService = mod.pushService;
-      logger.log('🛠️ pushService exposed to window for debugging');
-    }).catch((e) => logger.warn('Could not expose pushService to window', e));
-  } catch (err) {
-    logger.warn('Could not dynamically load pushService for dev exposure', err);
-  }
+  (window as any).pushService = pushService;
+  logger.log('🛠️ pushService exposed to window for debugging');
 }
 
 // Types
