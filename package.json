@@ -20,7 +20,7 @@
     "author": "",
     "license": "ISC",
     "engines": {
-        "node": "20.x"
+        "node": "22.x"
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",
