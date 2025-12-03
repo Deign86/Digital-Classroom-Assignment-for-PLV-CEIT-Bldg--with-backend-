@@ -590,8 +590,17 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
       const loadingToast = toast.loading(
         enabled
           ? 'Initializing push notifications...'
-          : 'Disabling push notifications...'
+          : 'Disabling push notifications...',
+        { id: 'push-progress' }
       );
+
+      // Progress callback to update the toast with real-time status
+      const onProgress = (step: string, detail?: string) => {
+        toast.loading(step, {
+          id: 'push-progress',
+          description: detail
+        });
+      };
 
       try {
         // Prefer parent handler when present (await it). Parent may handle push token lifecycle and update user record.
@@ -615,10 +624,12 @@ export default function ProfileSettings({ user, onTogglePush }: ProfileSettingsP
 
         // Local fallback behaviour: manage push tokens and call server-side setPushEnabled
         if (enabled) {
-          const res = await pushService.enablePush();
+          // Pass progress callback for real-time UI updates (especially helpful on iOS)
+          const res = await pushService.enablePush(onProgress);
           if (res.success && res.token) {
             setPushToken(res.token);
             // Call the Cloud Function to set pushEnabled flag server-side
+            onProgress('Saving preferences...', 'Finalizing setup');
             const setPushRes = await pushService.setPushEnabledOnServer(true);
             if (setPushRes.success) {
               setPushEnabled(true);

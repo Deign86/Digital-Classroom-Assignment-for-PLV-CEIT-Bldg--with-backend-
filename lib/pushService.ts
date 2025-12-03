@@ -160,11 +160,18 @@ const waitForServiceWorkerReady = async (timeoutMs: number = 20000): Promise<Ser
   return swReadyPromise;
 };
 
-const requestPermissionAndGetToken = async (): Promise<string> => {
+// Progress callback type for UI feedback during push setup
+type ProgressCallback = (step: string, detail?: string) => void;
+
+const requestPermissionAndGetToken = async (onProgress?: ProgressCallback): Promise<string> => {
   if (!('Notification' in window)) throw new Error('Notifications are not supported in this browser');
+  
+  onProgress?.('Requesting permission...', 'Please allow notifications when prompted');
   logger.log('[pushService] Requesting notification permission');
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Notification permission not granted');
+
+  onProgress?.('Permission granted', 'Preparing notification service...');
 
   if (!VAPID_KEY) throw new Error('Missing VAPID key. Set VITE_FIREBASE_VAPID_KEY in your environment.');
 
@@ -178,6 +185,7 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   
   // Wait for service worker to be ready before attempting to get token
   // This prevents "no active Service Worker" errors on first page load
+  onProgress?.('Preparing service worker...', 'Setting up background notifications');
   const registration = await waitForServiceWorkerReady();
   
   if (!registration) {
@@ -186,11 +194,13 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   
   logger.log('[pushService] Service worker ready, scope:', registration.scope);
   logger.log('[pushService] Service worker state:', registration.active?.state);
+  onProgress?.('Service worker ready', 'Verifying push capability...');
   
   // On iOS, verify we can access PushManager before attempting FCM token
   // This provides better error messages if the PWA isn't properly installed
   if (isIOSDevice()) {
     logger.log('[pushService] iOS detected, verifying PushManager access...');
+    onProgress?.('Verifying iOS push access...', 'Checking Apple Push service');
     
     try {
       // Check if PushManager is available on the registration
@@ -224,6 +234,7 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   }
   
   logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration');
+  onProgress?.('Connecting to notification server...', isIOSDevice() ? 'This may take a moment on iOS' : undefined);
   
   // On iOS, the first getToken() call often fails with "Load failed" due to iOS Safari's
   // aggressive network timeout behavior when communicating with Apple's push service (APNs).
@@ -236,12 +247,17 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   // This is especially important right after the permission dialog closes
   if (isIOSDevice()) {
     logger.log('[pushService] iOS: Adding initial delay before FCM token request...');
+    onProgress?.('Initializing iOS push service...', 'Please wait...');
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       logger.log(`[pushService] getToken attempt ${attempt}/${maxAttempts}`);
+      
+      if (isIOSDevice()) {
+        onProgress?.(`Connecting to Apple Push service...`, `Attempt ${attempt} of ${maxAttempts}`);
+      }
       
       // Add delay before retries (not before first attempt since we already delayed on iOS)
       if (attempt > 1) {
@@ -250,11 +266,16 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
           ? 2000 * Math.pow(1.4, attempt - 2) 
           : 1500 * Math.pow(1.5, attempt - 2);
         logger.log(`[pushService] Waiting ${Math.round(delay)}ms before retry...`);
+        
+        if (isIOSDevice()) {
+          onProgress?.(`Retrying connection...`, `Waiting ${Math.round(delay / 1000)}s before attempt ${attempt}`);
+        }
         await new Promise(resolve => setTimeout(resolve, delay));
         
         // On iOS after 2 failed attempts, try clearing any stale token state
         if (isIOSDevice() && attempt === 3) {
           logger.log('[pushService] iOS: Attempting to clear stale token state...');
+          onProgress?.('Clearing stale data...', 'Resetting push registration');
           try {
             await deleteToken(messaging);
             logger.log('[pushService] iOS: Token state cleared');
@@ -273,6 +294,7 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
       
       if (token) {
         logger.log(`[pushService] getToken succeeded on attempt ${attempt}`);
+        onProgress?.('Connection established!', 'Finalizing setup...');
         break;
       }
     } catch (err) {
@@ -290,6 +312,9 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
       
       if (isRetryable && attempt < maxAttempts) {
         logger.log(`[pushService] Retryable error, will attempt again...`);
+        if (isIOSDevice()) {
+          onProgress?.(`Connection attempt ${attempt} failed`, `Will retry... (${maxAttempts - attempt} attempts left)`);
+        }
         continue;
       }
       
@@ -306,6 +331,7 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   }
   
   logger.log('[pushService] Obtained FCM token:', token.substring(0, 20) + '...');
+  onProgress?.('Push notifications configured!', 'Registering with server...');
   return token;
 };
 
@@ -446,12 +472,20 @@ export const pushService = {
   isInstalledPWA(): boolean {
     return isStandaloneMode();
   },
-  async enablePush(): Promise<RegisterResult> {
+  
+  /**
+   * Enable push notifications with optional progress callback for UI feedback.
+   * On iOS, the progress callback provides real-time status updates during the
+   * potentially lengthy token acquisition process.
+   */
+  async enablePush(onProgress?: (step: string, detail?: string) => void): Promise<RegisterResult> {
     try {
       logger.log('[pushService] enablePush invoked');
-      const token = await requestPermissionAndGetToken();
+      const token = await requestPermissionAndGetToken(onProgress);
       logger.log('[pushService] enablePush obtained token, registering on server');
+      onProgress?.('Registering with server...', 'Almost done!');
       const server = await registerTokenOnServer(token);
+      onProgress?.('Setup complete!', undefined);
       return server;
     } catch (err) {
       return { success: false, message: err instanceof Error ? err.message : String(err) };
