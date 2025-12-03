@@ -1,7 +1,7 @@
 import { getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
-import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, deleteToken, onMessage, isSupported } from 'firebase/messaging';
 import { logger } from './logger';
 import { getIOSWebPushStatus, isIOSDevice, isStandaloneMode, type IOSWebPushStatus } from './iosDetection';
 
@@ -225,21 +225,45 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
   
   logger.log('[pushService] Obtaining FCM token with VAPID key and service worker registration');
   
-  // Retry getToken on iOS since Safari can fail with "Load failed" on first attempt
-  // This is especially common when the device is on battery saver or has aggressive network timeouts
+  // On iOS, the first getToken() call often fails with "Load failed" due to iOS Safari's
+  // aggressive network timeout behavior when communicating with Apple's push service (APNs).
+  // We use multiple retries with increasing delays to handle this.
   let token: string | null = null;
   let lastError: Error | null = null;
-  const maxAttempts = isIOSDevice() ? 5 : 2; // More retries on iOS, allow 2 on other platforms too
+  const maxAttempts = isIOSDevice() ? 6 : 2; // More retries on iOS
+  
+  // On iOS, add an initial delay to let the network stack fully initialize
+  // This is especially important right after the permission dialog closes
+  if (isIOSDevice()) {
+    logger.log('[pushService] iOS: Adding initial delay before FCM token request...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       logger.log(`[pushService] getToken attempt ${attempt}/${maxAttempts}`);
       
-      // Add a small delay before retries to let iOS network stack settle
+      // Add delay before retries (not before first attempt since we already delayed on iOS)
       if (attempt > 1) {
-        const delay = 1500 * Math.pow(1.5, attempt - 2); // 1.5s, 2.25s, 3.4s, 5s
+        // Longer delays for iOS: 2s, 3s, 4.5s, 6s, 8s
+        const delay = isIOSDevice() 
+          ? 2000 * Math.pow(1.4, attempt - 2) 
+          : 1500 * Math.pow(1.5, attempt - 2);
         logger.log(`[pushService] Waiting ${Math.round(delay)}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // On iOS after 2 failed attempts, try clearing any stale token state
+        if (isIOSDevice() && attempt === 3) {
+          logger.log('[pushService] iOS: Attempting to clear stale token state...');
+          try {
+            await deleteToken(messaging);
+            logger.log('[pushService] iOS: Token state cleared');
+          } catch (delErr) {
+            logger.warn('[pushService] iOS: Could not clear token (may not exist):', delErr);
+          }
+          // Extra delay after clearing
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
       
       token = await getToken(messaging, { 
