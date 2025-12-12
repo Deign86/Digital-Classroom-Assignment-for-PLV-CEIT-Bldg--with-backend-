@@ -7,7 +7,7 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-)
 [![Firebase](https://img.shields.io/badge/Firebase-12.3.0-orange.svg)](https://firebase.google.com/)
 [![React](https://img.shields.io/badge/React-18.3.1-blue.svg)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6.2-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7.1.7-646CFF.svg)](https://vite.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0.0-38B2AC.svg)](https://tailwindcss.com/)
 
@@ -178,7 +178,7 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Node.js 18+** ([Download](https://nodejs.org/)) - JavaScript runtime
+- **Node.js 22.x** ([Download](https://nodejs.org/)) - JavaScript runtime
 - **npm/yarn/pnpm** - Package manager (comes with Node.js)
 - **Firebase Account** ([Sign up](https://firebase.google.com/)) - Backend services
 - **Git** - Version control ([Download](https://git-scm.com/))
@@ -260,7 +260,7 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 
 ### Frontend Framework & Core
 - **React 18.3.1** - Modern React with Concurrent Features, Suspense, and Transitions
-- **TypeScript 5.6.2** - Type-safe development with strict mode and advanced type inference
+- **TypeScript 5.9.3** - Type-safe development with strict mode and advanced type inference
 - **Vite 7.1.7** - Next-generation frontend tooling with lightning-fast HMR
 - **Tailwind CSS 4.0.0** - Utility-first CSS framework with JIT compiler and CSS variables
 
@@ -268,7 +268,7 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 - **Shadcn/ui** - 40+ accessible, customizable components built on Radix UI primitives
 - **Radix UI** - Unstyled, accessible, WAI-ARIA compliant UI primitives
 - **Framer Motion 12.23.22** - Production-ready animation library with 60fps performance
-- **Lucide React 0.468.0** - Beautiful, consistent SVG icon library (1000+ icons)
+- **Lucide React 0.544.0** - Beautiful, consistent SVG icon library (1000+ icons)
 - **Sonner** - Modern, accessible toast notification system
 - **Phosphor Icons** - Flexible icon family with 6,000+ icons
 
@@ -301,7 +301,7 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 - **Firestore Triggers** - Event-driven database operations
 
 ### Form Management & Validation
-- **React Hook Form 7.54.2** - Performant, flexible form validation with minimal re-renders
+- **React Hook Form 7.55.0** - Performant, flexible form validation with minimal re-renders
 - **Zod** - TypeScript-first schema validation (if used)
 - **Input Sanitization** - Custom validation and sanitization utilities
 
@@ -321,9 +321,9 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 - **Vite Plugins** - React Fast Refresh, environment variable handling
 
 ### Testing & Quality Assurance
-- **Vitest** - Vite-native unit test framework
-- **React Testing Library** - Component testing utilities
-- **Coverage Reports** - Code coverage analysis
+- **ESLint** - Comprehensive linting for code quality
+- **TypeScript Strict Mode** - Compile-time type checking
+- **Error Boundaries** - Runtime error handling and recovery
 
 ### Deployment & Analytics
 - **Vercel** - Optimized edge deployment with automatic HTTPS
@@ -357,9 +357,8 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 ├── 🌍 vercel.json                      # Vercel deployment settings
 ├── 📝 FIREBASE_DEPLOYMENT_GUIDE.md     # Complete Firebase setup guide
 ├── 📝 FIREBASE_ENVIRONMENT_GUIDE.md    # Environment configuration reference
-├── � BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md  # Security implementation docs
 ├── 
-├── �📂 components/                      # React Components (TypeScript)
+├── 📂 components/                      # React Components (TypeScript)
 │   ├── 👨‍💼 AdminDashboard.tsx          # Complete admin interface with tabs
 │   ├── 📊 AdminReports.tsx            # Analytics & utilization reports
 │   ├── 👥 AdminUserManagement.tsx     # User account & lock management
@@ -367,30 +366,41 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 │   ├── 👨‍🏫 FacultyDashboard.tsx       # Faculty interface with booking management
 │   ├── 📅 FacultySchedule.tsx         # Personal & all schedules viewer
 │   ├── 🔑 LoginForm.tsx               # Auth form with brute force protection
+│   ├── 🖼️ LogoHeader.tsx              # PLV/CEIT logo header component
+│   ├── 🚪 LogoutConfirmDialog.tsx     # Logout confirmation modal
+│   ├── 🌐 NetworkStatusIndicator.tsx  # Connection status indicator
 │   ├── 🔔 NotificationBell.tsx        # Real-time notification indicator with badge
 │   ├── 📬 NotificationCenter.tsx      # Full notification management interface
+│   ├── 📴 OfflineNotice.tsx           # Offline mode indicator
+│   ├── 📋 OfflineQueueViewer.tsx      # Offline booking queue viewer
 │   ├── 🔒 PasswordResetDialog.tsx     # In-app password reset dialog
 │   ├── 🔒 PasswordResetPage.tsx       # Standalone password reset page
 │   ├── ⚙️ ProfileSettings.tsx         # User profile, password, push settings
-│   ├── 📝 RequestCard.tsx             # Reusable booking request card component
 │   ├── ✅ RequestApproval.tsx         # Admin reservation approval interface
+│   ├── 📝 RequestCard.tsx             # Reusable booking request card component
 │   ├── 📝 RoomBooking.tsx             # Reservation form with conflict detection
 │   ├── 🔍 RoomSearch.tsx              # Advanced classroom search with filters
 │   ├── 📋 ScheduleViewer.tsx          # Calendar-based schedule visualization
-│   ├── 👥 SignupApproval.tsx          # Faculty signup approval workflow
 │   ├── ⏰ SessionTimeoutWarning.tsx   # Idle timeout warning modal
-│   ├── 🌐 NetworkStatusIndicator.tsx  # Connection status indicator
+│   ├── 👥 SignupApproval.tsx          # Faculty signup approval workflow
 │   ├── 🔊 Announcer.tsx               # Accessibility announcer for screen readers
+│   ├── ⏳ BulkOperationLoader.tsx     # Bulk operation loading indicator
+│   ├── 📊 BulkProgressDialog.tsx      # Bulk operation progress modal
 │   ├── 🐛 ErrorBoundary.tsx           # React error boundary
 │   ├── 🦶 Footer.tsx                  # App footer component
 │   ├── 🎨 animations/
 │   │   └── AppleMotion.tsx             # Apple-inspired motion components
+│   ├── 🖼️ figma/
+│   │   └── ImageWithFallback.tsx       # Image component with fallback support
 │   └── 🧩 ui/                         # 40+ Shadcn/ui components (Radix UI + Tailwind)
 │       ├── button.tsx, card.tsx, dialog.tsx
 │       ├── form.tsx, input.tsx, select.tsx
 │       ├── switch.tsx, badge.tsx, alert.tsx
 │       ├── table.tsx, tabs.tsx, toast.tsx
 │       └── ... (complete accessible UI component library)
+├── 
+├── 📂 contexts/                       # React Context Providers
+│   └── 🔔 NotificationContext.tsx     # Notification state management
 ├── 
 ├── 📂 lib/                            # Core Services & Utilities
 │   ├── 🔥 firebaseConfig.ts           # Firebase initialization with env validation
@@ -406,8 +416,13 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 │   │   └── realtimeService             # Real-time data subscriptions
 │   ├── 🔔 notificationService.ts      # Standalone notification service with Cloud Function integration
 │   ├── 📱 pushService.ts              # Firebase Cloud Messaging (FCM) integration
-│   ├── � customClaimsService.ts      # Firebase custom claims management
-│   ├── �🔁 withRetry.ts                # Network retry logic (3 attempts, exponential backoff)
+│   ├── 📱 pushServiceLazy.ts          # Lazy-loaded push service for performance
+│   ├── 💾 cachedFirestore.ts          # Firestore caching layer
+│   ├── 🗄️ systemCache.ts              # System-wide cache management
+│   ├── 🖼️ logoService.ts              # Logo fetching and caching service
+│   ├── 📴 offlineQueueService.ts      # Offline booking queue (IndexedDB)
+│   ├── 🔑 customClaimsService.ts      # Firebase custom claims management
+│   ├── 🔁 withRetry.ts                # Network retry logic (3 attempts, exponential backoff)
 │   ├── 🌐 networkErrorHandler.ts      # Centralized network error handling
 │   ├── 📝 errorLogger.ts              # Error logging utilities
 │   ├── 📝 logger.ts                   # Console logging wrapper
@@ -416,6 +431,8 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 ├── 
 ├── 📂 hooks/                          # Custom React Hooks
 │   ├── ⏰ useIdleTimeout.ts           # Idle session timeout with activity detection
+│   ├── 🌙 useDarkMode.ts              # Dark mode toggle with system preference
+│   ├── ⚡ useBulkRunner.ts            # Bulk operation execution hook
 │   └── 📜 useScrollTrigger.ts         # Smooth scroll trigger animations
 ├── 
 ├── 📂 utils/                          # Helper Utilities
@@ -434,48 +451,42 @@ A comprehensive, enterprise-grade web-based classroom reservation and management
 │   ├── recaptcha.d.ts                 # reCAPTCHA type definitions
 │   └── yauzl.d.ts                     # Yauzl library type definitions
 ├── 
-├── 📂 src/test/                       # Vitest Test Suite
-│   ├── setup.ts                        # Test environment setup with polyfills
-│   └── 📂 components/                 # Component tests
-│       ├── ClassroomManagement.test.tsx   # 32 comprehensive tests
-│       ├── RoomBooking.test.tsx
-│       ├── NotificationCenter.test.tsx
-│       └── ... (full component test coverage)
-├── 
 ├── 📂 plv-classroom-assignment-functions/  # Firebase Cloud Functions (TypeScript)
 │   ├── 📄 DEPLOYMENT_GUIDE.md         # Cloud Functions deployment instructions
-│   ├── 📄 CHANGELOG.md                # Cloud Functions version history
 │   ├── ⚙️ package.json                # Cloud Functions dependencies (Firebase Admin SDK)
 │   ├── ⚙️ tsconfig.json               # TypeScript config for Cloud Functions
 │   └── 📂 src/
-│       └── 📄 index.ts                 # Cloud Functions implementation (1945 lines)
-│           ├── 🔒 trackFailedLogin            # Brute force protection (tracks attempts)
-│           ├── 🔓 resetFailedLogins           # Login counter reset on success
-│           ├── 🔔 createNotification          # Server-side notification creation
-│           ├── ✅ acknowledgeNotification     # Single notification acknowledgment
-│           ├── ✅ acknowledgeNotifications    # Bulk notification acknowledgment
-│           ├── 📱 registerPushToken           # FCM token registration
-│           ├── 🔕 unregisterPushToken         # FCM token removal
-│           ├── ⚙️ setPushEnabled              # Push notification preference toggle
-│           ├── 📤 sendTestPush                # Test push notification sender
-│           ├── ⏰ expirePastPendingBookings   # Scheduled job (hourly) - auto-expire old bookings
-│           ├── 🗑️ deleteUserAccount           # Complete user account deletion with cleanup
-│           └── 🧹 bulkCleanupRejectedAccounts # Bulk deletion of rejected signup accounts
+│       ├── 📄 index.ts                 # Cloud Functions implementation
+│       │   ├── 🔒 trackFailedLogin            # Brute force protection (tracks attempts)
+│       │   ├── 🔓 resetFailedLogins           # Login counter reset on success
+│       │   ├── 🔔 createNotification          # Server-side notification creation
+│       │   ├── ✅ acknowledgeNotification     # Single notification acknowledgment
+│       │   ├── ✅ acknowledgeNotifications    # Bulk notification acknowledgment
+│       │   ├── 📱 registerPushToken           # FCM token registration
+│       │   ├── 🔕 unregisterPushToken         # FCM token removal
+│       │   ├── ⚙️ setPushEnabled              # Push notification preference toggle
+│       │   ├── 📤 sendTestPush                # Test push notification sender
+│       │   ├── ⏰ expirePastPendingBookings   # Scheduled job (hourly) - auto-expire old bookings
+│       │   ├── 🗑️ deleteUserAccount           # Complete user account deletion with cleanup
+│       │   └── 🧹 bulkCleanupRejectedAccounts # Bulk deletion of rejected signup accounts
+│       └── 📄 recaptcha.ts             # reCAPTCHA verification utilities
 ├── 
 ├── 📂 public/                         # Static Assets
-│   ├── 🔥 firebase-config.json        # Public Firebase configuration (non-sensitive)
-│   ├── 👷 firebase-messaging-sw.js   # FCM service worker for background push notifications
-│   ├── 👷 sw.js                       # General service worker
-│   └── 📱 manifest.json               # Web app manifest for PWA support
+│   ├── 👷 firebase-messaging-sw.js    # FCM service worker for background push notifications
+│   ├── 🖼️ plv-logo.webp               # PLV institutional logo
+│   ├── 🖼️ ceit-logo.webp              # CEIT department logo
+│   ├── 🖼️ system-logo.webp            # System/application logo
+│   └── 🎨 favicon.ico                 # Browser favicon
 ├── 
 ├── 📂 email-templates/                # Firebase Auth Email Templates (HTML)
 │   ├── email-verification-template.html
-│   ├── password-reset-template-FIXED.html
+│   ├── password-reset-template.html
 │   └── email-change-template.html
 ├── 
 ├── 📂 .github/                        # GitHub Configuration
 │   └── 📂 workflows/
-│       └── test.yml                    # GitHub Actions CI/CD for automated testing
+│       ├── regenerate-lockfile-node20.yml  # Node.js lockfile regeneration workflow
+│       └── vercel-speed-insights.yml       # Vercel Speed Insights workflow
 ├── 
 └── 📂 guidelines/                     # Comprehensive Documentation
     ├── 🔥 FIREBASE_QUICK_REFERENCE.md      # Quick Firebase service reference
@@ -1144,9 +1155,8 @@ npm run predeploy    # Automated pre-deployment build
 ### Getting Help
 - 📖 **Documentation**: [`guidelines/`](guidelines/) folder contains comprehensive guides
 - 🔥 **Firebase Issues**: [`FIREBASE_TROUBLESHOOTING.md`](guidelines/FIREBASE_TROUBLESHOOTING.md)
-- � **Security Features**: [`BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md`](BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md)
 - ☁️ **Cloud Functions**: [`plv-classroom-assignment-functions/DEPLOYMENT_GUIDE.md`](plv-classroom-assignment-functions/DEPLOYMENT_GUIDE.md)
-- �🐛 **Bug Reports**: [GitHub Issues](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Deign86/Digital-Classroom-Assignment-for-PLV-CEIT-Bldg--with-backend-/issues)
 - 💡 **Feature Requests**: Open an issue with enhancement label
 
 ## 📈 Performance Features
@@ -1210,7 +1220,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 - **Firebase Migration**: Full migration from Supabase to Firebase backend
 - **UI/UX Enhancement**: Apple-inspired design system implementation
 - **Production Ready**: Comprehensive testing and deployment optimization
-- **Current Version**: 2.0.0 (Firebase Edition) - Production Ready
+- **Current Version**: 3.1.1 (Firebase Edition) - Production Ready
 
 ## 🙏 Acknowledgments
 
@@ -1337,7 +1347,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 ### 🛠️ Developer Experience
 - ✅ **TypeScript Strict Mode**: Enhanced type safety throughout codebase
 - ✅ **Comprehensive Documentation**: Updated README, guides, and inline comments
-- ✅ **Testing Framework**: Vitest integration with coverage reports
+- ✅ **ESLint Integration**: Code quality enforcement with React hooks rules
 - ✅ **Error Logging**: Centralized error handling and logging system
 - ✅ **Component Organization**: Improved file structure and naming conventions
 - ✅ **Code Quality**: ESLint rules and formatting standards
@@ -1345,10 +1355,9 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 ### 📚 Documentation Updates
 - ✅ **README.md**: Complete rewrite with comprehensive feature documentation
 - ✅ **FIREBASE_DEPLOYMENT_GUIDE.md**: Step-by-step Firebase setup
-- ✅ **BRUTE_FORCE_PROTECTION_IMPLEMENTATION.md**: Security feature documentation
-- ✅ **CLASSROOM_DISABLE_WARNING_FEATURE.md**: Classroom disable notification system
+- ✅ **FIREBASE_ENVIRONMENT_GUIDE.md**: Environment configuration reference
 - ✅ **Cloud Functions DEPLOYMENT_GUIDE.md**: Function deployment instructions
-- ✅ **TESTING_GUIDE.md**: Testing strategies and best practices
+- ✅ **Guidelines folder**: Comprehensive Firebase quick reference and troubleshooting
 
 ### 🐛 Bug Fixes
 - ✅ Fixed conflict detection edge cases in reservation system
@@ -1432,7 +1441,7 @@ This project is developed for **Pamantasan ng Lungsod ng Valenzuela - College of
 
 **⭐ Star this repository if you find it helpful!**
 
-**Last Updated**: November 8, 2025  
+**Last Updated**: December 12, 2025  
 **Version**: 3.1.1 (Hotfix - Delete Warning & Cascade Deletion)  
 **Status**: ✅ Actively Maintained  
 **Branch**: `stable-v3` (Recommended)
