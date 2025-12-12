@@ -943,6 +943,46 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
 
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
+
+    // NEVER lock admin accounts - admins are immune to brute force lockouts
+    if (userData.role === 'admin') {
+      logger.info(`Admin account ${emailLower} - skipping lockout (admins cannot be locked)`);
+      return {
+        success: true,
+        locked: false,
+        attemptsRemaining: MAX_FAILED_ATTEMPTS,
+        message: undefined,
+      };
+    }
+
+    // Check if account is already locked and lock hasn't expired
+    if (userData.accountLocked && userData.lockedUntil) {
+      const lockExpiry = new Date(userData.lockedUntil);
+      const now = new Date();
+
+      if (lockExpiry.getTime() > now.getTime()) {
+        // Account is still locked - return existing lock info without resetting timer
+        logger.info(`Account ${emailLower} is already locked until ${userData.lockedUntil}`);
+        return {
+          success: true,
+          locked: true,
+          attemptsRemaining: 0,
+          lockedUntil: userData.lockedUntil,
+          message: `Account locked for 30 minutes due to too many failed attempts`,
+        };
+      } else {
+        // Lock has expired - reset the lock status and failed attempts
+        logger.info(`Lock expired for ${emailLower}, resetting lock status`);
+        await userDoc.ref.update({
+          accountLocked: false,
+          lockedUntil: null,
+          failedLoginAttempts: 0,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        // Continue to track this as a new failed attempt
+      }
+    }
+
     const currentAttempts = (userData.failedLoginAttempts || 0) + 1;
 
     if (currentAttempts >= MAX_FAILED_ATTEMPTS) {

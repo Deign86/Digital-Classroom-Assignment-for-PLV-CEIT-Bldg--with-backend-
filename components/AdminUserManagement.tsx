@@ -298,14 +298,21 @@ export default function AdminUserManagement({ users = [], processingUserId, onDi
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {u.accountLocked ? (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUnlockAccount(u.id)} disabled={!!currentAction || isOtherRowDisabled}>
-                        {currentAction === 'unlock' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Unlock className="h-4 w-4 mr-2" />} Unlock
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" className="rounded-full" onClick={() => startLockAccount(u)} disabled={!!currentAction || isOtherRowDisabled}>
-                        {currentAction === 'disable' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />} Lock
-                      </Button>
+                    {/* Lock/Unlock buttons - only show for non-admin users (admins cannot be locked) */}
+                    {u.role !== 'admin' && (
+                      u.accountLocked ? (
+                        <Button size="sm" variant="outline" className="rounded-full" onClick={() => handleUnlockAccount(u.id)} disabled={!!currentAction || isOtherRowDisabled}>
+                          {currentAction === 'unlock' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Unlock className="h-4 w-4 mr-2" />} Unlock
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="rounded-full" onClick={() => startLockAccount(u)} disabled={!!currentAction || isOtherRowDisabled}>
+                          {currentAction === 'disable' ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />} Lock
+                        </Button>
+                      )
+                    )}
+                    {/* Show a disabled indicator for admin accounts */}
+                    {u.role === 'admin' && (
+                      <span className="text-xs text-muted-foreground italic">Admin (cannot lock)</span>
                     )}
 
                     <Button size="sm" variant="destructive" className="rounded-full" onClick={() => startDelete(u)} disabled={!!currentAction || isOtherRowDisabled}>
