@@ -2,7 +2,9 @@ import { getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
+import { getAuth } from 'firebase/auth';
 import { logger } from './logger';
+import { checkRateLimit, RATE_LIMITS } from './rateLimiter';
 
 type RegisterResult = { success: boolean; token?: string; message?: string };
 
@@ -187,6 +189,16 @@ const requestPermissionAndGetToken = async (): Promise<string> => {
 };
 
 const registerTokenOnServer = async (token: string): Promise<RegisterResult> => {
+  // Rate limiting check
+  const auth = getAuth();
+  const userId = auth.currentUser?.uid || 'anonymous';
+  const rateLimitKey = `push-token-register-${userId}`;
+  const rateLimitCheck = checkRateLimit(rateLimitKey, RATE_LIMITS.PUSH_TOKEN_REGISTER);
+  if (!rateLimitCheck.allowed) {
+    logger.warn('Rate limit exceeded for push token registration:', userId);
+    return { success: false, message: rateLimitCheck.message || 'Too many registration attempts. Please wait.' };
+  }
+
   const functions = getFunctions(getFirebaseApp(), 'us-central1');
   const fn = httpsCallable(functions, 'registerPushToken');
   try {

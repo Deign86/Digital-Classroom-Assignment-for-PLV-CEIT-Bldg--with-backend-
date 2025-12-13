@@ -14,6 +14,7 @@ import { getFirebaseDb, getFirebaseApp } from './firebaseConfig';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import withRetry, { isNetworkError } from './withRetry';
 import { logger } from './logger';
+import { checkRateLimit, RATE_LIMITS } from './rateLimiter';
 
 /**
  * Types of notifications that can be sent to users
@@ -152,6 +153,14 @@ export const createNotification = async (
  * ```
  */
 export const acknowledgeNotification = async (id: string, acknowledgedBy: string): Promise<void> => {
+  // Rate limiting check
+  const rateLimitKey = `notification-ack-${acknowledgedBy}`;
+  const rateLimitCheck = checkRateLimit(rateLimitKey, RATE_LIMITS.NOTIFICATION_ACK);
+  if (!rateLimitCheck.allowed) {
+    logger.warn('Rate limit exceeded for notification acknowledgment:', acknowledgedBy);
+    throw new Error(rateLimitCheck.message || 'Too many notification actions. Please slow down.');
+  }
+
   // Use a server-side callable to ensure server timestamps and enforce permissions
   const app = getFirebaseApp();
   const functions = getFunctions(app, 'us-central1');
@@ -183,6 +192,14 @@ export const acknowledgeNotification = async (id: string, acknowledgedBy: string
  * ```
  */
 export const acknowledgeNotifications = async (ids: string[], acknowledgedBy: string): Promise<number> => {
+  // Rate limiting check
+  const rateLimitKey = `notification-ack-${acknowledgedBy}`;
+  const rateLimitCheck = checkRateLimit(rateLimitKey, RATE_LIMITS.NOTIFICATION_ACK);
+  if (!rateLimitCheck.allowed) {
+    logger.warn('Rate limit exceeded for batch notification acknowledgment:', acknowledgedBy);
+    throw new Error(rateLimitCheck.message || 'Too many notification actions. Please slow down.');
+  }
+
   // Prefer a server-side callable that can acknowledge many notifications in one atomic operation
   const app = getFirebaseApp();
   const functions = getFunctions(app, 'us-central1');
