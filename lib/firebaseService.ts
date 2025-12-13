@@ -44,6 +44,7 @@ import withRetry, { isNetworkError } from './withRetry';
 import { logger } from './logger';
 import { systemCache, CACHE_NAMESPACES, CACHE_TTL } from './systemCache';
 import { invalidateRelated } from './cachedFirestore';
+import { checkRateLimit, resetRateLimit, RATE_LIMITS } from './rateLimiter';
 
 /**
  * Firebase Service - Main data layer for the Digital Classroom Reservation system.
@@ -2183,6 +2184,13 @@ export const bookingRequestService = {
   async create(
     request: Omit<BookingRequest, 'id' | 'requestDate' | 'status'>
   ): Promise<BookingRequest> {
+    // Rate limiting check
+    const rateLimitKey = `booking-create-${request.facultyId}`;
+    const rateLimitCheck = checkRateLimit(rateLimitKey, RATE_LIMITS.BOOKING_CREATE);
+    if (!rateLimitCheck.allowed) {
+      throw new Error(rateLimitCheck.message || 'Too many booking requests. Please wait.');
+    }
+
     const database = getDb();
     const record: FirestoreBookingRequestRecord = {
       ...request,
@@ -2216,10 +2224,20 @@ export const bookingRequestService = {
     // Invalidate cache
     invalidateRelated('bookingRequest', ref.id, { facultyId: record.facultyId });
     
+    // Reset rate limit on successful creation
+    resetRateLimit(rateLimitKey);
+    
     return newRequest;
   },
 
   async update(id: string, updates: Partial<BookingRequest>): Promise<BookingRequest> {
+    // Rate limiting check
+    const rateLimitKey = `booking-update-${currentUserCache?.id || 'unknown'}`;
+    const rateLimitCheck = checkRateLimit(rateLimitKey, RATE_LIMITS.BOOKING_UPDATE);
+    if (!rateLimitCheck.allowed) {
+      throw new Error(rateLimitCheck.message || 'Too many update requests. Please wait.');
+    }
+
     const database = getDb();
     const ref = doc(database, COLLECTIONS.BOOKING_REQUESTS, id);
     
@@ -2473,7 +2491,14 @@ export const scheduleService = {
     return schedule;
   },
 
-  async create(schedule: Omit<Schedule, 'id'>): Promise<Schedule> {
+  async create(schedule: Omit<Schedule, 'id' | 'createdAt' | 'updatedAt'>): Promise<Schedule> {
+    // Rate limiting check
+    const rateLimitKey = `schedule-create-${schedule.facultyId}`;
+    const rateLimitCheck = checkRateLimit(rateLimitKey, RATE_LIMITS.SCHEDULE_CREATE);
+    if (!rateLimitCheck.allowed) {
+      throw new Error(rateLimitCheck.message || 'Too many schedule requests. Please wait.');
+    }
+
     const database = getDb();
     const record: FirestoreScheduleRecord = {
       ...schedule,
@@ -2485,6 +2510,9 @@ export const scheduleService = {
     
     // Invalidate cache
     invalidateRelated('schedule', ref.id, { facultyId: record.facultyId });
+    
+    // Reset rate limit on successful creation
+    resetRateLimit(rateLimitKey);
     
     return newSchedule;
   },
