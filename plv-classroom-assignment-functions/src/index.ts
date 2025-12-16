@@ -1746,9 +1746,134 @@ export const bookingRequestOnUpdateNotifyAdmins = onDocumentUpdated('bookingRequ
       adminsSnap.docs.map((adoc) => persistAndSendNotification(adoc.id, 'info', longMessage, { bookingRequestId: afterSnap.id || beforeSnap.id || null, adminFeedback: null, actorId }))
     );
     const notified = results.reduce((count, r) => (r.status === 'fulfilled' && !(r.value && (r.value as any).skipped) ? count + 1 : count), 0);
+    
+    // Audit log for booking request status changes
+    const requestId = event.params.requestId;
+    if (changedKeys.includes('status')) {
+      const oldStatus = beforeData.status || 'unknown';
+      const newStatus = afterData.status || 'unknown';
+      
+      // Determine action type based on status transition
+      let actionType = 'booking.update';
+      if (newStatus === 'approved') actionType = 'booking.approve';
+      else if (newStatus === 'rejected') actionType = 'booking.reject';
+      else if (newStatus === 'cancelled') actionType = 'booking.cancel';
+      else if (newStatus === 'expired') actionType = 'booking.expire';
+      
+      logAuditEvent({
+        actionType,
+        actorId: actorId || 'system',
+        userId: facultyId,
+        status: 'success',
+        metadata: {
+          bookingRequestId: requestId,
+          classroomName,
+          date,
+          timeSlot: `${startTime}-${endTime}`,
+          oldStatus,
+          newStatus,
+          adminFeedback: afterData.adminFeedback || null,
+        },
+        source: 'firestore-trigger',
+      }).catch((e) => logger.error('logAuditEvent failed for booking status change', e));
+    }
+    
     return { success: true, notified };
   } catch (err) {
     logger.error('Error in bookingRequestOnUpdateNotifyAdmins trigger:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+/**
+ * Firestore trigger: Audit log for signup request status changes (approve/reject)
+ */
+export const signupRequestOnUpdate = onDocumentUpdated('signupRequests/{requestId}', async (event) => {
+  try {
+    if (!event.data) return { success: true, reason: 'no-data' };
+    const beforeData = event.data.before.data() || {};
+    const afterData = event.data.after.data() || {};
+    
+    const oldStatus = beforeData.status;
+    const newStatus = afterData.status;
+    
+    // Only log if status actually changed
+    if (oldStatus === newStatus) {
+      return { success: true, reason: 'no-status-change' };
+    }
+    
+    // Skip if not a meaningful status transition
+    if (!['approved', 'rejected'].includes(newStatus)) {
+      return { success: true, reason: 'not-approval-action' };
+    }
+    
+    const requestId = event.params.requestId;
+    const applicantEmail = afterData.email || beforeData.email || 'unknown';
+    const applicantName = afterData.name || beforeData.name || applicantEmail;
+    const processedBy = afterData.processedBy || afterData.reviewedBy || null;
+    
+    logAuditEvent({
+      actionType: newStatus === 'approved' ? 'signup.approve' : 'signup.reject',
+      actorId: processedBy,
+      userId: afterData.uid || afterData.userId || null,
+      status: 'success',
+      metadata: {
+        signupRequestId: requestId,
+        applicantEmail,
+        applicantName,
+        oldStatus,
+        newStatus,
+        adminFeedback: afterData.adminFeedback || afterData.feedback || null,
+      },
+      source: 'firestore-trigger',
+    }).catch((e) => logger.error('logAuditEvent failed for signup status change', e));
+    
+    return { success: true };
+  } catch (err) {
+    logger.error('Error in signupRequestOnUpdate trigger:', err);
+    return { success: false, error: String(err) };
+  }
+});
+
+/**
+ * Firestore trigger: Audit log for user account lock/unlock changes
+ */
+export const userAccountLockOnUpdate = onDocumentUpdated('users/{userId}', async (event) => {
+  try {
+    if (!event.data) return { success: true, reason: 'no-data' };
+    const beforeData = event.data.before.data() || {};
+    const afterData = event.data.after.data() || {};
+    
+    const wasLocked = beforeData.accountLocked === true;
+    const isLocked = afterData.accountLocked === true;
+    
+    // Only log if lock status actually changed
+    if (wasLocked === isLocked) {
+      return { success: true, reason: 'no-lock-change' };
+    }
+    
+    const userId = event.params.userId;
+    const userName = afterData.name || beforeData.name || afterData.email || 'unknown';
+    const lockedByAdmin = afterData.lockedByAdmin || beforeData.lockedByAdmin || false;
+    const lockReason = afterData.lockReason || beforeData.lockReason || null;
+    
+    logAuditEvent({
+      actionType: isLocked ? 'account.lock' : 'account.unlock',
+      actorId: lockedByAdmin ? 'admin' : 'system',
+      userId,
+      status: 'success',
+      metadata: {
+        userName,
+        lockedByAdmin,
+        lockReason,
+        failedAttempts: afterData.failedLoginAttempts || 0,
+      },
+      source: 'firestore-trigger',
+    }).catch((e) => logger.error('logAuditEvent failed for account lock change', e));
+    
+    return { success: true };
+  } catch (err) {
+    logger.error('Error in userAccountLockOnUpdate trigger:', err);
     return { success: false, error: String(err) };
   }
 });

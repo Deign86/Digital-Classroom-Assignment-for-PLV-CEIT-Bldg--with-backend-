@@ -30,16 +30,35 @@ interface AuditLogsViewerProps {
 }
 
 const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  'login.success': { label: 'Login Success', color: 'bg-green-100 text-green-800' },
-  'login.locked': { label: 'Account Locked', color: 'bg-red-100 text-red-800' },
-  'login.failure': { label: 'Login Failed', color: 'bg-orange-100 text-orange-800' },
-  'booking.cancel': { label: 'Booking Cancelled', color: 'bg-yellow-100 text-yellow-800' },
-  'booking.create': { label: 'Booking Created', color: 'bg-blue-100 text-blue-800' },
-  'classroom.delete': { label: 'Classroom Deleted', color: 'bg-red-100 text-red-800' },
-  'admin.deleteUser': { label: 'User Deleted', color: 'bg-red-100 text-red-800' },
-  'admin.roleChange': { label: 'Role Changed', color: 'bg-purple-100 text-purple-800' },
-  'push.register': { label: 'Push Registered', color: 'bg-cyan-100 text-cyan-800' },
-  'profile.update': { label: 'Profile Updated', color: 'bg-gray-100 text-gray-800' },
+  // Login events
+  'login.success': { label: 'Login Success', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  'login.locked': { label: 'Account Locked', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  'login.failure': { label: 'Login Failed', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
+  
+  // Booking/Reservation events
+  'booking.create': { label: 'Reservation Created', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  'booking.approve': { label: 'Reservation Approved', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  'booking.reject': { label: 'Reservation Rejected', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  'booking.cancel': { label: 'Reservation Cancelled', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  'booking.expire': { label: 'Reservation Expired', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-400' },
+  'booking.update': { label: 'Reservation Updated', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  
+  // Signup events
+  'signup.approve': { label: 'Signup Approved', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  'signup.reject': { label: 'Signup Rejected', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  
+  // Account events
+  'account.lock': { label: 'Account Locked', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  'account.unlock': { label: 'Account Unlocked', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+  
+  // Admin events
+  'classroom.delete': { label: 'Classroom Deleted', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  'admin.deleteUser': { label: 'User Deleted', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  'admin.roleChange': { label: 'Role Changed', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
+  
+  // Other events
+  'push.register': { label: 'Push Registered', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400' },
+  'profile.update': { label: 'Profile Updated', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-400' },
 };
 
 const STATUS_STYLES: Record<string, { icon: React.ReactNode; color: string }> = {
