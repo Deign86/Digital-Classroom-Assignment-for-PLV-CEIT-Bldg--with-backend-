@@ -64,8 +64,8 @@ const saveCacheToStorage = (): void => {
 // Initialize cache from localStorage
 loadCacheFromStorage();
 
-// Logo storage paths in Firebase Storage
-// Using WebP format for better performance (30-80% smaller than PNG)
+// Logo storage paths
+// These files will be fetched at build-time into `public/images/logos/` on Vercel.
 const LOGO_PATHS = {
   plv: 'logos/plv-logo.webp',
   ceit: 'logos/ceit-logo.webp',
@@ -87,9 +87,26 @@ export const getLogoUrl = async (logoType: LogoType): Promise<string | null> => 
       return cached;
     }
 
-    // Fetch from Firebase Storage
-    const storage = getFirebaseStorage();
     const logoPath = LOGO_PATHS[logoType];
+
+    // Prefer static asset (deployed to Vercel at /images/logos/...).
+    // Only attempt the HEAD check in the browser environment.
+    if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+      try {
+        const staticUrl = `/images/${logoPath}`;
+        const res = await fetch(staticUrl, { method: 'HEAD' });
+        if (res.ok) {
+          logoCache.set(logoType, staticUrl);
+          saveCacheToStorage();
+          return staticUrl;
+        }
+      } catch (err) {
+        // ignore and fall back to Firebase Storage
+      }
+    }
+
+    // Fetch from Firebase Storage as a fallback
+    const storage = getFirebaseStorage();
     const logoRef = ref(storage, logoPath);
     const url = await getDownloadURL(logoRef);
 
