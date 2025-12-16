@@ -1043,7 +1043,7 @@ export default function AdminDashboard({
               <OfflineNotice showCachedMessage />
               <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading audit logs. Please refresh the page.</div>}>
                 <Suspense fallback={<div className="p-4">Loading audit logs…</div>}>
-                  <AuditLogsViewer adminUserId={user.id} />
+                  <AuditLogsViewer adminUserId={user.id} users={users} />
                 </Suspense>
               </ErrorBoundary>
             </div>

@@ -19,12 +19,14 @@ import {
   Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { auditLogService, type AuditLog } from '../lib/firebaseService';
+import { auditLogService, userService, type AuditLog } from '../lib/firebaseService';
 import { refreshMyCustomClaims, forceTokenRefresh } from '../lib/customClaimsService';
 
 interface AuditLogsViewerProps {
   /** Current admin user ID for context */
   adminUserId?: string;
+  /** Optional: Pre-loaded users list from parent component */
+  users?: Array<{ id: string; name: string; email: string }>;
 }
 
 const ACTION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -49,11 +51,14 @@ const STATUS_STYLES: Record<string, { icon: React.ReactNode; color: string }> = 
 
 const PAGE_SIZE = 25;
 
-export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
+export default function AuditLogsViewer({ adminUserId, users: propUsers }: AuditLogsViewerProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // User name lookup cache
+  const [userNameCache, setUserNameCache] = useState<Record<string, string>>({});
   
   // Filters
   const [actionTypeFilter, setActionTypeFilter] = useState<string>('all');
@@ -126,6 +131,54 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
     fetchLogs();
   }, [fetchLogs]);
 
+  // Build user name cache from propUsers or fetch missing users
+  useEffect(() => {
+    // If we have users from props, build cache from them
+    if (propUsers && propUsers.length > 0) {
+      const cache: Record<string, string> = {};
+      propUsers.forEach(u => {
+        cache[u.id] = u.name || u.email || u.id;
+      });
+      setUserNameCache(cache);
+      return;
+    }
+
+    // Otherwise, collect unique user IDs from logs and fetch them
+    if (logs.length === 0) return;
+
+    const userIds = new Set<string>();
+    logs.forEach(log => {
+      if (log.userId) userIds.add(log.userId);
+      if (log.actorId) userIds.add(log.actorId);
+    });
+
+    // Filter out IDs we already have cached
+    const missingIds = Array.from(userIds).filter(id => !userNameCache[id]);
+    if (missingIds.length === 0) return;
+
+    // Fetch user data for missing IDs
+    const fetchUserNames = async () => {
+      try {
+        const users = await userService.getAll();
+        const cache: Record<string, string> = { ...userNameCache };
+        users.forEach(u => {
+          cache[u.id] = u.name || u.email || u.id;
+        });
+        setUserNameCache(cache);
+      } catch (err) {
+        console.error('Failed to fetch user names for audit logs:', err);
+      }
+    };
+
+    fetchUserNames();
+  }, [logs, propUsers]);
+
+  // Helper to get display name for a user ID
+  const getUserDisplayName = useCallback((userId: string | null): string | null => {
+    if (!userId) return null;
+    return userNameCache[userId] || userId.slice(0, 8) + '...';
+  }, [userNameCache]);
+
   // Filter logs based on current filters
   const filteredLogs = useMemo(() => {
     let result = [...logs];
@@ -155,13 +208,17 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
       result = result.filter(log => log.status === statusFilter);
     }
     
-    // Search query (searches userId, actorId, metadata)
+    // Search query (searches userId, actorId, user names, metadata)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(log => {
+        const userName = log.userId ? (userNameCache[log.userId] || '') : '';
+        const actorName = log.actorId ? (userNameCache[log.actorId] || '') : '';
         const searchFields = [
           log.userId || '',
           log.actorId || '',
+          userName,
+          actorName,
           log.ip || '',
           log.requestId || '',
           JSON.stringify(log.metadata || {}),
@@ -171,7 +228,7 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
     }
     
     return result;
-  }, [logs, timeRange, actionTypeFilter, statusFilter, searchQuery]);
+  }, [logs, timeRange, actionTypeFilter, statusFilter, searchQuery, userNameCache]);
 
   // Pagination
   const totalPages = Math.ceil(filteredLogs.length / PAGE_SIZE);
@@ -414,10 +471,10 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
                       </td>
                       <td className="p-3">
                         {log.userId ? (
-                          <span className="flex items-center gap-1 text-gray-700">
+                          <span className="flex items-center gap-1 text-gray-700" title={log.userId}>
                             <User className="h-3 w-3" />
-                            <span className="font-mono text-xs truncate max-w-[100px]" title={log.userId}>
-                              {log.userId.slice(0, 8)}...
+                            <span className="text-xs truncate max-w-[150px]">
+                              {getUserDisplayName(log.userId)}
                             </span>
                           </span>
                         ) : (
@@ -426,10 +483,10 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
                       </td>
                       <td className="p-3">
                         {log.actorId && log.actorId !== log.userId ? (
-                          <span className="flex items-center gap-1 text-purple-700">
+                          <span className="flex items-center gap-1 text-purple-700" title={log.actorId}>
                             <User className="h-3 w-3" />
-                            <span className="font-mono text-xs truncate max-w-[100px]" title={log.actorId}>
-                              {log.actorId.slice(0, 8)}...
+                            <span className="text-xs truncate max-w-[150px]">
+                              {getUserDisplayName(log.actorId)}
                             </span>
                           </span>
                         ) : (
