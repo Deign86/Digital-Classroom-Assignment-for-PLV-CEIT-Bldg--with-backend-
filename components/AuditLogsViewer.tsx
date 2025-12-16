@@ -238,7 +238,6 @@ export default function AuditLogsViewer({ adminUserId, users: propUsers }: Audit
           log.actorId || '',
           userName,
           actorName,
-          log.ip || '',
           log.requestId || '',
           JSON.stringify(log.metadata || {}),
         ].join(' ').toLowerCase();
@@ -438,7 +437,7 @@ export default function AuditLogsViewer({ adminUserId, users: propUsers }: Audit
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by user ID, IP, metadata..."
+                placeholder="Search by user ID, metadata..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -472,7 +471,6 @@ export default function AuditLogsViewer({ adminUserId, users: propUsers }: Audit
                     <th className="text-left p-3 font-medium text-gray-700">Status</th>
                     <th className="text-left p-3 font-medium text-gray-700">User</th>
                     <th className="text-left p-3 font-medium text-gray-700">Actor</th>
-                    <th className="text-left p-3 font-medium text-gray-700">IP</th>
                     <th className="text-left p-3 font-medium text-gray-700">Details</th>
                   </tr>
                 </thead>
@@ -508,13 +506,6 @@ export default function AuditLogsViewer({ adminUserId, users: propUsers }: Audit
                               {getUserDisplayName(log.actorId)}
                             </span>
                           </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {log.ip ? (
-                          <span className="font-mono text-xs text-gray-600">{log.ip}</span>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
