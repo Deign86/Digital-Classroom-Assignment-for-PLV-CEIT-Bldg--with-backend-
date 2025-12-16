@@ -305,19 +305,42 @@ export default function AuditLogsViewer({ adminUserId, users: propUsers }: Audit
       return <span className="text-gray-400 text-xs">—</span>;
     }
     
-    // Display key fields inline
-    const entries = Object.entries(metadata).slice(0, 3);
+    // Priority fields to show (in order of importance)
+    const priorityKeys = ['newStatus', 'oldStatus', 'newRole', 'oldRole', 'reason', 'adminFeedback', 'date', 'classroomName', 'roomName'];
+    
+    // Get priority entries first, then fill with others (excluding less useful fields)
+    const excludeKeys = ['bookingRequestId', 'signupRequestId', 'requestId', 'userId', 'actorId'];
+    const allEntries = Object.entries(metadata).filter(([key]) => !excludeKeys.includes(key));
+    
+    // Sort by priority
+    const sortedEntries = allEntries.sort((a, b) => {
+      const aIndex = priorityKeys.indexOf(a[0]);
+      const bIndex = priorityKeys.indexOf(b[0]);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+    
+    // Show up to 4 most relevant fields
+    const entries = sortedEntries.slice(0, 4);
+    
+    if (entries.length === 0) {
+      return <span className="text-gray-400 text-xs">—</span>;
+    }
+    
     return (
       <div className="text-xs text-gray-600 space-y-0.5">
-        {entries.map(([key, value]) => (
-          <div key={key} className="truncate max-w-[200px]">
-            <span className="font-medium">{key}:</span>{' '}
-            <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-          </div>
-        ))}
-        {Object.keys(metadata).length > 3 && (
-          <span className="text-gray-400">+{Object.keys(metadata).length - 3} more</span>
-        )}
+        {entries.map(([key, value]) => {
+          // Skip null/undefined values
+          if (value === null || value === undefined) return null;
+          return (
+            <div key={key} className="truncate max-w-[200px]">
+              <span className="font-medium">{key}:</span>{' '}
+              <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+            </div>
+          );
+        })}
       </div>
     );
   };
