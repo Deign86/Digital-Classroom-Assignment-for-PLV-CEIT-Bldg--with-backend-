@@ -1988,7 +1988,7 @@ export default function App() {
         <div className="text-center">
           <div className="mx-auto mb-4">
             <img
-              src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media"
+              src="/images/logos/system-logo.webp"
               alt="PLV CEIT System Logo"
               className="h-20 w-20 object-contain animate-pulse no-invert"
               data-theme-exclude
@@ -2280,7 +2280,7 @@ export default function App() {
                   <div className="text-center">
                     <div className="mx-auto mb-4">
                       <img
-                        src="https://firebasestorage.googleapis.com/v0/b/plv-classroom-assigment.firebasestorage.app/o/logos%2Fsystem-logo.webp?alt=media"
+                        src="/images/logos/system-logo.webp"
                         alt="PLV CEIT System Logo"
                         className="h-20 w-20 object-contain animate-pulse no-invert"
                         data-theme-exclude

@@ -104,10 +104,10 @@ const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
   '/favicon.ico',
-  // Local public copies of logos (same-origin, no CORS issues)
-  '/plv-logo.webp',
-  '/ceit-logo.webp',
-  '/system-logo.webp',
+  // Local public copies of logos now hosted under /images/logos/
+  '/images/logos/plv-logo.webp',
+  '/images/logos/ceit-logo.webp',
+  '/images/logos/system-logo.webp',
 ];
 
 // Firebase SDK URLs to cache (these are large and don't change often)
