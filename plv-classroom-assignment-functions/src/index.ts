@@ -289,6 +289,7 @@ export const cleanupAcknowledgedNotifications = scheduler.onSchedule(
 
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import { logAuditEvent } from './auditService';
 
 // Constants for brute force protection
 const MAX_FAILED_ATTEMPTS = 5;
@@ -403,6 +404,16 @@ export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId
       logger.info(`Deleted ${deletedCount} signup request(s) for user ${userId}`);
     }
 
+    // Audit: admin deleted a user account
+    logAuditEvent({
+      actionType: 'admin.deleteUser',
+      actorId: callerUid,
+      userId,
+      status: 'success',
+      metadata: { deletedSignupRequests: deletedCount },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     return {
       success: true,
       message: `User account ${userId} has been completely deleted`,
@@ -494,6 +505,15 @@ export const cancelBookingRequest = onCall(async (request: CallableRequest<{ boo
     // Passed checks: delete the document
     await docRef.delete();
     logger.info(`Booking request ${bookingRequestId} cancelled by owner ${callerUid}`);
+
+    // Audit: booking cancellation by owner
+    logAuditEvent({
+      actionType: 'booking.cancel',
+      userId: callerUid,
+      status: 'success',
+      metadata: { bookingRequestId },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
 
     return { success: true, message: 'Booking request cancelled' };
   } catch (err: unknown) {
@@ -635,14 +655,14 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
     await db.collection('classrooms').doc(classroomId).delete();
     logger.info(`Cascade delete complete for classroom ${classroomId}. Deleted ${deletedCount} related docs.`);
 
-    // Write an audit log entry
-    const auditEntry = {
-      classroomId,
-      deletedBy: callerUid,
-      deletedCount,
-      timestamp: Date.now(),
-    };
-    await db.collection('deletionLogs').add(auditEntry);
+    // Emit an audit event (non-blocking). Keep metadata small.
+    logAuditEvent({
+      actionType: 'classroom.delete',
+      actorId: callerUid,
+      status: 'success',
+      metadata: { classroomId, deletedCount },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
 
     // Create a simple notification document for further processing (emails, etc.)
     await db.collection('deletionNotifications').add({
