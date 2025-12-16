@@ -19,7 +19,8 @@ import {
   FileText,
   UserPlus,
   UserCog,
-  Loader2
+  Loader2,
+  Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,6 +40,7 @@ import type { Notification } from '../lib/notificationService';
 import { useAnnouncer } from './Announcer';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 const AdminUserManagement = React.lazy(() => import('./AdminUserManagement'));
+const AuditLogsViewer = React.lazy(() => import('./AuditLogsViewer'));
 /* spinner removed by request; fallbacks reverted to text */
 import { userService, adminDeleteUser } from '../lib/firebaseService';
 import { notificationService } from '../lib/notificationService';
@@ -80,7 +82,7 @@ export default function AdminDashboard({
   checkConflicts
 }: AdminDashboardProps) {
   const { announce } = useAnnouncer();
-  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management'] as const;
+  const allowedTabs = ['overview','classrooms','requests','signups','schedule','reports','settings','user-management','audit-logs'] as const;
   
   // Read initial tab from URL path or default to overview
   const getInitialTab = (): string => {
@@ -356,7 +358,7 @@ export default function AdminDashboard({
       <div className="p-3 sm:p-4 md:p-6 lg:p-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Desktop Tab Layout */}
-          <TabsList className="hidden lg:grid w-full grid-cols-8 mx-auto max-w-full gap-0.5 md:gap-1 p-0.5 md:p-1">
+          <TabsList className="hidden lg:grid w-full grid-cols-9 mx-auto max-w-full gap-0.5 md:gap-1 p-0.5 md:p-1">
             <TabsTrigger value="overview" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
               <BarChart3 className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
               <span className="hidden xl:inline">Overview</span>
@@ -398,6 +400,10 @@ export default function AdminDashboard({
             <TabsTrigger value="settings" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
               <UserCog className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
               <span className="hidden xl:inline">Settings</span>
+            </TabsTrigger>
+            <TabsTrigger value="audit-logs" className="flex items-center justify-center space-x-1 text-xs md:text-sm px-1 md:px-2 py-1.5 md:py-2">
+              <Shield className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+              <span className="hidden xl:inline">Audit</span>
             </TabsTrigger>
           </TabsList>
           
@@ -445,6 +451,10 @@ export default function AdminDashboard({
               <TabsTrigger value="settings" className="mobile-tab-item flex items-center space-x-2">
                 <UserCog className="h-4 w-4 flex-shrink-0" />
                 <span>Settings</span>
+              </TabsTrigger>
+              <TabsTrigger value="audit-logs" className="mobile-tab-item flex items-center space-x-2">
+                <Shield className="h-4 w-4 flex-shrink-0" />
+                <span>Audit Logs</span>
               </TabsTrigger>
             </TabsList>
             <div className="tab-scroll-indicator"></div>
@@ -1023,6 +1033,17 @@ export default function AdminDashboard({
               <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading settings. Please refresh the page.</div>}>
                 <Suspense fallback={<div className="p-4">Loading settings…</div>}>
                   <ProfileSettings user={user} />
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="audit-logs">
+            <div className="animate-in">
+              <OfflineNotice showCachedMessage />
+              <ErrorBoundary fallback={<div className="p-4 text-center text-red-500">Error loading audit logs. Please refresh the page.</div>}>
+                <Suspense fallback={<div className="p-4">Loading audit logs…</div>}>
+                  <AuditLogsViewer adminUserId={user.id} />
                 </Suspense>
               </ErrorBoundary>
             </div>
