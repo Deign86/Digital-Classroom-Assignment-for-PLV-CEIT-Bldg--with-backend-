@@ -1836,49 +1836,6 @@ export const signupRequestOnUpdate = onDocumentUpdated('signupRequests/{requestI
 });
 
 /**
- * Firestore trigger: Audit log for user account lock/unlock changes
- */
-export const userAccountLockOnUpdate = onDocumentUpdated('users/{userId}', async (event) => {
-  try {
-    if (!event.data) return { success: true, reason: 'no-data' };
-    const beforeData = event.data.before.data() || {};
-    const afterData = event.data.after.data() || {};
-    
-    const wasLocked = beforeData.accountLocked === true;
-    const isLocked = afterData.accountLocked === true;
-    
-    // Only log if lock status actually changed
-    if (wasLocked === isLocked) {
-      return { success: true, reason: 'no-lock-change' };
-    }
-    
-    const userId = event.params.userId;
-    const userName = afterData.name || beforeData.name || afterData.email || 'unknown';
-    const lockedByAdmin = afterData.lockedByAdmin || beforeData.lockedByAdmin || false;
-    const lockReason = afterData.lockReason || beforeData.lockReason || null;
-    
-    logAuditEvent({
-      actionType: isLocked ? 'account.lock' : 'account.unlock',
-      actorId: lockedByAdmin ? 'admin' : 'system',
-      userId,
-      status: 'success',
-      metadata: {
-        userName,
-        lockedByAdmin,
-        lockReason,
-        failedAttempts: afterData.failedLoginAttempts || 0,
-      },
-      source: 'firestore-trigger',
-    }).catch((e) => logger.error('logAuditEvent failed for account lock change', e));
-    
-    return { success: true };
-  } catch (err) {
-    logger.error('Error in userAccountLockOnUpdate trigger:', err);
-    return { success: false, error: String(err) };
-  }
-});
-
-/**
  * Resets failed login attempts and unlocks an account after successful login
  * Called by the client after successful authentication
  */
@@ -2100,25 +2057,61 @@ export const syncUserRoleClaims = onDocumentWritten('users/{userId}', async (eve
   const newRole = afterData?.role;
   const oldRole = beforeData?.role;
 
-  // Only update claims if role actually changed
-  if (newRole === oldRole) {
-    return;
-  }
+  // Handle role change - update custom claims
+  if (newRole !== oldRole) {
+    try {
+      const claims: { admin?: boolean; role?: string } = {
+        role: newRole || 'faculty',
+      };
 
-  try {
-    const claims: { admin?: boolean; role?: string } = {
-      role: newRole || 'faculty',
-    };
+      if (newRole === 'admin') {
+        claims.admin = true;
+      }
 
-    if (newRole === 'admin') {
-      claims.admin = true;
+      await admin.auth().setCustomUserClaims(userId, claims);
+      
+      logger.info(`Auto-synced custom claims for user ${userId}. Old role: ${oldRole}, New role: ${newRole}`);
+      
+      // Audit role change
+      logAuditEvent({
+        actionType: 'admin.roleChange',
+        actorId: 'system',
+        userId,
+        status: 'success',
+        metadata: {
+          oldRole,
+          newRole,
+          userName: afterData?.name || afterData?.email || userId,
+        },
+        source: 'firestore-trigger',
+      }).catch((e) => logger.error('logAuditEvent failed for role change', e));
+    } catch (err) {
+      logger.error(`Failed to sync custom claims for user ${userId}:`, err);
     }
-
-    await admin.auth().setCustomUserClaims(userId, claims);
+  }
+  
+  // Handle account lock/unlock changes - audit log only
+  const wasLocked = beforeData?.accountLocked === true;
+  const isLocked = afterData?.accountLocked === true;
+  
+  if (wasLocked !== isLocked) {
+    const userName = afterData?.name || beforeData?.name || afterData?.email || 'unknown';
+    const lockedByAdmin = afterData?.lockedByAdmin || beforeData?.lockedByAdmin || false;
+    const lockReason = afterData?.lockReason || beforeData?.lockReason || null;
     
-    logger.info(`Auto-synced custom claims for user ${userId}. Old role: ${oldRole}, New role: ${newRole}`);
-  } catch (err) {
-    logger.error(`Failed to sync custom claims for user ${userId}:`, err);
+    logAuditEvent({
+      actionType: isLocked ? 'account.lock' : 'account.unlock',
+      actorId: lockedByAdmin ? 'admin' : 'system',
+      userId,
+      status: 'success',
+      metadata: {
+        userName,
+        lockedByAdmin,
+        lockReason,
+        failedAttempts: afterData?.failedLoginAttempts || 0,
+      },
+      source: 'firestore-trigger',
+    }).catch((e) => logger.error('logAuditEvent failed for account lock change', e));
   }
 });
 
