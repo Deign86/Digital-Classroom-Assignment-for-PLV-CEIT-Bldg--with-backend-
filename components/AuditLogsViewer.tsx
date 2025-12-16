@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { auditLogService, type AuditLog } from '../lib/firebaseService';
+import { refreshMyCustomClaims, forceTokenRefresh } from '../lib/customClaimsService';
 
 interface AuditLogsViewerProps {
   /** Current admin user ID for context */
@@ -62,8 +63,11 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Track if we've already tried to refresh claims to avoid infinite loop
+  const [claimsRefreshed, setClaimsRefreshed] = useState(false);
 
-  const fetchLogs = useCallback(async (showRefreshToast = false) => {
+  const fetchLogs = useCallback(async (showRefreshToast = false, retryAfterClaimsRefresh = false) => {
     try {
       if (showRefreshToast) {
         setRefreshing(true);
@@ -80,13 +84,43 @@ export default function AuditLogsViewer({ adminUserId }: AuditLogsViewerProps) {
       }
     } catch (err: any) {
       console.error('Failed to fetch audit logs:', err);
-      setError(err?.message || 'Failed to load audit logs');
-      toast.error('Failed to load audit logs');
+      
+      // Check if this is a permissions error and we haven't tried refreshing claims yet
+      const isPermissionError = err?.code === 'permission-denied' || 
+                               err?.message?.toLowerCase().includes('permission') ||
+                               err?.message?.toLowerCase().includes('insufficient');
+      
+      if (isPermissionError && !claimsRefreshed && !retryAfterClaimsRefresh) {
+        // Try to refresh custom claims and retry
+        console.log('Permission denied - attempting to refresh custom claims...');
+        setError('Syncing admin permissions...');
+        
+        try {
+          await refreshMyCustomClaims();
+          await forceTokenRefresh();
+          setClaimsRefreshed(true);
+          
+          // Small delay to allow token propagation
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Retry the fetch
+          toast.info('Refreshed admin permissions, retrying...');
+          await fetchLogs(showRefreshToast, true);
+          return;
+        } catch (refreshErr) {
+          console.error('Failed to refresh custom claims:', refreshErr);
+          setError('Missing or insufficient permissions.');
+          toast.error('Failed to load audit logs. Please sign out and sign in again.');
+        }
+      } else {
+        setError(isPermissionError ? 'Missing or insufficient permissions.' : (err?.message || 'Failed to load audit logs'));
+        toast.error('Failed to load audit logs');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [claimsRefreshed]);
 
   useEffect(() => {
     fetchLogs();
