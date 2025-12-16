@@ -3094,22 +3094,134 @@ export const realtimeService = {
   }
 };
 
-export const clearAllData = (): never => {
-  throw new Error(
-    'clearAllData is not supported with the Firebase backend. Manage records via the Firebase console or admin scripts.'
-  );
-};
+// ============================================================================
+// AUDIT LOG SERVICE
+// ============================================================================
 
-export const exportAllData = (): never => {
-  throw new Error(
-    'exportAllData is not available with the Firebase backend. Use Firestore export tools instead.'
-  );
-};
+/**
+ * Audit log document shape from Firestore
+ */
+export interface AuditLog {
+  id: string;
+  actionType: string;
+  userId: string | null;
+  actorId: string | null;
+  status: string;
+  ip: string | null;
+  requestId: string;
+  metadata: Record<string, any>;
+  source: string;
+  createdAt: any; // Firestore Timestamp
+  expireAt: any;  // Firestore Timestamp
+  _v: number;
+}
 
-export const importAllData = (): never => {
-  throw new Error(
-    'importAllData is not available with the Firebase backend. Use Firestore import tools instead.'
-  );
+/**
+ * Audit log service for admin dashboard
+ * Reads from the auditLogs collection (admin-only via security rules)
+ */
+export const auditLogService = {
+  /**
+   * Get recent audit logs (most recent first)
+   */
+  async getRecentLogs(limit = 100): Promise<AuditLog[]> {
+    const logsRef = collection(db(), 'auditLogs');
+    const q = query(logsRef, orderBy('createdAt', 'desc'));
+    
+    const snapshot = await withRetry(
+      () => getDocs(q),
+      { attempts: 3, shouldRetry: isNetworkError }
+    );
+    
+    const logs: AuditLog[] = [];
+    snapshot.docs.slice(0, limit).forEach(doc => {
+      logs.push({ id: doc.id, ...doc.data() } as AuditLog);
+    });
+    
+    return logs;
+  },
+
+  /**
+   * Get audit logs for a specific user
+   */
+  async getLogsByUser(userId: string, limit = 50): Promise<AuditLog[]> {
+    const logsRef = collection(db(), 'auditLogs');
+    const q = query(
+      logsRef,
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await withRetry(
+      () => getDocs(q),
+      { attempts: 3, shouldRetry: isNetworkError }
+    );
+    
+    const logs: AuditLog[] = [];
+    snapshot.docs.slice(0, limit).forEach(doc => {
+      logs.push({ id: doc.id, ...doc.data() } as AuditLog);
+    });
+    
+    return logs;
+  },
+
+  /**
+   * Get audit logs by action type
+   */
+  async getLogsByActionType(actionType: string, limit = 100): Promise<AuditLog[]> {
+    const logsRef = collection(db(), 'auditLogs');
+    const q = query(
+      logsRef,
+      where('actionType', '==', actionType),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await withRetry(
+      () => getDocs(q),
+      { attempts: 3, shouldRetry: isNetworkError }
+    );
+    
+    const logs: AuditLog[] = [];
+    snapshot.docs.slice(0, limit).forEach(doc => {
+      logs.push({ id: doc.id, ...doc.data() } as AuditLog);
+    });
+    
+    return logs;
+  },
+
+  /**
+   * Get failed login attempts (for security monitoring)
+   */
+  async getFailedLogins(since?: Date, limit = 100): Promise<AuditLog[]> {
+    const logsRef = collection(db(), 'auditLogs');
+    
+    // Query for login.locked events
+    const q = query(
+      logsRef,
+      where('actionType', '==', 'login.locked'),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await withRetry(
+      () => getDocs(q),
+      { attempts: 3, shouldRetry: isNetworkError }
+    );
+    
+    let logs: AuditLog[] = [];
+    snapshot.docs.forEach(doc => {
+      logs.push({ id: doc.id, ...doc.data() } as AuditLog);
+    });
+    
+    // Filter by time if provided
+    if (since) {
+      logs = logs.filter(log => {
+        const logTime = log.createdAt?.toDate?.() || new Date(0);
+        return logTime >= since;
+      });
+    }
+    
+    return logs.slice(0, limit);
+  },
 };
 
 // Admin helper: call server-side deleteUserAccount Cloud Function

@@ -289,6 +289,7 @@ export const cleanupAcknowledgedNotifications = scheduler.onSchedule(
 
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import { logAuditEvent } from './auditService';
 
 // Constants for brute force protection
 const MAX_FAILED_ATTEMPTS = 5;
@@ -403,6 +404,16 @@ export const deleteUserAccount = onCall(async (request: CallableRequest<{ userId
       logger.info(`Deleted ${deletedCount} signup request(s) for user ${userId}`);
     }
 
+    // Audit: admin deleted a user account
+    logAuditEvent({
+      actionType: 'admin.deleteUser',
+      actorId: callerUid,
+      userId,
+      status: 'success',
+      metadata: { deletedSignupRequests: deletedCount },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     return {
       success: true,
       message: `User account ${userId} has been completely deleted`,
@@ -494,6 +505,15 @@ export const cancelBookingRequest = onCall(async (request: CallableRequest<{ boo
     // Passed checks: delete the document
     await docRef.delete();
     logger.info(`Booking request ${bookingRequestId} cancelled by owner ${callerUid}`);
+
+    // Audit: booking cancellation by owner
+    logAuditEvent({
+      actionType: 'booking.cancel',
+      userId: callerUid,
+      status: 'success',
+      metadata: { bookingRequestId },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
 
     return { success: true, message: 'Booking request cancelled' };
   } catch (err: unknown) {
@@ -635,14 +655,14 @@ export const deleteClassroomCascade = onCall(async (request: CallableRequest<{ c
     await db.collection('classrooms').doc(classroomId).delete();
     logger.info(`Cascade delete complete for classroom ${classroomId}. Deleted ${deletedCount} related docs.`);
 
-    // Write an audit log entry
-    const auditEntry = {
-      classroomId,
-      deletedBy: callerUid,
-      deletedCount,
-      timestamp: Date.now(),
-    };
-    await db.collection('deletionLogs').add(auditEntry);
+    // Emit an audit event (non-blocking). Keep metadata small.
+    logAuditEvent({
+      actionType: 'classroom.delete',
+      actorId: callerUid,
+      status: 'success',
+      metadata: { classroomId, deletedCount },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
 
     // Create a simple notification document for further processing (emails, etc.)
     await db.collection('deletionNotifications').add({
@@ -822,6 +842,16 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
     return { success: true };
   } catch (error: unknown) {
     logger.error('Error in cancelApprovedBooking callable:', error);
+
+    // Audit: booking cancellation failure
+    logAuditEvent({
+      actionType: 'booking.cancel',
+      actorId: callerUid,
+      status: 'failure',
+      metadata: { scheduleId, error: String(error) },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     if (error instanceof HttpsError) throw error;
     throw new HttpsError('internal', 'Failed to cancel approved booking');
   }
@@ -998,6 +1028,15 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
       });
 
       logger.warn(`Account locked for ${emailLower} after ${currentAttempts} attempts`);
+
+      // Audit: account locked due to too many failed attempts
+      logAuditEvent({
+        actionType: 'login.locked',
+        userId: userDoc.id,
+        status: 'failure',
+        metadata: { email: emailLower, attempts: currentAttempts, lockedUntil },
+        source: 'cloud-function',
+      }).catch((e) => logger.error('logAuditEvent failed', e));
 
       return {
         success: true,
@@ -1372,6 +1411,16 @@ export const registerPushToken = onCall(async (request: CallableRequest<{ token?
     }
 
     await admin.firestore().collection('pushTokens').add({ userId, token, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    // Audit: push token registered
+    logAuditEvent({
+      actionType: 'push.register',
+      userId,
+      status: 'success',
+      metadata: { tokenPrefix: token.substring(0, 10) },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     return { success: true };
   } catch (err) {
     logger.error('Failed to register push token', err);
@@ -1738,6 +1787,15 @@ export const resetFailedLogins = onCall(async (request: CallableRequest) => {
 
     logger.info(`Successfully reset failed login attempts for ${userId}`);
 
+    // Audit: successful login (failed attempts reset)
+    logAuditEvent({
+      actionType: 'login.success',
+      userId,
+      status: 'success',
+      metadata: {},
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     return {
       success: true,
       message: "Failed login attempts reset successfully",
@@ -1989,6 +2047,16 @@ export const changeUserRole = onCall(async (request: CallableRequest<{ userId?: 
     });
 
     logger.info(`User ${userId} role changed to ${newRole} by admin ${callerUid}`);
+
+    // Audit: admin changed user role
+    logAuditEvent({
+      actionType: 'admin.roleChange',
+      actorId: callerUid,
+      userId,
+      status: 'success',
+      metadata: { newRole },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
 
     return { 
       success: true, 
