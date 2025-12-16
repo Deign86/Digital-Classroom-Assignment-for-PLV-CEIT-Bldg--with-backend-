@@ -142,5 +142,13 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create, update, delete: if false;
     }
+
+    // Audit logs collection (security-sensitive)
+    // Only Cloud Functions / Admin SDK may write; admins may read for investigation.
+    // Documents auto-expire via Firestore TTL (expireAt field).
+    match /auditLogs/{logId} {
+      allow read: if request.auth != null && request.auth.token.admin == true;
+      allow create, update, delete: if false;  // Client writes forbidden; Admin SDK bypasses rules
+    }
   }
 }

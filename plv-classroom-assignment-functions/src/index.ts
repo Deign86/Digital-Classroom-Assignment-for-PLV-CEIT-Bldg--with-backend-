@@ -842,6 +842,16 @@ export const cancelApprovedBooking = onCall(async (request: CallableRequest<{ sc
     return { success: true };
   } catch (error: unknown) {
     logger.error('Error in cancelApprovedBooking callable:', error);
+
+    // Audit: booking cancellation failure
+    logAuditEvent({
+      actionType: 'booking.cancel',
+      actorId: callerUid,
+      status: 'failure',
+      metadata: { scheduleId, error: String(error) },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     if (error instanceof HttpsError) throw error;
     throw new HttpsError('internal', 'Failed to cancel approved booking');
   }
@@ -1018,6 +1028,15 @@ export const trackFailedLogin = onCall(async (request: CallableRequest<{ email?:
       });
 
       logger.warn(`Account locked for ${emailLower} after ${currentAttempts} attempts`);
+
+      // Audit: account locked due to too many failed attempts
+      logAuditEvent({
+        actionType: 'login.locked',
+        userId: userDoc.id,
+        status: 'failure',
+        metadata: { email: emailLower, attempts: currentAttempts, lockedUntil },
+        source: 'cloud-function',
+      }).catch((e) => logger.error('logAuditEvent failed', e));
 
       return {
         success: true,
@@ -1392,6 +1411,16 @@ export const registerPushToken = onCall(async (request: CallableRequest<{ token?
     }
 
     await admin.firestore().collection('pushTokens').add({ userId, token, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+    // Audit: push token registered
+    logAuditEvent({
+      actionType: 'push.register',
+      userId,
+      status: 'success',
+      metadata: { tokenPrefix: token.substring(0, 10) },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     return { success: true };
   } catch (err) {
     logger.error('Failed to register push token', err);
@@ -1758,6 +1787,15 @@ export const resetFailedLogins = onCall(async (request: CallableRequest) => {
 
     logger.info(`Successfully reset failed login attempts for ${userId}`);
 
+    // Audit: successful login (failed attempts reset)
+    logAuditEvent({
+      actionType: 'login.success',
+      userId,
+      status: 'success',
+      metadata: {},
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
+
     return {
       success: true,
       message: "Failed login attempts reset successfully",
@@ -2009,6 +2047,16 @@ export const changeUserRole = onCall(async (request: CallableRequest<{ userId?: 
     });
 
     logger.info(`User ${userId} role changed to ${newRole} by admin ${callerUid}`);
+
+    // Audit: admin changed user role
+    logAuditEvent({
+      actionType: 'admin.roleChange',
+      actorId: callerUid,
+      userId,
+      status: 'success',
+      metadata: { newRole },
+      source: 'cloud-function',
+    }).catch((e) => logger.error('logAuditEvent failed', e));
 
     return { 
       success: true, 
